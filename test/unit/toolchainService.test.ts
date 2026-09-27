@@ -279,7 +279,9 @@ suite('toolchain/service', () => {
     const snapshot = await settled(service);
     assert.strictEqual(snapshot.idris2.status, 'missing');
     if (snapshot.idris2.status === 'missing') {
-      assert.deepStrictEqual(snapshot.idris2.searched, [configured]);
+      // On Windows a configured path is tried with each runnable PATHEXT extension, as cmd.exe
+      // resolves a typed path (discover.ts module comment); this suite's PATHEXT is `.EXE`.
+      assert.deepStrictEqual(snapshot.idris2.searched, [WINDOWS ? `${configured}.exe` : configured]);
       assert.ok(snapshot.idris2.reason.includes('does not exist'));
     }
     assert.deepStrictEqual(runner.calls.map(key), ['idris2-lsp --version']);

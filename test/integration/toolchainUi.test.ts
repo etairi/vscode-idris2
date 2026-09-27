@@ -29,13 +29,23 @@ async function closeEditors(): Promise<void> {
   await vscode.commands.executeCommand('workbench.action.closeAllEditors');
 }
 
+/**
+ * Opens Setup Information and returns its text once it shows the current scan. The command asks
+ * VS Code to re-read the document and then opens it; a copy already loaded by an earlier test is
+ * returned at once and replaced with the fresh text a moment later, so reading the text right
+ * away can see the previous scan (this failed on ubuntu-latest in CI run 36348744268).
+ */
 async function setupInformationText(api: TestApi): Promise<string> {
   await vscode.commands.executeCommand('idris2.showSetupInformation');
-  const editor = await waitFor('the Setup Information editor', () =>
-    vscode.window.activeTextEditor?.document.uri.toString() === api.setupInformationUri.toString()
-      ? vscode.window.activeTextEditor
-      : undefined,
-  );
+  const current = api.toolchain.current;
+  assert.ok(current, 'no settled scan to show');
+  const scanLine = `- Scan #${current.generation} (`;
+  const editor = await waitFor(`the Setup Information editor showing scan #${current.generation}`, () => {
+    const active = vscode.window.activeTextEditor;
+    return active?.document.uri.toString() === api.setupInformationUri.toString() && active.document.getText().includes(scanLine)
+      ? active
+      : undefined;
+  });
   return editor.document.getText();
 }
 
