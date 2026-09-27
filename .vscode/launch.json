@@ -1,0 +1,35 @@
+// Launch configurations for developing the extension. "Run Extension" is the one generator-code
+// 1.12.0 emits; "Extension Tests" runs the `integration` suite of .vscode-test.mjs under the
+// debugger through js-debug's extensionHost `testConfiguration` support.
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/dist/**/*.js"
+      ],
+      "preLaunchTask": "${defaultBuildTask}"
+    },
+    {
+      "name": "Extension Tests",
+      "type": "extensionHost",
+      "request": "launch",
+      "testConfiguration": "${workspaceFolder}/.vscode-test.mjs",
+      "testConfigurationLabel": "integration",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/out/**/*.js",
+        "${workspaceFolder}/dist/**/*.js"
+      ],
+      "preLaunchTask": "tasks: watch-tests"
+    }
+  ]
+}

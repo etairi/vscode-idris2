@@ -1,0 +1,12 @@
+{
+  "comments": {
+    "lineComment": "--",
+    "blockComment": ["{-", "-}"]
+  },
+  "autoClosingPairs": [
+    { "open": "\"", "close": "\"", "notIn": ["string"] }
+  ],
+  "surroundingPairs": [
+    ["\"", "\""]
+  ]
+}

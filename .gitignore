@@ -1,0 +1,7 @@
+node_modules
+dist
+out
+.vscode-test/
+*.vsix
+# Idris 2 writes TTCs here when a fixture is checked by hand (idris2 --check).
+test/fixtures/workspaces/**/build/

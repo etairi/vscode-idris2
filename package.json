@@ -1,0 +1,109 @@
+{
+  "name": "vscode-idris2",
+  "displayName": "Idris 2",
+  "description": "Idris 2 support for Visual Studio Code (early development skeleton; see docs/ROADMAP.md)",
+  "version": "0.0.1",
+  "publisher": "etairi",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/etairi/vscode-idris2.git"
+  },
+  "bugs": {
+    "url": "https://github.com/etairi/vscode-idris2/issues"
+  },
+  "homepage": "https://github.com/etairi/vscode-idris2#readme",
+  "engines": {
+    "vscode": "^1.138.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:idris2",
+    "onLanguage:lidr",
+    "onLanguage:ipkg",
+    "workspaceContains:**/*.ipkg"
+  ],
+  "main": "./dist/extension.js",
+  "extensionKind": [
+    "workspace"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "idris2",
+        "aliases": [
+          "Idris 2",
+          "idris2"
+        ],
+        "extensions": [
+          ".idr"
+        ],
+        "configuration": "./language-configuration/idris2.json"
+      },
+      {
+        "id": "lidr",
+        "aliases": [
+          "Literate Idris"
+        ],
+        "extensions": [
+          ".lidr"
+        ],
+        "configuration": "./language-configuration/lidr.json"
+      },
+      {
+        "id": "ipkg",
+        "aliases": [
+          "Idris 2 Package"
+        ],
+        "extensions": [
+          ".ipkg"
+        ],
+        "configuration": "./language-configuration/ipkg.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "idris2.showOutput",
+        "title": "Show Output",
+        "category": "Idris 2"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src test",
+    "compile": "npm run check-types && npm run lint && node esbuild.mjs",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.mjs --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.mjs --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile",
+    "test": "vscode-test",
+    "test:unit": "npm run compile-tests && mocha --ui tdd \"out/test/unit/**/*.test.js\""
+  },
+  "dependencies": {
+    "vscode-languageclient": "^10.1.1"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "24.x",
+    "@types/vscode": "^1.138.0",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.0.0",
+    "esbuild": "^0.28.1",
+    "eslint": "^10.5.0",
+    "mocha": "^11.7.6",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.61.1"
+  },
+  "overrides": {
+    "diff": "^8.0.4",
+    "serialize-javascript": "^7.0.6"
+  }
+}

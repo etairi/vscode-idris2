@@ -1,0 +1,46 @@
+# Continuous integration for vscode-idris2.
+#
+# NOTE: this workflow has NOT been executed yet. There is no remote repository; it was written
+# by hand from docs/ROADMAP.md §7.2 / docs/ARCHITECTURE.md §13 (generator-code emits no CI
+# workflow) and must be validated on the first push. Later milestones add the grammar, e2e (macOS with
+# `brew install idris2`) and `vsce package` steps described there.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # mocha on Node, no VS Code (compile-tests: tsc → out/)
+      - run: npm run test:unit
+
+      # `npm test` first runs `pretest` = compile-tests + compile (check-types + lint + esbuild
+      # bundle), so there is deliberately no separate `npm run compile` step: it would repeat
+      # type-check, lint and bundling. @vscode/test-cli then downloads VS Code and runs
+      # test/integration in an Extension Host. Linux runners have no display, so the Electron
+      # process runs under xvfb.
+      - name: Integration tests (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm test
+
+      - name: Integration tests (macOS, Windows)
+        if: runner.os != 'Linux'
+        run: npm test
