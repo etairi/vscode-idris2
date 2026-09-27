@@ -8,7 +8,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import type { TestApi } from '../../src/extension';
-import { fakeLauncher } from '../fake-tools/paths';
+import { type FakeTool } from '../fake-tools/paths';
 import { EXTENSION_ID, extensionApi, setToolchainSetting, settledScan, waitFor, workspaceFile } from './support';
 import { closeTerminals, commandWordFor, resetTerminalProfile, typedBy, useTerminalRecorder } from './terminalRecorder';
 
@@ -23,6 +23,20 @@ function manifest(): Manifest {
   const extension = vscode.extensions.getExtension(EXTENSION_ID);
   assert.ok(extension);
   return extension.packageJSON as Manifest;
+}
+
+/**
+ * The fake tool's launcher as the test profile configures it (.vscode-test.mjs writes the
+ * idris2.toolchain.*Path user settings). A tool found through a setting is reported exactly as
+ * configured; on Windows the profile writes `D:\…` (Node's path) while paths derived from this
+ * compiled file inside the Extension Host start with `d:\…` (VS Code lower-cases the drive
+ * letter of the extension path), so the expected text comes from the setting itself.
+ */
+function configuredTool(tool: FakeTool): string {
+  const key = tool === 'idris2' ? 'idris2Path' : tool === 'idris2-lsp' ? 'lspPath' : 'packPath';
+  const value = vscode.workspace.getConfiguration('idris2.toolchain').get<string>(key);
+  assert.ok(value, `idris2.toolchain.${key} is not set by the test profile`);
+  return value;
 }
 
 async function closeEditors(): Promise<void> {
@@ -64,7 +78,7 @@ suite('M1 toolchain UI (fake tools)', () => {
     assert.ok(snapshot);
     assert.strictEqual(snapshot.trusted, true);
     assert.ok(snapshot.idris2.status === 'probed', JSON.stringify(snapshot.idris2));
-    assert.strictEqual(snapshot.idris2.location.path, fakeLauncher('idris2'));
+    assert.strictEqual(snapshot.idris2.location.path, configuredTool('idris2'));
     assert.strictEqual(snapshot.idris2.location.source, 'setting');
     assert.strictEqual(snapshot.idris2.info.version?.text, '0.8.0');
     assert.ok(snapshot.lsp.status === 'probed', JSON.stringify(snapshot.lsp));
@@ -94,15 +108,15 @@ suite('M1 toolchain UI (fake tools)', () => {
     for (const expected of [
       '# Idris 2: Setup Information',
       '- Workspace trust: trusted',
-      `- Path: \`${fakeLauncher('idris2')}\``,
+      `- Path: \`${configuredTool('idris2')}\``,
       '- Version line: `Idris 2, version 0.8.0`',
       '### `idris2 --version`',
       '### `idris2 --ttc-version`',
       '### `idris2 --paths`',
       '### `idris2 --list-packages`',
-      `- Path: \`${fakeLauncher('idris2-lsp')}\``,
+      `- Path: \`${configuredTool('idris2-lsp')}\``,
       '- API line: `Idris2 API: 0.8.0`',
-      `- Path: \`${fakeLauncher('pack')}\``,
+      `- Path: \`${configuredTool('pack')}\``,
       '**compatible**',
       `- \`${doc.uri.fsPath}\``,
       `- ${vscode.env.appName} ${vscode.version}`,
@@ -230,7 +244,7 @@ suite('M1 toolchain UI (fake tools)', () => {
       assert.deepStrictEqual(options.env, { VI2_INSTALL_TEST: '1' });
       // Not the workspace folder: pack reads the pack.toml of its directory and every parent.
       assert.strictEqual(options.cwd, os.homedir());
-      assert.strictEqual(text, `${commandWordFor(fakeLauncher('pack'))} install-app idris2-lsp`);
+      assert.strictEqual(text, `${commandWordFor(configuredTool('pack'))} install-app idris2-lsp`);
     });
 
     test('Install pack… types its command (macOS, Linux), and Install Idris 2… too on macOS', async function () {
