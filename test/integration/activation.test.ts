@@ -13,14 +13,14 @@ const EXTENSION_ID = 'etairi.vscode-idris2';
  * slowest of those runs, which still fails an activate() that awaits toolchain probes: one
  * `idris2 --version` spawn alone takes 180–220 ms on that machine, so two exceed it.
  *
- * CI runners are slower, and by how much is not measured for this interval yet (the M0
- * workflow has not run). The one data point: in the skeleton's CI run 36298642442
- * (2026-09-27), mocha timed a bare `ext.activate()` of the smaller skeleton bundle at 120 ms
- * on macos-latest, and under its 37 ms reporting threshold on ubuntu and windows. 250 ms would
- * leave about 2× headroom on macOS, so when `CI` is set (GitHub Actions sets it) the bound is
- * 1,000 ms, which catches only gross regressions. Replace it with a figure derived from the
- * first M0 CI logs. The measured number is printed on every run, so the < 100 ms target is
- * read from the log, not asserted.
+ * CI runners are slower and noisier. The first two M0 CI runs (36327101720 and 36327327811,
+ * 2026-09-27) measured this interval at 51.7 and 44.9 ms on ubuntu-latest, 138.1 and 327.0 ms
+ * on macos-latest (a virtualised Apple M1) and 120.3 ms on windows-latest (second run only;
+ * the first stopped before the integration tests). 327 ms would fail the 250 ms bound, so the
+ * CI bound is 1,000 ms, about 3× the slowest observed run; that the second run passed also
+ * shows the Extension Host sees GitHub's `CI` variable. The measured number is printed on
+ * every run, so the < 100 ms target is read from the log (and from Show Running Extensions,
+ * ROADMAP M0 "As built"), not asserted.
  */
 const ACTIVATION_BOUND_MS = process.env.CI ? 1_000 : 250;
 

@@ -5,9 +5,12 @@
  * (regex compilation), the input is tokenised RUNS times from a fresh rule stack; the median is
  * logged with the machine and Node version and must stay within BUDGET_MS.
  *
- * BUDGET_MS is deliberately generous: ROADMAP E6 sets the final budget at twice the median
- * measured on the CI runner, which this test cannot know. It catches order-of-magnitude
- * regressions (e.g. a backtracking regex), not small ones.
+ * BUDGET_MS is twice the CI median (ROADMAP E6). The first two M0 CI runs (36327101720 and
+ * 36327327811, 2026-09-27, 2,372 lines) logged medians of 84.2 and 83.0 ms on ubuntu-latest and
+ * 118.4 and 148.8 ms on macos-latest (a virtualised Apple M1, the slower and noisier runner);
+ * the budget is 2 × 148.8 ms, rounded to 300 ms. The development machine (Apple M4) measures
+ * about 52 ms. The test runs locally too, so a slower developer machine could exceed the
+ * budget without a regression; the logged runs make that easy to tell apart.
  */
 import * as assert from 'assert';
 import * as fs from 'fs';
@@ -18,7 +21,7 @@ import { grammarFor, repoRoot } from './harness';
 
 const MIN_LINES = 2000;
 const RUNS = 5;
-const BUDGET_MS = 2000;
+const BUDGET_MS = 300;
 
 suite('grammar performance', () => {
   test(`idris2: median of ${RUNS} tokenisations of a ${MIN_LINES}+ line input`, async function () {

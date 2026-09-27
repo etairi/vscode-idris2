@@ -8,8 +8,9 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   **Features are implemented in the milestone that owns them, with the scope written there.**
   Do not pull a later milestone's feature forward, and do not stub it with an empty module:
   placeholders for future parts are the README files in `src/` and `test/`. M0 is implemented
-  (2026-09-27; its acceptance waits for the first CI run, ROADMAP M0 "As built"); the one planned stub is M0's `src/webview/goalPanel.ts` (an empty
-  second esbuild entry, ROADMAP M0 "Out"), which M7 replaces.
+  and accepted (2026-09-27, ROADMAP M0 "As built"); the one planned stub is M0's
+  `src/webview/goalPanel.ts` (an empty second esbuild entry, ROADMAP M0 "Out"), which M7
+  replaces.
 - `docs/ARCHITECTURE.md` — the technical design: repository layout (§2), the `IdrisBackend`
   interface (§3), sessions (§5), coordinates (§7), settings (§11), test layers (§12), build
   (§13), decisions D1–D22 (§14). New code goes where §2 puts it and follows its naming rules.

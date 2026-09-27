@@ -43,6 +43,6 @@ independent of Idris 2 releases (`docs/ROADMAP.md` §7.4).
   - A fake `idris2` for the IDE protocol handshake.
   - `scripts/check-fixtures.mjs` (fixtures and snippet expansions against `idris2`), and
     `scripts/deps-graph.mjs` for the ROADMAP §4 graph.
-  - CI for ubuntu, macOS and Windows, with `vsce package` on ubuntu. The workflow has not run
-    yet.
+  - CI for ubuntu, macOS and Windows, with `vsce package` on ubuntu; green on all three since
+    run 36327327811 (2026-09-27).
   - The manual checklist `docs/checklists/M0.md`.

@@ -352,11 +352,13 @@ M0 → M1 → M2 → M3 → M14).
 - **Open questions.** Q3 (fork vs fresh grammar), Q4 (language id and scope names).
 - **Upstream.** None.
 - **As built (2026-09-27).** Where the implementation reads or departs from the text above:
-  - *Status: implemented, acceptance pending CI.* Two acceptance items are open until the
-    workflow has run: "green on ubuntu and macOS" (the M0 workflow has not run; the macOS job
-    runs lint, unit, grammar, integration and `check:fixtures`), and the 2× CI-median grammar
-    budget (E6: until the CI median is recorded, `test/grammar/perf.test.ts` asserts only a
-    2,000 ms bound). The activation time is measured, see *activation time*.
+  - *Status: implemented and accepted (2026-09-27).* Committed as `90ce347`; CI run
+    36327327811 (on `eb29a8f`, which fixed two socket tests that failed on Windows in run
+    36327101720) is green on ubuntu-latest (lint, types, unit, grammar, graph check,
+    integration, `vsce package` + artifact, corpus), macos-latest (lint, unit, grammar,
+    integration, Homebrew `idris2` + `check:fixtures`) and windows-latest (lint, unit,
+    integration) [live]. The 2× CI-median grammar budget is set from those runs (E6: 300 ms).
+    The activation time is measured, see *activation time*.
   - *Document selector.* It holds language rows only (`idris2`, `lidr`), not glob patterns.
     The one literate style M0 knows, bird-track `.lidr`, has its own language id, so a
     `**/*.lidr` pattern row would add nothing but a disagreement: it would select a `.lidr`
@@ -1376,7 +1378,7 @@ retiring every backend risk before UI work is preferred.
   versions) and that `.vscode-test.mjs` honours a short `--user-data-dir` (F17); measure the
   tokenisation time of the 2,000-line fixture (median of five runs, on the CI runner and on
   this machine) and set the M0 budget at 2× the CI median — no number is asserted before this.
-  **Status 2026-09-27: done on this machine; the CI half is open.**
+  **Status 2026-09-27: done (this machine and CI).**
   - Tooling [live]: the grammar tests use `vscode-textmate` 9.3.2 and `vscode-oniguruma`
     1.7.0, the versions VS Code 1.139.1 declares in its own `package.json`
     (`vscode-textmate ^9.3.2`, `vscode-oniguruma 1.7.0`). Our `package.json` pins
@@ -1395,9 +1397,13 @@ retiring every backend risk before UI work is preferred.
     and inputs, were 47.2 ms on 2,226 lines, 46.5 ms on 2,108 lines and 52.9 ms on 2,889
     lines. The input changed with the fixtures each time, so these figures do not compare
     grammars.
-  - CI runner: **not measured** — the workflow has not run yet. Until it has, the test asserts
-    only a 2,000 ms bound, which catches order-of-magnitude regressions (a backtracking regex)
-    but is not the 2× CI-median budget of M0's acceptance.
+  - CI runner [live]: the same test (2,372 lines) logged medians of 84.2 ms and 83.0 ms on
+    ubuntu-latest (AMD EPYC 9V74, Node v24.21.0) and 118.4 ms and 148.8 ms on macos-latest
+    (Apple M1 virtualised, Node v24.20.0) in CI runs 36327101720 and 36327327811
+    (2026-09-27). The budget is 2× the slowest median, rounded: `BUDGET_MS = 300` in
+    `test/grammar/perf.test.ts`. Two runs per runner are few; if the macOS runner's spread
+    (single runs of 117–182 ms) causes failures without a grammar change, re-measure rather
+    than raise the budget blindly.
 - **E7** (M11) `--dump-ipkg-json` error output on more malformed inputs (format verified for
   unknown property and trailing comma, F10).
 - **E8** (M10) Record the `Test.Golden` runner output on the plan's own `golden-tests/` fixture

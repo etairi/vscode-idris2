@@ -87,7 +87,7 @@ milestones given for them above are inferred from the first suite that needs eac
   each prose line (the compiler's unlit step turns prose into empty lines).
 - `perf.test.ts` — median of five tokenisations of the `.idr` fixtures, concatenated and
   repeated to at least 2,000 lines (2,372 with the final M0 fixtures, 2026-09-27); logs the time,
-  asserts only a coarse 2,000 ms bound until the CI median is known (ROADMAP E6).
+  and asserts a 300 ms budget: twice the slowest CI median (ROADMAP E6).
 - `corpus.test.ts` — not part of `test:grammar`; `npm run test:corpus` fetches the corpora and
   tokenises every file (no `invalid` scope, root end state except the files listed in
   `corpus.json`), then checks that every corpus `.idr` file tokenises the same as bird-track
