@@ -28,7 +28,11 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   `etairi` (provisional, not yet created on the Marketplace); language id `idris2` (the clashing
   `j-nava.idris2-language-support` was uninstalled from the user's VS Code); grammar written
   fresh, using existing grammars only as reference; implementation order M0 → M1 → M2 with one
-  commit per milestone. Still undecided: the icon — do not invent one. Decided on 2026-09-27
+  commit per milestone. Icon (decided 2026-09-27): the official Idris logo,
+  `media/idris-logo-256.png` = Idris 2 `icons/idris-256x256.png` at `3a91594` (BSD-3; notice in
+  `THIRD_PARTY_NOTICES.md`, which must ship in the `.vsix`; README states no affiliation).
+  The user-facing README is kept short, in the style of other language extensions;
+  development details go to `CONTRIBUTING.md`, design and history to `docs/`. Decided on 2026-09-27
   (ROADMAP §9 Q2): pack, and with it `idris2-lsp`, is installed only in M5.
 - Test corpora (`test/corpus/corpus.json`, fetched by `scripts/fetch-corpus.mjs` into the
   git-ignored `.corpus/`): `idris-compiler-tools` (MIT, Jan Serwatka) and the Idris 2 v0.8.0

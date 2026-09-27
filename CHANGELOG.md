@@ -8,6 +8,9 @@ independent of Idris 2 releases (`docs/ROADMAP.md` §7.4).
 
 ### Added
 
+- Extension icon: the official Idris logo (BSD-3, see `THIRD_PARTY_NOTICES.md`), with a light
+  Marketplace banner and the preview flag.
+- A shorter, user-facing README; build, test and grammar notes moved to `CONTRIBUTING.md`.
 - Project skeleton, built to `docs/ARCHITECTURE.md` §2: manifest with the `idris2`, `lidr` and
   `ipkg` language contributions, the `Idris 2: Show Output` command and the "Idris 2" log
   channel, the TypeScript 6 / esbuild / eslint / mocha / `@vscode/test-cli` harness, a GitHub

@@ -1,7 +1,7 @@
 {
   "name": "vscode-idris2",
   "displayName": "Idris 2",
-  "description": "Idris 2 support for Visual Studio Code: highlighting, editing support, snippets and toolchain setup so far; checking with the compiler is planned (see the README).",
+  "description": "Idris 2 language support: syntax highlighting, editing support, snippets and toolchain detection. Compiler integration is in development.",
   "version": "0.0.1",
   "publisher": "etairi",
   "license": "MIT",
@@ -13,11 +13,25 @@
     "url": "https://github.com/etairi/vscode-idris2/issues"
   },
   "homepage": "https://github.com/etairi/vscode-idris2#readme",
+  "icon": "media/idris-logo-256.png",
+  "galleryBanner": {
+    "color": "#FFFFFF",
+    "theme": "light"
+  },
+  "preview": true,
   "engines": {
     "vscode": "^1.138.0"
   },
   "categories": [
     "Programming Languages"
+  ],
+  "keywords": [
+    "idris",
+    "idris2",
+    "dependent types",
+    "type-driven development",
+    "literate programming",
+    "ipkg"
   ],
   "activationEvents": [
     "onLanguage:idris2",

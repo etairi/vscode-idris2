@@ -252,7 +252,7 @@ suite('core/process', () => {
       // - elsewhere: a Node child that never ends is stopped at the time limit.
       const grandchildScript =
         "const c = require('child_process').spawn(process.execPath, ['-e', 'setTimeout(() => {}, 30000)'], { detached: true, stdio: 'inherit' });" +
-        'console.log(c.pid); c.unref();';
+        'console.log(String(c.pid)); c.unref();';
       const sh = (graceMs: number, script: string) =>
         runner({ graceMs }).run({ executable: '/bin/sh', args: ['-c', script], timeoutMs: 1_000 });
       const [grandchild, terminated, killed] = await Promise.all([
@@ -294,7 +294,7 @@ suite('core/process', () => {
       // ignores SIGTERM and holds the output pipes. Only the SIGKILL to the group stops it.
       const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vi2-wrapper-'));
       const program = path.join(dir, 'stubborn.js');
-      fs.writeFileSync(program, "process.on('SIGTERM', () => {}); console.log(process.pid); setInterval(() => {}, 1000);\n");
+      fs.writeFileSync(program, "process.on('SIGTERM', () => {}); console.log(String(process.pid)); setInterval(() => {}, 1000);\n");
       let pid = 0;
       try {
         const result = await runner({ graceMs: 500 }).run({
@@ -319,7 +319,7 @@ suite('core/process', () => {
         const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vi2-cmd-'));
         let pid = 0;
         try {
-          fs.writeFileSync(path.join(dir, 'forever.js'), 'console.log(process.pid); setInterval(() => {}, 1000);\n');
+          fs.writeFileSync(path.join(dir, 'forever.js'), 'console.log(String(process.pid)); setInterval(() => {}, 1000);\n');
           const cmd = path.join(dir, 'forever.cmd');
           fs.writeFileSync(cmd, `@"${NODE}" "%~dp0forever.js"\r\n`);
           const result = await runner({ graceMs: 1_000 }).run({ executable: cmd, args: [], timeoutMs: 5_000 });
@@ -452,7 +452,7 @@ suite('core/process', () => {
       // if dispose() sent SIGKILL itself.
       const log = recordingLog();
       const r = runner({ graceMs: 60_000 }, log);
-      const running = runNode(r, "process.on('SIGTERM', () => {}); console.log(process.pid); setInterval(() => {}, 1000);");
+      const running = runNode(r, "process.on('SIGTERM', () => {}); console.log(String(process.pid)); setInterval(() => {}, 1000);");
       const deadline = Date.now() + 10_000;
       while (!log.lines.some((l) => l.startsWith('debug: Running '))) {
         assert.ok(Date.now() < deadline, 'the process did not start');

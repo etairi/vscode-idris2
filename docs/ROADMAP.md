@@ -1547,7 +1547,7 @@ Ship each item separately; none blocks another.
   scanning the bundle for network APIs (`fetch(`, `http.request`/`https.request`,
   `net.connect` to a non-loopback host) rather than for URL literals — the Help commands
   legitimately contain `https://` strings that are only ever passed to `vscode.env.openExternal`.
-- **Open questions.** Q1 (publisher, licence, icon rights).
+- **Open questions.** Q1 (the Marketplace publisher; licence and icon are decided — MIT, the official Idris logo under BSD-3 — though confirming the logo use with the Idris maintainers before publishing is advisable, §7.6).
 
 ### M16 — Idris 1 legacy support (optional; **not recommended**) (L)
 
@@ -1686,8 +1686,12 @@ reuse; Idris 2 and idris2-lsp are BSD-licensed, compatible) or BSD-3 / Apache-2.
 meraymond's grammar is forked, keep its MIT copyright line; zjhmale's grammar is BSD with an
 "All rights reserved" header — avoid copying from it; if Lean's abbreviation table is ported,
 add the Apache-2.0 notice. Licence facts for the four extensions are as reported by
-plan-proof-ux/plan-ecosystem from their `LICENSE` files (not re-read here). Use of the Idris logo
-as the extension icon needs the project's permission (Q1).
+plan-proof-ux/plan-ecosystem from their `LICENSE` files (not re-read here). The extension icon is the official
+Idris logo from the Idris 2 repository, redistributed under its BSD-3 licence with the notice in
+`THIRD_PARTY_NOTICES.md` (decided 2026-09-27). The licence's third clause forbids using the
+copyright holders' names to endorse the extension, so the README says it is not affiliated with
+the Idris project; asking the maintainers before publishing to the Marketplace (M15) is still
+advisable.
 
 ### 7.7 Telemetry
 
@@ -1737,7 +1741,9 @@ retiring every backend risk before UI work is preferred.
 - **Order**: M0 → M1 → M2 first, one commit per milestone; stop and ask when a milestone needs
   a decision.
 - **Q1**: MIT licence; repository `github.com/etairi/vscode-idris2`; publisher id `etairi`
-  (provisional — the Marketplace publisher does not exist yet); icon still open.
+  (provisional — the Marketplace publisher does not exist yet). Icon (2026-09-27): the official
+  Idris logo from the Idris 2 repository (`icons/idris-256x256.png` at `3a91594`, BSD-3), with
+  its notice in `THIRD_PARTY_NOTICES.md` and a no-affiliation statement in the README.
 - **Q3**: do not blindly fork — write the grammar fresh where that is better, using meraymond's
   and the other grammars (and the compiler's own lexer) as references.
 - **Q4**: language id `idris2`; the clashing `j-nava.idris2-language-support` was uninstalled from

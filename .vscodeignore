@@ -22,3 +22,4 @@ esbuild.mjs
 **/*.ts
 **/.vscode-test.*
 *.vsix
+CONTRIBUTING.md
