@@ -1,0 +1,134 @@
+{
+  "Module header": {
+    "prefix": "module",
+    "description": "Module header; the name must match the file's path below the source directory.",
+    "body": [
+      "module ${1:$TM_FILENAME_BASE}",
+      "",
+      "$0"
+    ]
+  },
+  "Data type (GADT syntax)": {
+    "prefix": "data",
+    "description": "Data type declared with constructor signatures in a where block.",
+    "body": [
+      "data ${1:Name} : ${2:Type} where",
+      "\t${3:Mk$1} : $1$0"
+    ]
+  },
+  "Record": {
+    "prefix": "record",
+    "description": "Record with an explicit constructor and one field.",
+    "body": [
+      "record ${1:Name} where",
+      "\tconstructor ${2:Mk$1}",
+      "\t${3:field} : ${4:Nat}$0"
+    ]
+  },
+  "Interface": {
+    "prefix": "interface",
+    "description": "Interface with one method.",
+    "body": [
+      "interface ${1:Name} ${2:a} where",
+      "\t${3:method} : $2 -> ${4:Nat}$0"
+    ]
+  },
+  "Implementation": {
+    "prefix": "implementation",
+    "description": "Implementation of an interface, with one method clause.",
+    "body": [
+      "implementation ${1:Show} ${2:MyType} where",
+      "\t${3:show} ${4:x} = ?${3}_rhs$0"
+    ]
+  },
+  "Case expression": {
+    "prefix": "case",
+    "description": "case … of with one alternative.",
+    "body": [
+      "case ${1:x} of",
+      "\t${2:pat} => ${3:?rhs}$0"
+    ]
+  },
+  "With clause": {
+    "prefix": "with",
+    "description": "Clause that matches on an intermediate result.",
+    "body": [
+      "${1:f} ${2:x} with (${3:expr})",
+      "\t$1 $2 | ${4:pat} = ${5:?rhs}$0"
+    ]
+  },
+  "Where block": {
+    "prefix": "where",
+    "description": "where block with one local definition.",
+    "body": [
+      "where",
+      "\t${1:helper} : ${2:Nat}",
+      "\t$1 = ?${1}_rhs$0"
+    ]
+  },
+  "Do block": {
+    "prefix": "do",
+    "description": "do block with a bind and a final action.",
+    "body": [
+      "do",
+      "\t${1:x} <- ${2:getLine}",
+      "\t${3:putStrLn $1}$0"
+    ]
+  },
+  "Let expression": {
+    "prefix": "let",
+    "description": "let … in on one line; split over lines, `in` must be indented past the enclosing declaration.",
+    "body": [
+      "let ${1:x} = ${2:?value} in ${3:$1}$0"
+    ]
+  },
+  "Lambda case": {
+    "prefix": ["\\case", "lambdacase"],
+    "description": "Anonymous function that matches on its argument.",
+    "body": [
+      "\\case",
+      "\t${1:pat} => ${2:?rhs}$0"
+    ]
+  },
+  "Failing block": {
+    "prefix": "failing",
+    "description": "Declarations that must fail to elaborate with an error containing the message.",
+    "body": [
+      "failing \"${1:Can't find an implementation}\"",
+      "\t${2:bad : Nat}",
+      "\t${3:bad = \"not a number\"}$0"
+    ]
+  },
+  "Namespace": {
+    "prefix": "namespace",
+    "description": "Namespace block.",
+    "body": [
+      "namespace ${1:Name}",
+      "\t$0"
+    ]
+  },
+  "Parameters block": {
+    "prefix": "parameters",
+    "description": "Declarations sharing a parameter.",
+    "body": [
+      "parameters (${1:n} : ${2:Nat})",
+      "\t${3:f} : $2",
+      "\t$3 = ${4:$1}$0"
+    ]
+  },
+  "Default totality": {
+    "prefix": "%default",
+    "description": "Default totality requirement for the rest of the module.",
+    "body": [
+      "%default ${1|total,covering,partial|}$0"
+    ]
+  },
+  "Main function": {
+    "prefix": "main",
+    "description": "Program entry point.",
+    "body": [
+      "main : IO ()",
+      "main = ${1:putStrLn \"Hello, world!\"}$0"
+    ]
+  }
+}

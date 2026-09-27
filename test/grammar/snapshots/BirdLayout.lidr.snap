@@ -1,0 +1,178 @@
+# vscode-textmate snapshot. One token per line: LINE:START-END "text" scopes (0-based,
+# end exclusive, root scope omitted). Regenerate with UPDATE_SNAPSHOTS=1.
+0:0-82 "Layout across bird-track lines. The code of a line starts after the marker and one" meta.prose.lidr
+1:0-89 "whitespace character, so the rules that look for the start of a line, and those that look" meta.prose.lidr
+2:0-55 "for the start of a bracket, have to find that position." meta.prose.lidr
+4:0-1 ">" punctuation.definition.bird-track.lidr
+4:1-2 " "
+4:2-8 "module" meta.embedded.block.idris2 keyword.other.module.idris2
+4:8-9 " " meta.embedded.block.idris2
+4:9-19 "BirdLayout" meta.embedded.block.idris2 entity.name.namespace.idris2
+6:0-88 "A data declaration whose body holds a block comment that reaches the code column, then a" meta.embedded.block.idris2 meta.prose.lidr
+7:0-68 "second data declaration and a signature on the lines right after it:" meta.embedded.block.idris2 meta.prose.lidr
+9:0-1 ">" punctuation.definition.bird-track.lidr
+9:1-2 " "
+9:2-6 "data" meta.embedded.block.idris2 meta.declaration.data.idris2 storage.type.data.idris2
+9:6-7 " " meta.embedded.block.idris2 meta.declaration.data.idris2
+9:7-8 "T" meta.embedded.block.idris2 meta.declaration.data.idris2 entity.name.type.data.idris2
+9:8-9 " " meta.embedded.block.idris2 meta.declaration.data.idris2
+9:9-10 "=" meta.embedded.block.idris2 meta.declaration.data.idris2 keyword.operator.equals.idris2
+9:10-11 " " meta.embedded.block.idris2 meta.declaration.data.idris2
+9:11-12 "A" meta.embedded.block.idris2 meta.declaration.data.idris2 entity.name.function.constructor.idris2
+10:0-1 ">" punctuation.definition.bird-track.lidr
+10:1-2 " "
+10:2-4 "  " meta.embedded.block.idris2 meta.declaration.data.idris2
+10:4-6 "{-" meta.embedded.block.idris2 meta.declaration.data.idris2 comment.block.idris2 punctuation.definition.comment.begin.idris2
+10:6-27 " a comment whose text" meta.embedded.block.idris2 meta.declaration.data.idris2 comment.block.idris2
+11:0-1 ">" punctuation.definition.bird-track.lidr
+11:1-2 " "
+11:2-26 "reaches the code column " meta.embedded.block.idris2 meta.declaration.data.idris2 comment.block.idris2
+11:26-28 "-}" meta.embedded.block.idris2 meta.declaration.data.idris2 comment.block.idris2 punctuation.definition.comment.end.idris2
+12:0-1 ">" punctuation.definition.bird-track.lidr
+12:1-2 " "
+12:2-4 "  " meta.embedded.block.idris2 meta.declaration.data.idris2
+12:4-5 "|" meta.embedded.block.idris2 meta.declaration.data.idris2 keyword.operator.pipe.idris2
+12:5-6 " " meta.embedded.block.idris2 meta.declaration.data.idris2
+12:6-7 "B" meta.embedded.block.idris2 meta.declaration.data.idris2 entity.name.function.constructor.idris2
+13:0-1 ">" punctuation.definition.bird-track.lidr
+13:1-2 " "
+13:2-6 "data" meta.embedded.block.idris2 meta.declaration.data.idris2 storage.type.data.idris2
+13:6-7 " " meta.embedded.block.idris2 meta.declaration.data.idris2
+13:7-8 "U" meta.embedded.block.idris2 meta.declaration.data.idris2 entity.name.type.data.idris2
+13:8-9 " " meta.embedded.block.idris2 meta.declaration.data.idris2
+13:9-10 "=" meta.embedded.block.idris2 meta.declaration.data.idris2 keyword.operator.equals.idris2
+13:10-11 " " meta.embedded.block.idris2 meta.declaration.data.idris2
+13:11-12 "C" meta.embedded.block.idris2 meta.declaration.data.idris2 entity.name.function.constructor.idris2
+13:12-13 " " meta.embedded.block.idris2 meta.declaration.data.idris2
+13:13-14 "|" meta.embedded.block.idris2 meta.declaration.data.idris2 keyword.operator.pipe.idris2
+13:14-15 " " meta.embedded.block.idris2 meta.declaration.data.idris2
+13:15-16 "D" meta.embedded.block.idris2 meta.declaration.data.idris2 entity.name.function.constructor.idris2
+14:0-1 ">" punctuation.definition.bird-track.lidr
+14:1-2 " "
+14:2-3 "t" meta.embedded.block.idris2 entity.name.function.idris2
+14:3-4 " " meta.embedded.block.idris2
+14:4-5 ":" meta.embedded.block.idris2 keyword.operator.colon.idris2
+14:5-6 " " meta.embedded.block.idris2
+14:6-7 "T" meta.embedded.block.idris2
+15:0-1 ">" punctuation.definition.bird-track.lidr
+15:1-2 " "
+15:2-3 "t" meta.embedded.block.idris2
+15:3-4 " " meta.embedded.block.idris2
+15:4-5 "=" meta.embedded.block.idris2 keyword.operator.equals.idris2
+15:5-6 " " meta.embedded.block.idris2
+15:6-7 "B" meta.embedded.block.idris2
+17:0-68 "Continuation lines inside brackets are not the start of the bracket:" meta.embedded.block.idris2 meta.prose.lidr
+19:0-1 ">" punctuation.definition.bird-track.lidr
+19:1-2 " "
+19:2-7 "pairs" meta.embedded.block.idris2 entity.name.function.idris2
+19:7-8 " " meta.embedded.block.idris2
+19:8-9 ":" meta.embedded.block.idris2 keyword.operator.colon.idris2
+19:9-10 " " meta.embedded.block.idris2
+19:10-15 "Maybe" meta.embedded.block.idris2
+19:15-16 " " meta.embedded.block.idris2
+19:16-19 "Nat" meta.embedded.block.idris2
+20:0-1 ">" punctuation.definition.bird-track.lidr
+20:1-2 " "
+20:2-7 "pairs" meta.embedded.block.idris2
+20:7-8 " " meta.embedded.block.idris2
+20:8-9 "=" meta.embedded.block.idris2 keyword.operator.equals.idris2
+20:9-10 " " meta.embedded.block.idris2
+20:10-11 "(" meta.embedded.block.idris2 meta.parens.idris2 punctuation.section.parens.begin.idris2
+20:11-13 "do" meta.embedded.block.idris2 meta.parens.idris2 keyword.control.do.idris2
+20:13-14 " " meta.embedded.block.idris2 meta.parens.idris2
+20:14-15 "x" meta.embedded.block.idris2 meta.parens.idris2
+20:15-16 " " meta.embedded.block.idris2 meta.parens.idris2
+20:16-18 "<-" meta.embedded.block.idris2 meta.parens.idris2 keyword.operator.arrow.left.idris2
+20:18-19 " " meta.embedded.block.idris2 meta.parens.idris2
+20:19-23 "Just" meta.embedded.block.idris2 meta.parens.idris2
+20:23-24 " " meta.embedded.block.idris2 meta.parens.idris2
+20:24-25 "1" meta.embedded.block.idris2 meta.parens.idris2 constant.numeric.integer.decimal.idris2
+21:0-1 ">" punctuation.definition.bird-track.lidr
+21:1-2 " "
+21:2-14 "            " meta.embedded.block.idris2 meta.parens.idris2
+21:14-15 "y" meta.embedded.block.idris2 meta.parens.idris2
+21:15-16 " " meta.embedded.block.idris2 meta.parens.idris2
+21:16-18 "<-" meta.embedded.block.idris2 meta.parens.idris2 keyword.operator.arrow.left.idris2
+21:18-19 " " meta.embedded.block.idris2 meta.parens.idris2
+21:19-23 "Just" meta.embedded.block.idris2 meta.parens.idris2
+21:23-24 " " meta.embedded.block.idris2 meta.parens.idris2
+21:24-25 "2" meta.embedded.block.idris2 meta.parens.idris2 constant.numeric.integer.decimal.idris2
+22:0-1 ">" punctuation.definition.bird-track.lidr
+22:1-2 " "
+22:2-14 "            " meta.embedded.block.idris2 meta.parens.idris2
+22:14-18 "pure" meta.embedded.block.idris2 meta.parens.idris2
+22:18-19 " " meta.embedded.block.idris2 meta.parens.idris2
+22:19-20 "(" meta.embedded.block.idris2 meta.parens.idris2 meta.parens.idris2 punctuation.section.parens.begin.idris2
+22:20-21 "x" meta.embedded.block.idris2 meta.parens.idris2 meta.parens.idris2
+22:21-22 " " meta.embedded.block.idris2 meta.parens.idris2 meta.parens.idris2
+22:22-23 "+" meta.embedded.block.idris2 meta.parens.idris2 meta.parens.idris2 keyword.operator.idris2
+22:23-24 " " meta.embedded.block.idris2 meta.parens.idris2 meta.parens.idris2
+22:24-25 "y" meta.embedded.block.idris2 meta.parens.idris2 meta.parens.idris2
+22:25-26 ")" meta.embedded.block.idris2 meta.parens.idris2 meta.parens.idris2 punctuation.section.parens.end.idris2
+22:26-27 ")" meta.embedded.block.idris2 meta.parens.idris2 punctuation.section.parens.end.idris2
+24:0-1 ">" punctuation.definition.bird-track.lidr
+24:1-2 " "
+24:2-8 "record" meta.embedded.block.idris2 storage.type.record.idris2
+24:8-9 " " meta.embedded.block.idris2
+24:9-10 "P" meta.embedded.block.idris2 entity.name.type.record.idris2
+24:10-11 " " meta.embedded.block.idris2
+24:11-16 "where" meta.embedded.block.idris2 keyword.other.where.idris2
+25:0-1 ">" punctuation.definition.bird-track.lidr
+25:1-2 " "
+25:2-4 "  " meta.embedded.block.idris2
+25:4-15 "constructor" meta.embedded.block.idris2 keyword.other.constructor.idris2
+25:15-16 " " meta.embedded.block.idris2
+25:16-19 "MkP" meta.embedded.block.idris2 entity.name.function.constructor.idris2
+26:0-1 ">" punctuation.definition.bird-track.lidr
+26:1-2 " "
+26:2-4 "  " meta.embedded.block.idris2
+26:4-6 "px" meta.embedded.block.idris2 entity.name.function.idris2
+26:6-7 "," meta.embedded.block.idris2 punctuation.separator.comma.idris2
+26:7-8 " " meta.embedded.block.idris2
+26:8-10 "py" meta.embedded.block.idris2 entity.name.function.idris2
+26:10-11 " " meta.embedded.block.idris2
+26:11-12 ":" meta.embedded.block.idris2 keyword.operator.colon.idris2
+26:12-13 " " meta.embedded.block.idris2
+26:13-16 "Nat" meta.embedded.block.idris2
+28:0-1 ">" punctuation.definition.bird-track.lidr
+28:1-2 " "
+28:2-7 "moved" meta.embedded.block.idris2 entity.name.function.idris2
+28:7-8 " " meta.embedded.block.idris2
+28:8-9 ":" meta.embedded.block.idris2 keyword.operator.colon.idris2
+28:9-10 " " meta.embedded.block.idris2
+28:10-11 "P" meta.embedded.block.idris2
+28:11-12 " " meta.embedded.block.idris2
+28:12-14 "->" meta.embedded.block.idris2 keyword.operator.arrow.idris2
+28:14-15 " " meta.embedded.block.idris2
+28:15-16 "P" meta.embedded.block.idris2
+29:0-1 ">" punctuation.definition.bird-track.lidr
+29:1-2 " "
+29:2-7 "moved" meta.embedded.block.idris2
+29:7-8 " " meta.embedded.block.idris2
+29:8-9 "p" meta.embedded.block.idris2
+29:9-10 " " meta.embedded.block.idris2
+29:10-11 "=" meta.embedded.block.idris2 keyword.operator.equals.idris2
+29:11-12 " " meta.embedded.block.idris2
+29:12-13 "{" meta.embedded.block.idris2 meta.braces.idris2 punctuation.section.braces.begin.idris2
+29:13-14 " " meta.embedded.block.idris2 meta.braces.idris2
+29:14-16 "px" meta.embedded.block.idris2 meta.braces.idris2 variable.other.member.idris2
+29:16-17 " " meta.embedded.block.idris2 meta.braces.idris2
+29:17-19 ":=" meta.embedded.block.idris2 meta.braces.idris2 keyword.operator.assignment.idris2
+29:19-20 " " meta.embedded.block.idris2 meta.braces.idris2
+29:20-21 "1" meta.embedded.block.idris2 meta.braces.idris2 constant.numeric.integer.decimal.idris2
+29:21-22 "," meta.embedded.block.idris2 meta.braces.idris2 punctuation.separator.comma.idris2
+30:0-1 ">" punctuation.definition.bird-track.lidr
+30:1-2 " "
+30:2-14 "            " meta.embedded.block.idris2 meta.braces.idris2
+30:14-16 "py" meta.embedded.block.idris2 meta.braces.idris2 variable.other.member.idris2
+30:16-17 " " meta.embedded.block.idris2 meta.braces.idris2
+30:17-19 ":=" meta.embedded.block.idris2 meta.braces.idris2 keyword.operator.assignment.idris2
+30:19-20 " " meta.embedded.block.idris2 meta.braces.idris2
+30:20-21 "2" meta.embedded.block.idris2 meta.braces.idris2 constant.numeric.integer.decimal.idris2
+31:0-1 ">" punctuation.definition.bird-track.lidr
+31:1-2 " "
+31:2-12 "          " meta.embedded.block.idris2 meta.braces.idris2
+31:12-13 "}" meta.embedded.block.idris2 meta.braces.idris2 punctuation.section.braces.end.idris2
+31:13-14 " " meta.embedded.block.idris2
+31:14-15 "p" meta.embedded.block.idris2
+33:0-8 "The end." meta.embedded.block.idris2 meta.prose.lidr

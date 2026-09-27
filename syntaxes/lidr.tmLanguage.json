@@ -1,0 +1,61 @@
+{
+  "name": "Literate Idris 2",
+  "scopeName": "source.idris2.literate",
+  "comment": "Bird-style literate Idris 2 (.lidr). The compiler unlits with styleBird (src/Parser/Unlit.idr: line markers '>' and '<', no block delimiters) through Libraries.Text.Literate: a code line is a marker at column 0 followed either by the end of the line or by one whitespace character (Prelude isSpace: space, tab, form feed, vertical tab, U+00A0) that is removed with the marker; every other line (e.g. '>x' or '  > x') is prose and becomes an empty line (`reduce` keeps only the newline of an `Any` token). '>' and '<' lines are both compiled. No blank line is required between prose and code.",
+  "patterns": [
+    {
+      "include": "#literate-program"
+    },
+    {
+      "include": "#prose"
+    }
+  ],
+  "injections": {
+    "L:meta.embedded.block.idris2": {
+      "comment": "A prose line after the first code line. It is matched before any Idris 2 rule (the L: priority wins a tie at column 0, where every prose match starts), so it is consumed whole and the Idris 2 rule stack below it is left untouched: a bracket, block comment, multi-line string or data declaration that is open before the prose line is still open after it, as in the unlit text, where the prose line is an empty line. Whitespace-only lines are left to the Idris 2 rules, for which they are blank lines either way.",
+      "patterns": [
+        {
+          "include": "#prose-in-program"
+        }
+      ]
+    }
+  },
+  "repository": {
+    "literate-program": {
+      "comment": "Everything from the first code line to the end of the file. The outer begin/while consumes the marker on every code line and matches prose lines with zero width, so it never ends; the inner begin/while (anchored with \\G right after the marker, or at column 0 of a prose line) holds the embedded Idris 2 rule stack, so a construct that spans several code lines keeps its state across code, blank and prose lines. Prose lines are scoped by the injection above.",
+      "begin": "^([><])(?:[ \\t\\f\\v\\x{A0}]|$)",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.bird-track.lidr"
+        }
+      },
+      "while": "^(?:([><])(?:[ \\t\\f\\v\\x{A0}]|$))?",
+      "whileCaptures": {
+        "1": {
+          "name": "punctuation.definition.bird-track.lidr"
+        }
+      },
+      "patterns": [
+        {
+          "begin": "\\G",
+          "while": "\\G",
+          "contentName": "meta.embedded.block.idris2",
+          "patterns": [
+            {
+              "include": "source.idris2"
+            }
+          ]
+        }
+      ]
+    },
+    "prose": {
+      "comment": "A prose line before the first code line.",
+      "match": "^.+",
+      "name": "meta.prose.lidr"
+    },
+    "prose-in-program": {
+      "match": "^(?![><](?:[ \\t\\f\\v\\x{A0}]|$)|[ \\t\\f\\v\\x{A0}]*$).+",
+      "name": "meta.prose.lidr"
+    }
+  }
+}

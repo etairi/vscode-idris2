@@ -1,0 +1,265 @@
+# vscode-textmate snapshot. One token per line: LINE:START-END "text" scopes (0-based,
+# end exclusive, root scope omitted). Regenerate with UPDATE_SNAPSHOTS=1.
+0:0-3 "|||" comment.line.documentation.idris2 punctuation.definition.comment.idris2
+0:3-86 " String literals: escapes, interpolation, raw strings with one to three hashes, and" comment.line.documentation.idris2
+1:0-3 "|||" comment.line.documentation.idris2 punctuation.definition.comment.idris2
+1:3-82 " multi-line strings (src/Parser/Lexer/Source.idr stringTokens, multilineBegin)." comment.line.documentation.idris2
+2:0-6 "module" keyword.other.module.idris2
+2:6-7 " "
+2:7-14 "Strings" entity.name.namespace.idris2
+4:0-6 "import" keyword.control.import.idris2
+4:6-7 " "
+4:7-11 "Data" entity.name.namespace.idris2
+4:11-12 "." entity.name.namespace.idris2 punctuation.separator.namespace.idris2
+4:12-16 "List" entity.name.namespace.idris2
+6:0-1 "n" entity.name.function.idris2
+6:1-2 " "
+6:2-3 ":" keyword.operator.colon.idris2
+6:3-4 " "
+6:4-7 "Nat"
+7:0-1 "n"
+7:1-2 " "
+7:2-3 "=" keyword.operator.equals.idris2
+7:3-4 " "
+7:4-5 "3" constant.numeric.integer.decimal.idris2
+9:0-5 "plain" entity.name.function.idris2
+9:5-6 " "
+9:6-7 ":" keyword.operator.colon.idris2
+9:7-8 " "
+9:8-14 "String" support.type.primitive.idris2
+10:0-5 "plain"
+10:5-6 " "
+10:6-7 "=" keyword.operator.equals.idris2
+10:7-8 " "
+10:8-9 "\"" string.quoted.double.idris2 punctuation.definition.string.begin.idris2
+10:9-12 "tab" string.quoted.double.idris2
+10:12-14 "\\t" string.quoted.double.idris2 constant.character.escape.idris2
+10:14-22 ", quote " string.quoted.double.idris2
+10:22-24 "\\\"" string.quoted.double.idris2 constant.character.escape.idris2
+10:24-36 ", backslash " string.quoted.double.idris2
+10:36-38 "\\\\" string.quoted.double.idris2 constant.character.escape.idris2
+10:38-76 ", not a comment -- here, interpolated " string.quoted.double.idris2
+10:76-78 "\\{" string.quoted.double.idris2 meta.interpolation.idris2 punctuation.section.embedded.begin.idris2
+10:78-82 "show" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+10:82-83 " " string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+10:83-84 "n" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+10:84-85 "}" string.quoted.double.idris2 meta.interpolation.idris2 punctuation.section.embedded.end.idris2
+10:85-86 "\"" string.quoted.double.idris2 punctuation.definition.string.end.idris2
+12:0-7 "escapes" entity.name.function.idris2
+12:7-8 " "
+12:8-9 ":" keyword.operator.colon.idris2
+12:9-10 " "
+12:10-16 "String" support.type.primitive.idris2
+13:0-7 "escapes"
+13:7-8 " "
+13:8-9 "=" keyword.operator.equals.idris2
+13:9-10 " "
+13:10-11 "\"" string.quoted.double.idris2 punctuation.definition.string.begin.idris2
+13:11-15 "\\x41" string.quoted.double.idris2 constant.character.escape.idris2
+13:15-20 "\\o101" string.quoted.double.idris2 constant.character.escape.idris2
+13:20-23 "\\65" string.quoted.double.idris2 constant.character.escape.idris2
+13:23-27 "\\NUL" string.quoted.double.idris2 constant.character.escape.idris2
+13:27-31 "\\SOH" string.quoted.double.idris2 constant.character.escape.idris2
+13:31-34 "\\SO" string.quoted.double.idris2 constant.character.escape.idris2
+13:34-38 "\\DEL" string.quoted.double.idris2 constant.character.escape.idris2
+13:38-40 "\\&" string.quoted.double.idris2 constant.character.escape.idris2
+13:40-42 "\\q" string.quoted.double.idris2 constant.character.escape.idris2
+13:42-43 "\"" string.quoted.double.idris2 punctuation.definition.string.end.idris2
+15:0-15 "notInterpolated" entity.name.function.idris2
+15:15-16 " "
+15:16-17 ":" keyword.operator.colon.idris2
+15:17-18 " "
+15:18-24 "String" support.type.primitive.idris2
+16:0-15 "notInterpolated"
+16:15-16 " "
+16:16-17 "=" keyword.operator.equals.idris2
+16:17-18 " "
+16:18-19 "\"" string.quoted.double.idris2 punctuation.definition.string.begin.idris2
+16:19-21 "\\\\" string.quoted.double.idris2 constant.character.escape.idris2
+16:21-31 "{ braces }" string.quoted.double.idris2
+16:31-32 "\"" string.quoted.double.idris2 punctuation.definition.string.end.idris2
+18:0-6 "nested" entity.name.function.idris2
+18:6-7 " "
+18:7-8 ":" keyword.operator.colon.idris2
+18:8-9 " "
+18:9-15 "String" support.type.primitive.idris2
+19:0-6 "nested"
+19:6-7 " "
+19:7-8 "=" keyword.operator.equals.idris2
+19:8-9 " "
+19:9-10 "\"" string.quoted.double.idris2 punctuation.definition.string.begin.idris2
+19:10-12 "\\{" string.quoted.double.idris2 meta.interpolation.idris2 punctuation.section.embedded.begin.idris2
+19:12-13 " " string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+19:13-17 "pack" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+19:17-18 " " string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+19:18-19 "(" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.parens.idris2 punctuation.section.parens.begin.idris2
+19:19-28 "replicate" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.parens.idris2
+19:28-29 " " string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.parens.idris2
+19:29-30 "{" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.parens.idris2 meta.braces.idris2 punctuation.section.braces.begin.idris2
+19:30-31 "a" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.parens.idris2 meta.braces.idris2 variable.parameter.idris2
+19:31-32 " " string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.parens.idris2 meta.braces.idris2
+19:32-33 "=" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.parens.idris2 meta.braces.idris2 keyword.operator.equals.idris2
+19:33-34 " " string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.parens.idris2 meta.braces.idris2
+19:34-38 "Char" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.parens.idris2 meta.braces.idris2 support.type.primitive.idris2
+19:38-39 "}" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.parens.idris2 meta.braces.idris2 punctuation.section.braces.end.idris2
+19:39-40 " " string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.parens.idris2
+19:40-41 "2" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.parens.idris2 constant.numeric.integer.decimal.idris2
+19:41-42 " " string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.parens.idris2
+19:42-43 "(" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.parens.idris2 meta.parens.idris2 punctuation.section.parens.begin.idris2
+19:43-46 "the" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.parens.idris2 meta.parens.idris2
+19:46-47 " " string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.parens.idris2 meta.parens.idris2
+19:47-51 "Char" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.parens.idris2 meta.parens.idris2 support.type.primitive.idris2
+19:51-52 " " string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.parens.idris2 meta.parens.idris2
+19:52-53 "'" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.parens.idris2 meta.parens.idris2 constant.character.idris2 punctuation.definition.character.begin.idris2
+19:53-54 "}" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.parens.idris2 meta.parens.idris2 constant.character.idris2
+19:54-55 "'" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.parens.idris2 meta.parens.idris2 constant.character.idris2 punctuation.definition.character.end.idris2
+19:55-56 ")" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.parens.idris2 meta.parens.idris2 punctuation.section.parens.end.idris2
+19:56-57 ")" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.parens.idris2 punctuation.section.parens.end.idris2
+19:57-58 " " string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+19:58-59 "}" string.quoted.double.idris2 meta.interpolation.idris2 punctuation.section.embedded.end.idris2
+19:59-64 " and " string.quoted.double.idris2
+19:64-66 "\\{" string.quoted.double.idris2 meta.interpolation.idris2 punctuation.section.embedded.begin.idris2
+19:66-67 " " string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+19:67-68 "\"" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 string.quoted.double.idris2 punctuation.definition.string.begin.idris2
+19:68-69 "}" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 string.quoted.double.idris2
+19:69-70 "\"" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 string.quoted.double.idris2 punctuation.definition.string.end.idris2
+19:70-71 " " string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+19:71-72 "}" string.quoted.double.idris2 meta.interpolation.idris2 punctuation.section.embedded.end.idris2
+19:72-77 " and " string.quoted.double.idris2
+19:77-79 "\\{" string.quoted.double.idris2 meta.interpolation.idris2 punctuation.section.embedded.begin.idris2
+19:79-80 " " string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+19:80-84 "show" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+19:84-85 " " string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+19:85-86 "[" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.brackets.idris2 punctuation.section.brackets.begin.idris2
+19:86-87 "n" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.brackets.idris2
+19:87-88 "," string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.brackets.idris2 punctuation.separator.comma.idris2
+19:88-89 " " string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.brackets.idris2
+19:89-90 "n" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.brackets.idris2
+19:90-91 "]" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2 meta.brackets.idris2 punctuation.section.brackets.end.idris2
+19:91-92 " " string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+19:92-93 "}" string.quoted.double.idris2 meta.interpolation.idris2 punctuation.section.embedded.end.idris2
+19:93-94 "\"" string.quoted.double.idris2 punctuation.definition.string.end.idris2
+21:0-8 "spanning" entity.name.function.idris2
+21:8-9 " "
+21:9-10 ":" keyword.operator.colon.idris2
+21:10-11 " "
+21:11-17 "String" support.type.primitive.idris2
+22:0-8 "spanning"
+22:8-9 " "
+22:9-10 "=" keyword.operator.equals.idris2
+22:10-11 " "
+22:11-12 "\"" string.quoted.double.idris2 punctuation.definition.string.begin.idris2
+22:12-14 "a " string.quoted.double.idris2
+22:14-16 "\\{" string.quoted.double.idris2 meta.interpolation.idris2 punctuation.section.embedded.begin.idris2
+22:16-17 " " string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+22:17-21 "show" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+23:0-19 "                   " string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+23:19-20 "n" string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+23:20-21 " " string.quoted.double.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+23:21-22 "}" string.quoted.double.idris2 meta.interpolation.idris2 punctuation.section.embedded.end.idris2
+23:22-24 " b" string.quoted.double.idris2
+23:24-25 "\"" string.quoted.double.idris2 punctuation.definition.string.end.idris2
+25:0-4 "raw1" entity.name.function.idris2
+25:4-5 " "
+25:5-6 ":" keyword.operator.colon.idris2
+25:6-7 " "
+25:7-13 "String" support.type.primitive.idris2
+26:0-4 "raw1"
+26:4-5 " "
+26:5-6 "=" keyword.operator.equals.idris2
+26:6-7 " "
+26:7-9 "#\"" string.quoted.double.raw.idris2 punctuation.definition.string.begin.idris2
+26:9-55 "raw: \\n is two characters, \"quotes\" are fine, " string.quoted.double.raw.idris2
+26:55-58 "\\#{" string.quoted.double.raw.idris2 meta.interpolation.idris2 punctuation.section.embedded.begin.idris2
+26:58-62 "show" string.quoted.double.raw.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+26:62-63 " " string.quoted.double.raw.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+26:63-64 "n" string.quoted.double.raw.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+26:64-65 "}" string.quoted.double.raw.idris2 meta.interpolation.idris2 punctuation.section.embedded.end.idris2
+26:65-94 " interpolates, \\{no} does not" string.quoted.double.raw.idris2
+26:94-96 "\"#" string.quoted.double.raw.idris2 punctuation.definition.string.end.idris2
+28:0-4 "raw2" entity.name.function.idris2
+28:4-5 " "
+28:5-6 ":" keyword.operator.colon.idris2
+28:6-7 " "
+28:7-13 "String" support.type.primitive.idris2
+29:0-4 "raw2"
+29:4-5 " "
+29:5-6 "=" keyword.operator.equals.idris2
+29:6-7 " "
+29:7-10 "##\"" string.quoted.double.raw.idris2 punctuation.definition.string.begin.idris2
+29:10-15 "a\"#b " string.quoted.double.raw.idris2
+29:15-19 "\\##{" string.quoted.double.raw.idris2 meta.interpolation.idris2 punctuation.section.embedded.begin.idris2
+29:19-23 "show" string.quoted.double.raw.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+29:23-24 " " string.quoted.double.raw.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+29:24-25 "n" string.quoted.double.raw.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+29:25-26 "}" string.quoted.double.raw.idris2 meta.interpolation.idris2 punctuation.section.embedded.end.idris2
+29:26-33 " \\#{no}" string.quoted.double.raw.idris2
+29:33-36 "\"##" string.quoted.double.raw.idris2 punctuation.definition.string.end.idris2
+31:0-4 "raw3" entity.name.function.idris2
+31:4-5 " "
+31:5-6 ":" keyword.operator.colon.idris2
+31:6-7 " "
+31:7-13 "String" support.type.primitive.idris2
+32:0-4 "raw3"
+32:4-5 " "
+32:5-6 "=" keyword.operator.equals.idris2
+32:6-7 " "
+32:7-11 "###\"" string.quoted.double.raw.idris2 punctuation.definition.string.begin.idris2
+32:11-17 "a\"##b " string.quoted.double.raw.idris2
+32:17-22 "\\###{" string.quoted.double.raw.idris2 meta.interpolation.idris2 punctuation.section.embedded.begin.idris2
+32:22-26 "show" string.quoted.double.raw.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+32:26-27 " " string.quoted.double.raw.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+32:27-28 "n" string.quoted.double.raw.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+32:28-29 "}" string.quoted.double.raw.idris2 meta.interpolation.idris2 punctuation.section.embedded.end.idris2
+32:29-33 "\"###" string.quoted.double.raw.idris2 punctuation.definition.string.end.idris2
+34:0-5 "multi" entity.name.function.idris2
+34:5-6 " "
+34:6-7 ":" keyword.operator.colon.idris2
+34:7-8 " "
+34:8-14 "String" support.type.primitive.idris2
+35:0-5 "multi"
+35:5-6 " "
+35:6-7 "=" keyword.operator.equals.idris2
+35:7-8 " "
+35:8-11 "\"\"\"" string.quoted.triple.idris2 punctuation.definition.string.begin.idris2
+36:0-13 "  multi-line " string.quoted.triple.idris2
+36:13-15 "\\{" string.quoted.triple.idris2 meta.interpolation.idris2 punctuation.section.embedded.begin.idris2
+36:15-19 "show" string.quoted.triple.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+36:19-20 " " string.quoted.triple.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+36:20-21 "n" string.quoted.triple.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+36:21-22 "}" string.quoted.triple.idris2 meta.interpolation.idris2 punctuation.section.embedded.end.idris2
+36:22-43 " with \"quotes\" and \"\"" string.quoted.triple.idris2
+37:0-22 "  a line continuation " string.quoted.triple.idris2
+37:22-23 "\\" string.quoted.triple.idris2 constant.character.escape.idris2
+38:0-6 "  here" string.quoted.triple.idris2
+39:0-2 "  " string.quoted.triple.idris2
+39:2-5 "\"\"\"" string.quoted.triple.idris2 punctuation.definition.string.end.idris2
+41:0-8 "multiRaw" entity.name.function.idris2
+41:8-9 " "
+41:9-10 ":" keyword.operator.colon.idris2
+41:10-11 " "
+41:11-17 "String" support.type.primitive.idris2
+42:0-8 "multiRaw"
+42:8-9 " "
+42:9-10 "=" keyword.operator.equals.idris2
+42:10-11 " "
+42:11-15 "#\"\"\"" string.quoted.triple.raw.idris2 punctuation.definition.string.begin.idris2
+43:0-25 "  raw \"\"\" inside, \\{no}, " string.quoted.triple.raw.idris2
+43:25-28 "\\#{" string.quoted.triple.raw.idris2 meta.interpolation.idris2 punctuation.section.embedded.begin.idris2
+43:28-32 "show" string.quoted.triple.raw.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+43:32-33 " " string.quoted.triple.raw.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+43:33-34 "n" string.quoted.triple.raw.idris2 meta.interpolation.idris2 meta.embedded.line.idris2
+43:34-35 "}" string.quoted.triple.raw.idris2 meta.interpolation.idris2 punctuation.section.embedded.end.idris2
+44:0-2 "  " string.quoted.triple.raw.idris2
+44:2-6 "\"\"\"#" string.quoted.triple.raw.idris2 punctuation.definition.string.end.idris2
+46:0-5 "empty" entity.name.function.idris2
+46:5-6 " "
+46:6-7 ":" keyword.operator.colon.idris2
+46:7-8 " "
+46:8-14 "String" support.type.primitive.idris2
+47:0-5 "empty"
+47:5-6 " "
+47:6-7 "=" keyword.operator.equals.idris2
+47:7-8 " "
+47:8-9 "\"" string.quoted.double.idris2 punctuation.definition.string.begin.idris2
+47:9-10 "\"" string.quoted.double.idris2 punctuation.definition.string.end.idris2

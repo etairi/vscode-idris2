@@ -1,0 +1,23 @@
+{
+  "Package description": {
+    "prefix": "package",
+    "description": "Package skeleton; `modules` must list modules that exist under `sourcedir`.",
+    "body": [
+      "package ${1:$TM_FILENAME_BASE}",
+      "version = ${2:0.1.0}",
+      "authors = \"${3:Author}\"",
+      "",
+      "sourcedir = \"${4:src}\"",
+      "depends = ${5:base}",
+      "modules = ${6:Main}$0"
+    ]
+  },
+  "Executable fields": {
+    "prefix": "executable",
+    "description": "Main module and executable name, for a package that builds a program.",
+    "body": [
+      "main = ${1:Main}",
+      "executable = \"${2:$TM_FILENAME_BASE}\"$0"
+    ]
+  }
+}

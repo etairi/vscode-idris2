@@ -1,0 +1,452 @@
+{
+  "name": "Idris 2 Package",
+  "scopeName": "source.ipkg",
+  "comment": "Idris 2 package descriptions (.ipkg). Token rules follow the compiler's package lexer and parser: src/Parser/Lexer/Package.idr, src/Parser/Lexer/Common.idr, src/Parser/Rule/Package.idr and the field parser in src/Idris/Package.idr (Idris 2 v0.8.0 and master 1c630e6). The lexer is whitespace-insensitive, so a field value may continue over several lines; each field is a region that ends where the next field starts.",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#package-header"
+    },
+    {
+      "include": "#fields"
+    },
+    {
+      "include": "#unknown-field"
+    },
+    {
+      "include": "#stray-values"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "include": "#line-comment"
+        },
+        {
+          "include": "#block-comment"
+        }
+      ]
+    },
+    "line-comment": {
+      "comment": "Common.comment: two dashes, any further dashes, not followed by '}' (so '--}' is not a comment), to the end of the line.",
+      "match": "(--(?>-*)(?!\\})).*",
+      "captures": {
+        "1": {
+          "name": "punctuation.definition.comment.ipkg"
+        }
+      },
+      "name": "comment.line.double-dash.ipkg"
+    },
+    "block-comment": {
+      "comment": "Common.blockComment: '{-' plus any further dashes opens (so a top-level '{--}' does not close); comments nest; an unterminated comment runs to the end of the file.",
+      "name": "comment.block.ipkg",
+      "begin": "\\{-+",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.comment.begin.ipkg"
+        }
+      },
+      "end": "-+\\}",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.comment.end.ipkg"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#block-comment-body"
+        }
+      ]
+    },
+    "block-comment-body": {
+      "comment": "The states of Common.toEndComment inside a block comment.",
+      "patterns": [
+        {
+          "comment": "singleBrace/singleDash: a nested '{-…}' made only of dashes opens and closes at once.",
+          "match": "\\{-+\\}"
+        },
+        {
+          "comment": "Nested block comment.",
+          "name": "comment.block.ipkg",
+          "begin": "\\{-+",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.comment.begin.ipkg"
+            }
+          },
+          "end": "-+\\}",
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.comment.end.ipkg"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#block-comment-body"
+            }
+          ]
+        },
+        {
+          "comment": "doubleDash: dashes not followed by '}' start a line comment inside the block comment; a '-}' later on that line does not close.",
+          "match": "--(?>-*)(?!\\}).*"
+        },
+        {
+          "comment": "A character literal (Lexer.charLit) hides its character, e.g. '\"' or '-', from the comment automaton.",
+          "match": "'(?>\\\\(?>NUL|SOH|STX|ETX|EOT|ENQ|ACK|BEL|BS|HT|LF|VT|FF|CR|SO|SI|DLE|DC1|DC2|DC3|DC4|NAK|SYN|ETB|CAN|EM|SUB|ESC|FS|GS|RS|US|SP|DEL|x[0-9A-Fa-f]+|o[0-7]+|[0-9]+|.)|[^'])'"
+        },
+        {
+          "comment": "A string literal (Lexer.stringLit) inside a comment hides '-}'; the compiler rejects a comment whose quote is unbalanced.",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "package-header": {
+      "comment": "parsePkgDesc: the keyword 'package' followed by a package name (Rule.packageName: a DotSepIdent with no namespace). Identifiers follow the package lexer as described at package-name.",
+      "name": "meta.package.ipkg",
+      "begin": "(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])(package)(?![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])",
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.other.package.ipkg"
+        }
+      },
+      "end": "((?:[a-z][A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+|[A-Z_\\x{A1}-\\x{10FFFF}][A-Za-z0-9_'\\x{A1}-\\x{10FFFF}]*+(?:(?=--(?>-*)(?!\\}))|[A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+)))|(?=\\S)",
+      "endCaptures": {
+        "1": {
+          "name": "entity.name.type.package.ipkg"
+        }
+      },
+      "applyEndPatternLast": true,
+      "patterns": [
+        {
+          "include": "#comments"
+        }
+      ]
+    },
+    "fields": {
+      "patterns": [
+        {
+          "comment": "strField: '<name> = \"<string>\"'. 'datadir' exists on master only (0.8.0 reports 'Unrecognised property').",
+          "name": "meta.field.ipkg",
+          "begin": "(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])(authors|maintainers|license|brief|readme|homepage|sourceloc|bugtracker|options|opts|sourcedir|datadir|builddir|outputdir|prebuild|postbuild|preinstall|postinstall|preclean|postclean)(?![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])",
+          "beginCaptures": {
+            "1": {
+              "name": "support.type.property-name.ipkg"
+            }
+          },
+          "end": "(?=^\\s*(?:authors|maintainers|license|brief|readme|homepage|sourceloc|bugtracker|options|opts|sourcedir|datadir|builddir|outputdir|prebuild|postbuild|preinstall|postinstall|preclean|postclean|version|langversion|depends|modules|main|executable)(?![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}.])|(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])langversion(?![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])|(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])(?:[a-z][A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+|[A-Z_\\x{A1}-\\x{10FFFF}][A-Za-z0-9_'\\x{A1}-\\x{10FFFF}]*+(?:(?=--(?>-*)(?!\\}))|[A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+))\\s*=(?!=))",
+          "patterns": [
+            {
+              "include": "#comments"
+            },
+            {
+              "include": "#equals"
+            },
+            {
+              "include": "#string"
+            }
+          ]
+        },
+        {
+          "comment": "'version = 1.2.3' (dot-separated integers); the string form is accepted with a deprecation warning.",
+          "name": "meta.field.ipkg",
+          "begin": "(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])(version)(?![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])",
+          "beginCaptures": {
+            "1": {
+              "name": "support.type.property-name.ipkg"
+            }
+          },
+          "end": "(?=^\\s*(?:authors|maintainers|license|brief|readme|homepage|sourceloc|bugtracker|options|opts|sourcedir|datadir|builddir|outputdir|prebuild|postbuild|preinstall|postinstall|preclean|postclean|version|langversion|depends|modules|main|executable)(?![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}.])|(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])langversion(?![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])|(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])(?:[a-z][A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+|[A-Z_\\x{A1}-\\x{10FFFF}][A-Za-z0-9_'\\x{A1}-\\x{10FFFF}]*+(?:(?=--(?>-*)(?!\\}))|[A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+))\\s*=(?!=))",
+          "patterns": [
+            {
+              "include": "#comments"
+            },
+            {
+              "include": "#equals"
+            },
+            {
+              "include": "#version-number"
+            },
+            {
+              "include": "#string"
+            }
+          ]
+        },
+        {
+          "comment": "'langversion' takes bounds directly, with no '=': 'langversion >= 0.5.1 && < 1.0'.",
+          "name": "meta.field.ipkg",
+          "begin": "(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])(langversion)(?![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])",
+          "beginCaptures": {
+            "1": {
+              "name": "support.type.property-name.ipkg"
+            }
+          },
+          "end": "(?=^\\s*(?:authors|maintainers|license|brief|readme|homepage|sourceloc|bugtracker|options|opts|sourcedir|datadir|builddir|outputdir|prebuild|postbuild|preinstall|postinstall|preclean|postclean|version|langversion|depends|modules|main|executable)(?![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}.])|(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])langversion(?![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])|(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])(?:[a-z][A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+|[A-Z_\\x{A1}-\\x{10FFFF}][A-Za-z0-9_'\\x{A1}-\\x{10FFFF}]*+(?:(?=--(?>-*)(?!\\}))|[A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+))\\s*=(?!=))",
+          "patterns": [
+            {
+              "include": "#comments"
+            },
+            {
+              "include": "#version-bounds"
+            }
+          ]
+        },
+        {
+          "comment": "'depends = <package> <bounds>, …' where bounds are '<=', '>=', '<', '>', '==' versions joined by '&&'.",
+          "name": "meta.field.ipkg",
+          "begin": "(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])(depends)(?![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])",
+          "beginCaptures": {
+            "1": {
+              "name": "support.type.property-name.ipkg"
+            }
+          },
+          "end": "(?=^\\s*(?:authors|maintainers|license|brief|readme|homepage|sourceloc|bugtracker|options|opts|sourcedir|datadir|builddir|outputdir|prebuild|postbuild|preinstall|postinstall|preclean|postclean|version|langversion|depends|modules|main|executable)(?![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}.])|(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])langversion(?![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])|(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])(?:[a-z][A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+|[A-Z_\\x{A1}-\\x{10FFFF}][A-Za-z0-9_'\\x{A1}-\\x{10FFFF}]*+(?:(?=--(?>-*)(?!\\}))|[A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+))\\s*=(?!=))",
+          "patterns": [
+            {
+              "include": "#comments"
+            },
+            {
+              "include": "#equals"
+            },
+            {
+              "include": "#package-continuation"
+            },
+            {
+              "include": "#comma"
+            },
+            {
+              "include": "#version-bounds"
+            },
+            {
+              "include": "#package-name"
+            }
+          ]
+        },
+        {
+          "comment": "'modules = <module>, …'.",
+          "name": "meta.field.ipkg",
+          "begin": "(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])(modules)(?![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])",
+          "beginCaptures": {
+            "1": {
+              "name": "support.type.property-name.ipkg"
+            }
+          },
+          "end": "(?=^\\s*(?:authors|maintainers|license|brief|readme|homepage|sourceloc|bugtracker|options|opts|sourcedir|datadir|builddir|outputdir|prebuild|postbuild|preinstall|postinstall|preclean|postclean|version|langversion|depends|modules|main|executable)(?![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}.])|(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])langversion(?![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])|(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])(?:[a-z][A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+|[A-Z_\\x{A1}-\\x{10FFFF}][A-Za-z0-9_'\\x{A1}-\\x{10FFFF}]*+(?:(?=--(?>-*)(?!\\}))|[A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+))\\s*=(?!=))",
+          "patterns": [
+            {
+              "include": "#comments"
+            },
+            {
+              "include": "#equals"
+            },
+            {
+              "include": "#module-continuation"
+            },
+            {
+              "include": "#comma"
+            },
+            {
+              "include": "#module-name"
+            }
+          ]
+        },
+        {
+          "comment": "'main = <module>'.",
+          "name": "meta.field.ipkg",
+          "begin": "(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])(main)(?![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])",
+          "beginCaptures": {
+            "1": {
+              "name": "support.type.property-name.ipkg"
+            }
+          },
+          "end": "(?=^\\s*(?:authors|maintainers|license|brief|readme|homepage|sourceloc|bugtracker|options|opts|sourcedir|datadir|builddir|outputdir|prebuild|postbuild|preinstall|postinstall|preclean|postclean|version|langversion|depends|modules|main|executable)(?![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}.])|(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])langversion(?![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])|(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])(?:[a-z][A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+|[A-Z_\\x{A1}-\\x{10FFFF}][A-Za-z0-9_'\\x{A1}-\\x{10FFFF}]*+(?:(?=--(?>-*)(?!\\}))|[A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+))\\s*=(?!=))",
+          "patterns": [
+            {
+              "include": "#comments"
+            },
+            {
+              "include": "#equals"
+            },
+            {
+              "include": "#module-name"
+            }
+          ]
+        },
+        {
+          "comment": "'executable = \"<string>\"' or a bare package-name-shaped identifier.",
+          "name": "meta.field.ipkg",
+          "begin": "(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])(executable)(?![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])",
+          "beginCaptures": {
+            "1": {
+              "name": "support.type.property-name.ipkg"
+            }
+          },
+          "end": "(?=^\\s*(?:authors|maintainers|license|brief|readme|homepage|sourceloc|bugtracker|options|opts|sourcedir|datadir|builddir|outputdir|prebuild|postbuild|preinstall|postinstall|preclean|postclean|version|langversion|depends|modules|main|executable)(?![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}.])|(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])langversion(?![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])|(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])(?:[a-z][A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+|[A-Z_\\x{A1}-\\x{10FFFF}][A-Za-z0-9_'\\x{A1}-\\x{10FFFF}]*+(?:(?=--(?>-*)(?!\\}))|[A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+))\\s*=(?!=))",
+          "patterns": [
+            {
+              "include": "#comments"
+            },
+            {
+              "include": "#equals"
+            },
+            {
+              "include": "#string"
+            },
+            {
+              "include": "#executable-name"
+            }
+          ]
+        }
+      ]
+    },
+    "unknown-field": {
+      "comment": "Any other identifier followed by '=' is structurally a field; the compiler rejects it ('Unrecognised property'), but it is highlighted as a key, not as an error.",
+      "name": "meta.field.ipkg",
+      "begin": "(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])((?:[a-z][A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+|[A-Z_\\x{A1}-\\x{10FFFF}][A-Za-z0-9_'\\x{A1}-\\x{10FFFF}]*+(?:(?=--(?>-*)(?!\\}))|[A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+)))(?=\\s*=(?!=))",
+      "beginCaptures": {
+        "1": {
+          "name": "variable.other.property.ipkg"
+        }
+      },
+      "end": "(?=^\\s*(?:authors|maintainers|license|brief|readme|homepage|sourceloc|bugtracker|options|opts|sourcedir|datadir|builddir|outputdir|prebuild|postbuild|preinstall|postinstall|preclean|postclean|version|langversion|depends|modules|main|executable)(?![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}.])|(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])langversion(?![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])|(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])(?:[a-z][A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+|[A-Z_\\x{A1}-\\x{10FFFF}][A-Za-z0-9_'\\x{A1}-\\x{10FFFF}]*+(?:(?=--(?>-*)(?!\\}))|[A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+))\\s*=(?!=))",
+      "patterns": [
+        {
+          "include": "#comments"
+        },
+        {
+          "include": "#stray-values"
+        }
+      ]
+    },
+    "stray-values": {
+      "patterns": [
+        {
+          "include": "#string"
+        },
+        {
+          "include": "#version-bounds"
+        },
+        {
+          "include": "#equals"
+        },
+        {
+          "include": "#comma"
+        }
+      ]
+    },
+    "equals": {
+      "match": "(?<![=<>])=(?!=)",
+      "name": "punctuation.separator.key-value.ipkg"
+    },
+    "comma": {
+      "match": ",",
+      "name": "punctuation.separator.comma.ipkg"
+    },
+    "module-continuation": {
+      "comment": "A comma that ends its line (only a comment may follow) inside a comma-separated value: the first token after it is a module name even when it begins its line and is spelled like a field name (sepBy requires another value after the separator; verified: `modules = Foo,` / `          main,` / `          version` dumps the modules Foo, main and version). The region ends at that token, after any comments and line breaks; a name followed by '=' is left to the field rules, so a new field typed after a trailing comma still looks like one.",
+      "begin": "(,)(?=[ \\t]*(?:$|--(?>-*)(?!\\})|\\{-))",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.separator.comma.ipkg"
+        }
+      },
+      "end": "((?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])(?:(?:[a-z][A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+|[A-Z_\\x{A1}-\\x{10FFFF}][A-Za-z0-9_'\\x{A1}-\\x{10FFFF}]*+(?:(?=--(?>-*)(?!\\}))|[A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+))(?!\\.)|[A-Z_\\x{A1}-\\x{10FFFF}][A-Za-z0-9_'\\x{A1}-\\x{10FFFF}]*(?:\\.[A-Z_\\x{A1}-\\x{10FFFF}][A-Za-z0-9_'\\x{A1}-\\x{10FFFF}]*)*(?:\\.[A-Za-z_\\x{A1}-\\x{10FFFF}][A-Za-z0-9_'\\x{A1}-\\x{10FFFF}]*)?))(?![ \\t]*=(?!=))|(?=\\S)",
+      "endCaptures": {
+        "1": {
+          "name": "entity.name.namespace.ipkg"
+        }
+      },
+      "applyEndPatternLast": true,
+      "patterns": [
+        {
+          "include": "#comments"
+        }
+      ]
+    },
+    "package-continuation": {
+      "comment": "A comma that ends its line (only a comment may follow) inside a comma-separated value: the first token after it is a package name even when it begins its line and is spelled like a field name (sepBy requires another value after the separator; verified: `modules = Foo,` / `          main,` / `          version` dumps the modules Foo, main and version). The region ends at that token, after any comments and line breaks; a name followed by '=' is left to the field rules, so a new field typed after a trailing comma still looks like one.",
+      "begin": "(,)(?=[ \\t]*(?:$|--(?>-*)(?!\\})|\\{-))",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.separator.comma.ipkg"
+        }
+      },
+      "end": "((?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])(?:[a-z][A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+|[A-Z_\\x{A1}-\\x{10FFFF}][A-Za-z0-9_'\\x{A1}-\\x{10FFFF}]*+(?:(?=--(?>-*)(?!\\}))|[A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+)))(?![ \\t]*=(?!=))|(?=\\S)",
+      "endCaptures": {
+        "1": {
+          "name": "entity.name.type.package.ipkg"
+        }
+      },
+      "applyEndPatternLast": true,
+      "patterns": [
+        {
+          "include": "#comments"
+        }
+      ]
+    },
+    "string": {
+      "comment": "Lexer.stringLit: a backslash protects the next character (so '\\\"' does not end the string); the package parser keeps the backslash (stripQuotes only drops the quotes), so it is not scoped as an escape. Strings may span lines.",
+      "name": "string.quoted.double.ipkg",
+      "begin": "\"",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.begin.ipkg"
+        }
+      },
+      "end": "\"",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.end.ipkg"
+        }
+      },
+      "patterns": [
+        {
+          "match": "\\\\."
+        }
+      ]
+    },
+    "version-number": {
+      "comment": "sepBy1 dot' integerLit, where Lexer.intLit is '-?[0-9]+'.",
+      "match": "-?[0-9]+(?:\\.-?[0-9]+)*",
+      "name": "constant.numeric.version.ipkg"
+    },
+    "version-bounds": {
+      "patterns": [
+        {
+          "match": "<=|>=|==|<|>",
+          "name": "keyword.operator.comparison.ipkg"
+        },
+        {
+          "match": "&&",
+          "name": "keyword.operator.logical.ipkg"
+        },
+        {
+          "include": "#version-number"
+        }
+      ]
+    },
+    "package-name": {
+      "match": "(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])(?:[a-z][A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+|[A-Z_\\x{A1}-\\x{10FFFF}][A-Za-z0-9_'\\x{A1}-\\x{10FFFF}]*+(?:(?=--(?>-*)(?!\\}))|[A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+))",
+      "name": "entity.name.type.package.ipkg",
+      "comment": "An identifier of the package lexer (src/Parser/Lexer/Package.idr rawTokens). One that starts with a lower-case ASCII letter is identAllowDashes on both compilers, so dashes, even '--', belong to it (verified: 'depends = my-dep--x' is the package my-dep--x). One that starts with an upper-case letter, '_' or a character above U+00A0 differs: 0.8.0 tries namespacedIdent first (ident Capitalised, no dashes), master tries 'identAllowDashes <+> reject dot' first. The rule follows 0.8.0 where the name is followed by a line comment (verified: 'package Foo--note' is the package Foo, 'modules = Foo--comment' the module Foo), and master where a dash does not start a comment ('Ab-c', which 0.8.0 rejects with \"Can't recognise token\"); master would read 'Foo--note' as one name."
+    },
+    "executable-name": {
+      "match": "(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])(?:[a-z][A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+|[A-Z_\\x{A1}-\\x{10FFFF}][A-Za-z0-9_'\\x{A1}-\\x{10FFFF}]*+(?:(?=--(?>-*)(?!\\}))|[A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+))",
+      "name": "string.unquoted.executable.ipkg",
+      "comment": "A bare executable name: an identifier (see package-name)."
+    },
+    "module-name": {
+      "comment": "Rule.moduleIdent over the lexer's DotSepIdent: an identifier (see package-name) not followed by '.', or a namespaced identifier (capitalised components, the last one may be lower-case).",
+      "match": "(?<![A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}])(?:(?:[a-z][A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+|[A-Z_\\x{A1}-\\x{10FFFF}][A-Za-z0-9_'\\x{A1}-\\x{10FFFF}]*+(?:(?=--(?>-*)(?!\\}))|[A-Za-z0-9_'\\-\\x{A1}-\\x{10FFFF}]*+))(?!\\.)|[A-Z_\\x{A1}-\\x{10FFFF}][A-Za-z0-9_'\\x{A1}-\\x{10FFFF}]*(?:\\.[A-Z_\\x{A1}-\\x{10FFFF}][A-Za-z0-9_'\\x{A1}-\\x{10FFFF}]*)*(?:\\.[A-Za-z_\\x{A1}-\\x{10FFFF}][A-Za-z0-9_'\\x{A1}-\\x{10FFFF}]*)?)",
+      "name": "entity.name.namespace.ipkg"
+    }
+  }
+}

@@ -1,9 +1,9 @@
 # vscode-idris2 — roadmap
 
-Status: final planning document, 2026-09-23. Extension id `vscode-idris2`, display name
-"Idris 2", publisher undecided. Companion documents: `landscape.md` (the verified survey and
-source of truth for everything it covers) and `ARCHITECTURE.md` (the technical design that every
-milestone below is built to).
+Status: final planning document, 2026-09-23. Extension `vscode-idris2` (id
+`etairi.vscode-idris2`), display name "Idris 2", publisher `etairi` (provisional, §9).
+Companion documents: `landscape.md` (the verified survey and source of truth for everything it
+covers) and `ARCHITECTURE.md` (the technical design that every milestone below is built to).
 
 How to read this file. Milestones **M0–M16** are extension increments: after each one the
 extension installs, activates and works, and everything that worked before still works.
@@ -33,17 +33,17 @@ document (the reviewers' runs were reproduced independently before being recorde
 
 | # | Fact | Tag |
 |---|---|---|
-| F1 | The 6-hex length prefix counts **UTF-8 bytes** including the trailing newline. `((:interpret "\"→\"") 1)` framed by bytes → `(:return (:ok "\"\\226\\134\\146\"" …) 1)`; framed by code points → `Parse error … Expected ')'` tagged id 0, and every later request fails the same way. Confirms landscape §4.3; the protocol rst's "characters" is wrong for non-ASCII. | [live] |
-| F2 | **Coordinates.** Requests `:type-of NAME L C` / `:case-split L C NAME` take a **1-based line and 0-based column with inclusive end**: for `xs` at 0-based columns 5–6 of line 8, columns 4 fails, 5 and 7 succeed, line 7 fails. `:generate-def L NAME` takes the line of the *type declaration*. Replies (`:warning`, `:name-at`, `:highlight-source`) are **0-based, end-exclusive**. `(:name-at "vlen_rhs")` (unqualified) → `(("Clean.vlen_rhs" (:filename "<abs>") (:start 7 10) (:end 7 19)))`; the qualified form returns `()`; `(:name-at NAME L C)` is a stub. | [live] |
+| F1 | The 6-hex length prefix counts **UTF-8 bytes** including the trailing newline. `((:interpret "\"→\"") 1)` framed by bytes → `(:return (:ok "\"\\226\\134\\146\"" …) 1)`; framed by code points → `Parse error … Expected ')'` tagged id 0, and every later request fails the same way. Confirms landscape §4.3; the protocol rst's "characters" is wrong for non-ASCII. **Addendum (M0, 2026-09-27): this holds for requests only.** The compiler reads a request one byte per `Char`, so non-ASCII request text arrives as Latin-1 (`((:bogus "é") 4)` is echoed as `"Ã©"`), while it prefixes each **reply** with its length in **code points** (`send` pads `length r` of an Idris `String`): a `:docs-for` reply containing `→` and `𝕟` had prefix `0000ff` = 255 = its code points including the newline, against 260 UTF-8 bytes and 256 UTF-16 units. First found by the fake-compiler work (`test/fake-idris2/README.md`, which also covers NUL truncation). | [live] + [src v0.8.0 `Idris/IDEMode/Commands.idr` 41–47] |
+| F2 | **Coordinates.** `:type-of NAME L C` takes a **1-based line and 0-based column with inclusive end**: for `xs` at 0-based columns 5–6 of line 8, columns 4 fails, 5 and 7 succeed, line 7 fails. **Correction (M0, 2026-09-27): `:case-split L C NAME` takes a 1-based column**, and `C = 0` means anywhere on line L. The column need not be on NAME: on `vlen xs = ?vlen_rhs` (line 8) `:case-split 8 C "xs"` succeeds for C = 0, 1, 4–8, i.e. anywhere from the start of the line to the inclusive end of the left-hand side `vlen xs` (0-based end 7), and fails for 9 (the `=`), while `:type-of "xs" 8 C` succeeds for 5–7 only [live]; `processEdit (CaseSplit …)` tests `within (line-1, col-1)` / `onLine`, `TypeAt` tests `within (line-1, col)` [src `Idris/REPL.idr` 488–494 / 466 on v0.8.0]. `:generate-def L NAME` takes the line of the *type declaration*. Replies (`:warning`, `:name-at`, `:highlight-source`) are **0-based, end-exclusive**. `(:name-at "vlen_rhs")` (unqualified) → `(("Clean.vlen_rhs" (:filename "<abs>") (:start 7 10) (:end 7 19)))`; the qualified form returns `()`; `(:name-at NAME L C)` is a stub. | [live] + [src] |
 | F3 | Eleven IDE commands are `todoCmd` **stubs** on 0.8.0 and on master: `name-at <name> <line> <col>`, `add-missing`, `apropos`, `directive`, `who-calls`, `calls-who`, `normalise-term`, `show-term-implicits`, `hide-term-implicits`, `elaborate-term`, `print-definition`. Each prints `(:write-string "<cmd>: command not yet implemented. Hopefully soon!")` then returns an empty `:ok`. **Corrects landscape §5 gap 2 ("C already done")** and **gap 7 ("`add-missing` only in IDE mode")**. | [live] + [src `Idris/IDEMode/REPL.idr` 155–227] |
 | F4 | Unparseable requests are answered `(:return (:error "Unrecognised command: …") <previous id>)`. `cd` is **not** a command (`Protocol/IDE/Command.idr` has no case; `(:cd "/tmp")` is "unrecognised") — **corrects landscape §4.3**. `version`, `proof-search-next`, `generate-def-next` are **bare symbols**: send `(:version 7)`, not `((:version) 7)`. | [live] + [src `Command.idr` 99, 102] |
-| F5 | Over **stdio**, `(:interpret ":exec putStrLn \"hi\"")` writes `hi\n` **unframed** into the protocol stream. Over `idris2 --ide-mode-socket` the process prints a port on stdout, the same output goes to the *process* stdout and the socket stream stays framed. On stdin EOF stdio mode emits the unframed tail `Alas the file is done, aborting`. | [live] |
+| F5 | Over **stdio**, `(:interpret ":exec putStrLn \"hi\"")` writes `hi\n` **unframed** into the protocol stream. Over `idris2 --ide-mode-socket` the process prints a port on stdout, the same output goes to the *process* stdout and the socket stream stays framed. On stdin EOF stdio mode emits the unframed tail `Alas the file is done, aborting`. **Addendum (M0, 2026-09-27):** that tail and exit 1 come when input ends at a request boundary; when it ends one read into a request (an unframed line without its newline, a 5-byte tail, a frame one byte short) the process exits 0 silently without answering it (C stdio's one read past EOF; `test/fake-idris2/README.md`). Over the socket (macOS arm64; Linux not tried), a request that arrives in the same read as an earlier one is dropped unanswered (`(:version 1)` and `(:version 2)` in one write → one reply; the socket `FILE` is `fdopen`ed `r+` and shared by reads and replies) — another reason for ARCHITECTURE §5's one request in flight. | [live] + [src v0.8.0 `Idris/IDEMode/REPL.idr` 42–115, 462–476] |
 | F6 | Load errors arrive as `(:warning (FILE (L C) (L C) MSG HL) ID)`: FILE **relative to the process cwd**, positions 0-based end-exclusive (`(2 0) (2 14)` ↔ `Part:3:1--3:15`), MSG = message, blank line, `Mod:l:c--l:c`, source excerpt, and a `Missing cases:` block for coverage errors; then `(:return (:error "Error(s) building file …") ID)`. | [live] |
 | F7 | **No severity field.** A warning-only load (`Unreachable clause: f n`) sends one `:warning` frame and then `(:return (:ok ()) ID)`; a load with a warning and an error sends both as `:warning` frames then `:error`. Reloading a file whose TTC is fresh emits **no** `Building` write-string and **no** `:warning` frames, but **does** re-emit the `:highlight-source` frames. | [live] |
 | F8 | **Shadow typecheck of an unsaved copy.** Copy `Foo/B.idr` (with a new `?arg`) to `<shadow>/Foo/B.idr` where no `.ipkg` exists above; spawn with cwd `<shadow>`, env `IDRIS2_PATH=<proj>/build/ttc` (the directory *containing* the TTC-version directory), `--build-dir <shadow>/build`; `:load-file "Foo/B.idr"` → `Building Foo.B`, `(:ok ())`, `:metavariables` lists `Foo.B.arg`, and every file under `<proj>/build/ttc` keeps its mtime. Without `IDRIS2_PATH`, or with it pointing at the version subdirectory, → `Module Foo.A not found`. | [live] |
 | F9 | `idris2 --check` exit codes: 1 for a type error and for a coverage error, **0 for `Module Nope.Thing not found`**; `--typecheck`/`--build` of a clean ipkg exit 0. Qualifies landscape §4.2. | [live] |
 | F10 | `.ipkg` parse errors: `idris2 --dump-ipkg-json bad.ipkg` prints `Error: Unrecognised property "pkgs".` then `"bad.ipkg":3:1--3:5` and a snippet, exit 1 (same shape for a trailing comma: `Expected end of file.`). In IDE mode a malformed `.ipkg` in the cwd chain turns `:load-file` into `(:return (:error "<the same text>"))` with **no** `:warning` frame. With several `.ipkg` files in one directory the compiler picks one of them. | [live] |
-| F11 | **Literate positions.** `.lidr` (bird tracks): all reply columns are *unlit* columns (`> module Lit` reports `module` at (0 0)–(0 6); an error under `> g = "x"` reports (5 4)–(5 7) for file columns 6–9), and requests expect unlit columns too (`(:type-of "n" 6 2)` succeeds for `n` at file column 4). Lines are file lines even with prose lines in between. Edit replies come back **with** `> ` (`> f 0 = ?f_rhs_0`, `> h k = ?h_rhs`, make-lemma `definition-type` `> f_rhs : Nat -> Nat`; `replace-metavariable` unprefixed). `.md` (fenced): lines and columns exact, replies plain. | [live] |
+| F11 | **Literate positions.** `.lidr` (bird tracks): all reply columns are *unlit* columns (`> module Lit` reports `module` at (0 0)–(0 6); an error under `> g = "x"` reports (5 4)–(5 7) for file columns 6–9), and requests expect unlit columns too (`(:type-of "n" 6 2)` succeeds for `n` at file column 4). Lines are file lines even with prose lines in between. Edit replies come back **with** `> ` (`> f 0 = ?f_rhs_0`, `> h k = ?h_rhs`, make-lemma `definition-type` `> f_rhs : Nat -> Nat`; `replace-metavariable` unprefixed). `.md` (fenced): lines and columns exact, replies plain. Added in M0 (2026-09-27): `:case-split` in a `.lidr` takes 1-based *unlit* columns (`> f n = ?f_rhs` on line 6: C = 1–4 succeed, 5–6 fail), and the CLI text of `idris2 --check` is unlit too (an error under `> g = "x"`, file columns 6–9, is reported `Err:6:5--6:8`). Added in M0 review: **the compiler picks the literate style by file name, and a CRLF break in a `.lidr` joins two lines.** `isLitFile` is a case-sensitive suffix test (`src/Parser/Unlit.idr`): a bird-track `Up.LIDR` fails at its first `>` (1:1). `reduce` in `src/Libraries/Text/Literate.idr` (same on master) keeps a newline token only when it is exactly `"\n"`: `> g : Nat\r\n> g = 1` fails with `Undefined name Natg`, an all-CRLF `.lidr` with `Couldn't parse declaration` at 1:14; the same text with LF, and a CRLF `.idr`, pass. Hence `"files.eol": "\n"` in the `[lidr]` defaults (`files.eol` is language-overridable: `scope: 6` in VS Code 1.139.1's workbench bundle, the `language-overridable` value). | [live] + [src] |
 | F12 | `--build-dir build/.vscode-idris2` with an auto-discovered ipkg writes TTCs under that directory — **unless the ipkg has a `builddir` field, which overrides the flag** (TTC went to `out/`). | [live] |
 | F13 | `:load-file` calls `findIpkg`, which walks **up from the process cwd**, `changeDir`s to the ipkg directory and applies `sourcedir`/`depends`/`builddir`/`opts`. From the ipkg directory both `src/Foo/B.idr` and its absolute path load; from a foreign cwd both fail (`Module Foo.A not found`), also with `--find-ipkg`; from `src/Foo`, `B.idr` loads without `--find-ipkg` but fails with it (`Source file "B.idr" is not in the source directory`). | [live] + [src `Idris/Package.idr` 1093–1110, `IDEMode/REPL.idr` 143–147] |
 | F14 | `((:enable-syntax :False) 1)` → `"Syntax highlight option changed to False"`; the following load emits **zero** `:highlight-source` frames (31 without it for an 8-line file). | [live] |
@@ -132,14 +132,16 @@ type/hole/edit requests, `eval` for `:interpret` so that `:set`/`:exec` side eff
 touch checking state (F5, F27), and `shadow` for unsaved buffers (F8). Each session is a small
 state machine with one request in flight, per-request timeouts that kill and respawn (the
 protocol has no cancel), attribution of the compiler's previous-id quirk (F4), byte-length
-framing (F1), and a tolerant frame reader. The **LSP backend** wraps one `vscode-languageclient`
-10.x client per window and enforces per-root ownership through middleware, so a root can switch
-backend at runtime; server options are forwarded as the flat object `processSettings` reads
-(F20). The **CLI runner** executes one-shot `idris2`/`pack` commands for versions, `.ipkg` JSON,
-builds and runs, and never trusts exit codes alone (F9).
+framing of requests and code-point-length reading of replies (F1), and a tolerant frame
+reader. The **LSP backend** wraps one `vscode-languageclient` 10.x client per window and
+enforces per-root ownership through middleware, so a root can switch backend at runtime;
+server options are forwarded as the flat object `processSettings` reads (F20). The **CLI
+runner** executes one-shot `idris2`/`pack` commands for versions, `.ipkg` JSON, builds and
+runs, and never trusts exit codes alone (F9).
 
 All coordinate conversions live in `core/positions.ts` (`ARCHITECTURE.md` §7): 1-based request
-lines with 0-based inclusive columns, 0-based exclusive reply positions, 1-based CLI text, and
+lines with 0-based inclusive columns (1-based for `:case-split`), 0-based exclusive reply
+positions, 1-based CLI text, and
 the bird-track column offset that `.lidr` files need in both directions (F2, F11). Diagnostics
 come from three collections (saved, unsaved, build) with a severity rule derived from the
 `:return` kind and a known-warning table (F7), and `.ipkg` parse errors are mapped onto the ipkg
@@ -188,94 +190,96 @@ Sizes M/L mean "M if the optional sub-items are left out, L with them" (M3: inla
 Solid arrows are hard dependencies; dotted arrows are optional enhancements or upstream
 enablers and never block. The hexagon `M2 or M5` is an **OR** node: M4 needs *one* of the two
 backends (dotted edges into the hexagon, so that the legend's "solid = AND" reading does not
-apply); the M4 acceptance is split accordingly (§5, M4). The graph below is generated from the
-per-milestone "Dependencies" and "Upstream" lines in §5 (M0 adds `scripts/deps-graph.mjs`
-over `docs/milestones.yaml` so the two cannot drift again); until then it is maintained by hand
-and was re-derived from those lines during the review.
+apply); the M4 acceptance is split accordingly (§5, M4). The graph below is generated by
+`scripts/deps-graph.mjs` from `docs/milestones.yaml`, which encodes the per-milestone
+"Dependencies" and "Upstream" lines in §5 (and U3's in §6); `npm run docs:graph:check` fails
+when the graph, the YAML file or those lines disagree.
 
+<!-- deps-graph:start: generated by scripts/deps-graph.mjs from docs/milestones.yaml; edit that file, then run `npm run docs:graph` -->
 ```mermaid
 graph TD
-  M0[M0 Language foundation & harness]
-  M1[M1 Toolchain & project discovery]
-  M2[M2 IDE-mode core]
-  M3[M3 Read-only intelligence]
-  M4[M4 Interactive editing & holes]
-  M5[M5 idris2-lsp backend & routing]
-  M6[M6 Shadow typecheck]
-  M7[M7 Goal panel]
-  M8[M8 REPL & doc-eval]
-  M9[M9 Build, run, problems]
-  M10[M10 Test Explorer]
-  M11[M11 ipkg, pack.toml, scaffolding]
-  M12[M12 Literate Idris]
-  M13[M13 Unicode input]
-  M14[M14 Extras]
-  M15[M15 Release polish]
-  M16[M16 Idris 1 legacy - optional]
+  M0["M0 Language foundation & harness"]
+  M1["M1 Toolchain & project discovery"]
+  M2["M2 IDE-mode core"]
+  M3["M3 Read-only intelligence"]
+  M4["M4 Interactive editing & holes"]
+  M5["M5 idris2-lsp backend & routing"]
+  M6["M6 Shadow typecheck"]
+  M7["M7 Goal panel"]
+  M8["M8 REPL & doc-eval"]
+  M9["M9 Build, run, problems"]
+  M10["M10 Test Explorer"]
+  M11["M11 ipkg, pack.toml, scaffolding"]
+  M12["M12 Literate Idris"]
+  M13["M13 Unicode input"]
+  M14["M14 Extras"]
+  M15["M15 Release polish"]
+  M16["M16 Idris 1 legacy - optional"]
   E{{"M2 or M5 (one of)"}}
-  U1[U1 upstream idris2-lsp]
-  U2[U2 upstream Idris2 IDE mode]
-  U3[U3 upstream unsaved buffers]
+  U1["U1 upstream idris2-lsp"]
+  U2["U2 upstream Idris2 IDE mode"]
+  U3["U3 upstream unsaved buffers"]
 
   %% hard dependencies (every dependency listed in §5 is drawn, including ones implied transitively)
   M0 --> M1
   M0 --> M2
   M1 --> M2
   M2 --> M3
+  M0 --> M4
+  E --> M4
   M0 --> M5
   M1 --> M5
+  M2 --> M6
+  M4 --> M7
   M1 --> M8
   M1 --> M9
   M9 --> M10
   M1 --> M11
-  M0 --> M4
-  E --> M4
-  M4 --> M7
-  M2 --> M6
   M0 --> M12
   M2 --> M12
-  M2 --> M16
   M0 --> M13
+  M3 -->|namespace browser, workspace symbols, type definition, docs links| M14
+  M0 -->|web extension, needs only M0| M14
   M0 --> M15
-  M3 --> M14
-  M0 -. web extension only .-> M14
-  M5 -. namespace browser via browseNamespace .-> M14
+  M2 --> M16
 
-  %% the OR node
-  M2 -. either .-> E
-  M5 -. or .-> E
+  %% OR nodes: one of the members suffices
+  M2 -.->|either| E
+  M5 -.->|or| E
 
   %% optional enhancements
-  M4 -. holes/edits on dirty text .-> M6
-  M6 -. live updates .-> M7
-  M3 -. doc-eval lens, Query box .-> M8
-  M2 -. check-session isolation test .-> M8
-  M3 -. tokens/hover inside blocks .-> M12
-  M4 -. edits inside blocks .-> M12
-  M11 -. project model reuse .-> M9
-  M9 -. build the scaffolded project .-> M11
+  M4 -.->|holes/edits on dirty text| M6
+  M6 -.->|live updates while typing| M7
+  M3 -.->|doc-eval lens, Query box| M8
+  M2 -.->|check-session isolation test| M8
+  M11 -.->|project model reuse| M9
+  M9 -.->|build the scaffolded project| M11
+  M3 -.->|tokens/hover inside blocks| M12
+  M4 -.->|editing inside blocks| M12
+  M5 -.->|namespace browser via browseNamespace, instead of M3| M14
 
   %% upstream enablers
-  U1 -. U1.2 exact version .-> M1
-  U2 -. U2.5 severity, U2.8 stdio output, U2.9 error id .-> M2
-  U2 -. U2.1, U2.2 name-at, U2.11 highlight fields .-> M3
-  U2 -. U2.2–U2.4 .-> M4
-  U1 -. U1.3 README kind table .-> M4
-  U1 -. U1.1 0.8.0 branch, U1.2, U1.3, U1.5 .-> M5
-  U1 -. U1.5 dirty files, LSP users .-> M6
-  U2 -. U2.4 structured holes .-> M7
-  U2 -. U2.5 json diagnostics .-> M9
-  U2 -. U2.7 multi-ipkg .-> M11
-  U1 -. U1.4 literate .-> M12
-  U2 -. U2.6 Idris2 #1508 .-> M12
-  U1 -. U1.6 .-> M14
-  U2 -. U2.1, U2.12 .-> M14
-  U3 -.-> M5
-  U3 -.-> M6
+  U2 -.->|experience from U2| U3
+  U1 -.->|U1.2 exact version| M1
+  U2 -.->|U2.8 stdio output, U2.9 error id, U2.5 severity| M2
+  U2 -.->|U2.2 name-at, U2.1 who-calls, U2.11 highlight fields| M3
+  U2 -.->|U2.3 add-missing, U2.4 hole locations, U2.2 name-at| M4
+  U1 -.->|U1.3 README kind table| M4
+  U1 -.->|U1.1 0.8.0 branch, U1.2 real version, U1.3 capabilities, U1.5 dirty files| M5
+  U3 -.->|removes the shadow copies| M6
+  U1 -.->|U1.5 for LSP users| M6
+  U2 -.->|U2.4 structured hole types| M7
+  U2 -.->|U2.5 json diagnostics| M9
+  U2 -.->|U2.7 multi-ipkg| M11
+  U2 -.->|U2.6 Idris2 #1508| M12
+  U1 -.->|U1.4 literate over LSP| M12
+  U1 -.->|U1.6 references, call hierarchy| M14
+  U2 -.->|U2.1 references, call hierarchy, U2.12 implementations| M14
 
   classDef up fill:#fff3cd,stroke:#b58900;
   class U1,U2,U3 up;
 ```
+<!-- deps-graph:end -->
 
 Each milestone lists at most two *direct* hard dependencies (M4's second one being the OR
 node); the longest hard chain from M0 is four steps (M0 → M1 → M2 → M4 → M7, and
@@ -317,13 +321,14 @@ M0 → M1 → M2 → M3 → M14).
   uses — `idrisDocumentSelector()` (a `DocumentSelector` built from the language ids *and*
   literate glob patterns) and `isIdrisDocument(doc)`, plus the `idris2.isIdrisDocument` context
   key it sets on editor change — so that M12 only extends a table instead of retrofitting every
-  provider (`ARCHITECTURE.md` §3.2); `core/positions.ts` implementing the table in
-  `ARCHITECTURE.md` §7 with unit tests encoding F2 and F11; the three test layers wired with one
-  test each; `test/fake-idris2` skeleton (handshake + `:version`); `.vscode-test.mjs` with a
-  short user-data-dir (F17); `scripts/deps-graph.mjs` regenerating the §4 graph from
-  `docs/milestones.yaml`; CI (ubuntu: lint, types, unit, grammar, integration, `vsce package`;
-  macOS: integration); README, CHANGELOG, `.vscodeignore`, licence placeholder. Out: any process
-  spawn; the webview (a stub entry only).
+  provider (`ARCHITECTURE.md` §3.2; see "As built" below for the glob patterns);
+  `core/positions.ts` implementing the table in `ARCHITECTURE.md` §7 with unit tests encoding
+  F2 and F11; the three test layers wired with one test each; `test/fake-idris2` skeleton
+  (handshake + `:version`); `.vscode-test.mjs` with an explicit user-data-dir (F17; see "As
+  built"); `scripts/deps-graph.mjs` regenerating the §4 graph from `docs/milestones.yaml`; CI
+  (ubuntu: lint, types, unit, grammar, integration, `vsce package`; macOS: integration);
+  README, CHANGELOG, `.vscodeignore`, licence placeholder. Out: any process spawn; the webview
+  (a stub entry only).
 - **Technical approach.** Start from meraymond's MIT grammar with attribution or write fresh
   (Q3); rewrite rules by construct; snapshot tests with `vscode-textmate` + `vscode-oniguruma`
   over `test/fixtures/grammar/*.idr`, which are also `idris2 --check`ed in CI so the corpus
@@ -346,6 +351,65 @@ M0 → M1 → M2 → M3 → M14).
   `j-nava.idris2-language-support` (also `idris2`) → README asks to disable it (Q4).
 - **Open questions.** Q3 (fork vs fresh grammar), Q4 (language id and scope names).
 - **Upstream.** None.
+- **As built (2026-09-27).** Where the implementation reads or departs from the text above:
+  - *Status: implemented, acceptance pending CI.* Two acceptance items are open until the
+    workflow has run: "green on ubuntu and macOS" (the M0 workflow has not run; the macOS job
+    runs lint, unit, grammar, integration and `check:fixtures`), and the 2× CI-median grammar
+    budget (E6: until the CI median is recorded, `test/grammar/perf.test.ts` asserts only a
+    2,000 ms bound). The activation time is measured, see *activation time*.
+  - *Document selector.* It holds language rows only (`idris2`, `lidr`), not glob patterns.
+    The one literate style M0 knows, bird-track `.lidr`, has its own language id, so a
+    `**/*.lidr` pattern row would add nothing but a disagreement: it would select a `.lidr`
+    file switched to another language mode, which `isIdrisDocument` (keyed on `languageId`)
+    rejects. Pattern rows arrive with the first rows that need them, M1's extension table and
+    M12's hosts, together with an `isIdrisDocument` that reads the document's path, so that the
+    selector and the predicate stay equal.
+  - *Literate style in `positions.ts`.* The selector and `isIdrisDocument` follow the language
+    mode, but the coordinate conversions follow the file name, as the compiler does
+    (`compilerLiterateStyleOf` in `project/literate.ts`, F11): a saved `.lidr` in the `idris2`
+    mode still gets the bird-track offset, a `.idr` in the `lidr` mode does not, and an untitled
+    document falls back to its language id. Selection ranges stay on the language mode, like
+    highlighting.
+  - *On-enter `= ?hole`.* Read as "no extra indentation": a line ending in `= ?hole` is a
+    complete clause, and VS Code's default (keep the line's indentation) is right for the next
+    clause, so no rule exists for it. The rule for a trailing `=` does not fire on it
+    (`test/unit/languageConfiguration.test.ts`, case `f x = ?rhs`). The `where`/`do`/`of`
+    rules and the others are listed in that test.
+  - *User-data-dir (F17).* `.vscode-test.mjs` passes `<checkout>/.vscode-test/user-data`
+    explicitly, which is also test-electron's default: 63 characters in the development
+    checkout, so the socket path stays under the limit only while the checkout path is short.
+  - *Activation time.* The "< 100 ms" is the time **Developer: Show Running Extensions** shows,
+    which VS Code 1.139.1 computes as `codeLoadingTime + activateCallTime` [src: its workbench
+    bundle] (`docs/checklists/M0.md` step 1). The extension host passes the same
+    `activationTimes` object to the workbench (`$onDidActivateExtension`) and to the telemetry
+    event `extensionActivationTimes` [src: `extensionHostProcess.js` of 1.139.1], which a
+    `--log trace` run writes to `logs/<session>/telemetry.log` when telemetry is enabled.
+    Read there for the installed `.vsix` on `Hello.idr` (VS Code 1.139.1, Apple M4, one run
+    each, 2026-09-27): **3 ms** on the first launch in a fresh `/tmp/vi2-*` profile
+    (`codeLoadingTime` 1, `activateCallTime` 2) and **1 ms** on a relaunch (1 + 0) [live]. The
+    same runs' Extension Host logs show the longer interval from the
+    `_doActivateExtension etairi.vscode-idris2` line to the extension's own `activated` line
+    (151 ms and 43 ms; the M0 acceptance review measured 105 ms and 14 ms for it). Part of
+    that interval is the wait for the extension context, whose storage is readied in parallel
+    with loading the module [src: `_doActivateExtension`, same file]: the trace log shows
+    41 ms and 32 ms from `loadModule` to `_callActivateOptional`. The rest, from the activate
+    call to the timestamp of the extension's log line, was not attributed. Neither log has an
+    error or warning line [live]. The figure was read from the log, not from the view.
+    Re-checked on the final M0 package, built after the third review round's grammar fixes
+    (2026-09-27, `.vsix` sha256 `9aa5c350…`). It was installed with the VS Code 1.139.1 copy
+    in `.vscode-test/` into `/tmp/vi2-*` dirs, with `--disable-telemetry --log trace`, and
+    launched once on `Hello.idr`. The Extension Host log shows `_doActivateExtension
+    etairi.vscode-idris2 … activationEvent: 'onLanguage:idris2'` and `loadModule` at 25.027 s,
+    `_callActivateOptional` at 25.061 s, all three `registerCommand idris2.*` lines and
+    `setContext` at 25.062 s, and the extension's `vscode-idris2 0.0.1 activated` at 25.110 s.
+    Neither the Extension Host log nor the renderer log has an `[error]` or `[warning]` line.
+    The main-process log has one `[error]` line, a Node `url.parse()` deprecation warning
+    (DEP0169) on the stderr of VS Code's own agent host [live]. The same check on the previous
+    package (`c810616c…`, the user's VS Code 1.139.1) showed the same sequence without errors.
+    Telemetry was off in both, so neither has an `extensionActivationTimes` figure: the
+    3 ms / 1 ms above were not re-measured. The package built after the last documentation
+    edits (sha256 `37a2d61f…`) differs from the checked one only in `readme.md` and
+    `changelog.md` (`diff -r` of the two unpacked `.vsix` files) [live].
 
 ### M1 — Toolchain and project discovery (M)
 
@@ -1260,8 +1324,16 @@ retiring every backend risk before UI work is preferred.
   supported route to a working server today (F21, F22) and makes M5 testable; it also changes
   which `idris2` is on `PATH`.
 - **Q3** Grammar: fork meraymond's MIT grammar with attribution, or write it fresh?
+  **Resolved in M0** (decision above): written fresh from the compiler's lexer
+  (`syntaxes/src/idris2.grammar.mjs`); compared with the 0.8.0 lexer token by token over
+  1,160 files with 0 mismatches (`IDRIS2_LEXER_ORACLE=1 npm run test:corpus`; re-run after
+  the last grammar change on 2026-09-27: 1,160 files, 1,138,787 lexer tokens, 0 rejected, 0
+  mismatches) [live].
 - **Q4** Language id `idris2` (proposed; alias "Idris 2") vs `idris`; scope `source.idris2` vs
   `source.idris`; asking users to disable the other Idris extensions.
+  **Resolved in M0** (decision above): language ids `idris2`, `lidr`, `ipkg`; scopes
+  `source.idris2`, `source.idris2.literate`, `source.ipkg`. The README asks users to disable
+  other extensions that claim `.idr`.
 - **Q5** Keybinding scheme: `chords` (`ctrl+c ctrl+<x>`) default on macOS and `prefix`
   (`ctrl+alt+i <x>`) elsewhere, as proposed; whether to bind `ctrl+shift+enter` to the goal panel.
 - **Q6** Defaults for checking: `checking.trigger = onSave` and `checkOnType.enabled = true`
@@ -1304,6 +1376,28 @@ retiring every backend risk before UI work is preferred.
   versions) and that `.vscode-test.mjs` honours a short `--user-data-dir` (F17); measure the
   tokenisation time of the 2,000-line fixture (median of five runs, on the CI runner and on
   this machine) and set the M0 budget at 2× the CI median — no number is asserted before this.
+  **Status 2026-09-27: done on this machine; the CI half is open.**
+  - Tooling [live]: the grammar tests use `vscode-textmate` 9.3.2 and `vscode-oniguruma`
+    1.7.0, the versions VS Code 1.139.1 declares in its own `package.json`
+    (`vscode-textmate ^9.3.2`, `vscode-oniguruma 1.7.0`). Our `package.json` pins
+    `vscode-oniguruma` exactly and declares `vscode-textmate ^9.3.2`, as VS Code does; the
+    lockfile resolves it to 9.3.2, the version inside VS Code 1.139.1's `node_modules.asar`. Tokenising the 1,160 fixture and
+    corpus files with oniguruma 1.7.0 and 2.0.1 gave identical token streams (a comparison run
+    during M0, not committed).
+  - `--user-data-dir` [live]: `@vscode/test-cli` 0.0.15 honours it in `launchArgs` (pointed at
+    `/tmp/vi2-t`, the run's logs went there).
+  - Measurement [live]: `test/grammar/perf.test.ts` tokenises every `test/fixtures/grammar/*.idr`
+    concatenated and repeated to at least 2,000 lines, five times after a warm-up, and logs
+    the median. With the final M0 grammar and fixtures (2,372 lines), five sequential runs of
+    the test on this machine (Apple M4, macOS arm64, Node v24.13.0, oniguruma 1.7.0,
+    2026-09-27, `npx mocha --ui tdd out/test/grammar/perf.test.js`) logged medians of 52.1,
+    52.3, 52.4, 52.0 and 52.2 ms (median 52.2 ms). Earlier measurements, with other grammars
+    and inputs, were 47.2 ms on 2,226 lines, 46.5 ms on 2,108 lines and 52.9 ms on 2,889
+    lines. The input changed with the fixtures each time, so these figures do not compare
+    grammars.
+  - CI runner: **not measured** — the workflow has not run yet. Until it has, the test asserts
+    only a 2,000 ms bound, which catches order-of-magnitude regressions (a backtracking regex)
+    but is not the 2× CI-median budget of M0's acceptance.
 - **E7** (M11) `--dump-ipkg-json` error output on more malformed inputs (format verified for
   unknown property and trailing comma, F10).
 - **E8** (M10) Record the `Test.Golden` runner output on the plan's own `golden-tests/` fixture

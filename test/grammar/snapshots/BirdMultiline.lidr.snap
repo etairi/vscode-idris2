@@ -1,0 +1,186 @@
+# vscode-textmate snapshot. One token per line: LINE:START-END "text" scopes (0-based,
+# end exclusive, root scope omitted). Regenerate with UPDATE_SNAPSHOTS=1.
+0:0-70 "Idris 2 constructs that span several bird-track lines keep their state" meta.prose.lidr
+1:0-31 "from one code line to the next." meta.prose.lidr
+3:0-1 ">" punctuation.definition.bird-track.lidr
+3:1-2 " "
+3:2-8 "module" meta.embedded.block.idris2 keyword.other.module.idris2
+3:8-9 " " meta.embedded.block.idris2
+3:9-22 "BirdMultiline" meta.embedded.block.idris2 entity.name.namespace.idris2
+5:0-38 "A block comment over three code lines:" meta.embedded.block.idris2 meta.prose.lidr
+7:0-1 ">" punctuation.definition.bird-track.lidr
+7:1-2 " "
+7:2-4 "{-" meta.embedded.block.idris2 comment.block.idris2 punctuation.definition.comment.begin.idris2
+7:4-30 " first line of the comment" meta.embedded.block.idris2 comment.block.idris2
+8:0-1 ">" punctuation.definition.bird-track.lidr
+8:1-2 " "
+8:2-16 "   second line" meta.embedded.block.idris2 comment.block.idris2
+9:0-1 ">" punctuation.definition.bird-track.lidr
+9:1-2 " "
+9:2-16 "   third line " meta.embedded.block.idris2 comment.block.idris2
+9:16-18 "-}" meta.embedded.block.idris2 comment.block.idris2 punctuation.definition.comment.end.idris2
+10:0-1 ">" punctuation.definition.bird-track.lidr
+10:1-2 " "
+10:2-8 "answer" meta.embedded.block.idris2 entity.name.function.idris2
+10:8-9 " " meta.embedded.block.idris2
+10:9-10 ":" meta.embedded.block.idris2 keyword.operator.colon.idris2
+10:10-11 " " meta.embedded.block.idris2
+10:11-14 "Nat" meta.embedded.block.idris2
+11:0-1 ">" punctuation.definition.bird-track.lidr
+11:1-2 " "
+11:2-8 "answer" meta.embedded.block.idris2
+11:8-9 " " meta.embedded.block.idris2
+11:9-10 "=" meta.embedded.block.idris2 keyword.operator.equals.idris2
+11:10-11 " " meta.embedded.block.idris2
+11:11-13 "42" meta.embedded.block.idris2 constant.numeric.integer.decimal.idris2
+13:0-75 "A nested comment that continues across an empty line (the compiler reads an" meta.embedded.block.idris2 meta.prose.lidr
+14:0-64 "empty line inside code the same way as a line holding only '>'):" meta.embedded.block.idris2 meta.prose.lidr
+16:0-1 ">" punctuation.definition.bird-track.lidr
+16:1-2 " "
+16:2-4 "{-" meta.embedded.block.idris2 comment.block.idris2 punctuation.definition.comment.begin.idris2
+16:4-11 " outer " meta.embedded.block.idris2 comment.block.idris2
+16:11-13 "{-" meta.embedded.block.idris2 comment.block.idris2 comment.block.idris2 punctuation.definition.comment.begin.idris2
+16:13-20 " inner " meta.embedded.block.idris2 comment.block.idris2 comment.block.idris2
+16:20-22 "-}" meta.embedded.block.idris2 comment.block.idris2 comment.block.idris2 punctuation.definition.comment.end.idris2
+18:0-1 ">" punctuation.definition.bird-track.lidr
+18:1-2 " "
+18:2-32 "   still in the outer comment " meta.embedded.block.idris2 comment.block.idris2
+18:32-34 "-}" meta.embedded.block.idris2 comment.block.idris2 punctuation.definition.comment.end.idris2
+19:0-1 ">" punctuation.definition.bird-track.lidr
+19:1-2 " "
+19:2-7 "small" meta.embedded.block.idris2 entity.name.function.idris2
+19:7-8 " " meta.embedded.block.idris2
+19:8-9 ":" meta.embedded.block.idris2 keyword.operator.colon.idris2
+19:9-10 " " meta.embedded.block.idris2
+19:10-13 "Nat" meta.embedded.block.idris2
+20:0-1 ">" punctuation.definition.bird-track.lidr
+20:1-2 " "
+20:2-7 "small" meta.embedded.block.idris2
+20:7-8 " " meta.embedded.block.idris2
+20:8-9 "=" meta.embedded.block.idris2 keyword.operator.equals.idris2
+20:9-10 " " meta.embedded.block.idris2
+20:10-11 "1" meta.embedded.block.idris2 constant.numeric.integer.decimal.idris2
+22:0-69 "A multi-line string whose body contains comment and quote characters:" meta.embedded.block.idris2 meta.prose.lidr
+24:0-1 ">" punctuation.definition.bird-track.lidr
+24:1-2 " "
+24:2-6 "poem" meta.embedded.block.idris2 entity.name.function.idris2
+24:6-7 " " meta.embedded.block.idris2
+24:7-8 ":" meta.embedded.block.idris2 keyword.operator.colon.idris2
+24:8-9 " " meta.embedded.block.idris2
+24:9-15 "String" meta.embedded.block.idris2 support.type.primitive.idris2
+25:0-1 ">" punctuation.definition.bird-track.lidr
+25:1-2 " "
+25:2-6 "poem" meta.embedded.block.idris2
+25:6-7 " " meta.embedded.block.idris2
+25:7-8 "=" meta.embedded.block.idris2 keyword.operator.equals.idris2
+25:8-9 " " meta.embedded.block.idris2
+25:9-12 "\"\"\"" meta.embedded.block.idris2 string.quoted.triple.idris2 punctuation.definition.string.begin.idris2
+26:0-1 ">" punctuation.definition.bird-track.lidr
+26:1-2 " "
+26:2-37 "  roses are red {- not a comment -}" meta.embedded.block.idris2 string.quoted.triple.idris2
+27:0-1 ">" punctuation.definition.bird-track.lidr
+27:1-2 " "
+27:2-36 "  \"quoted\" -- not a comment either" meta.embedded.block.idris2 string.quoted.triple.idris2
+28:0-1 ">" punctuation.definition.bird-track.lidr
+28:1-2 " "
+28:2-4 "  " meta.embedded.block.idris2 string.quoted.triple.idris2
+28:4-7 "\"\"\"" meta.embedded.block.idris2 string.quoted.triple.idris2 punctuation.definition.string.end.idris2
+29:0-1 ">" punctuation.definition.bird-track.lidr
+29:1-2 " "
+29:2-7 "after" meta.embedded.block.idris2 entity.name.function.idris2
+29:7-8 " " meta.embedded.block.idris2
+29:8-9 ":" meta.embedded.block.idris2 keyword.operator.colon.idris2
+29:9-10 " " meta.embedded.block.idris2
+29:10-13 "Nat" meta.embedded.block.idris2
+30:0-1 ">" punctuation.definition.bird-track.lidr
+30:1-2 " "
+30:2-7 "after" meta.embedded.block.idris2
+30:7-8 " " meta.embedded.block.idris2
+30:8-9 "=" meta.embedded.block.idris2 keyword.operator.equals.idris2
+30:9-10 " " meta.embedded.block.idris2
+30:10-16 "answer" meta.embedded.block.idris2
+32:0-78 "A list, a data declaration and a multi-line string, each interrupted by prose." meta.embedded.block.idris2 meta.prose.lidr
+33:0-76 "The compiler reads a prose line as an empty line, so each of them continues:" meta.embedded.block.idris2 meta.prose.lidr
+35:0-1 ">" punctuation.definition.bird-track.lidr
+35:1-2 " "
+35:2-9 "numbers" meta.embedded.block.idris2 entity.name.function.idris2
+35:9-10 " " meta.embedded.block.idris2
+35:10-11 ":" meta.embedded.block.idris2 keyword.operator.colon.idris2
+35:11-12 " " meta.embedded.block.idris2
+35:12-16 "List" meta.embedded.block.idris2
+35:16-17 " " meta.embedded.block.idris2
+35:17-20 "Nat" meta.embedded.block.idris2
+36:0-1 ">" punctuation.definition.bird-track.lidr
+36:1-2 " "
+36:2-9 "numbers" meta.embedded.block.idris2
+36:9-10 " " meta.embedded.block.idris2
+36:10-11 "=" meta.embedded.block.idris2 keyword.operator.equals.idris2
+36:11-12 " " meta.embedded.block.idris2
+36:12-13 "[" meta.embedded.block.idris2 meta.brackets.idris2 punctuation.section.brackets.begin.idris2
+36:13-14 " " meta.embedded.block.idris2 meta.brackets.idris2
+36:14-15 "1" meta.embedded.block.idris2 meta.brackets.idris2 constant.numeric.integer.decimal.idris2
+37:0-37 "The second element follows this line." meta.embedded.block.idris2 meta.brackets.idris2 meta.prose.lidr
+38:0-1 ">" punctuation.definition.bird-track.lidr
+38:1-2 " "
+38:2-12 "          " meta.embedded.block.idris2 meta.brackets.idris2
+38:12-13 "," meta.embedded.block.idris2 meta.brackets.idris2 punctuation.separator.comma.idris2
+38:13-14 " " meta.embedded.block.idris2 meta.brackets.idris2
+38:14-15 "2" meta.embedded.block.idris2 meta.brackets.idris2 constant.numeric.integer.decimal.idris2
+38:15-16 " " meta.embedded.block.idris2 meta.brackets.idris2
+38:16-17 "]" meta.embedded.block.idris2 meta.brackets.idris2 punctuation.section.brackets.end.idris2
+40:0-1 ">" punctuation.definition.bird-track.lidr
+40:1-2 " "
+40:2-6 "data" meta.embedded.block.idris2 meta.declaration.data.idris2 storage.type.data.idris2
+40:6-7 " " meta.embedded.block.idris2 meta.declaration.data.idris2
+40:7-18 "Interrupted" meta.embedded.block.idris2 meta.declaration.data.idris2 entity.name.type.data.idris2
+40:18-19 " " meta.embedded.block.idris2 meta.declaration.data.idris2
+40:19-20 "=" meta.embedded.block.idris2 meta.declaration.data.idris2 keyword.operator.equals.idris2
+40:20-21 " " meta.embedded.block.idris2 meta.declaration.data.idris2
+40:21-26 "First" meta.embedded.block.idris2 meta.declaration.data.idris2 entity.name.function.constructor.idris2
+41:0-23 "The second constructor:" meta.embedded.block.idris2 meta.declaration.data.idris2 meta.prose.lidr
+42:0-1 ">" punctuation.definition.bird-track.lidr
+42:1-2 " "
+42:2-19 "                 " meta.embedded.block.idris2 meta.declaration.data.idris2
+42:19-20 "|" meta.embedded.block.idris2 meta.declaration.data.idris2 keyword.operator.pipe.idris2
+42:20-21 " " meta.embedded.block.idris2 meta.declaration.data.idris2
+42:21-27 "Second" meta.embedded.block.idris2 meta.declaration.data.idris2 entity.name.function.constructor.idris2
+44:0-1 ">" punctuation.definition.bird-track.lidr
+44:1-2 " "
+44:2-7 "verse" meta.embedded.block.idris2 entity.name.function.idris2
+44:7-8 " " meta.embedded.block.idris2
+44:8-9 ":" meta.embedded.block.idris2 keyword.operator.colon.idris2
+44:9-10 " " meta.embedded.block.idris2
+44:10-16 "String" meta.embedded.block.idris2 support.type.primitive.idris2
+45:0-1 ">" punctuation.definition.bird-track.lidr
+45:1-2 " "
+45:2-7 "verse" meta.embedded.block.idris2
+45:7-8 " " meta.embedded.block.idris2
+45:8-9 "=" meta.embedded.block.idris2 keyword.operator.equals.idris2
+45:9-10 " " meta.embedded.block.idris2
+45:10-13 "\"\"\"" meta.embedded.block.idris2 string.quoted.triple.idris2 punctuation.definition.string.begin.idris2
+46:0-1 ">" punctuation.definition.bird-track.lidr
+46:1-2 " "
+46:2-17 "  roses are red" meta.embedded.block.idris2 string.quoted.triple.idris2
+47:0-37 "A remark in the middle of the string." meta.embedded.block.idris2 string.quoted.triple.idris2 meta.prose.lidr
+48:0-1 ">" punctuation.definition.bird-track.lidr
+48:1-2 " "
+48:2-20 "  violets are blue" meta.embedded.block.idris2 string.quoted.triple.idris2
+49:0-1 ">" punctuation.definition.bird-track.lidr
+49:1-2 " "
+49:2-4 "  " meta.embedded.block.idris2 string.quoted.triple.idris2
+49:4-7 "\"\"\"" meta.embedded.block.idris2 string.quoted.triple.idris2 punctuation.definition.string.end.idris2
+50:0-1 ">" punctuation.definition.bird-track.lidr
+50:1-2 " "
+50:2-12 "afterVerse" meta.embedded.block.idris2 entity.name.function.idris2
+50:12-13 " " meta.embedded.block.idris2
+50:13-14 ":" meta.embedded.block.idris2 keyword.operator.colon.idris2
+50:14-15 " " meta.embedded.block.idris2
+50:15-18 "Nat" meta.embedded.block.idris2
+51:0-1 ">" punctuation.definition.bird-track.lidr
+51:1-2 " "
+51:2-12 "afterVerse" meta.embedded.block.idris2
+51:12-13 " " meta.embedded.block.idris2
+51:13-14 "=" meta.embedded.block.idris2 keyword.operator.equals.idris2
+51:14-15 " " meta.embedded.block.idris2
+51:15-16 "1" meta.embedded.block.idris2 constant.numeric.integer.decimal.idris2
+53:0-8 "The end." meta.embedded.block.idris2 meta.prose.lidr

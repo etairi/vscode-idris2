@@ -1,0 +1,225 @@
+# vscode-textmate snapshot. One token per line: LINE:START-END "text" scopes (0-based,
+# end exclusive, root scope omitted). Regenerate with UPDATE_SNAPSHOTS=1.
+0:0-3 "|||" comment.line.documentation.idris2 punctuation.definition.comment.idris2
+0:3-85 " Numeric and character literals (src/Parser/Lexer/Source.idr rawTokens: doubleLit," comment.line.documentation.idris2
+1:0-3 "|||" comment.line.documentation.idris2 punctuation.definition.comment.idris2
+1:3-92 " binUnderscoredLit, hexUnderscoredLit, octUnderscoredLit, digitsUnderscoredLit, charLit)." comment.line.documentation.idris2
+2:0-6 "module" keyword.other.module.idris2
+2:6-7 " "
+2:7-15 "Literals" entity.name.namespace.idris2
+4:0-7 "decimal" entity.name.function.idris2
+4:7-8 " "
+4:8-9 ":" keyword.operator.colon.idris2
+4:9-10 " "
+4:10-17 "Integer" support.type.primitive.idris2
+5:0-7 "decimal"
+5:7-8 " "
+5:8-9 "=" keyword.operator.equals.idris2
+5:9-10 " "
+5:10-19 "1_000_000" constant.numeric.integer.decimal.idris2
+5:19-20 " "
+5:20-21 "+" keyword.operator.idris2
+5:21-22 " "
+5:22-24 "42" constant.numeric.integer.decimal.idris2
+5:24-25 " "
+5:25-26 "+" keyword.operator.idris2
+5:26-27 " "
+5:27-28 "0" constant.numeric.integer.decimal.idris2
+7:0-11 "hexadecimal" entity.name.function.idris2
+7:11-12 " "
+7:12-13 ":" keyword.operator.colon.idris2
+7:13-14 " "
+7:14-21 "Integer" support.type.primitive.idris2
+8:0-11 "hexadecimal"
+8:11-12 " "
+8:12-13 "=" keyword.operator.equals.idris2
+8:13-14 " "
+8:14-21 "0xFF_FF" constant.numeric.integer.hexadecimal.idris2
+8:21-22 " "
+8:22-23 "+" keyword.operator.idris2
+8:23-24 " "
+8:24-28 "0XAb" constant.numeric.integer.hexadecimal.idris2
+10:0-5 "octal" entity.name.function.idris2
+10:5-6 " "
+10:6-7 ":" keyword.operator.colon.idris2
+10:7-8 " "
+10:8-15 "Integer" support.type.primitive.idris2
+11:0-5 "octal"
+11:5-6 " "
+11:6-7 "=" keyword.operator.equals.idris2
+11:7-8 " "
+11:8-14 "0o7_55" constant.numeric.integer.octal.idris2
+13:0-6 "binary" entity.name.function.idris2
+13:6-7 " "
+13:7-8 ":" keyword.operator.colon.idris2
+13:8-9 " "
+13:9-16 "Integer" support.type.primitive.idris2
+14:0-6 "binary"
+14:6-7 " "
+14:7-8 "=" keyword.operator.equals.idris2
+14:8-9 " "
+14:9-20 "0b1010_0101" constant.numeric.integer.binary.idris2
+16:0-8 "floating" entity.name.function.idris2
+16:8-9 " "
+16:9-10 ":" keyword.operator.colon.idris2
+16:10-11 " "
+16:11-17 "Double" support.type.primitive.idris2
+17:0-8 "floating"
+17:8-9 " "
+17:9-10 "=" keyword.operator.equals.idris2
+17:10-11 " "
+17:11-15 "3.25" constant.numeric.float.idris2
+17:15-16 " "
+17:16-17 "+" keyword.operator.idris2
+17:17-18 " "
+17:18-24 "1.5e-3" constant.numeric.float.idris2
+17:24-25 " "
+17:25-26 "+" keyword.operator.idris2
+17:26-27 " "
+17:27-33 "2.0e+2" constant.numeric.float.idris2
+17:33-34 " "
+17:34-35 "+" keyword.operator.idris2
+17:35-36 " "
+17:36-43 "6.02e23" constant.numeric.float.idris2
+19:0-5 "chars" entity.name.function.idris2
+19:5-6 " "
+19:6-7 ":" keyword.operator.colon.idris2
+19:7-8 " "
+19:8-12 "List"
+19:12-13 " "
+19:13-17 "Char" support.type.primitive.idris2
+20:0-5 "chars"
+20:5-6 " "
+20:6-7 "=" keyword.operator.equals.idris2
+20:7-8 " "
+20:8-9 "[" meta.brackets.idris2 punctuation.section.brackets.begin.idris2
+20:9-10 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.begin.idris2
+20:10-11 "a" meta.brackets.idris2 constant.character.idris2
+20:11-12 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.end.idris2
+20:12-13 "," meta.brackets.idris2 punctuation.separator.comma.idris2
+20:13-14 " " meta.brackets.idris2
+20:14-15 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.begin.idris2
+20:15-16 "λ" meta.brackets.idris2 constant.character.idris2
+20:16-17 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.end.idris2
+20:17-18 "," meta.brackets.idris2 punctuation.separator.comma.idris2
+20:18-19 " " meta.brackets.idris2
+20:19-20 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.begin.idris2
+20:20-22 "\\'" meta.brackets.idris2 constant.character.idris2 constant.character.escape.idris2
+20:22-23 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.end.idris2
+20:23-24 "," meta.brackets.idris2 punctuation.separator.comma.idris2
+20:24-25 " " meta.brackets.idris2
+20:25-26 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.begin.idris2
+20:26-28 "\\\\" meta.brackets.idris2 constant.character.idris2 constant.character.escape.idris2
+20:28-29 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.end.idris2
+20:29-30 "," meta.brackets.idris2 punctuation.separator.comma.idris2
+20:30-31 " " meta.brackets.idris2
+20:31-32 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.begin.idris2
+20:32-33 "\"" meta.brackets.idris2 constant.character.idris2
+20:33-34 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.end.idris2
+20:34-35 "," meta.brackets.idris2 punctuation.separator.comma.idris2
+20:35-36 " " meta.brackets.idris2
+20:36-37 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.begin.idris2
+20:37-39 "\\n" meta.brackets.idris2 constant.character.idris2 constant.character.escape.idris2
+20:39-40 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.end.idris2
+20:40-41 "," meta.brackets.idris2 punctuation.separator.comma.idris2
+20:41-42 " " meta.brackets.idris2
+20:42-43 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.begin.idris2
+20:43-45 "\\t" meta.brackets.idris2 constant.character.idris2 constant.character.escape.idris2
+20:45-46 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.end.idris2
+20:46-47 "," meta.brackets.idris2 punctuation.separator.comma.idris2
+20:47-48 " " meta.brackets.idris2
+20:48-49 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.begin.idris2
+20:49-53 "\\x41" meta.brackets.idris2 constant.character.idris2 constant.character.escape.idris2
+20:53-54 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.end.idris2
+20:54-55 "," meta.brackets.idris2 punctuation.separator.comma.idris2
+20:55-56 " " meta.brackets.idris2
+20:56-57 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.begin.idris2
+20:57-62 "\\o101" meta.brackets.idris2 constant.character.idris2 constant.character.escape.idris2
+20:62-63 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.end.idris2
+20:63-64 "," meta.brackets.idris2 punctuation.separator.comma.idris2
+20:64-65 " " meta.brackets.idris2
+20:65-66 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.begin.idris2
+20:66-69 "\\65" meta.brackets.idris2 constant.character.idris2 constant.character.escape.idris2
+20:69-70 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.end.idris2
+20:70-71 "," meta.brackets.idris2 punctuation.separator.comma.idris2
+20:71-72 " " meta.brackets.idris2
+20:72-73 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.begin.idris2
+20:73-77 "\\NUL" meta.brackets.idris2 constant.character.idris2 constant.character.escape.idris2
+20:77-78 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.end.idris2
+20:78-79 "," meta.brackets.idris2 punctuation.separator.comma.idris2
+20:79-80 " " meta.brackets.idris2
+20:80-81 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.begin.idris2
+20:81-85 "\\SOH" meta.brackets.idris2 constant.character.idris2 constant.character.escape.idris2
+20:85-86 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.end.idris2
+20:86-87 "," meta.brackets.idris2 punctuation.separator.comma.idris2
+20:87-88 " " meta.brackets.idris2
+20:88-89 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.begin.idris2
+20:89-92 "\\SO" meta.brackets.idris2 constant.character.idris2 constant.character.escape.idris2
+20:92-93 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.end.idris2
+20:93-94 "," meta.brackets.idris2 punctuation.separator.comma.idris2
+20:94-95 " " meta.brackets.idris2
+20:95-96 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.begin.idris2
+20:96-100 "\\DEL" meta.brackets.idris2 constant.character.idris2 constant.character.escape.idris2
+20:100-101 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.end.idris2
+20:101-102 "," meta.brackets.idris2 punctuation.separator.comma.idris2
+20:102-103 " " meta.brackets.idris2
+20:103-104 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.begin.idris2
+20:104-106 "\\&" meta.brackets.idris2 constant.character.idris2 constant.character.escape.idris2
+20:106-107 "'" meta.brackets.idris2 constant.character.idris2 punctuation.definition.character.end.idris2
+20:107-108 "]" meta.brackets.idris2 punctuation.section.brackets.end.idris2
+22:0-2 "--" comment.line.double-dash.idris2 punctuation.definition.comment.idris2
+22:2-87 " Primes belong to identifiers; a quote at the start of a token begins a char literal." comment.line.double-dash.idris2
+23:0-6 "primed" entity.name.function.idris2
+23:6-7 " "
+23:7-8 ":" keyword.operator.colon.idris2
+23:8-9 " "
+23:9-13 "Char" support.type.primitive.idris2
+23:13-14 " "
+23:14-16 "->" keyword.operator.arrow.idris2
+23:16-17 " "
+23:17-21 "Char" support.type.primitive.idris2
+24:0-6 "primed"
+24:6-7 " "
+24:7-9 "x'"
+24:9-10 " "
+24:10-11 "=" keyword.operator.equals.idris2
+24:11-12 " "
+24:12-14 "x'"
+26:0-4 "x'y'" entity.name.function.idris2
+26:4-5 " "
+26:5-6 ":" keyword.operator.colon.idris2
+26:6-7 " "
+26:7-11 "Char" support.type.primitive.idris2
+27:0-4 "x'y'"
+27:4-5 " "
+27:5-6 "=" keyword.operator.equals.idris2
+27:6-7 " "
+27:7-8 "'" constant.character.idris2 punctuation.definition.character.begin.idris2
+27:8-9 "y" constant.character.idris2
+27:9-10 "'" constant.character.idris2 punctuation.definition.character.end.idris2
+29:0-2 "--" comment.line.double-dash.idris2 punctuation.definition.comment.idris2
+29:2-78 " 0 and 1 are ordinary literals in expressions and multiplicities in binders." comment.line.double-dash.idris2
+30:0-25 "literalsNotMultiplicities" entity.name.function.idris2
+30:25-26 " "
+30:26-27 ":" keyword.operator.colon.idris2
+30:27-28 " "
+30:28-32 "List"
+30:32-33 " "
+30:33-36 "Nat"
+31:0-25 "literalsNotMultiplicities"
+31:25-26 " "
+31:26-27 "=" keyword.operator.equals.idris2
+31:27-28 " "
+31:28-29 "[" meta.brackets.idris2 punctuation.section.brackets.begin.idris2
+31:29-30 "0" meta.brackets.idris2 constant.numeric.integer.decimal.idris2
+31:30-31 "," meta.brackets.idris2 punctuation.separator.comma.idris2
+31:31-32 " " meta.brackets.idris2
+31:32-33 "1" meta.brackets.idris2 constant.numeric.integer.decimal.idris2
+31:33-34 "," meta.brackets.idris2 punctuation.separator.comma.idris2
+31:34-35 " " meta.brackets.idris2
+31:35-36 "0" meta.brackets.idris2 constant.numeric.integer.decimal.idris2
+31:36-37 " " meta.brackets.idris2
+31:37-38 "+" meta.brackets.idris2 keyword.operator.idris2
+31:38-39 " " meta.brackets.idris2
+31:39-40 "1" meta.brackets.idris2 constant.numeric.integer.decimal.idris2
+31:40-41 "]" meta.brackets.idris2 punctuation.section.brackets.end.idris2

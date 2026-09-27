@@ -1,0 +1,2243 @@
+# vscode-textmate snapshot. One token per line: LINE:START-END "text" scopes (0-based,
+# end exclusive, root scope omitted). Regenerate with UPDATE_SNAPSHOTS=1.
+0:0-3 "|||" comment.line.documentation.idris2 punctuation.definition.comment.idris2
+0:3-93 " Expressions: binding forms, control flow, operators, brackets, arguments, record updates," comment.line.documentation.idris2
+1:0-3 "|||" comment.line.documentation.idris2 punctuation.definition.comment.idris2
+1:3-79 " holes and projections (src/Idris/Parser.idr expr, simpleExpr, simplerExpr)." comment.line.documentation.idris2
+2:0-6 "module" keyword.other.module.idris2
+2:6-7 " "
+2:7-18 "Expressions" entity.name.namespace.idris2
+4:0-6 "import" keyword.control.import.idris2
+4:6-7 " "
+4:7-11 "Data" entity.name.namespace.idris2
+4:11-12 "." entity.name.namespace.idris2 punctuation.separator.namespace.idris2
+4:12-15 "Fin" entity.name.namespace.idris2
+5:0-6 "import" keyword.control.import.idris2
+5:6-7 " "
+5:7-11 "Data" entity.name.namespace.idris2
+5:11-12 "." entity.name.namespace.idris2 punctuation.separator.namespace.idris2
+5:12-16 "List" entity.name.namespace.idris2
+6:0-6 "import" keyword.control.import.idris2
+6:6-7 " "
+6:7-11 "Data" entity.name.namespace.idris2
+6:11-12 "." entity.name.namespace.idris2 punctuation.separator.namespace.idris2
+6:12-15 "Nat" entity.name.namespace.idris2
+7:0-6 "import" keyword.control.import.idris2
+7:6-7 " "
+7:7-11 "Data" entity.name.namespace.idris2
+7:11-12 "." entity.name.namespace.idris2 punctuation.separator.namespace.idris2
+7:12-20 "SnocList" entity.name.namespace.idris2
+8:0-6 "import" keyword.control.import.idris2
+8:6-7 " "
+8:7-11 "Data" entity.name.namespace.idris2
+8:11-12 "." entity.name.namespace.idris2 punctuation.separator.namespace.idris2
+8:12-16 "Vect" entity.name.namespace.idris2
+10:0-8 "%default" keyword.other.directive.idris2
+10:8-9 " "
+10:9-14 "total" storage.modifier.totality.idris2
+12:0-7 "private" storage.modifier.visibility.idris2
+12:7-8 " "
+12:8-14 "infixl" keyword.other.fixity.idris2
+12:14-15 " "
+12:15-16 "1" constant.numeric.integer.decimal.idris2
+12:16-17 " "
+12:17-20 "|:>" keyword.operator.idris2
+14:0-1 "(" punctuation.section.parens.begin.idris2
+14:1-4 "|:>" entity.name.function.idris2
+14:4-5 ")" punctuation.section.parens.end.idris2
+14:5-6 " "
+14:6-7 ":" keyword.operator.colon.idris2
+14:7-8 " "
+14:8-9 "a"
+14:9-10 " "
+14:10-12 "->" keyword.operator.arrow.idris2
+14:12-13 " "
+14:13-14 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+14:14-15 "a" meta.parens.idris2
+14:15-16 " " meta.parens.idris2
+14:16-18 "->" meta.parens.idris2 keyword.operator.arrow.idris2
+14:18-19 " " meta.parens.idris2
+14:19-20 "b" meta.parens.idris2
+14:20-21 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+14:21-22 " "
+14:22-24 "->" keyword.operator.arrow.idris2
+14:24-25 " "
+14:25-26 "b"
+15:0-1 "x"
+15:1-2 " "
+15:2-5 "|:>" keyword.operator.idris2
+15:5-6 " "
+15:6-7 "f"
+15:7-8 " "
+15:8-9 "=" keyword.operator.equals.idris2
+15:9-10 " "
+15:10-11 "f"
+15:11-12 " "
+15:12-13 "x"
+17:0-6 "record" storage.type.record.idris2
+17:6-7 " "
+17:7-12 "Point" entity.name.type.record.idris2
+17:12-13 " "
+17:13-18 "where" keyword.other.where.idris2
+18:0-2 "  "
+18:2-13 "constructor" keyword.other.constructor.idris2
+18:13-14 " "
+18:14-21 "MkPoint" entity.name.function.constructor.idris2
+19:0-2 "  "
+19:2-4 "px" entity.name.function.idris2
+19:4-5 " "
+19:5-6 ":" keyword.operator.colon.idris2
+19:6-7 " "
+19:7-10 "Nat"
+20:0-2 "  "
+20:2-4 "py" entity.name.function.idris2
+20:4-5 " "
+20:5-6 ":" keyword.operator.colon.idris2
+20:6-7 " "
+20:7-10 "Nat"
+22:0-9 "linearLet" entity.name.function.idris2
+22:9-10 " "
+22:10-11 ":" keyword.operator.colon.idris2
+22:11-12 " "
+22:12-13 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+22:13-14 "1" meta.parens.idris2 storage.modifier.multiplicity.idris2
+22:14-15 " " meta.parens.idris2
+22:15-16 "n" meta.parens.idris2 variable.parameter.idris2
+22:16-17 " " meta.parens.idris2
+22:17-18 ":" meta.parens.idris2 keyword.operator.colon.idris2
+22:18-19 " " meta.parens.idris2
+22:19-22 "Nat" meta.parens.idris2
+22:22-23 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+22:23-24 " "
+22:24-26 "->" keyword.operator.arrow.idris2
+22:26-27 " "
+22:27-30 "Nat"
+23:0-9 "linearLet"
+23:9-10 " "
+23:10-11 "n"
+23:11-12 " "
+23:12-13 "=" keyword.operator.equals.idris2
+23:13-14 " "
+23:14-17 "let" keyword.control.let.idris2
+23:17-18 " "
+23:18-19 "1" storage.modifier.multiplicity.idris2
+23:19-20 " "
+23:20-21 "k"
+23:21-22 " "
+23:22-23 "=" keyword.operator.equals.idris2
+23:23-24 " "
+23:24-25 "n"
+23:25-26 " "
+23:26-28 "in" keyword.control.let.idris2
+23:28-29 " "
+23:29-30 "k"
+25:0-8 "letBlock" entity.name.function.idris2
+25:8-9 " "
+25:9-10 ":" keyword.operator.colon.idris2
+25:10-11 " "
+25:11-14 "Nat"
+26:0-8 "letBlock"
+26:8-9 " "
+26:9-10 "=" keyword.operator.equals.idris2
+27:0-2 "  "
+27:2-5 "let" keyword.control.let.idris2
+27:5-6 " "
+27:6-7 "m"
+27:7-8 " "
+27:8-9 ":" keyword.operator.colon.idris2
+27:9-10 " "
+27:10-13 "Nat"
+28:0-6 "      "
+28:6-7 "m"
+28:7-8 " "
+28:8-9 "=" keyword.operator.equals.idris2
+28:9-10 " "
+28:10-11 "2" constant.numeric.integer.decimal.idris2
+29:0-6 "      "
+29:6-7 "k"
+29:7-8 " "
+29:8-9 "=" keyword.operator.equals.idris2
+29:9-10 " "
+29:10-11 "m"
+29:11-12 " "
+29:12-13 "+" keyword.operator.idris2
+29:13-14 " "
+29:14-15 "1" constant.numeric.integer.decimal.idris2
+30:0-2 "  "
+30:2-4 "in" keyword.control.let.idris2
+30:4-5 " "
+30:5-6 "k"
+32:0-5 "cases" entity.name.function.idris2
+32:5-6 " "
+32:6-7 ":" keyword.operator.colon.idris2
+32:7-8 " "
+32:8-11 "Nat"
+32:11-12 " "
+32:12-14 "->" keyword.operator.arrow.idris2
+32:14-15 " "
+32:15-19 "Bool"
+33:0-5 "cases"
+33:5-6 " "
+33:6-7 "n"
+33:7-8 " "
+33:8-9 "=" keyword.operator.equals.idris2
+33:9-10 " "
+33:10-14 "case" keyword.control.case.idris2
+33:14-15 " "
+33:15-16 "n"
+33:16-17 " "
+33:17-19 "of" keyword.control.case.idris2
+34:0-2 "  "
+34:2-3 "Z"
+34:3-4 " "
+34:4-6 "=>" keyword.operator.arrow.double.idris2
+34:6-7 " "
+34:7-11 "True"
+35:0-2 "  "
+35:2-3 "S"
+35:3-4 " "
+35:4-5 "_" variable.language.wildcard.idris2
+35:5-6 " "
+35:6-8 "=>" keyword.operator.arrow.double.idris2
+35:8-9 " "
+35:9-14 "False"
+37:0-10 "lambdaCase" entity.name.function.idris2
+37:10-11 " "
+37:11-12 ":" keyword.operator.colon.idris2
+37:12-13 " "
+37:13-16 "Nat"
+37:16-17 " "
+37:17-19 "->" keyword.operator.arrow.idris2
+37:19-20 " "
+37:20-24 "Bool"
+38:0-10 "lambdaCase"
+38:10-11 " "
+38:11-12 "=" keyword.operator.equals.idris2
+38:12-13 " "
+38:13-14 "\\" keyword.operator.lambda.idris2
+38:14-18 "case" keyword.control.case.idris2
+39:0-2 "  "
+39:2-3 "Z"
+39:3-4 " "
+39:4-6 "=>" keyword.operator.arrow.double.idris2
+39:6-7 " "
+39:7-11 "True"
+40:0-2 "  "
+40:2-3 "S"
+40:3-4 " "
+40:4-5 "_" variable.language.wildcard.idris2
+40:5-6 " "
+40:6-8 "=>" keyword.operator.arrow.double.idris2
+40:8-9 " "
+40:9-14 "False"
+42:0-11 "conditional" entity.name.function.idris2
+42:11-12 " "
+42:12-13 ":" keyword.operator.colon.idris2
+42:13-14 " "
+42:14-18 "Bool"
+42:18-19 " "
+42:19-21 "->" keyword.operator.arrow.idris2
+42:21-22 " "
+42:22-25 "Nat"
+43:0-11 "conditional"
+43:11-12 " "
+43:12-13 "b"
+43:13-14 " "
+43:14-15 "=" keyword.operator.equals.idris2
+43:15-16 " "
+43:16-18 "if" keyword.control.conditional.idris2
+43:18-19 " "
+43:19-20 "b"
+43:20-21 " "
+43:21-25 "then" keyword.control.conditional.idris2
+43:25-26 " "
+43:26-27 "1" constant.numeric.integer.decimal.idris2
+43:27-28 " "
+43:28-32 "else" keyword.control.conditional.idris2
+43:32-33 " "
+43:33-34 "0" constant.numeric.integer.decimal.idris2
+45:0-7 "lambdas" entity.name.function.idris2
+45:7-8 " "
+45:8-9 ":" keyword.operator.colon.idris2
+45:9-10 " "
+45:10-13 "Nat"
+45:13-14 " "
+45:14-16 "->" keyword.operator.arrow.idris2
+45:16-17 " "
+45:17-20 "Nat"
+45:20-21 " "
+45:21-23 "->" keyword.operator.arrow.idris2
+45:23-24 " "
+45:24-27 "Nat"
+46:0-7 "lambdas"
+46:7-8 " "
+46:8-9 "=" keyword.operator.equals.idris2
+46:9-10 " "
+46:10-11 "\\" keyword.operator.lambda.idris2
+46:11-12 "x" variable.parameter.idris2
+46:12-13 "," punctuation.separator.comma.idris2
+46:13-14 " "
+46:14-15 "y" variable.parameter.idris2
+46:15-16 " "
+46:16-18 "=>" keyword.operator.arrow.double.idris2
+46:18-19 " "
+46:19-20 "x"
+46:20-21 " "
+46:21-22 "+" keyword.operator.idris2
+46:22-23 " "
+46:23-24 "y"
+48:0-12 "erasedLambda" entity.name.function.idris2
+48:12-13 " "
+48:13-14 ":" keyword.operator.colon.idris2
+48:14-15 " "
+48:15-16 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+48:16-17 "0" meta.parens.idris2 storage.modifier.multiplicity.idris2
+48:17-18 " " meta.parens.idris2
+48:18-19 "_" meta.parens.idris2 variable.language.wildcard.idris2
+48:19-20 " " meta.parens.idris2
+48:20-21 ":" meta.parens.idris2 keyword.operator.colon.idris2
+48:21-22 " " meta.parens.idris2
+48:22-25 "Nat" meta.parens.idris2
+48:25-26 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+48:26-27 " "
+48:27-29 "->" keyword.operator.arrow.idris2
+48:29-30 " "
+48:30-33 "Nat"
+49:0-12 "erasedLambda"
+49:12-13 " "
+49:13-14 "=" keyword.operator.equals.idris2
+49:14-15 " "
+49:15-16 "\\" keyword.operator.lambda.idris2
+49:16-17 "0" storage.modifier.multiplicity.idris2
+49:17-18 " "
+49:18-19 "x" variable.parameter.idris2
+49:19-20 " "
+49:20-22 "=>" keyword.operator.arrow.double.idris2
+49:22-23 " "
+49:23-24 "1" constant.numeric.integer.decimal.idris2
+51:0-7 "doBlock" entity.name.function.idris2
+51:7-8 " "
+51:8-9 ":" keyword.operator.colon.idris2
+51:9-10 " "
+51:10-15 "Maybe"
+51:15-16 " "
+51:16-19 "Nat"
+52:0-7 "doBlock"
+52:7-8 " "
+52:8-9 "=" keyword.operator.equals.idris2
+52:9-10 " "
+52:10-12 "do" keyword.control.do.idris2
+53:0-2 "  "
+53:2-3 "x"
+53:3-4 " "
+53:4-6 "<-" keyword.operator.arrow.left.idris2
+53:6-7 " "
+53:7-11 "Just"
+53:11-12 " "
+53:12-13 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+53:13-16 "the" meta.parens.idris2
+53:16-17 " " meta.parens.idris2
+53:17-20 "Nat" meta.parens.idris2
+53:20-21 " " meta.parens.idris2
+53:21-22 "1" meta.parens.idris2 constant.numeric.integer.decimal.idris2
+53:22-23 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+54:0-2 "  "
+54:2-5 "let" keyword.control.let.idris2
+54:5-6 " "
+54:6-7 "y"
+54:7-8 " "
+54:8-9 "=" keyword.operator.equals.idris2
+54:9-10 " "
+54:10-11 "x"
+54:11-12 " "
+54:12-13 "+" keyword.operator.idris2
+54:13-14 " "
+54:14-15 "1" constant.numeric.integer.decimal.idris2
+55:0-2 "  "
+55:2-3 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+55:3-4 "a" meta.parens.idris2
+55:4-5 "," meta.parens.idris2 punctuation.separator.comma.idris2
+55:5-6 " " meta.parens.idris2
+55:6-7 "b" meta.parens.idris2
+55:7-8 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+55:8-9 " "
+55:9-11 "<-" keyword.operator.arrow.left.idris2
+55:11-12 " "
+55:12-16 "Just"
+55:16-17 " "
+55:17-18 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+55:18-19 "y" meta.parens.idris2
+55:19-20 "," meta.parens.idris2 punctuation.separator.comma.idris2
+55:20-21 " " meta.parens.idris2
+55:21-22 "y" meta.parens.idris2
+55:22-23 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+56:0-2 "  "
+56:2-6 "Just"
+56:6-7 " "
+56:7-8 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+56:8-9 "a" meta.parens.idris2
+56:9-10 " " meta.parens.idris2
+56:10-11 "+" meta.parens.idris2 keyword.operator.idris2
+56:11-12 " " meta.parens.idris2
+56:12-13 "b" meta.parens.idris2
+56:13-14 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+58:0-9 "namespace" keyword.other.namespace.idris2
+58:9-10 " "
+58:10-13 "Opt" entity.name.namespace.idris2
+59:0-2 "  "
+59:2-8 "export" storage.modifier.visibility.idris2
+60:0-2 "  "
+60:2-3 "(" punctuation.section.parens.begin.idris2
+60:3-6 ">>=" entity.name.function.idris2
+60:6-7 ")" punctuation.section.parens.end.idris2
+60:7-8 " "
+60:8-9 ":" keyword.operator.colon.idris2
+60:9-10 " "
+60:10-15 "Maybe"
+60:15-16 " "
+60:16-17 "a"
+60:17-18 " "
+60:18-20 "->" keyword.operator.arrow.idris2
+60:20-21 " "
+60:21-22 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+60:22-23 "a" meta.parens.idris2
+60:23-24 " " meta.parens.idris2
+60:24-26 "->" meta.parens.idris2 keyword.operator.arrow.idris2
+60:26-27 " " meta.parens.idris2
+60:27-32 "Maybe" meta.parens.idris2
+60:32-33 " " meta.parens.idris2
+60:33-34 "b" meta.parens.idris2
+60:34-35 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+60:35-36 " "
+60:36-38 "->" keyword.operator.arrow.idris2
+60:38-39 " "
+60:39-44 "Maybe"
+60:44-45 " "
+60:45-46 "b"
+61:0-2 "  "
+61:2-3 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+61:3-6 ">>=" meta.parens.idris2 keyword.operator.idris2
+61:6-7 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+61:7-8 " "
+61:8-9 "=" keyword.operator.equals.idris2
+61:9-10 " "
+61:10-17 "Prelude" entity.name.namespace.idris2
+61:17-19 ".(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+61:19-22 ">>=" meta.parens.idris2 keyword.operator.idris2
+61:22-23 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+63:0-11 "qualifiedDo" entity.name.function.idris2
+63:11-12 " "
+63:12-13 ":" keyword.operator.colon.idris2
+63:13-14 " "
+63:14-19 "Maybe"
+63:19-20 " "
+63:20-23 "Nat"
+64:0-11 "qualifiedDo"
+64:11-12 " "
+64:12-13 "=" keyword.operator.equals.idris2
+64:13-14 " "
+64:14-17 "Opt" entity.name.namespace.idris2
+64:17-18 "." punctuation.separator.namespace.idris2
+64:18-20 "do" keyword.control.do.idris2
+65:0-2 "  "
+65:2-3 "x"
+65:3-4 " "
+65:4-6 "<-" keyword.operator.arrow.left.idris2
+65:6-7 " "
+65:7-11 "Just"
+65:11-12 " "
+65:12-13 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+65:13-16 "the" meta.parens.idris2
+65:16-17 " " meta.parens.idris2
+65:17-20 "Nat" meta.parens.idris2
+65:20-21 " " meta.parens.idris2
+65:21-22 "1" meta.parens.idris2 constant.numeric.integer.decimal.idris2
+65:22-23 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+66:0-2 "  "
+66:2-6 "Just"
+66:6-7 " "
+66:7-8 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+66:8-9 "x" meta.parens.idris2
+66:9-10 " " meta.parens.idris2
+66:10-11 "+" meta.parens.idris2 keyword.operator.idris2
+66:11-12 " " meta.parens.idris2
+66:12-13 "1" meta.parens.idris2 constant.numeric.integer.decimal.idris2
+66:13-14 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+68:0-8 "withView" entity.name.function.idris2
+68:8-9 " "
+68:9-10 ":" keyword.operator.colon.idris2
+68:10-11 " "
+68:11-15 "List"
+68:15-16 " "
+68:16-19 "Nat"
+68:19-20 " "
+68:20-22 "->" keyword.operator.arrow.idris2
+68:22-23 " "
+68:23-26 "Nat"
+69:0-8 "withView"
+69:8-9 " "
+69:9-11 "xs"
+69:11-12 " "
+69:12-16 "with" keyword.control.with.idris2
+69:16-17 " "
+69:17-18 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+69:18-20 "xs" meta.parens.idris2
+69:20-21 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+70:0-2 "  "
+70:2-10 "withView"
+70:10-11 " "
+70:11-13 "xs"
+70:13-14 " "
+70:14-15 "|" keyword.operator.pipe.idris2
+70:15-16 " "
+70:16-17 "[" meta.brackets.idris2 punctuation.section.brackets.begin.idris2
+70:17-18 "]" meta.brackets.idris2 punctuation.section.brackets.end.idris2
+70:18-19 " "
+70:19-20 "=" keyword.operator.equals.idris2
+70:20-21 " "
+70:21-22 "0" constant.numeric.integer.decimal.idris2
+71:0-2 "  "
+71:2-10 "withView"
+71:10-11 " "
+71:11-13 "xs"
+71:13-14 " "
+71:14-15 "|" keyword.operator.pipe.idris2
+71:15-16 " "
+71:16-17 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+71:17-18 "y" meta.parens.idris2
+71:18-19 " " meta.parens.idris2
+71:19-21 "::" meta.parens.idris2 keyword.operator.idris2
+71:21-22 " " meta.parens.idris2
+71:22-23 "_" meta.parens.idris2 variable.language.wildcard.idris2
+71:23-24 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+71:24-25 " "
+71:25-26 "=" keyword.operator.equals.idris2
+71:26-27 " "
+71:27-28 "y"
+73:0-9 "withProof" entity.name.function.idris2
+73:9-10 " "
+73:10-11 ":" keyword.operator.colon.idris2
+73:11-12 " "
+73:12-13 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+73:13-14 "n" meta.parens.idris2 variable.parameter.idris2
+73:14-15 " " meta.parens.idris2
+73:15-16 ":" meta.parens.idris2 keyword.operator.colon.idris2
+73:16-17 " " meta.parens.idris2
+73:17-20 "Nat" meta.parens.idris2
+73:20-21 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+73:21-22 " "
+73:22-24 "->" keyword.operator.arrow.idris2
+73:24-25 " "
+73:25-28 "Nat"
+74:0-9 "withProof"
+74:9-10 " "
+74:10-11 "n"
+74:11-12 " "
+74:12-16 "with" keyword.control.with.idris2
+74:16-17 " "
+74:17-18 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+74:18-19 "n" meta.parens.idris2
+74:19-20 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+74:20-21 " "
+74:21-26 "proof" keyword.control.with.idris2
+74:26-27 " "
+74:27-29 "eq" variable.parameter.idris2
+75:0-2 "  "
+75:2-11 "withProof"
+75:11-12 " "
+75:12-13 "n"
+75:13-14 " "
+75:14-15 "|" keyword.operator.pipe.idris2
+75:15-16 " "
+75:16-17 "Z"
+75:17-18 " "
+75:18-19 "=" keyword.operator.equals.idris2
+75:19-20 " "
+75:20-21 "0" constant.numeric.integer.decimal.idris2
+76:0-2 "  "
+76:2-11 "withProof"
+76:11-12 " "
+76:12-13 "n"
+76:13-14 " "
+76:14-15 "|" keyword.operator.pipe.idris2
+76:15-16 " "
+76:16-17 "S"
+76:17-18 " "
+76:18-19 "k"
+76:19-20 " "
+76:20-21 "=" keyword.operator.equals.idris2
+76:21-22 " "
+76:22-23 "k"
+78:0-14 "impossibleCase" entity.name.function.idris2
+78:14-15 " "
+78:15-16 ":" keyword.operator.colon.idris2
+78:16-17 " "
+78:17-20 "Fin"
+78:20-21 " "
+78:21-22 "0" constant.numeric.integer.decimal.idris2
+78:22-23 " "
+78:23-25 "->" keyword.operator.arrow.idris2
+78:25-26 " "
+78:26-30 "Void"
+79:0-14 "impossibleCase"
+79:14-15 " "
+79:15-17 "FZ"
+79:17-18 " "
+79:18-28 "impossible" keyword.control.impossible.idris2
+80:0-14 "impossibleCase"
+80:14-15 " "
+80:15-16 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+80:16-18 "FS" meta.parens.idris2
+80:18-19 " " meta.parens.idris2
+80:19-20 "_" meta.parens.idris2 variable.language.wildcard.idris2
+80:20-21 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+80:21-22 " "
+80:22-32 "impossible" keyword.control.impossible.idris2
+82:0-9 "rewriting" entity.name.function.idris2
+82:9-10 " "
+82:10-11 ":" keyword.operator.colon.idris2
+82:11-12 " "
+82:12-13 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+82:13-14 "n" meta.parens.idris2 variable.parameter.idris2
+82:14-15 " " meta.parens.idris2
+82:15-16 ":" meta.parens.idris2 keyword.operator.colon.idris2
+82:16-17 " " meta.parens.idris2
+82:17-20 "Nat" meta.parens.idris2
+82:20-21 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+82:21-22 " "
+82:22-24 "->" keyword.operator.arrow.idris2
+82:24-25 " "
+82:25-26 "n"
+82:26-27 " "
+82:27-28 "+" keyword.operator.idris2
+82:28-29 " "
+82:29-30 "0" constant.numeric.integer.decimal.idris2
+82:30-31 " "
+82:31-32 "=" keyword.operator.equals.idris2
+82:32-33 " "
+82:33-34 "n"
+83:0-9 "rewriting"
+83:9-10 " "
+83:10-11 "n"
+83:11-12 " "
+83:12-13 "=" keyword.operator.equals.idris2
+83:13-14 " "
+83:14-21 "rewrite" keyword.control.rewrite.idris2
+83:21-22 " "
+83:22-42 "plusZeroRightNeutral"
+83:42-43 " "
+83:43-44 "n"
+83:44-45 " "
+83:45-47 "in" keyword.control.let.idris2
+83:47-48 " "
+83:48-52 "Refl"
+85:0-9 "operators" entity.name.function.idris2
+85:9-10 " "
+85:10-11 ":" keyword.operator.colon.idris2
+85:11-12 " "
+85:12-15 "Nat"
+85:15-16 " "
+85:16-18 "->" keyword.operator.arrow.idris2
+85:18-19 " "
+85:19-22 "Nat"
+86:0-9 "operators"
+86:9-10 " "
+86:10-11 "n"
+86:11-12 " "
+86:12-13 "=" keyword.operator.equals.idris2
+86:13-14 " "
+86:14-15 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+86:15-16 "+" meta.parens.idris2 keyword.operator.idris2
+86:16-17 " " meta.parens.idris2
+86:17-18 "1" meta.parens.idris2 constant.numeric.integer.decimal.idris2
+86:18-19 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+86:19-20 " "
+86:20-21 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+86:21-22 "n" meta.parens.idris2
+86:22-23 " " meta.parens.idris2
+86:23-24 "*" meta.parens.idris2 keyword.operator.idris2
+86:24-25 " " meta.parens.idris2
+86:25-26 "2" meta.parens.idris2 constant.numeric.integer.decimal.idris2
+86:26-27 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+86:27-28 " "
+86:28-31 "|:>" keyword.operator.idris2
+86:31-32 " "
+86:32-33 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+86:33-34 "`" meta.parens.idris2 keyword.operator.infix.idris2 punctuation.definition.infix.begin.idris2
+86:34-39 "minus" meta.parens.idris2 keyword.operator.infix.idris2
+86:39-40 "`" meta.parens.idris2 keyword.operator.infix.idris2 punctuation.definition.infix.end.idris2
+86:40-41 " " meta.parens.idris2
+86:41-42 "1" meta.parens.idris2 constant.numeric.integer.decimal.idris2
+86:42-43 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+86:43-44 " "
+86:44-47 "|:>" keyword.operator.idris2
+86:47-48 " "
+86:48-49 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+86:49-51 "10" meta.parens.idris2 constant.numeric.integer.decimal.idris2
+86:51-52 " " meta.parens.idris2
+86:52-53 "`" meta.parens.idris2 keyword.operator.infix.idris2 punctuation.definition.infix.begin.idris2
+86:53-56 "max" meta.parens.idris2 keyword.operator.infix.idris2
+86:56-57 "`" meta.parens.idris2 keyword.operator.infix.idris2 punctuation.definition.infix.end.idris2
+86:57-58 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+86:58-59 " "
+86:59-62 "|:>" keyword.operator.idris2
+86:62-63 " "
+86:63-64 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+86:64-65 "\\" meta.parens.idris2 keyword.operator.lambda.idris2
+86:65-66 "k" meta.parens.idris2 variable.parameter.idris2
+86:66-67 " " meta.parens.idris2
+86:67-69 "=>" meta.parens.idris2 keyword.operator.arrow.double.idris2
+86:69-70 " " meta.parens.idris2
+86:70-71 "k" meta.parens.idris2
+86:71-72 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+86:72-73 " "
+86:73-76 "|:>" keyword.operator.idris2
+86:76-77 " "
+86:77-84 "Prelude" entity.name.namespace.idris2
+86:84-86 ".(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+86:86-87 "+" meta.parens.idris2 keyword.operator.idris2
+86:87-88 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+86:88-89 " "
+86:89-90 "1" constant.numeric.integer.decimal.idris2
+88:0-8 "sections" entity.name.function.idris2
+88:8-9 " "
+88:9-10 ":" keyword.operator.colon.idris2
+88:10-11 " "
+88:11-15 "List"
+88:15-16 " "
+88:16-19 "Nat"
+89:0-8 "sections"
+89:8-9 " "
+89:9-10 "=" keyword.operator.equals.idris2
+89:10-11 " "
+89:11-14 "map"
+89:14-15 " "
+89:15-16 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+89:16-17 "+" meta.parens.idris2 keyword.operator.idris2
+89:17-18 " " meta.parens.idris2
+89:18-19 "1" meta.parens.idris2 constant.numeric.integer.decimal.idris2
+89:19-20 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+89:20-21 " "
+89:21-22 "[" meta.brackets.idris2 punctuation.section.brackets.begin.idris2
+89:22-23 "1" meta.brackets.idris2 constant.numeric.integer.decimal.idris2
+89:23-24 "," meta.brackets.idris2 punctuation.separator.comma.idris2
+89:24-25 " " meta.brackets.idris2
+89:25-26 "2" meta.brackets.idris2 constant.numeric.integer.decimal.idris2
+89:26-27 "]" meta.brackets.idris2 punctuation.section.brackets.end.idris2
+89:27-28 " "
+89:28-30 "++" keyword.operator.idris2
+89:30-31 " "
+89:31-34 "map"
+89:34-35 " "
+89:35-36 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+89:36-37 "2" meta.parens.idris2 constant.numeric.integer.decimal.idris2
+89:37-38 " " meta.parens.idris2
+89:38-39 "*" meta.parens.idris2 keyword.operator.idris2
+89:39-40 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+89:40-41 " "
+89:41-42 "[" meta.brackets.idris2 punctuation.section.brackets.begin.idris2
+89:42-43 "3" meta.brackets.idris2 constant.numeric.integer.decimal.idris2
+89:43-44 "]" meta.brackets.idris2 punctuation.section.brackets.end.idris2
+91:0-4 "bang" entity.name.function.idris2
+91:4-5 " "
+91:5-6 ":" keyword.operator.colon.idris2
+91:6-7 " "
+91:7-9 "IO"
+91:9-10 " "
+91:10-11 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+91:11-12 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+92:0-4 "bang"
+92:4-5 " "
+92:5-6 "=" keyword.operator.equals.idris2
+92:6-7 " "
+92:7-14 "printLn"
+92:14-15 " "
+92:15-16 "!" keyword.operator.bang.idris2
+92:16-17 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+92:17-21 "pure" meta.parens.idris2
+92:21-22 " " meta.parens.idris2
+92:22-23 "(" meta.parens.idris2 meta.parens.idris2 punctuation.section.parens.begin.idris2
+92:23-26 "the" meta.parens.idris2 meta.parens.idris2
+92:26-27 " " meta.parens.idris2 meta.parens.idris2
+92:27-30 "Nat" meta.parens.idris2 meta.parens.idris2
+92:30-31 " " meta.parens.idris2 meta.parens.idris2
+92:31-32 "1" meta.parens.idris2 meta.parens.idris2 constant.numeric.integer.decimal.idris2
+92:32-33 ")" meta.parens.idris2 meta.parens.idris2 punctuation.section.parens.end.idris2
+92:33-34 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+94:0-9 "asPattern" entity.name.function.idris2
+94:9-10 " "
+94:10-11 ":" keyword.operator.colon.idris2
+94:11-12 " "
+94:12-16 "List"
+94:16-17 " "
+94:17-20 "Nat"
+94:20-21 " "
+94:21-23 "->" keyword.operator.arrow.idris2
+94:23-24 " "
+94:24-28 "List"
+94:28-29 " "
+94:29-32 "Nat"
+95:0-9 "asPattern"
+95:9-10 " "
+95:10-13 "all"
+95:13-14 "@" keyword.operator.as-pattern.idris2
+95:14-15 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+95:15-16 "x" meta.parens.idris2
+95:16-17 " " meta.parens.idris2
+95:17-19 "::" meta.parens.idris2 keyword.operator.idris2
+95:19-20 " " meta.parens.idris2
+95:20-21 "_" meta.parens.idris2 variable.language.wildcard.idris2
+95:21-22 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+95:22-23 " "
+95:23-24 "=" keyword.operator.equals.idris2
+95:24-25 " "
+95:25-26 "x"
+95:26-27 " "
+95:27-29 "::" keyword.operator.idris2
+95:29-30 " "
+95:30-33 "all"
+96:0-9 "asPattern"
+96:9-10 " "
+96:10-11 "[" meta.brackets.idris2 punctuation.section.brackets.begin.idris2
+96:11-12 "]" meta.brackets.idris2 punctuation.section.brackets.end.idris2
+96:12-13 " "
+96:13-14 "=" keyword.operator.equals.idris2
+96:14-15 " "
+96:15-16 "[" meta.brackets.idris2 punctuation.section.brackets.begin.idris2
+96:16-17 "]" meta.brackets.idris2 punctuation.section.brackets.end.idris2
+98:0-13 "dependentPair" entity.name.function.idris2
+98:13-14 " "
+98:14-15 ":" keyword.operator.colon.idris2
+98:15-16 " "
+98:16-17 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+98:17-18 "n" meta.parens.idris2 variable.parameter.idris2
+98:18-19 " " meta.parens.idris2
+98:19-20 ":" meta.parens.idris2 keyword.operator.colon.idris2
+98:20-21 " " meta.parens.idris2
+98:21-24 "Nat" meta.parens.idris2
+98:24-25 " " meta.parens.idris2
+98:25-27 "**" meta.parens.idris2 keyword.operator.dependent-pair.idris2
+98:27-28 " " meta.parens.idris2
+98:28-32 "Vect" meta.parens.idris2
+98:32-33 " " meta.parens.idris2
+98:33-34 "n" meta.parens.idris2
+98:34-35 " " meta.parens.idris2
+98:35-38 "Nat" meta.parens.idris2
+98:38-39 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+99:0-13 "dependentPair"
+99:13-14 " "
+99:14-15 "=" keyword.operator.equals.idris2
+99:15-16 " "
+99:16-17 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+99:17-18 "1" meta.parens.idris2 constant.numeric.integer.decimal.idris2
+99:18-19 " " meta.parens.idris2
+99:19-21 "**" meta.parens.idris2 keyword.operator.dependent-pair.idris2
+99:21-22 " " meta.parens.idris2
+99:22-23 "[" meta.parens.idris2 meta.brackets.idris2 punctuation.section.brackets.begin.idris2
+99:23-24 "0" meta.parens.idris2 meta.brackets.idris2 constant.numeric.integer.decimal.idris2
+99:24-25 "]" meta.parens.idris2 meta.brackets.idris2 punctuation.section.brackets.end.idris2
+99:25-26 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+101:0-6 "ranges" entity.name.function.idris2
+101:6-7 " "
+101:7-8 ":" keyword.operator.colon.idris2
+101:8-9 " "
+101:9-13 "List"
+101:13-14 " "
+101:14-17 "Nat"
+102:0-6 "ranges"
+102:6-7 " "
+102:7-8 "=" keyword.operator.equals.idris2
+102:8-9 " "
+102:9-10 "[" meta.brackets.idris2 punctuation.section.brackets.begin.idris2
+102:10-11 "1" meta.brackets.idris2 constant.numeric.integer.decimal.idris2
+102:11-12 " " meta.brackets.idris2
+102:12-14 ".." meta.brackets.idris2 keyword.operator.range.idris2
+102:14-15 " " meta.brackets.idris2
+102:15-16 "5" meta.brackets.idris2 constant.numeric.integer.decimal.idris2
+102:16-17 "]" meta.brackets.idris2 punctuation.section.brackets.end.idris2
+102:17-18 " "
+102:18-20 "++" keyword.operator.idris2
+102:20-21 " "
+102:21-22 "[" meta.brackets.idris2 punctuation.section.brackets.begin.idris2
+102:22-23 "1" meta.brackets.idris2 constant.numeric.integer.decimal.idris2
+102:23-24 "," meta.brackets.idris2 punctuation.separator.comma.idris2
+102:24-25 " " meta.brackets.idris2
+102:25-26 "3" meta.brackets.idris2 constant.numeric.integer.decimal.idris2
+102:26-27 " " meta.brackets.idris2
+102:27-29 ".." meta.brackets.idris2 keyword.operator.range.idris2
+102:29-30 " " meta.brackets.idris2
+102:30-31 "9" meta.brackets.idris2 constant.numeric.integer.decimal.idris2
+102:31-32 "]" meta.brackets.idris2 punctuation.section.brackets.end.idris2
+102:32-33 " "
+102:33-35 "++" keyword.operator.idris2
+102:35-36 " "
+102:36-37 "[" meta.brackets.idris2 punctuation.section.brackets.begin.idris2
+102:37-38 "x" meta.brackets.idris2
+102:38-39 " " meta.brackets.idris2
+102:39-40 "*" meta.brackets.idris2 keyword.operator.idris2
+102:40-41 " " meta.brackets.idris2
+102:41-42 "2" meta.brackets.idris2 constant.numeric.integer.decimal.idris2
+102:42-43 " " meta.brackets.idris2
+102:43-44 "|" meta.brackets.idris2 keyword.operator.pipe.idris2
+102:44-45 " " meta.brackets.idris2
+102:45-46 "x" meta.brackets.idris2
+102:46-47 " " meta.brackets.idris2
+102:47-49 "<-" meta.brackets.idris2 keyword.operator.arrow.left.idris2
+102:49-50 " " meta.brackets.idris2
+102:50-51 "[" meta.brackets.idris2 meta.brackets.idris2 punctuation.section.brackets.begin.idris2
+102:51-52 "1" meta.brackets.idris2 meta.brackets.idris2 constant.numeric.integer.decimal.idris2
+102:52-53 "," meta.brackets.idris2 meta.brackets.idris2 punctuation.separator.comma.idris2
+102:53-54 " " meta.brackets.idris2 meta.brackets.idris2
+102:54-55 "2" meta.brackets.idris2 meta.brackets.idris2 constant.numeric.integer.decimal.idris2
+102:55-56 "]" meta.brackets.idris2 meta.brackets.idris2 punctuation.section.brackets.end.idris2
+102:56-57 "," meta.brackets.idris2 punctuation.separator.comma.idris2
+102:57-58 " " meta.brackets.idris2
+102:58-59 "x" meta.brackets.idris2
+102:59-60 " " meta.brackets.idris2
+102:60-61 ">" meta.brackets.idris2 keyword.operator.idris2
+102:61-62 " " meta.brackets.idris2
+102:62-63 "1" meta.brackets.idris2 constant.numeric.integer.decimal.idris2
+102:63-64 "]" meta.brackets.idris2 punctuation.section.brackets.end.idris2
+104:0-4 "snoc" entity.name.function.idris2
+104:4-5 " "
+104:5-6 ":" keyword.operator.colon.idris2
+104:6-7 " "
+104:7-15 "SnocList"
+104:15-16 " "
+104:16-19 "Nat"
+105:0-4 "snoc"
+105:4-5 " "
+105:5-6 "=" keyword.operator.equals.idris2
+105:6-7 " "
+105:7-9 "[<" meta.brackets.idris2 punctuation.section.brackets.begin.idris2
+105:9-10 " " meta.brackets.idris2
+105:10-11 "1" meta.brackets.idris2 constant.numeric.integer.decimal.idris2
+105:11-12 "," meta.brackets.idris2 punctuation.separator.comma.idris2
+105:12-13 " " meta.brackets.idris2
+105:13-14 "2" meta.brackets.idris2 constant.numeric.integer.decimal.idris2
+105:14-15 "," meta.brackets.idris2 punctuation.separator.comma.idris2
+105:15-16 " " meta.brackets.idris2
+105:16-17 "3" meta.brackets.idris2 constant.numeric.integer.decimal.idris2
+105:17-18 "]" meta.brackets.idris2 punctuation.section.brackets.end.idris2
+107:0-7 "forward" entity.name.function.idris2
+107:7-8 " "
+107:8-9 ":" keyword.operator.colon.idris2
+107:9-10 " "
+107:10-14 "List"
+107:14-15 " "
+107:15-18 "Nat"
+108:0-7 "forward"
+108:7-8 " "
+108:8-9 "=" keyword.operator.equals.idris2
+108:9-10 " "
+108:10-12 "[>" meta.brackets.idris2 punctuation.section.brackets.begin.idris2
+108:12-13 " " meta.brackets.idris2
+108:13-14 "1" meta.brackets.idris2 constant.numeric.integer.decimal.idris2
+108:14-15 "," meta.brackets.idris2 punctuation.separator.comma.idris2
+108:15-16 " " meta.brackets.idris2
+108:16-17 "2" meta.brackets.idris2 constant.numeric.integer.decimal.idris2
+108:17-18 "]" meta.brackets.idris2 punctuation.section.brackets.end.idris2
+110:0-5 "idiom" entity.name.function.idris2
+110:5-6 " "
+110:6-7 ":" keyword.operator.colon.idris2
+110:7-8 " "
+110:8-13 "Maybe"
+110:13-14 " "
+110:14-17 "Nat"
+111:0-5 "idiom"
+111:5-6 " "
+111:6-7 "=" keyword.operator.equals.idris2
+111:7-8 " "
+111:8-10 "[|" meta.idiom.idris2 punctuation.section.idiom.begin.idris2
+111:10-11 " " meta.idiom.idris2
+111:11-15 "Just" meta.idiom.idris2
+111:15-16 " " meta.idiom.idris2
+111:16-17 "1" meta.idiom.idris2 constant.numeric.integer.decimal.idris2
+111:17-18 " " meta.idiom.idris2
+111:18-19 "+" meta.idiom.idris2 keyword.operator.idris2
+111:19-20 " " meta.idiom.idris2
+111:20-24 "Just" meta.idiom.idris2
+111:24-25 " " meta.idiom.idris2
+111:25-26 "2" meta.idiom.idris2 constant.numeric.integer.decimal.idris2
+111:26-27 " " meta.idiom.idris2
+111:27-29 "|]" meta.idiom.idris2 punctuation.section.idiom.end.idris2
+113:0-9 "namedArgs" entity.name.function.idris2
+113:9-10 " "
+113:10-11 ":" keyword.operator.colon.idris2
+113:11-12 " "
+113:12-15 "Nat"
+114:0-9 "namedArgs"
+114:9-10 " "
+114:10-11 "=" keyword.operator.equals.idris2
+114:11-12 " "
+114:12-18 "length"
+114:18-19 " "
+114:19-20 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+114:20-29 "replicate" meta.parens.idris2
+114:29-30 " " meta.parens.idris2
+114:30-31 "{" meta.parens.idris2 meta.braces.idris2 punctuation.section.braces.begin.idris2
+114:31-32 "a" meta.parens.idris2 meta.braces.idris2 variable.parameter.idris2
+114:32-33 " " meta.parens.idris2 meta.braces.idris2
+114:33-34 "=" meta.parens.idris2 meta.braces.idris2 keyword.operator.equals.idris2
+114:34-35 " " meta.parens.idris2 meta.braces.idris2
+114:35-38 "Nat" meta.parens.idris2 meta.braces.idris2
+114:38-39 "}" meta.parens.idris2 meta.braces.idris2 punctuation.section.braces.end.idris2
+114:39-40 " " meta.parens.idris2
+114:40-41 "2" meta.parens.idris2 constant.numeric.integer.decimal.idris2
+114:41-42 " " meta.parens.idris2
+114:42-43 "0" meta.parens.idris2 constant.numeric.integer.decimal.idris2
+114:43-44 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+116:0-15 "implicitPattern" entity.name.function.idris2
+116:15-16 " "
+116:16-17 ":" keyword.operator.colon.idris2
+116:17-18 " "
+116:18-19 "{" meta.braces.idris2 punctuation.section.braces.begin.idris2
+116:19-20 "n" meta.braces.idris2 variable.parameter.idris2
+116:20-21 " " meta.braces.idris2
+116:21-22 ":" meta.braces.idris2 keyword.operator.colon.idris2
+116:22-23 " " meta.braces.idris2
+116:23-26 "Nat" meta.braces.idris2
+116:26-27 "}" meta.braces.idris2 punctuation.section.braces.end.idris2
+116:27-28 " "
+116:28-30 "->" keyword.operator.arrow.idris2
+116:30-31 " "
+116:31-35 "Vect"
+116:35-36 " "
+116:36-37 "n"
+116:37-38 " "
+116:38-39 "a"
+116:39-40 " "
+116:40-42 "->" keyword.operator.arrow.idris2
+116:42-43 " "
+116:43-46 "Nat"
+117:0-15 "implicitPattern"
+117:15-16 " "
+117:16-17 "{" meta.braces.idris2 punctuation.section.braces.begin.idris2
+117:17-18 "n" meta.braces.idris2 variable.parameter.idris2
+117:18-19 "}" meta.braces.idris2 punctuation.section.braces.end.idris2
+117:19-20 " "
+117:20-21 "_" variable.language.wildcard.idris2
+117:21-22 " "
+117:22-23 "=" keyword.operator.equals.idris2
+117:23-24 " "
+117:24-25 "n"
+119:0-7 "autoArg" entity.name.function.idris2
+119:7-8 " "
+119:8-9 ":" keyword.operator.colon.idris2
+119:9-10 " "
+119:10-14 "Show"
+119:14-15 " "
+119:15-16 "a"
+119:16-17 " "
+119:17-19 "=>" keyword.operator.arrow.double.idris2
+119:19-20 " "
+119:20-21 "a"
+119:21-22 " "
+119:22-24 "->" keyword.operator.arrow.idris2
+119:24-25 " "
+119:25-31 "String" support.type.primitive.idris2
+120:0-7 "autoArg"
+120:7-8 " "
+120:8-10 "@{" meta.braces.idris2 punctuation.section.braces.begin.idris2
+120:10-14 "inst" meta.braces.idris2
+120:14-15 "}" meta.braces.idris2 punctuation.section.braces.end.idris2
+120:15-16 " "
+120:16-17 "x"
+120:17-18 " "
+120:18-19 "=" keyword.operator.equals.idris2
+120:19-20 " "
+120:20-24 "show"
+120:24-25 " "
+120:25-27 "@{" meta.braces.idris2 punctuation.section.braces.begin.idris2
+120:27-31 "inst" meta.braces.idris2
+120:31-32 "}" meta.braces.idris2 punctuation.section.braces.end.idris2
+120:32-33 " "
+120:33-34 "x"
+122:0-12 "recordUpdate" entity.name.function.idris2
+122:12-13 " "
+122:13-14 ":" keyword.operator.colon.idris2
+122:14-15 " "
+122:15-20 "Point"
+122:20-21 " "
+122:21-23 "->" keyword.operator.arrow.idris2
+122:23-24 " "
+122:24-29 "Point"
+123:0-12 "recordUpdate"
+123:12-13 " "
+123:13-14 "p"
+123:14-15 " "
+123:15-16 "=" keyword.operator.equals.idris2
+123:16-17 " "
+123:17-18 "{" meta.braces.idris2 punctuation.section.braces.begin.idris2
+123:18-19 " " meta.braces.idris2
+123:19-21 "px" meta.braces.idris2 variable.other.member.idris2
+123:21-22 " " meta.braces.idris2
+123:22-24 ":=" meta.braces.idris2 keyword.operator.assignment.idris2
+123:24-25 " " meta.braces.idris2
+123:25-26 "1" meta.braces.idris2 constant.numeric.integer.decimal.idris2
+123:26-27 "," meta.braces.idris2 punctuation.separator.comma.idris2
+123:27-28 " " meta.braces.idris2
+123:28-30 "py" meta.braces.idris2 variable.other.member.idris2
+123:30-31 " " meta.braces.idris2
+123:31-33 "$=" meta.braces.idris2 keyword.operator.assignment.apply.idris2
+123:33-34 " " meta.braces.idris2
+123:34-35 "S" meta.braces.idris2
+123:35-36 " " meta.braces.idris2
+123:36-37 "}" meta.braces.idris2 punctuation.section.braces.end.idris2
+123:37-38 " "
+123:38-39 "p"
+125:0-11 "projections" entity.name.function.idris2
+125:11-12 " "
+125:12-13 ":" keyword.operator.colon.idris2
+125:13-14 " "
+125:14-19 "Point"
+125:19-20 " "
+125:20-22 "->" keyword.operator.arrow.idris2
+125:22-23 " "
+125:23-26 "Nat"
+126:0-11 "projections"
+126:11-12 " "
+126:12-13 "p"
+126:13-14 " "
+126:14-15 "=" keyword.operator.equals.idris2
+126:15-16 " "
+126:16-17 "p"
+126:17-18 "." punctuation.accessor.idris2
+126:18-20 "px" variable.other.member.idris2
+126:20-21 " "
+126:21-22 "+" keyword.operator.idris2
+126:22-23 " "
+126:23-24 "p"
+126:24-25 " "
+126:25-26 "." punctuation.accessor.idris2
+126:26-28 "py" variable.other.member.idris2
+126:28-29 " "
+126:29-30 "+" keyword.operator.idris2
+126:30-31 " "
+126:31-32 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+126:32-33 "." meta.parens.idris2 punctuation.accessor.idris2
+126:33-35 "px" meta.parens.idris2 variable.other.member.idris2
+126:35-36 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+126:36-37 " "
+126:37-38 "p"
+126:38-39 " "
+126:39-40 "+" keyword.operator.idris2
+126:40-41 " "
+126:41-44 "sum"
+126:44-45 " "
+126:45-46 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+126:46-49 "map" meta.parens.idris2
+126:49-50 " " meta.parens.idris2
+126:50-51 "(" meta.parens.idris2 meta.parens.idris2 punctuation.section.parens.begin.idris2
+126:51-52 "." meta.parens.idris2 meta.parens.idris2 punctuation.accessor.idris2
+126:52-54 "py" meta.parens.idris2 meta.parens.idris2 variable.other.member.idris2
+126:54-55 ")" meta.parens.idris2 meta.parens.idris2 punctuation.section.parens.end.idris2
+126:55-56 " " meta.parens.idris2
+126:56-57 "(" meta.parens.idris2 meta.parens.idris2 punctuation.section.parens.begin.idris2
+126:57-60 "the" meta.parens.idris2 meta.parens.idris2
+126:60-61 " " meta.parens.idris2 meta.parens.idris2
+126:61-62 "(" meta.parens.idris2 meta.parens.idris2 meta.parens.idris2 punctuation.section.parens.begin.idris2
+126:62-66 "List" meta.parens.idris2 meta.parens.idris2 meta.parens.idris2
+126:66-67 " " meta.parens.idris2 meta.parens.idris2 meta.parens.idris2
+126:67-72 "Point" meta.parens.idris2 meta.parens.idris2 meta.parens.idris2
+126:72-73 ")" meta.parens.idris2 meta.parens.idris2 meta.parens.idris2 punctuation.section.parens.end.idris2
+126:73-74 " " meta.parens.idris2 meta.parens.idris2
+126:74-75 "[" meta.parens.idris2 meta.parens.idris2 meta.brackets.idris2 punctuation.section.brackets.begin.idris2
+126:75-76 "p" meta.parens.idris2 meta.parens.idris2 meta.brackets.idris2
+126:76-77 "]" meta.parens.idris2 meta.parens.idris2 meta.brackets.idris2 punctuation.section.brackets.end.idris2
+126:77-78 ")" meta.parens.idris2 meta.parens.idris2 punctuation.section.parens.end.idris2
+126:78-79 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+128:0-4 "hole" entity.name.function.idris2
+128:4-5 " "
+128:5-6 ":" keyword.operator.colon.idris2
+128:6-7 " "
+128:7-10 "Nat"
+128:10-11 " "
+128:11-13 "->" keyword.operator.arrow.idris2
+128:13-14 " "
+128:14-17 "Nat"
+129:0-4 "hole"
+129:4-5 " "
+129:5-6 "n"
+129:6-7 " "
+129:7-8 "=" keyword.operator.equals.idris2
+129:8-9 " "
+129:9-10 "?" variable.other.hole.idris2 punctuation.definition.hole.idris2
+129:10-19 "todo_hole" variable.other.hole.idris2
+131:0-8 "inferred" entity.name.function.idris2
+131:8-9 " "
+131:9-10 ":" keyword.operator.colon.idris2
+131:10-11 " "
+131:11-12 "?" keyword.operator.infer.idris2
+132:0-8 "inferred"
+132:8-9 " "
+132:9-10 "=" keyword.operator.equals.idris2
+132:10-11 " "
+132:11-14 "the"
+132:14-15 " "
+132:15-18 "Nat"
+132:18-19 " "
+132:19-20 "3" constant.numeric.integer.decimal.idris2
+134:0-8 "wildcard" entity.name.function.idris2
+134:8-9 " "
+134:9-10 ":" keyword.operator.colon.idris2
+134:10-11 " "
+134:11-14 "Nat"
+134:14-15 " "
+134:15-17 "->" keyword.operator.arrow.idris2
+134:17-18 " "
+134:18-21 "Nat"
+135:0-8 "wildcard"
+135:8-9 " "
+135:9-10 "_" variable.language.wildcard.idris2
+135:10-11 " "
+135:11-12 "=" keyword.operator.equals.idris2
+135:12-13 " "
+135:13-14 "0" constant.numeric.integer.decimal.idris2
+137:0-9 "universal" entity.name.function.idris2
+137:9-10 " "
+137:10-11 ":" keyword.operator.colon.idris2
+137:11-12 " "
+137:12-18 "forall" keyword.other.forall.idris2
+137:18-19 " "
+137:19-20 "a" variable.parameter.idris2
+137:20-21 "," punctuation.separator.comma.idris2
+137:21-22 " "
+137:22-23 "b" variable.parameter.idris2
+137:23-24 " "
+137:24-25 "." keyword.operator.idris2
+137:25-26 " "
+137:26-27 "a"
+137:27-28 " "
+137:28-30 "->" keyword.operator.arrow.idris2
+137:30-31 " "
+137:31-32 "b"
+137:32-33 " "
+137:33-35 "->" keyword.operator.arrow.idris2
+137:35-36 " "
+137:36-37 "a"
+138:0-9 "universal"
+138:9-10 " "
+138:10-11 "x"
+138:11-12 " "
+138:12-13 "_" variable.language.wildcard.idris2
+138:13-14 " "
+138:14-15 "=" keyword.operator.equals.idris2
+138:15-16 " "
+138:16-17 "x"
+140:0-6 "dotted" entity.name.function.idris2
+140:6-7 " "
+140:7-8 ":" keyword.operator.colon.idris2
+140:8-9 " "
+140:9-10 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+140:10-11 "n" meta.parens.idris2 variable.parameter.idris2
+140:11-12 " " meta.parens.idris2
+140:12-13 ":" meta.parens.idris2 keyword.operator.colon.idris2
+140:13-14 " " meta.parens.idris2
+140:14-17 "Nat" meta.parens.idris2
+140:17-18 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+140:18-19 " "
+140:19-21 "->" keyword.operator.arrow.idris2
+140:21-22 " "
+140:22-23 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+140:23-24 "m" meta.parens.idris2 variable.parameter.idris2
+140:24-25 " " meta.parens.idris2
+140:25-26 ":" meta.parens.idris2 keyword.operator.colon.idris2
+140:26-27 " " meta.parens.idris2
+140:27-30 "Nat" meta.parens.idris2
+140:30-31 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+140:31-32 " "
+140:32-34 "->" keyword.operator.arrow.idris2
+140:34-35 " "
+140:35-36 "n"
+140:36-37 " "
+140:37-38 "=" keyword.operator.equals.idris2
+140:38-39 " "
+140:39-40 "m"
+140:40-41 " "
+140:41-43 "->" keyword.operator.arrow.idris2
+140:43-44 " "
+140:44-47 "Nat"
+141:0-6 "dotted"
+141:6-7 " "
+141:7-8 "n"
+141:8-9 " "
+141:9-11 ".(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+141:11-12 "n" meta.parens.idris2
+141:12-13 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+141:13-14 " "
+141:14-18 "Refl"
+141:18-19 " "
+141:19-20 "=" keyword.operator.equals.idris2
+141:20-21 " "
+141:21-22 "n"
+143:0-14 "multiplicities" entity.name.function.idris2
+143:14-15 " "
+143:15-16 ":" keyword.operator.colon.idris2
+143:16-17 " "
+143:17-18 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+143:18-19 "0" meta.parens.idris2 storage.modifier.multiplicity.idris2
+143:19-20 " " meta.parens.idris2
+143:20-21 "n" meta.parens.idris2 variable.parameter.idris2
+143:21-22 " " meta.parens.idris2
+143:22-23 ":" meta.parens.idris2 keyword.operator.colon.idris2
+143:23-24 " " meta.parens.idris2
+143:24-27 "Nat" meta.parens.idris2
+143:27-28 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+143:28-29 " "
+143:29-31 "->" keyword.operator.arrow.idris2
+143:31-32 " "
+143:32-33 "{" meta.braces.idris2 punctuation.section.braces.begin.idris2
+143:33-37 "auto" meta.braces.idris2 storage.modifier.implicit.idris2
+143:37-38 " " meta.braces.idris2
+143:38-39 "0" meta.braces.idris2 storage.modifier.multiplicity.idris2
+143:39-40 " " meta.braces.idris2
+143:40-43 "prf" meta.braces.idris2 variable.parameter.idris2
+143:43-44 " " meta.braces.idris2
+143:44-45 ":" meta.braces.idris2 keyword.operator.colon.idris2
+143:45-46 " " meta.braces.idris2
+143:46-47 "n" meta.braces.idris2
+143:47-48 " " meta.braces.idris2
+143:48-49 "=" meta.braces.idris2 keyword.operator.equals.idris2
+143:49-50 " " meta.braces.idris2
+143:50-51 "n" meta.braces.idris2
+143:51-52 "}" meta.braces.idris2 punctuation.section.braces.end.idris2
+143:52-53 " "
+143:53-55 "->" keyword.operator.arrow.idris2
+143:55-56 " "
+143:56-57 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+143:57-58 "1" meta.parens.idris2 storage.modifier.multiplicity.idris2
+143:58-59 " " meta.parens.idris2
+143:59-60 "x" meta.parens.idris2 variable.parameter.idris2
+143:60-61 " " meta.parens.idris2
+143:61-62 ":" meta.parens.idris2 keyword.operator.colon.idris2
+143:62-63 " " meta.parens.idris2
+143:63-66 "Nat" meta.parens.idris2
+143:66-67 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+143:67-68 " "
+143:68-70 "->" keyword.operator.arrow.idris2
+143:70-71 " "
+143:71-74 "Nat"
+144:0-14 "multiplicities"
+144:14-15 " "
+144:15-16 "_" variable.language.wildcard.idris2
+144:16-17 " "
+144:17-18 "x"
+144:18-19 " "
+144:19-20 "=" keyword.operator.equals.idris2
+144:20-21 " "
+144:21-22 "x"
+146:0-15 "defaultImplicit" entity.name.function.idris2
+146:15-16 " "
+146:16-17 ":" keyword.operator.colon.idris2
+146:17-18 " "
+146:18-19 "{" meta.braces.idris2 punctuation.section.braces.begin.idris2
+146:19-26 "default" meta.braces.idris2 storage.modifier.implicit.idris2
+146:26-27 " " meta.braces.idris2
+146:27-28 "0" meta.braces.idris2 constant.numeric.integer.decimal.idris2
+146:28-29 " " meta.braces.idris2
+146:29-30 "k" meta.braces.idris2 variable.parameter.idris2
+146:30-31 " " meta.braces.idris2
+146:31-32 ":" meta.braces.idris2 keyword.operator.colon.idris2
+146:32-33 " " meta.braces.idris2
+146:33-36 "Nat" meta.braces.idris2
+146:36-37 "}" meta.braces.idris2 punctuation.section.braces.end.idris2
+146:37-38 " "
+146:38-40 "->" keyword.operator.arrow.idris2
+146:40-41 " "
+146:41-44 "Nat"
+147:0-15 "defaultImplicit"
+147:15-16 " "
+147:16-17 "=" keyword.operator.equals.idris2
+147:17-18 " "
+147:18-19 "k"
+149:0-11 "typedLambda" entity.name.function.idris2
+149:11-12 " "
+149:12-13 ":" keyword.operator.colon.idris2
+149:13-14 " "
+149:14-17 "Nat"
+149:17-18 " "
+149:18-20 "->" keyword.operator.arrow.idris2
+149:20-21 " "
+149:21-22 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+149:22-23 "0" meta.parens.idris2 storage.modifier.multiplicity.idris2
+149:23-24 " " meta.parens.idris2
+149:24-25 "_" meta.parens.idris2 variable.language.wildcard.idris2
+149:25-26 " " meta.parens.idris2
+149:26-27 ":" meta.parens.idris2 keyword.operator.colon.idris2
+149:27-28 " " meta.parens.idris2
+149:28-31 "Nat" meta.parens.idris2
+149:31-32 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+149:32-33 " "
+149:33-35 "->" keyword.operator.arrow.idris2
+149:35-36 " "
+149:36-39 "Nat"
+150:0-11 "typedLambda"
+150:11-12 " "
+150:12-13 "=" keyword.operator.equals.idris2
+150:13-14 " "
+150:14-15 "\\" keyword.operator.lambda.idris2
+150:15-16 "x" variable.parameter.idris2
+150:16-17 " "
+150:17-18 ":" keyword.operator.colon.idris2
+150:18-19 " "
+150:19-22 "Nat"
+150:22-23 "," punctuation.separator.comma.idris2
+150:23-24 " "
+150:24-25 "0" storage.modifier.multiplicity.idris2
+150:25-26 " "
+150:26-27 "_" variable.language.wildcard.idris2
+150:27-28 " "
+150:28-29 ":" keyword.operator.colon.idris2
+150:29-30 " "
+150:30-33 "Nat"
+150:33-34 " "
+150:34-36 "=>" keyword.operator.arrow.double.idris2
+150:36-37 " "
+150:37-38 "x"
+152:0-11 "spacedInfix" entity.name.function.idris2
+152:11-12 " "
+152:12-13 ":" keyword.operator.colon.idris2
+152:13-14 " "
+152:14-17 "Nat"
+153:0-11 "spacedInfix"
+153:11-12 " "
+153:12-13 "=" keyword.operator.equals.idris2
+153:13-14 " "
+153:14-16 "10" constant.numeric.integer.decimal.idris2
+153:16-17 " "
+153:17-18 "`" keyword.operator.infix.idris2 punctuation.definition.infix.begin.idris2
+153:18-19 " " keyword.operator.infix.idris2
+153:19-24 "minus" keyword.operator.infix.idris2
+153:24-25 " " keyword.operator.infix.idris2
+153:25-26 "`" keyword.operator.infix.idris2 punctuation.definition.infix.end.idris2
+153:26-27 " "
+153:27-28 "2" constant.numeric.integer.decimal.idris2
+155:0-11 "defaultList" entity.name.function.idris2
+155:11-12 " "
+155:12-13 ":" keyword.operator.colon.idris2
+155:13-14 " "
+155:14-15 "{" meta.braces.idris2 punctuation.section.braces.begin.idris2
+155:15-22 "default" meta.braces.idris2 storage.modifier.implicit.idris2
+155:22-23 " " meta.braces.idris2
+155:23-24 "[" meta.braces.idris2 meta.brackets.idris2 punctuation.section.brackets.begin.idris2
+155:24-25 "]" meta.braces.idris2 meta.brackets.idris2 punctuation.section.brackets.end.idris2
+155:25-26 " " meta.braces.idris2
+155:26-28 "xs" meta.braces.idris2 variable.parameter.idris2
+155:28-29 " " meta.braces.idris2
+155:29-30 ":" meta.braces.idris2 keyword.operator.colon.idris2
+155:30-31 " " meta.braces.idris2
+155:31-35 "List" meta.braces.idris2
+155:35-36 " " meta.braces.idris2
+155:36-39 "Nat" meta.braces.idris2
+155:39-40 "}" meta.braces.idris2 punctuation.section.braces.end.idris2
+155:40-41 " "
+155:41-43 "->" keyword.operator.arrow.idris2
+155:43-44 " "
+155:44-47 "Nat"
+156:0-11 "defaultList"
+156:11-12 " "
+156:12-13 "=" keyword.operator.equals.idris2
+156:13-14 " "
+156:14-20 "length"
+156:20-21 " "
+156:21-23 "xs"
+158:0-10 "defaultApp" entity.name.function.idris2
+158:10-11 " "
+158:11-12 ":" keyword.operator.colon.idris2
+158:12-13 " "
+158:13-14 "{" meta.braces.idris2 punctuation.section.braces.begin.idris2
+158:14-21 "default" meta.braces.idris2 storage.modifier.implicit.idris2
+158:21-22 " " meta.braces.idris2
+158:22-23 "(" meta.braces.idris2 meta.parens.idris2 punctuation.section.parens.begin.idris2
+158:23-24 "S" meta.braces.idris2 meta.parens.idris2
+158:24-25 " " meta.braces.idris2 meta.parens.idris2
+158:25-26 "Z" meta.braces.idris2 meta.parens.idris2
+158:26-27 ")" meta.braces.idris2 meta.parens.idris2 punctuation.section.parens.end.idris2
+158:27-28 " " meta.braces.idris2
+158:28-29 "n" meta.braces.idris2 variable.parameter.idris2
+158:29-30 " " meta.braces.idris2
+158:30-31 ":" meta.braces.idris2 keyword.operator.colon.idris2
+158:31-32 " " meta.braces.idris2
+158:32-35 "Nat" meta.braces.idris2
+158:35-36 "}" meta.braces.idris2 punctuation.section.braces.end.idris2
+158:36-37 " "
+158:37-39 "->" keyword.operator.arrow.idris2
+158:39-40 " "
+158:40-43 "Nat"
+159:0-10 "defaultApp"
+159:10-11 " "
+159:11-12 "=" keyword.operator.equals.idris2
+159:12-13 " "
+159:13-14 "n"
+161:0-6 "record" storage.type.record.idris2
+161:6-7 " "
+161:7-14 "Segment" entity.name.type.record.idris2
+161:14-15 " "
+161:15-20 "where" keyword.other.where.idris2
+162:0-2 "  "
+162:2-13 "constructor" keyword.other.constructor.idris2
+162:13-14 " "
+162:14-23 "MkSegment" entity.name.function.constructor.idris2
+163:0-2 "  "
+163:2-6 "from" entity.name.function.idris2
+163:6-7 " "
+163:7-8 ":" keyword.operator.colon.idris2
+163:8-9 " "
+163:9-14 "Point"
+164:0-2 "  "
+164:2-4 "to" entity.name.function.idris2
+164:4-5 " "
+164:5-6 ":" keyword.operator.colon.idris2
+164:6-7 " "
+164:7-12 "Point"
+166:0-9 "oldUpdate" entity.name.function.idris2
+166:9-10 " "
+166:10-11 ":" keyword.operator.colon.idris2
+166:11-12 " "
+166:12-17 "Point"
+166:17-18 " "
+166:18-20 "->" keyword.operator.arrow.idris2
+166:20-21 " "
+166:21-26 "Point"
+167:0-9 "oldUpdate"
+167:9-10 " "
+167:10-11 "p"
+167:11-12 " "
+167:12-13 "=" keyword.operator.equals.idris2
+167:13-14 " "
+167:14-20 "record" meta.braces.idris2 storage.type.record.idris2
+167:20-21 " " meta.braces.idris2
+167:21-22 "{" meta.braces.idris2 punctuation.section.braces.begin.idris2
+167:22-23 " " meta.braces.idris2
+167:23-25 "px" meta.braces.idris2 variable.other.member.idris2
+167:25-26 " " meta.braces.idris2
+167:26-27 "=" meta.braces.idris2 keyword.operator.equals.idris2
+167:27-28 " " meta.braces.idris2
+167:28-29 "1" meta.braces.idris2 constant.numeric.integer.decimal.idris2
+167:29-30 "," meta.braces.idris2 punctuation.separator.comma.idris2
+167:30-31 " " meta.braces.idris2
+167:31-33 "py" meta.braces.idris2 variable.other.member.idris2
+167:33-34 " " meta.braces.idris2
+167:34-36 "$=" meta.braces.idris2 keyword.operator.assignment.apply.idris2
+167:36-37 " " meta.braces.idris2
+167:37-38 "S" meta.braces.idris2
+167:38-39 " " meta.braces.idris2
+167:39-40 "}" meta.braces.idris2 punctuation.section.braces.end.idris2
+167:40-41 " "
+167:41-42 "p"
+169:0-13 "oldPathUpdate" entity.name.function.idris2
+169:13-14 " "
+169:14-15 ":" keyword.operator.colon.idris2
+169:15-16 " "
+169:16-23 "Segment"
+169:23-24 " "
+169:24-26 "->" keyword.operator.arrow.idris2
+169:26-27 " "
+169:27-34 "Segment"
+170:0-13 "oldPathUpdate"
+170:13-14 " "
+170:14-15 "s"
+170:15-16 " "
+170:16-17 "=" keyword.operator.equals.idris2
+170:17-18 " "
+170:18-24 "record" meta.braces.idris2 storage.type.record.idris2
+170:24-25 " " meta.braces.idris2
+170:25-26 "{" meta.braces.idris2 punctuation.section.braces.begin.idris2
+170:26-27 " " meta.braces.idris2
+170:27-31 "from" meta.braces.idris2 variable.other.member.idris2
+170:31-33 "->" meta.braces.idris2 keyword.operator.arrow.idris2
+170:33-35 "px" meta.braces.idris2 variable.other.member.idris2
+170:35-36 " " meta.braces.idris2
+170:36-37 "=" meta.braces.idris2 keyword.operator.equals.idris2
+170:37-38 " " meta.braces.idris2
+170:38-39 "0" meta.braces.idris2 constant.numeric.integer.decimal.idris2
+170:39-40 " " meta.braces.idris2
+170:40-41 "}" meta.braces.idris2 punctuation.section.braces.end.idris2
+170:41-42 " "
+170:42-43 "s"
+172:0-15 "continuedUpdate" entity.name.function.idris2
+172:15-16 " "
+172:16-17 ":" keyword.operator.colon.idris2
+172:17-18 " "
+172:18-25 "Segment"
+172:25-26 " "
+172:26-28 "->" keyword.operator.arrow.idris2
+172:28-29 " "
+172:29-36 "Segment"
+173:0-15 "continuedUpdate"
+173:15-16 " "
+173:16-17 "s"
+173:17-18 " "
+173:18-19 "=" keyword.operator.equals.idris2
+173:19-20 " "
+173:20-21 "{" meta.braces.idris2 punctuation.section.braces.begin.idris2
+173:21-22 " " meta.braces.idris2
+173:22-26 "from" meta.braces.idris2 variable.other.member.idris2
+173:26-27 "." meta.braces.idris2 punctuation.accessor.idris2
+173:27-29 "px" meta.braces.idris2 variable.other.member.idris2
+173:29-30 " " meta.braces.idris2
+173:30-32 ":=" meta.braces.idris2 keyword.operator.assignment.idris2
+173:32-33 " " meta.braces.idris2
+173:33-34 "1" meta.braces.idris2 constant.numeric.integer.decimal.idris2
+173:34-35 "," meta.braces.idris2 punctuation.separator.comma.idris2
+174:0-22 "                      " meta.braces.idris2
+174:22-24 "to" meta.braces.idris2 variable.other.member.idris2
+174:24-25 " " meta.braces.idris2
+174:25-27 "$=" meta.braces.idris2 keyword.operator.assignment.apply.idris2
+174:27-28 " " meta.braces.idris2
+174:28-30 "id" meta.braces.idris2
+175:0-20 "                    " meta.braces.idris2
+175:20-21 "}" meta.braces.idris2 punctuation.section.braces.end.idris2
+175:21-22 " "
+175:22-23 "s"
+177:0-6 "pairOf" entity.name.function.idris2
+177:6-7 " "
+177:7-8 ":" keyword.operator.colon.idris2
+177:8-9 " "
+177:9-10 "{" meta.braces.idris2 punctuation.section.braces.begin.idris2
+177:10-11 "a" meta.braces.idris2 variable.parameter.idris2
+177:11-12 " " meta.braces.idris2
+177:12-13 ":" meta.braces.idris2 keyword.operator.colon.idris2
+177:13-14 " " meta.braces.idris2
+177:14-18 "Type" meta.braces.idris2 support.type.primitive.idris2
+177:18-19 "}" meta.braces.idris2 punctuation.section.braces.end.idris2
+177:19-20 " "
+177:20-22 "->" keyword.operator.arrow.idris2
+177:22-23 " "
+177:23-24 "{" meta.braces.idris2 punctuation.section.braces.begin.idris2
+177:24-25 "b" meta.braces.idris2 variable.parameter.idris2
+177:25-26 " " meta.braces.idris2
+177:26-27 ":" meta.braces.idris2 keyword.operator.colon.idris2
+177:27-28 " " meta.braces.idris2
+177:28-32 "Type" meta.braces.idris2 support.type.primitive.idris2
+177:32-33 "}" meta.braces.idris2 punctuation.section.braces.end.idris2
+177:33-34 " "
+177:34-36 "->" keyword.operator.arrow.idris2
+177:36-37 " "
+177:37-38 "a"
+177:38-39 " "
+177:39-41 "->" keyword.operator.arrow.idris2
+177:41-42 " "
+177:42-43 "b"
+177:43-44 " "
+177:44-46 "->" keyword.operator.arrow.idris2
+177:46-47 " "
+177:47-48 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+177:48-49 "a" meta.parens.idris2
+177:49-50 "," meta.parens.idris2 punctuation.separator.comma.idris2
+177:50-51 " " meta.parens.idris2
+177:51-52 "b" meta.parens.idris2
+177:52-53 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+178:0-6 "pairOf"
+178:6-7 " "
+178:7-8 "x"
+178:8-9 " "
+178:9-10 "y"
+178:10-11 " "
+178:11-12 "=" keyword.operator.equals.idris2
+178:12-13 " "
+178:13-14 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+178:14-15 "x" meta.parens.idris2
+178:15-16 "," meta.parens.idris2 punctuation.separator.comma.idris2
+178:16-17 " " meta.parens.idris2
+178:17-18 "y" meta.parens.idris2
+178:18-19 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+180:0-14 "continuedNamed" entity.name.function.idris2
+180:14-15 " "
+180:15-16 ":" keyword.operator.colon.idris2
+180:16-17 " "
+180:17-18 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+180:18-21 "Nat" meta.parens.idris2
+180:21-22 "," meta.parens.idris2 punctuation.separator.comma.idris2
+180:22-23 " " meta.parens.idris2
+180:23-27 "Bool" meta.parens.idris2
+180:27-28 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+181:0-14 "continuedNamed"
+181:14-15 " "
+181:15-16 "=" keyword.operator.equals.idris2
+181:16-17 " "
+181:17-23 "pairOf"
+181:23-24 " "
+181:24-25 "{" meta.braces.idris2 punctuation.section.braces.begin.idris2
+182:0-19 "                   " meta.braces.idris2
+182:19-20 "a" meta.braces.idris2 variable.parameter.idris2
+182:20-21 " " meta.braces.idris2
+182:21-22 "=" meta.braces.idris2 keyword.operator.equals.idris2
+182:22-23 " " meta.braces.idris2
+182:23-26 "Nat" meta.braces.idris2
+182:26-27 "," meta.braces.idris2 punctuation.separator.comma.idris2
+183:0-19 "                   " meta.braces.idris2
+183:19-20 "b" meta.braces.idris2 variable.parameter.idris2
+183:20-21 " " meta.braces.idris2
+183:21-22 "=" meta.braces.idris2 keyword.operator.equals.idris2
+183:22-23 " " meta.braces.idris2
+183:23-27 "Bool" meta.braces.idris2
+184:0-17 "                 " meta.braces.idris2
+184:17-18 "}" meta.braces.idris2 punctuation.section.braces.end.idris2
+184:18-19 " "
+184:19-20 "1" constant.numeric.integer.decimal.idris2
+184:20-21 " "
+184:21-25 "True"
+186:0-7 "parenDo" entity.name.function.idris2
+186:7-8 " "
+186:8-9 ":" keyword.operator.colon.idris2
+186:9-10 " "
+186:10-15 "Maybe"
+186:15-16 " "
+186:16-19 "Nat"
+187:0-7 "parenDo"
+187:7-8 " "
+187:8-9 "=" keyword.operator.equals.idris2
+187:9-10 " "
+187:10-11 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+187:11-13 "do" meta.parens.idris2 keyword.control.do.idris2
+187:13-14 " " meta.parens.idris2
+187:14-15 "x" meta.parens.idris2
+187:15-16 " " meta.parens.idris2
+187:16-18 "<-" meta.parens.idris2 keyword.operator.arrow.left.idris2
+187:18-19 " " meta.parens.idris2
+187:19-23 "Just" meta.parens.idris2
+187:23-24 " " meta.parens.idris2
+187:24-25 "1" meta.parens.idris2 constant.numeric.integer.decimal.idris2
+188:0-14 "              " meta.parens.idris2
+188:14-15 "y" meta.parens.idris2
+188:15-16 " " meta.parens.idris2
+188:16-18 "<-" meta.parens.idris2 keyword.operator.arrow.left.idris2
+188:18-19 " " meta.parens.idris2
+188:19-23 "Just" meta.parens.idris2
+188:23-24 " " meta.parens.idris2
+188:24-25 "2" meta.parens.idris2 constant.numeric.integer.decimal.idris2
+189:0-14 "              " meta.parens.idris2
+189:14-18 "pure" meta.parens.idris2
+189:18-19 " " meta.parens.idris2
+189:19-20 "(" meta.parens.idris2 meta.parens.idris2 punctuation.section.parens.begin.idris2
+189:20-21 "x" meta.parens.idris2 meta.parens.idris2
+189:21-22 " " meta.parens.idris2 meta.parens.idris2
+189:22-23 "+" meta.parens.idris2 meta.parens.idris2 keyword.operator.idris2
+189:23-24 " " meta.parens.idris2 meta.parens.idris2
+189:24-25 "y" meta.parens.idris2 meta.parens.idris2
+189:25-26 ")" meta.parens.idris2 meta.parens.idris2 punctuation.section.parens.end.idris2
+189:26-27 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+191:0-10 "whereClaim" entity.name.function.idris2
+191:10-11 " "
+191:11-12 ":" keyword.operator.colon.idris2
+191:12-13 " "
+191:13-16 "Nat"
+191:16-17 " "
+191:17-19 "->" keyword.operator.arrow.idris2
+191:19-20 " "
+191:20-23 "Nat"
+192:0-10 "whereClaim"
+192:10-11 " "
+192:11-12 "n"
+192:12-13 " "
+192:13-14 "=" keyword.operator.equals.idris2
+192:14-15 " "
+192:15-17 "go"
+192:17-18 " "
+192:18-19 "n"
+192:19-20 " "
+192:20-25 "where" keyword.other.where.idris2
+192:25-26 " "
+192:26-28 "go" entity.name.function.idris2
+192:28-29 " "
+192:29-30 ":" keyword.operator.colon.idris2
+192:30-31 " "
+192:31-34 "Nat"
+192:34-35 " "
+192:35-37 "->" keyword.operator.arrow.idris2
+192:37-38 " "
+192:38-41 "Nat"
+193:0-26 "                          "
+193:26-28 "go"
+193:28-29 " "
+193:29-30 "k"
+193:30-31 " "
+193:31-32 "=" keyword.operator.equals.idris2
+193:32-33 " "
+193:33-34 "S"
+193:34-35 " "
+193:35-36 "k"
+195:0-4 "upTo" entity.name.function.idris2
+195:4-5 " "
+195:5-6 ":" keyword.operator.colon.idris2
+195:6-7 " "
+195:7-10 "Nat"
+195:10-11 " "
+195:11-13 "->" keyword.operator.arrow.idris2
+195:13-14 " "
+195:14-17 "Nat"
+195:17-18 " "
+195:18-20 "->" keyword.operator.arrow.idris2
+195:20-21 " "
+195:21-25 "List"
+195:25-26 " "
+195:26-29 "Nat"
+196:0-4 "upTo"
+196:4-5 " "
+196:5-6 "a"
+196:6-7 " "
+196:7-8 "b"
+196:8-9 " "
+196:9-10 "=" keyword.operator.equals.idris2
+196:10-11 " "
+196:11-12 "[" meta.brackets.idris2 punctuation.section.brackets.begin.idris2
+196:12-13 "a" meta.brackets.idris2
+196:13-14 " " meta.brackets.idris2
+196:14-16 ".." meta.brackets.idris2 keyword.operator.range.idris2
+196:16-17 " " meta.brackets.idris2
+196:17-18 "b" meta.brackets.idris2
+196:18-19 "]" meta.brackets.idris2 punctuation.section.brackets.end.idris2
+198:0-9 "triangles" entity.name.function.idris2
+198:9-10 " "
+198:10-11 ":" keyword.operator.colon.idris2
+198:11-12 " "
+198:12-15 "Nat"
+198:15-16 " "
+198:16-18 "->" keyword.operator.arrow.idris2
+198:18-19 " "
+198:19-23 "List"
+198:23-24 " "
+198:24-25 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+198:25-28 "Nat" meta.parens.idris2
+198:28-29 "," meta.parens.idris2 punctuation.separator.comma.idris2
+198:29-30 " " meta.parens.idris2
+198:30-33 "Nat" meta.parens.idris2
+198:33-34 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+199:0-9 "triangles"
+199:9-10 " "
+199:10-13 "top"
+199:13-14 " "
+199:14-15 "=" keyword.operator.equals.idris2
+199:15-16 " "
+199:16-17 "[" meta.brackets.idris2 punctuation.section.brackets.begin.idris2
+199:17-18 "(" meta.brackets.idris2 meta.parens.idris2 punctuation.section.parens.begin.idris2
+199:18-19 "x" meta.brackets.idris2 meta.parens.idris2
+199:19-20 "," meta.brackets.idris2 meta.parens.idris2 punctuation.separator.comma.idris2
+199:20-21 " " meta.brackets.idris2 meta.parens.idris2
+199:21-22 "y" meta.brackets.idris2 meta.parens.idris2
+199:22-23 ")" meta.brackets.idris2 meta.parens.idris2 punctuation.section.parens.end.idris2
+199:23-24 " " meta.brackets.idris2
+199:24-25 "|" meta.brackets.idris2 keyword.operator.pipe.idris2
+199:25-26 " " meta.brackets.idris2
+199:26-27 "y" meta.brackets.idris2
+199:27-28 " " meta.brackets.idris2
+199:28-30 "<-" meta.brackets.idris2 keyword.operator.arrow.left.idris2
+199:30-31 " " meta.brackets.idris2
+199:31-35 "upTo" meta.brackets.idris2
+199:35-36 " " meta.brackets.idris2
+199:36-37 "1" meta.brackets.idris2 constant.numeric.integer.decimal.idris2
+199:37-38 " " meta.brackets.idris2
+199:38-41 "top" meta.brackets.idris2
+199:41-42 "," meta.brackets.idris2 punctuation.separator.comma.idris2
+199:42-43 " " meta.brackets.idris2
+199:43-44 "x" meta.brackets.idris2
+199:44-45 " " meta.brackets.idris2
+199:45-47 "<-" meta.brackets.idris2 keyword.operator.arrow.left.idris2
+199:47-48 " " meta.brackets.idris2
+199:48-52 "upTo" meta.brackets.idris2
+199:52-53 " " meta.brackets.idris2
+199:53-54 "1" meta.brackets.idris2 constant.numeric.integer.decimal.idris2
+199:54-55 " " meta.brackets.idris2
+199:55-56 "y" meta.brackets.idris2
+199:56-57 "]" meta.brackets.idris2 punctuation.section.brackets.end.idris2
+201:0-4 "unit" entity.name.function.idris2
+201:4-5 " "
+201:5-6 ":" keyword.operator.colon.idris2
+201:6-7 " "
+201:7-8 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+201:8-9 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+202:0-4 "unit"
+202:4-5 " "
+202:5-6 "=" keyword.operator.equals.idris2
+202:6-7 " "
+202:7-8 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+202:8-9 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+204:0-14 "lambdaPatterns" entity.name.function.idris2
+204:14-15 " "
+204:15-16 ":" keyword.operator.colon.idris2
+204:16-17 " "
+204:17-21 "List"
+204:21-22 " "
+204:22-23 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+204:23-26 "Nat" meta.parens.idris2
+204:26-27 "," meta.parens.idris2 punctuation.separator.comma.idris2
+204:27-28 " " meta.parens.idris2
+204:28-31 "Nat" meta.parens.idris2
+204:31-32 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+204:32-33 " "
+204:33-35 "->" keyword.operator.arrow.idris2
+204:35-36 " "
+204:36-39 "Nat"
+205:0-14 "lambdaPatterns"
+205:14-15 " "
+205:15-16 "=" keyword.operator.equals.idris2
+205:16-17 " "
+205:17-22 "foldl"
+205:22-23 " "
+205:23-24 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+205:24-25 "\\" meta.parens.idris2 keyword.operator.lambda.idris2
+205:25-28 "acc" meta.parens.idris2 variable.parameter.idris2
+205:28-29 "," meta.parens.idris2 punctuation.separator.comma.idris2
+205:29-30 " " meta.parens.idris2
+205:30-31 "(" meta.parens.idris2 meta.parens.idris2 punctuation.section.parens.begin.idris2
+205:31-32 "a" meta.parens.idris2 meta.parens.idris2
+205:32-33 "," meta.parens.idris2 meta.parens.idris2 punctuation.separator.comma.idris2
+205:33-34 " " meta.parens.idris2 meta.parens.idris2
+205:34-35 "b" meta.parens.idris2 meta.parens.idris2
+205:35-36 ")" meta.parens.idris2 meta.parens.idris2 punctuation.section.parens.end.idris2
+205:36-37 " " meta.parens.idris2
+205:37-39 "=>" meta.parens.idris2 keyword.operator.arrow.double.idris2
+205:39-40 " " meta.parens.idris2
+205:40-43 "acc" meta.parens.idris2
+205:43-44 " " meta.parens.idris2
+205:44-45 "+" meta.parens.idris2 keyword.operator.idris2
+205:45-46 " " meta.parens.idris2
+205:46-47 "a" meta.parens.idris2
+205:47-48 " " meta.parens.idris2
+205:48-49 "+" meta.parens.idris2 keyword.operator.idris2
+205:49-50 " " meta.parens.idris2
+205:50-51 "b" meta.parens.idris2
+205:51-52 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+205:52-53 " "
+205:53-54 "0" constant.numeric.integer.decimal.idris2
+207:0-10 "lambdaUnit" entity.name.function.idris2
+207:10-11 " "
+207:11-12 ":" keyword.operator.colon.idris2
+207:12-13 " "
+207:13-14 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+207:14-15 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+207:15-16 " "
+207:16-18 "->" keyword.operator.arrow.idris2
+207:18-19 " "
+207:19-22 "Nat"
+207:22-23 " "
+207:23-25 "->" keyword.operator.arrow.idris2
+207:25-26 " "
+207:26-29 "Nat"
+208:0-10 "lambdaUnit"
+208:10-11 " "
+208:11-12 "=" keyword.operator.equals.idris2
+208:12-13 " "
+208:13-14 "\\" keyword.operator.lambda.idris2
+208:14-15 " "
+208:15-16 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+208:16-17 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+208:17-18 "," punctuation.separator.comma.idris2
+208:18-19 " "
+208:19-20 "v" variable.parameter.idris2
+208:20-21 " "
+208:21-23 "=>" keyword.operator.arrow.double.idris2
+208:23-24 " "
+208:24-25 "v"
+210:0-12 "lambdaLinear" entity.name.function.idris2
+210:12-13 " "
+210:13-14 ":" keyword.operator.colon.idris2
+210:14-15 " "
+210:15-16 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+210:16-17 "1" meta.parens.idris2 storage.modifier.multiplicity.idris2
+210:17-18 " " meta.parens.idris2
+210:18-19 "_" meta.parens.idris2 variable.language.wildcard.idris2
+210:19-20 " " meta.parens.idris2
+210:20-21 ":" meta.parens.idris2 keyword.operator.colon.idris2
+210:21-22 " " meta.parens.idris2
+210:22-23 "(" meta.parens.idris2 meta.parens.idris2 punctuation.section.parens.begin.idris2
+210:23-26 "Nat" meta.parens.idris2 meta.parens.idris2
+210:26-27 "," meta.parens.idris2 meta.parens.idris2 punctuation.separator.comma.idris2
+210:27-28 " " meta.parens.idris2 meta.parens.idris2
+210:28-31 "Nat" meta.parens.idris2 meta.parens.idris2
+210:31-32 ")" meta.parens.idris2 meta.parens.idris2 punctuation.section.parens.end.idris2
+210:32-33 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+210:33-34 " "
+210:34-36 "->" keyword.operator.arrow.idris2
+210:36-37 " "
+210:37-38 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+210:38-41 "Nat" meta.parens.idris2
+210:41-42 "," meta.parens.idris2 punctuation.separator.comma.idris2
+210:42-43 " " meta.parens.idris2
+210:43-46 "Nat" meta.parens.idris2
+210:46-47 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+211:0-12 "lambdaLinear"
+211:12-13 " "
+211:13-14 "=" keyword.operator.equals.idris2
+211:14-15 " "
+211:15-16 "\\" keyword.operator.lambda.idris2
+211:16-17 "1" storage.modifier.multiplicity.idris2
+211:17-18 " "
+211:18-19 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+211:19-20 "a" meta.parens.idris2
+211:20-21 "," meta.parens.idris2 punctuation.separator.comma.idris2
+211:21-22 " " meta.parens.idris2
+211:22-23 "b" meta.parens.idris2
+211:23-24 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+211:24-25 " "
+211:25-27 "=>" keyword.operator.arrow.double.idris2
+211:27-28 " "
+211:28-29 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+211:29-30 "a" meta.parens.idris2
+211:30-31 "," meta.parens.idris2 punctuation.separator.comma.idris2
+211:31-32 " " meta.parens.idris2
+211:32-33 "b" meta.parens.idris2
+211:33-34 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+213:0-11 "lambdaMatch" entity.name.function.idris2
+213:11-12 " "
+213:12-13 ":" keyword.operator.colon.idris2
+213:13-14 " "
+213:14-15 "a"
+213:15-16 " "
+213:16-17 "=" keyword.operator.equals.idris2
+213:17-18 " "
+213:18-19 "b"
+213:19-20 " "
+213:20-22 "->" keyword.operator.arrow.idris2
+213:22-23 " "
+213:23-24 "b"
+213:24-25 " "
+213:25-26 "=" keyword.operator.equals.idris2
+213:26-27 " "
+213:27-28 "a"
+214:0-11 "lambdaMatch"
+214:11-12 " "
+214:12-13 "=" keyword.operator.equals.idris2
+214:13-14 " "
+214:14-15 "\\" keyword.operator.lambda.idris2
+214:15-19 "Refl"
+214:19-20 " "
+214:20-22 "=>" keyword.operator.arrow.double.idris2
+214:22-23 " "
+214:23-27 "Refl"
+216:0-14 "lambdaNextLine" entity.name.function.idris2
+216:14-15 " "
+216:15-16 ":" keyword.operator.colon.idris2
+216:16-17 " "
+216:17-21 "List"
+216:21-22 " "
+216:22-25 "Nat"
+216:25-26 " "
+216:26-28 "->" keyword.operator.arrow.idris2
+216:28-29 " "
+216:29-33 "List"
+216:33-34 " "
+216:34-37 "Nat"
+217:0-14 "lambdaNextLine"
+217:14-15 " "
+217:15-16 "=" keyword.operator.equals.idris2
+217:16-17 " "
+217:17-20 "map"
+217:20-21 " "
+217:21-22 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+217:22-23 "\\" meta.parens.idris2 keyword.operator.lambda.idris2
+218:0-2 "  " meta.parens.idris2
+218:2-3 "k" meta.parens.idris2
+218:3-4 " " meta.parens.idris2
+218:4-6 "=>" meta.parens.idris2 keyword.operator.arrow.double.idris2
+218:6-7 " " meta.parens.idris2
+218:7-8 "k" meta.parens.idris2
+218:8-9 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+220:0-18 "oldUpdateCommented" entity.name.function.idris2
+220:18-19 " "
+220:19-20 ":" keyword.operator.colon.idris2
+220:20-21 " "
+220:21-26 "Point"
+220:26-27 " "
+220:27-29 "->" keyword.operator.arrow.idris2
+220:29-30 " "
+220:30-35 "Point"
+221:0-18 "oldUpdateCommented"
+221:18-19 " "
+221:19-20 "p"
+221:20-21 " "
+221:21-22 "=" keyword.operator.equals.idris2
+221:22-23 " "
+221:23-29 "record" meta.braces.idris2 storage.type.record.idris2
+221:29-30 " " meta.braces.idris2
+221:30-32 "{-" meta.braces.idris2 comment.block.idris2 punctuation.definition.comment.begin.idris2
+221:32-44 " deprecated " meta.braces.idris2 comment.block.idris2
+221:44-46 "-}" meta.braces.idris2 comment.block.idris2 punctuation.definition.comment.end.idris2
+221:46-47 " " meta.braces.idris2
+221:47-48 "{" meta.braces.idris2 punctuation.section.braces.begin.idris2
+221:48-49 " " meta.braces.idris2
+221:49-51 "px" meta.braces.idris2 variable.other.member.idris2
+221:51-52 " " meta.braces.idris2
+221:52-53 "=" meta.braces.idris2 keyword.operator.equals.idris2
+221:53-54 " " meta.braces.idris2
+221:54-55 "1" meta.braces.idris2 constant.numeric.integer.decimal.idris2
+221:55-56 " " meta.braces.idris2
+221:56-57 "}" meta.braces.idris2 punctuation.section.braces.end.idris2
+221:57-58 " "
+221:58-59 "p"
+223:0-11 "punsPerLine" entity.name.function.idris2
+223:11-12 " "
+223:12-13 ":" keyword.operator.colon.idris2
+223:13-14 " "
+223:14-17 "Nat"
+223:17-18 " "
+223:18-20 "->" keyword.operator.arrow.idris2
+223:20-21 " "
+223:21-24 "Nat"
+223:24-25 " "
+223:25-27 "->" keyword.operator.arrow.idris2
+223:27-28 " "
+223:28-33 "Point"
+224:0-11 "punsPerLine"
+224:11-12 " "
+224:12-14 "px"
+224:14-15 " "
+224:15-17 "py"
+224:17-18 " "
+224:18-19 "=" keyword.operator.equals.idris2
+224:19-20 " "
+224:20-27 "MkPoint"
+224:27-28 " "
+224:28-29 "{" meta.braces.idris2 punctuation.section.braces.begin.idris2
+224:29-30 " " meta.braces.idris2
+224:30-32 "px" meta.braces.idris2 variable.parameter.idris2
+225:0-28 "                            " meta.braces.idris2
+225:28-29 "," meta.braces.idris2 punctuation.separator.comma.idris2
+225:29-30 " " meta.braces.idris2
+225:30-32 "py" meta.braces.idris2 variable.parameter.idris2
+225:32-33 " " meta.braces.idris2
+225:33-35 "--" meta.braces.idris2 comment.line.double-dash.idris2 punctuation.definition.comment.idris2
+225:35-40 " note" meta.braces.idris2 comment.line.double-dash.idris2
+226:0-28 "                            " meta.braces.idris2
+226:28-29 "}" meta.braces.idris2 punctuation.section.braces.end.idris2
+228:0-12 "successorArg" entity.name.function.idris2
+228:12-13 " "
+228:13-14 ":" keyword.operator.colon.idris2
+228:14-15 " "
+228:15-16 "{" meta.braces.idris2 punctuation.section.braces.begin.idris2
+228:16-17 "n" meta.braces.idris2 variable.parameter.idris2
+228:17-18 " " meta.braces.idris2
+228:18-19 ":" meta.braces.idris2 keyword.operator.colon.idris2
+228:19-20 " " meta.braces.idris2
+228:20-23 "Nat" meta.braces.idris2
+228:23-24 "}" meta.braces.idris2 punctuation.section.braces.end.idris2
+228:24-25 " "
+228:25-27 "->" keyword.operator.arrow.idris2
+228:27-28 " "
+228:28-31 "Nat"
+229:0-12 "successorArg"
+229:12-13 " "
+229:13-14 "=" keyword.operator.equals.idris2
+229:14-15 " "
+229:15-16 "n"
+231:0-18 "commentEndsInComma" entity.name.function.idris2
+231:18-19 " "
+231:19-20 ":" keyword.operator.colon.idris2
+231:20-21 " "
+231:21-24 "Nat"
+232:0-18 "commentEndsInComma"
+232:18-19 " "
+232:19-20 "=" keyword.operator.equals.idris2
+232:20-21 " "
+232:21-33 "successorArg"
+232:33-34 " "
+232:34-35 "{" meta.braces.idris2 punctuation.section.braces.begin.idris2
+232:35-36 "n" meta.braces.idris2 variable.parameter.idris2
+232:36-37 " " meta.braces.idris2
+232:37-38 "=" meta.braces.idris2 keyword.operator.equals.idris2
+232:38-39 " " meta.braces.idris2
+232:39-40 "S" meta.braces.idris2
+232:40-41 " " meta.braces.idris2
+232:41-43 "--" meta.braces.idris2 comment.line.double-dash.idris2 punctuation.definition.comment.idris2
+232:43-54 " successor," meta.braces.idris2 comment.line.double-dash.idris2
+233:0-37 "                                     " meta.braces.idris2
+233:37-38 "Z" meta.braces.idris2
+233:38-39 "}" meta.braces.idris2 punctuation.section.braces.end.idris2
+235:0-14 "dependentPairs" entity.name.function.idris2
+235:14-15 " "
+235:15-16 ":" keyword.operator.colon.idris2
+235:16-17 " "
+235:17-18 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+235:18-19 "n" meta.parens.idris2 variable.parameter.idris2
+235:19-20 " " meta.parens.idris2
+235:20-21 ":" meta.parens.idris2 keyword.operator.colon.idris2
+235:21-22 " " meta.parens.idris2
+235:22-25 "Nat" meta.parens.idris2
+235:25-26 " " meta.parens.idris2
+235:26-28 "**" meta.parens.idris2 keyword.operator.dependent-pair.idris2
+235:28-29 " " meta.parens.idris2
+235:29-30 "m" meta.parens.idris2 variable.parameter.idris2
+235:30-31 " " meta.parens.idris2
+235:31-32 ":" meta.parens.idris2 keyword.operator.colon.idris2
+235:32-33 " " meta.parens.idris2
+235:33-36 "Nat" meta.parens.idris2
+235:36-37 " " meta.parens.idris2
+235:37-39 "**" meta.parens.idris2 keyword.operator.dependent-pair.idris2
+235:39-40 " " meta.parens.idris2
+235:40-41 "n" meta.parens.idris2
+235:41-42 " " meta.parens.idris2
+235:42-43 "=" meta.parens.idris2 keyword.operator.equals.idris2
+235:43-44 " " meta.parens.idris2
+235:44-45 "m" meta.parens.idris2
+235:45-46 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+235:46-47 " "
+235:47-49 "->" keyword.operator.arrow.idris2
+235:49-50 " "
+235:50-53 "Nat"
+236:0-14 "dependentPairs"
+236:14-15 " "
+236:15-16 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+236:16-17 "n" meta.parens.idris2
+236:17-18 " " meta.parens.idris2
+236:18-20 "**" meta.parens.idris2 keyword.operator.dependent-pair.idris2
+236:20-21 " " meta.parens.idris2
+236:21-22 "m" meta.parens.idris2
+236:22-23 " " meta.parens.idris2
+236:23-25 "**" meta.parens.idris2 keyword.operator.dependent-pair.idris2
+236:25-26 " " meta.parens.idris2
+236:26-27 "_" meta.parens.idris2 variable.language.wildcard.idris2
+236:27-28 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+236:28-29 " "
+236:29-30 "=" keyword.operator.equals.idris2
+236:30-31 " "
+236:31-32 "n"
+236:32-33 " "
+236:33-34 "+" keyword.operator.idris2
+236:34-35 " "
+236:35-36 "m"
+238:0-14 "dependentLines" entity.name.function.idris2
+238:14-15 " "
+238:15-16 ":" keyword.operator.colon.idris2
+238:16-17 " "
+238:17-18 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+238:18-20 "ty" meta.parens.idris2 variable.parameter.idris2
+238:20-21 " " meta.parens.idris2
+238:21-22 ":" meta.parens.idris2 keyword.operator.colon.idris2
+238:22-23 " " meta.parens.idris2
+238:23-27 "Type" meta.parens.idris2 support.type.primitive.idris2
+239:0-18 "                  " meta.parens.idris2
+239:18-20 "**" meta.parens.idris2 keyword.operator.dependent-pair.idris2
+239:20-21 " " meta.parens.idris2
+239:21-25 "make" meta.parens.idris2 variable.parameter.idris2
+239:25-26 " " meta.parens.idris2
+239:26-27 ":" meta.parens.idris2 keyword.operator.colon.idris2
+239:27-28 " " meta.parens.idris2
+239:28-29 "(" meta.parens.idris2 meta.parens.idris2 punctuation.section.parens.begin.idris2
+239:29-32 "Nat" meta.parens.idris2 meta.parens.idris2
+239:32-33 " " meta.parens.idris2 meta.parens.idris2
+239:33-35 "->" meta.parens.idris2 meta.parens.idris2 keyword.operator.arrow.idris2
+239:35-36 " " meta.parens.idris2 meta.parens.idris2
+239:36-38 "ty" meta.parens.idris2 meta.parens.idris2
+239:38-39 ")" meta.parens.idris2 meta.parens.idris2 punctuation.section.parens.end.idris2
+240:0-18 "                  " meta.parens.idris2
+240:18-20 "**" meta.parens.idris2 keyword.operator.dependent-pair.idris2
+240:20-21 " " meta.parens.idris2
+240:21-23 "ty" meta.parens.idris2
+240:23-24 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+241:0-14 "dependentLines"
+241:14-15 " "
+241:15-16 "=" keyword.operator.equals.idris2
+241:16-17 " "
+241:17-18 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+241:18-21 "Nat" meta.parens.idris2
+241:21-22 " " meta.parens.idris2
+241:22-24 "**" meta.parens.idris2 keyword.operator.dependent-pair.idris2
+241:24-25 " " meta.parens.idris2
+241:25-26 "S" meta.parens.idris2
+241:26-27 " " meta.parens.idris2
+241:27-29 "**" meta.parens.idris2 keyword.operator.dependent-pair.idris2
+241:29-30 " " meta.parens.idris2
+241:30-31 "0" meta.parens.idris2 constant.numeric.integer.decimal.idris2
+241:31-32 ")" meta.parens.idris2 punctuation.section.parens.end.idris2

@@ -1,0 +1,5 @@
+# Check out every text file with LF line endings on every platform. Tests compare the grammar
+# snapshots and the generated files (syntaxes/idris2.tmLanguage.json,
+# language-configuration/*.json) byte for byte with generator output, which a CRLF checkout
+# (core.autocrlf=true, common on Windows) would break.
+* text=auto eol=lf

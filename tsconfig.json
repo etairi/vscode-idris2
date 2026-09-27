@@ -11,7 +11,11 @@
     ],
     "sourceMap": true,
     "rootDir": ".",
-    "strict": true
+    "strict": true,
+    // vscode-oniguruma's main.d.ts names the WebAssembly namespace, which only lib.dom declares
+    // (not ES2022, not @types/node 24); the grammar tests use it on Node, so library
+    // declaration files are not type-checked.
+    "skipLibCheck": true
   },
   "include": [
     "src",

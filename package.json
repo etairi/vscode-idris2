@@ -1,7 +1,7 @@
 {
   "name": "vscode-idris2",
   "displayName": "Idris 2",
-  "description": "Idris 2 support for Visual Studio Code (early development skeleton; see docs/ROADMAP.md)",
+  "description": "Idris 2 support for Visual Studio Code: highlighting, editing support and snippets so far; compiler integration is planned (see the README).",
   "version": "0.0.1",
   "publisher": "etairi",
   "license": "MIT",
@@ -29,6 +29,11 @@
   "extensionKind": [
     "workspace"
   ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    }
+  },
   "contributes": {
     "languages": [
       {
@@ -63,28 +68,101 @@
         "configuration": "./language-configuration/ipkg.json"
       }
     ],
+    "grammars": [
+      {
+        "language": "idris2",
+        "scopeName": "source.idris2",
+        "path": "./syntaxes/idris2.tmLanguage.json"
+      },
+      {
+        "language": "lidr",
+        "scopeName": "source.idris2.literate",
+        "path": "./syntaxes/lidr.tmLanguage.json"
+      },
+      {
+        "language": "ipkg",
+        "scopeName": "source.ipkg",
+        "path": "./syntaxes/ipkg.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "idris2",
+        "path": "./snippets/idris2.json"
+      },
+      {
+        "language": "ipkg",
+        "path": "./snippets/ipkg.json"
+      }
+    ],
+    "configurationDefaults": {
+      "[idris2]": {
+        "editor.semanticHighlighting.enabled": true,
+        "editor.unicodeHighlight.ambiguousCharacters": false,
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2,
+        "editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\\|;:\",.<>/"
+      },
+      "[lidr]": {
+        "editor.semanticHighlighting.enabled": true,
+        "editor.unicodeHighlight.ambiguousCharacters": false,
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2,
+        "editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\\|;:\",.<>/",
+        "files.eol": "\n"
+      }
+    },
+    "semanticTokenTypes": [
+      {
+        "id": "module",
+        "superType": "namespace",
+        "description": "A module name (Idris 2 decoration `module`)."
+      },
+      {
+        "id": "postulate",
+        "superType": "type",
+        "description": "An escape hatch such as believe_me or assert_total (Idris 2 decoration `postulate`)."
+      }
+    ],
     "commands": [
       {
         "command": "idris2.showOutput",
         "title": "Show Output",
         "category": "Idris 2"
+      },
+      {
+        "command": "idris2.openSettings",
+        "title": "Open Settings",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.openDocumentation",
+        "title": "Open Idris 2 Documentation",
+        "category": "Idris 2"
       }
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run package",
+    "vscode:prepublish": "npm run check-types && npm run lint && node esbuild.mjs --production",
     "check-types": "tsc --noEmit",
-    "lint": "eslint src test",
+    "lint": "eslint src test scripts esbuild.mjs --max-warnings 0",
     "compile": "npm run check-types && npm run lint && node esbuild.mjs",
     "watch": "npm-run-all -p watch:*",
     "watch:esbuild": "node esbuild.mjs --watch",
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
-    "package": "npm run check-types && npm run lint && node esbuild.mjs --production",
+    "package": "vsce package",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile",
     "test": "vscode-test",
-    "test:unit": "npm run compile-tests && mocha --ui tdd \"out/test/unit/**/*.test.js\""
+    "test:unit": "npm run compile-tests && mocha --ui tdd \"out/test/unit/**/*.test.js\"",
+    "build:grammar": "node scripts/build-grammar.mjs",
+    "build:language-configuration": "node scripts/build-language-configuration.mjs",
+    "test:grammar": "npm run compile-tests && mocha --ui tdd \"out/test/grammar/**/*.test.js\" --ignore \"out/test/grammar/corpus.test.js\"",
+    "test:corpus": "node scripts/fetch-corpus.mjs && npm run compile-tests && mocha --ui tdd out/test/grammar/corpus.test.js",
+    "check:fixtures": "node scripts/check-fixtures.mjs",
+    "docs:graph": "node scripts/deps-graph.mjs --write",
+    "docs:graph:check": "node scripts/deps-graph.mjs --check"
   },
   "dependencies": {
     "vscode-languageclient": "^10.1.1"
@@ -95,12 +173,16 @@
     "@types/vscode": "^1.138.0",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.0.0",
+    "@vscode/vsce": "^4.0.0",
     "esbuild": "^0.28.1",
     "eslint": "^10.5.0",
     "mocha": "^11.7.6",
     "npm-run-all": "^4.1.5",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.61.1"
+    "typescript-eslint": "^8.61.1",
+    "vscode-oniguruma": "1.7.0",
+    "vscode-textmate": "^9.3.2",
+    "yaml": "^2.9.1"
   },
   "overrides": {
     "diff": "^8.0.4",

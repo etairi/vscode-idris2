@@ -1,9 +1,8 @@
 import * as assert from 'assert';
-import type { IdrisError, IdrisErrorKind } from '../../src/core/errors';
+import { IdrisException, errorText, unsupported, type IdrisError, type IdrisErrorKind } from '../../src/core/errors';
 
-// `IdrisError` is types only, so this test is mostly checked by `tsc` when the tests are
-// compiled: it fails to compile if the union gains or loses a kind relative to the list from
-// docs/ARCHITECTURE.md §2.
+// The first test is checked by `tsc` when the tests are compiled: it fails to compile if the
+// union gains or loses a kind relative to the list from docs/ARCHITECTURE.md §2.
 suite('core/errors IdrisError', () => {
   test('the union has exactly the ten kinds listed in ARCHITECTURE §2', () => {
     // Compile error if a listed kind is not a member of the union.
@@ -30,9 +29,29 @@ suite('core/errors IdrisError', () => {
 
   test('Unsupported carries a reason, the other variants a message', () => {
     // Narrowing on `kind` is how the UI is meant to consume the union (ARCHITECTURE §3.1).
-    const textOf = (e: IdrisError): string => (e.kind === 'Unsupported' ? e.reason : e.message);
+    const unsupportedError: IdrisError = { kind: 'Unsupported', reason: 'needs idris2-lsp' };
+    const missing: IdrisError = { kind: 'ToolchainMissing', message: 'idris2 not found on PATH' };
 
-    assert.strictEqual(textOf({ kind: 'Unsupported', reason: 'needs idris2-lsp' }), 'needs idris2-lsp');
-    assert.strictEqual(textOf({ kind: 'ToolchainMissing', message: 'idris2 not found on PATH' }), 'idris2 not found on PATH');
+    assert.strictEqual(errorText(unsupportedError), 'needs idris2-lsp');
+    assert.strictEqual(errorText(missing), 'idris2 not found on PATH');
+  });
+
+  test('IdrisException is a real Error that carries the IdrisError', () => {
+    const error: IdrisError = { kind: 'DirtyDocument', message: 'save the file first' };
+    const e = new IdrisException(error);
+    assert.ok(e instanceof Error);
+    assert.strictEqual(e.name, 'IdrisException');
+    assert.strictEqual(e.message, 'save the file first');
+    assert.strictEqual(e.error, error);
+    assert.ok(typeof e.stack === 'string');
+  });
+
+  test('unsupported(reason) builds the Unsupported exception', () => {
+    const e = unsupported('stubbed in this compiler version');
+    assert.deepStrictEqual(e.error, { kind: 'Unsupported', reason: 'stubbed in this compiler version' });
+    assert.strictEqual(e.message, 'stubbed in this compiler version');
+    assert.throws(() => {
+      throw e;
+    }, IdrisException);
   });
 });

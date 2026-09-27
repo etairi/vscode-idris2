@@ -1,0 +1,140 @@
+# vscode-textmate snapshot. One token per line: LINE:START-END "text" scopes (0-based,
+# end exclusive, root scope omitted). Regenerate with UPDATE_SNAPSHOTS=1.
+0:0-2 "{-" comment.block.ipkg punctuation.definition.comment.begin.ipkg
+0:2-77 " Lexical corner cases of the package lexer (src/Parser/Lexer/Common.idr and" comment.block.ipkg
+1:0-34 "   src/Parser/Lexer/Package.idr). " comment.block.ipkg
+1:34-36 "{-" comment.block.ipkg comment.block.ipkg punctuation.definition.comment.begin.ipkg
+1:36-58 " Block comments nest. " comment.block.ipkg comment.block.ipkg
+1:58-60 "-}" comment.block.ipkg comment.block.ipkg punctuation.definition.comment.end.ipkg
+1:60-61 " " comment.block.ipkg
+1:61-63 "-}" comment.block.ipkg punctuation.definition.comment.end.ipkg
+2:0-7 "package" meta.package.ipkg keyword.other.package.ipkg
+2:7-8 " " meta.package.ipkg
+2:8-21 "tally-lexical" meta.package.ipkg entity.name.type.package.ipkg
+2:21-22 " "
+2:22-25 "---" comment.line.double-dash.ipkg punctuation.definition.comment.ipkg
+2:25-73 " more than two dashes still start a line comment" comment.line.double-dash.ipkg
+3:0-7 "version" meta.field.ipkg support.type.property-name.ipkg
+3:7-8 " " meta.field.ipkg
+3:8-9 "=" meta.field.ipkg punctuation.separator.key-value.ipkg
+3:9-10 " " meta.field.ipkg
+3:10-11 "\"" meta.field.ipkg string.quoted.double.ipkg punctuation.definition.string.begin.ipkg
+3:11-14 "0.3" meta.field.ipkg string.quoted.double.ipkg
+3:14-15 "\"" meta.field.ipkg string.quoted.double.ipkg punctuation.definition.string.end.ipkg
+3:15-16 " " meta.field.ipkg
+3:16-18 "--" meta.field.ipkg comment.line.double-dash.ipkg punctuation.definition.comment.ipkg
+3:18-70 " the deprecated string form: a warning, not an error" meta.field.ipkg comment.line.double-dash.ipkg
+4:0-11 "langversion" meta.field.ipkg support.type.property-name.ipkg
+4:11-12 " " meta.field.ipkg
+4:12-14 ">=" meta.field.ipkg keyword.operator.comparison.ipkg
+4:14-15 " " meta.field.ipkg
+4:15-20 "0.7.0" meta.field.ipkg constant.numeric.version.ipkg
+4:20-21 " " meta.field.ipkg
+4:21-23 "&&" meta.field.ipkg keyword.operator.logical.ipkg
+4:23-24 " " meta.field.ipkg
+4:24-25 "<" meta.field.ipkg keyword.operator.comparison.ipkg
+4:25-26 " " meta.field.ipkg
+4:26-29 "1.0" meta.field.ipkg constant.numeric.version.ipkg
+5:0-5 "brief" meta.field.ipkg support.type.property-name.ipkg
+5:5-6 " " meta.field.ipkg
+5:6-7 "=" meta.field.ipkg punctuation.separator.key-value.ipkg
+5:7-8 " " meta.field.ipkg
+5:8-9 "\"" meta.field.ipkg string.quoted.double.ipkg punctuation.definition.string.begin.ipkg
+5:9-11 "a " meta.field.ipkg string.quoted.double.ipkg
+5:11-13 "\\\"" meta.field.ipkg string.quoted.double.ipkg
+5:13-19 "quoted" meta.field.ipkg string.quoted.double.ipkg
+5:19-21 "\\\"" meta.field.ipkg string.quoted.double.ipkg
+5:21-58 " word -- not a comment {- nor this -}" meta.field.ipkg string.quoted.double.ipkg
+6:0-14 "over two lines" meta.field.ipkg string.quoted.double.ipkg
+6:14-15 "\"" meta.field.ipkg string.quoted.double.ipkg punctuation.definition.string.end.ipkg
+7:0-2 "{-" meta.field.ipkg comment.block.ipkg punctuation.definition.comment.begin.ipkg
+7:2-48 " A character literal hides a quote or a dash: " meta.field.ipkg comment.block.ipkg
+7:48-51 "'\"'" meta.field.ipkg comment.block.ipkg
+7:51-52 " " meta.field.ipkg comment.block.ipkg
+7:52-55 "'-'" meta.field.ipkg comment.block.ipkg
+7:55-56 " " meta.field.ipkg comment.block.ipkg
+7:56-58 "-}" meta.field.ipkg comment.block.ipkg punctuation.definition.comment.end.ipkg
+8:0-2 "{-" meta.field.ipkg comment.block.ipkg punctuation.definition.comment.begin.ipkg
+8:2-35 " A string literal hides a close: " meta.field.ipkg comment.block.ipkg
+8:35-36 "\"" meta.field.ipkg comment.block.ipkg
+8:36-38 "-}" meta.field.ipkg comment.block.ipkg
+8:38-39 "\"" meta.field.ipkg comment.block.ipkg
+8:39-40 " " meta.field.ipkg comment.block.ipkg
+8:40-42 "-}" meta.field.ipkg comment.block.ipkg punctuation.definition.comment.end.ipkg
+9:0-2 "{-" meta.field.ipkg comment.block.ipkg punctuation.definition.comment.begin.ipkg
+9:2-37 " A line comment hides a close too: " meta.field.ipkg comment.block.ipkg
+9:37-42 "-- -}" meta.field.ipkg comment.block.ipkg
+10:0-33 "   so the comment only ends here " meta.field.ipkg comment.block.ipkg
+10:33-35 "-}" meta.field.ipkg comment.block.ipkg punctuation.definition.comment.end.ipkg
+11:0-7 "depends" meta.field.ipkg support.type.property-name.ipkg
+11:7-8 " " meta.field.ipkg
+11:8-9 "=" meta.field.ipkg punctuation.separator.key-value.ipkg
+11:9-10 " " meta.field.ipkg
+11:10-14 "base" meta.field.ipkg entity.name.type.package.ipkg
+11:14-15 " " meta.field.ipkg
+11:15-17 ">=" meta.field.ipkg keyword.operator.comparison.ipkg
+11:17-18 " " meta.field.ipkg
+11:18-23 "0.5.1" meta.field.ipkg constant.numeric.version.ipkg
+11:23-24 " " meta.field.ipkg
+11:24-26 "&&" meta.field.ipkg keyword.operator.logical.ipkg
+11:26-27 " " meta.field.ipkg
+11:27-29 "<=" meta.field.ipkg keyword.operator.comparison.ipkg
+11:29-30 " " meta.field.ipkg
+11:30-33 "1.0" meta.field.ipkg constant.numeric.version.ipkg
+11:33-34 " " meta.field.ipkg
+11:34-35 "," meta.field.ipkg punctuation.separator.comma.ipkg
+11:35-36 " " meta.field.ipkg
+11:36-43 "contrib" meta.field.ipkg entity.name.type.package.ipkg
+11:43-44 " " meta.field.ipkg
+11:44-46 "==" meta.field.ipkg keyword.operator.comparison.ipkg
+11:46-47 " " meta.field.ipkg
+11:47-52 "0.8.0" meta.field.ipkg constant.numeric.version.ipkg
+11:52-53 " " meta.field.ipkg
+11:53-54 "," meta.field.ipkg punctuation.separator.comma.ipkg
+11:54-55 " " meta.field.ipkg
+11:55-62 "network" meta.field.ipkg entity.name.type.package.ipkg
+11:62-63 " " meta.field.ipkg
+11:63-64 ">" meta.field.ipkg keyword.operator.comparison.ipkg
+11:64-65 " " meta.field.ipkg
+11:65-68 "0.1" meta.field.ipkg constant.numeric.version.ipkg
+11:68-69 " " meta.field.ipkg
+11:69-71 "&&" meta.field.ipkg keyword.operator.logical.ipkg
+11:71-72 " " meta.field.ipkg
+11:72-73 "<" meta.field.ipkg keyword.operator.comparison.ipkg
+11:73-74 " " meta.field.ipkg
+11:74-75 "2" meta.field.ipkg constant.numeric.version.ipkg
+12:0-7 "modules" meta.field.ipkg support.type.property-name.ipkg
+12:7-8 " " meta.field.ipkg
+12:8-9 "=" meta.field.ipkg punctuation.separator.key-value.ipkg
+12:9-10 " " meta.field.ipkg
+12:10-15 "Tally" meta.field.ipkg entity.name.namespace.ipkg
+12:15-16 "," meta.field.ipkg punctuation.separator.comma.ipkg
+12:16-27 "Tally.Parse" meta.field.ipkg entity.name.namespace.ipkg
+12:27-29 "--" meta.field.ipkg comment.line.double-dash.ipkg punctuation.definition.comment.ipkg
+12:29-55 "a comment may touch a name" meta.field.ipkg comment.line.double-dash.ipkg
+13:0-9 "sourcedir" meta.field.ipkg support.type.property-name.ipkg
+13:9-10 " " meta.field.ipkg
+13:10-11 "=" meta.field.ipkg punctuation.separator.key-value.ipkg
+13:11-12 " " meta.field.ipkg
+13:12-13 "\"" meta.field.ipkg string.quoted.double.ipkg punctuation.definition.string.begin.ipkg
+13:13-25 "ipkg-sources" meta.field.ipkg string.quoted.double.ipkg
+13:25-26 "\"" meta.field.ipkg string.quoted.double.ipkg punctuation.definition.string.end.ipkg
+14:0-4 "main" meta.field.ipkg support.type.property-name.ipkg
+14:4-5 " " meta.field.ipkg
+14:5-6 "=" meta.field.ipkg punctuation.separator.key-value.ipkg
+14:6-7 " " meta.field.ipkg
+14:7-12 "Tally" meta.field.ipkg entity.name.namespace.ipkg
+14:12-14 "--" meta.field.ipkg comment.line.double-dash.ipkg punctuation.definition.comment.ipkg
+14:14-83 "in 0.8.0 a capitalised name ends at a dash (master reads \"Tally--in\")" meta.field.ipkg comment.line.double-dash.ipkg
+15:0-10 "executable" meta.field.ipkg support.type.property-name.ipkg
+15:10-11 " " meta.field.ipkg
+15:11-12 "=" meta.field.ipkg punctuation.separator.key-value.ipkg
+15:12-13 " " meta.field.ipkg
+15:13-14 "\"" meta.field.ipkg string.quoted.double.ipkg punctuation.definition.string.begin.ipkg
+15:14-23 "tally cli" meta.field.ipkg string.quoted.double.ipkg
+15:23-24 "\"" meta.field.ipkg string.quoted.double.ipkg punctuation.definition.string.end.ipkg
+16:0-3 "{--" meta.field.ipkg comment.block.ipkg punctuation.definition.comment.begin.ipkg
+16:3-18 "} a top-level '" meta.field.ipkg comment.block.ipkg
+16:18-22 "{--}" meta.field.ipkg comment.block.ipkg
+16:22-60 "' does not close the comment it opens " meta.field.ipkg comment.block.ipkg
+16:60-62 "-}" meta.field.ipkg comment.block.ipkg punctuation.definition.comment.end.ipkg

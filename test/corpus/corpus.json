@@ -1,0 +1,37 @@
+{
+  "comment": "Real-world Idris 2 code tokenised by test/grammar/corpus.test.ts. scripts/fetch-corpus.mjs fetches each entry at its pinned commit into .corpus/<name> (git-ignored); nothing here is copied into the repository. `paths` are the top-level directories checked out and tokenised. `endsInsideBlockComment` lists files whose last lines are inside a block comment that is never closed, which the lexer accepts (the `eof` alternatives of blockComment and toEndComment, src/Parser/Lexer/Common.idr 40 and 65); each was confirmed by reading it.",
+  "corpora": [
+    {
+      "name": "yaffle",
+      "url": "https://github.com/edwinb/Yaffle",
+      "commit": "05df1e82477ee61b7a5cd8a59c7048f2bd33043d",
+      "paths": ["libs", "src", "tests"],
+      "licence": "none declared (no licence file or statement at this commit)",
+      "redistribute": false,
+      "endsInsideBlockComment": {
+        "src/Compiler/ES/Codegen.idr": "a column-0 '{-' near the end is never closed",
+        "src/TTImp/Elab/Utils.idr": "a column-0 '{-' near the end is never closed",
+        "tests/idris2/basic037/Comments.idr": "line 1 is '{---…}', which opens a comment that never closes (checked with idris2 --check and a type-error canary: the rest of the file is a comment)",
+        "tests/idris2/basic067/unclosed1.idr": "a test of an unclosed comment at the end of a file",
+        "tests/idris2/basic067/unclosed2.idr": "a test of an unclosed comment at the end of a file",
+        "tests/idris2/basic067/unclosed3.idr": "a test of an unclosed comment at the end of a file"
+      }
+    },
+    {
+      "name": "idris-compiler-tools",
+      "url": "https://github.com/JankaGramofonomanka/idris-compiler-tools",
+      "commit": "e323d4707231ea0fb57b6b4015a35a6440cdc42a",
+      "paths": ["control-flow", "lng-compiler"],
+      "licence": "MIT, Copyright (c) 2023 Jan Serwatka (control-flow/LICENSE.md, lng-compiler/LICENSE.md)",
+      "redistribute": false
+    },
+    {
+      "name": "idris2-0.8.0-libs",
+      "url": "https://github.com/idris-lang/Idris2",
+      "commit": "15a3e4e70843f7a34100f6470c04b791330788df",
+      "paths": ["libs"],
+      "licence": "BSD-3-Clause, Copyright (c) 2020 Edwin Brady (LICENSE); tag v0.8.0",
+      "redistribute": false
+    }
+  ]
+}

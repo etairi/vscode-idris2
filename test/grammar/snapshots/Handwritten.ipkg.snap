@@ -1,0 +1,84 @@
+# vscode-textmate snapshot. One token per line: LINE:START-END "text" scopes (0-based,
+# end exclusive, root scope omitted). Regenerate with UPDATE_SNAPSHOTS=1.
+0:0-2 "--" comment.line.double-dash.ipkg punctuation.definition.comment.ipkg
+0:2-75 " A hand-written package description: fields separated by blank lines, the" comment.line.double-dash.ipkg
+1:0-2 "--" comment.line.double-dash.ipkg punctuation.definition.comment.ipkg
+1:2-73 " '=' of a long list on a line of its own, entries ending in commas, and" comment.line.double-dash.ipkg
+2:0-2 "--" comment.line.double-dash.ipkg punctuation.definition.comment.ipkg
+2:2-25 " entries commented out." comment.line.double-dash.ipkg
+3:0-7 "package" meta.package.ipkg keyword.other.package.ipkg
+3:7-8 " " meta.package.ipkg
+3:8-25 "tally-handwritten" meta.package.ipkg entity.name.type.package.ipkg
+5:0-7 "version" meta.field.ipkg support.type.property-name.ipkg
+5:7-8 " " meta.field.ipkg
+5:8-9 "=" meta.field.ipkg punctuation.separator.key-value.ipkg
+5:9-10 " " meta.field.ipkg
+5:10-15 "0.2.0" meta.field.ipkg constant.numeric.version.ipkg
+6:0-9 "sourcedir" meta.field.ipkg support.type.property-name.ipkg
+6:9-10 " " meta.field.ipkg
+6:10-11 "=" meta.field.ipkg punctuation.separator.key-value.ipkg
+6:11-12 " " meta.field.ipkg
+6:12-13 "\"" meta.field.ipkg string.quoted.double.ipkg punctuation.definition.string.begin.ipkg
+6:13-25 "ipkg-sources" meta.field.ipkg string.quoted.double.ipkg
+6:25-26 "\"" meta.field.ipkg string.quoted.double.ipkg punctuation.definition.string.end.ipkg
+8:0-7 "modules" meta.field.ipkg support.type.property-name.ipkg
+9:0-2 "  " meta.field.ipkg
+9:2-3 "=" meta.field.ipkg punctuation.separator.key-value.ipkg
+10:0-4 "    " meta.field.ipkg
+10:4-6 "--" meta.field.ipkg comment.line.double-dash.ipkg punctuation.definition.comment.ipkg
+10:6-35 " the command-line entry point" meta.field.ipkg comment.line.double-dash.ipkg
+11:0-4 "    " meta.field.ipkg
+11:4-8 "Main" meta.field.ipkg entity.name.namespace.ipkg
+11:8-9 "," meta.field.ipkg punctuation.separator.comma.ipkg
+13:0-4 "    " meta.field.ipkg
+13:4-9 "Tally" meta.field.ipkg entity.name.namespace.ipkg
+13:9-10 "," meta.field.ipkg punctuation.separator.comma.ipkg
+14:0-4 "    " meta.field.ipkg
+14:4-15 "Tally.Parse" meta.field.ipkg entity.name.namespace.ipkg
+14:15-16 "," meta.field.ipkg punctuation.separator.comma.ipkg
+15:0-2 "--" meta.field.ipkg comment.line.double-dash.ipkg punctuation.definition.comment.ipkg
+15:2-29 "  Tally.Parse.Experimental," meta.field.ipkg comment.line.double-dash.ipkg
+16:0-4 "    " meta.field.ipkg
+16:4-21 "Tally.Parse.Lexer" meta.field.ipkg entity.name.namespace.ipkg
+16:21-22 "," meta.field.ipkg punctuation.separator.comma.ipkg
+17:0-4 "    " meta.field.ipkg
+17:4-16 "Tally.Report" meta.field.ipkg entity.name.namespace.ipkg
+19:0-7 "depends" meta.field.ipkg support.type.property-name.ipkg
+19:7-8 " " meta.field.ipkg
+19:8-9 "=" meta.field.ipkg punctuation.separator.key-value.ipkg
+19:9-10 " " meta.field.ipkg
+19:10-17 "contrib" meta.field.ipkg entity.name.type.package.ipkg
+19:17-18 "," meta.field.ipkg punctuation.separator.comma.ipkg
+19:18-19 " " meta.field.ipkg
+19:19-23 "test" meta.field.ipkg entity.name.type.package.ipkg
+21:0-4 "main" meta.field.ipkg support.type.property-name.ipkg
+21:4-5 " " meta.field.ipkg
+21:5-6 "=" meta.field.ipkg punctuation.separator.key-value.ipkg
+21:6-7 " " meta.field.ipkg
+21:7-11 "Main" meta.field.ipkg entity.name.namespace.ipkg
+22:0-10 "executable" meta.field.ipkg support.type.property-name.ipkg
+22:10-11 " " meta.field.ipkg
+22:11-12 "=" meta.field.ipkg punctuation.separator.key-value.ipkg
+22:12-13 " " meta.field.ipkg
+22:13-18 "tally" meta.field.ipkg string.unquoted.executable.ipkg
+23:0-4 "opts" meta.field.ipkg support.type.property-name.ipkg
+23:4-5 " " meta.field.ipkg
+23:5-6 "=" meta.field.ipkg punctuation.separator.key-value.ipkg
+23:6-7 " " meta.field.ipkg
+23:7-8 "\"" meta.field.ipkg string.quoted.double.ipkg punctuation.definition.string.begin.ipkg
+23:8-36 "--no-color --console-width 0" meta.field.ipkg string.quoted.double.ipkg
+23:36-37 "\"" meta.field.ipkg string.quoted.double.ipkg punctuation.definition.string.end.ipkg
+25:0-8 "builddir" meta.field.ipkg support.type.property-name.ipkg
+25:8-9 " " meta.field.ipkg
+25:9-10 "=" meta.field.ipkg punctuation.separator.key-value.ipkg
+25:10-11 " " meta.field.ipkg
+25:11-12 "\"" meta.field.ipkg string.quoted.double.ipkg punctuation.definition.string.begin.ipkg
+25:12-23 "tally_build" meta.field.ipkg string.quoted.double.ipkg
+25:23-24 "\"" meta.field.ipkg string.quoted.double.ipkg punctuation.definition.string.end.ipkg
+26:0-9 "outputdir" meta.field.ipkg support.type.property-name.ipkg
+26:9-10 " " meta.field.ipkg
+26:10-11 "=" meta.field.ipkg punctuation.separator.key-value.ipkg
+26:11-12 " " meta.field.ipkg
+26:12-13 "\"" meta.field.ipkg string.quoted.double.ipkg punctuation.definition.string.begin.ipkg
+26:13-22 "tally_out" meta.field.ipkg string.quoted.double.ipkg
+26:22-23 "\"" meta.field.ipkg string.quoted.double.ipkg punctuation.definition.string.end.ipkg

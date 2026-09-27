@@ -1,0 +1,126 @@
+# vscode-textmate snapshot. One token per line: LINE:START-END "text" scopes (0-based,
+# end exclusive, root scope omitted). Regenerate with UPDATE_SNAPSHOTS=1.
+0:0-3 "|||" comment.line.documentation.idris2 punctuation.definition.comment.idris2
+0:3-91 " Identifiers (src/Parser/Lexer/Common.idr isIdentStart, isIdentTrailing): ASCII letters," comment.line.documentation.idris2
+1:0-3 "|||" comment.line.documentation.idris2 punctuation.definition.comment.idris2
+1:3-86 " '_', primes after the first character, and every character above U+00A0. Operators" comment.line.documentation.idris2
+2:0-3 "|||" comment.line.documentation.idris2 punctuation.definition.comment.idris2
+2:3-85 " are ASCII only (src/Core/Name.idr isOpChar), so a Unicode arrow is an identifier." comment.line.documentation.idris2
+3:0-6 "module" keyword.other.module.idris2
+3:6-7 " "
+3:7-14 "Unicode" entity.name.namespace.idris2
+5:0-1 "α" entity.name.function.idris2
+5:1-2 " "
+5:2-3 ":" keyword.operator.colon.idris2
+5:3-4 " "
+5:4-7 "Nat"
+6:0-1 "α"
+6:1-2 " "
+6:2-3 "=" keyword.operator.equals.idris2
+6:3-4 " "
+6:4-5 "1" constant.numeric.integer.decimal.idris2
+8:0-2 "x₁" entity.name.function.idris2
+8:2-3 " "
+8:3-4 ":" keyword.operator.colon.idris2
+8:4-5 " "
+8:5-8 "Nat"
+9:0-2 "x₁"
+9:2-3 " "
+9:3-4 "=" keyword.operator.equals.idris2
+9:4-5 " "
+9:5-6 "α"
+9:6-7 " "
+9:7-8 "+" keyword.operator.idris2
+9:8-9 " "
+9:9-10 "1" constant.numeric.integer.decimal.idris2
+11:0-4 "data" meta.declaration.data.idris2 storage.type.data.idris2
+11:4-5 " " meta.declaration.data.idris2
+11:5-6 "ℕ" meta.declaration.data.idris2 entity.name.type.data.idris2
+11:6-7 " " meta.declaration.data.idris2
+11:7-8 ":" meta.declaration.data.idris2 keyword.operator.colon.idris2
+11:8-9 " " meta.declaration.data.idris2
+11:9-13 "Type" meta.declaration.data.idris2 support.type.primitive.idris2
+11:13-14 " " meta.declaration.data.idris2
+11:14-19 "where" meta.declaration.data.idris2 keyword.other.where.idris2
+12:0-2 "  " meta.declaration.data.idris2
+12:2-6 "Zero" meta.declaration.data.idris2 entity.name.function.constructor.idris2
+12:6-7 " " meta.declaration.data.idris2
+12:7-8 ":" meta.declaration.data.idris2 keyword.operator.colon.idris2
+12:8-9 " " meta.declaration.data.idris2
+12:9-10 "ℕ" meta.declaration.data.idris2
+13:0-2 "  " meta.declaration.data.idris2
+13:2-6 "Succ" meta.declaration.data.idris2 entity.name.function.constructor.idris2
+13:6-7 " " meta.declaration.data.idris2
+13:7-8 ":" meta.declaration.data.idris2 keyword.operator.colon.idris2
+13:8-9 " " meta.declaration.data.idris2
+13:9-10 "ℕ" meta.declaration.data.idris2
+13:10-11 " " meta.declaration.data.idris2
+13:11-13 "->" meta.declaration.data.idris2 keyword.operator.arrow.idris2
+13:13-14 " " meta.declaration.data.idris2
+13:14-15 "ℕ" meta.declaration.data.idris2
+15:0-5 "toNat" entity.name.function.idris2
+15:5-6 " "
+15:6-7 ":" keyword.operator.colon.idris2
+15:7-8 " "
+15:8-9 "ℕ"
+15:9-10 " "
+15:10-12 "->" keyword.operator.arrow.idris2
+15:12-13 " "
+15:13-16 "Nat"
+16:0-5 "toNat"
+16:5-6 " "
+16:6-10 "Zero"
+16:10-11 " "
+16:11-12 "=" keyword.operator.equals.idris2
+16:12-13 " "
+16:13-14 "0" constant.numeric.integer.decimal.idris2
+17:0-5 "toNat"
+17:5-6 " "
+17:6-7 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+17:7-11 "Succ" meta.parens.idris2
+17:11-12 " " meta.parens.idris2
+17:12-13 "k" meta.parens.idris2
+17:13-14 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+17:14-15 " "
+17:15-16 "=" keyword.operator.equals.idris2
+17:16-17 " "
+17:17-18 "S"
+17:18-19 " "
+17:19-20 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+17:20-25 "toNat" meta.parens.idris2
+17:25-26 " " meta.parens.idris2
+17:26-27 "k" meta.parens.idris2
+17:27-28 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+19:0-11 "snake_case'" entity.name.function.idris2
+19:11-12 " "
+19:12-13 ":" keyword.operator.colon.idris2
+19:13-14 " "
+19:14-17 "Nat"
+20:0-11 "snake_case'"
+20:11-12 " "
+20:12-13 "=" keyword.operator.equals.idris2
+20:13-14 " "
+20:14-16 "x₁"
+22:0-2 "--" comment.line.double-dash.idris2 punctuation.definition.comment.idris2
+22:2-77 " `_x` is the symbol `_` followed by `x`, so `f _ x` has two arguments here." comment.line.double-dash.idris2
+23:0-7 "twoArgs" entity.name.function.idris2
+23:7-8 " "
+23:8-9 ":" keyword.operator.colon.idris2
+23:9-10 " "
+23:10-13 "Nat"
+23:13-14 " "
+23:14-16 "->" keyword.operator.arrow.idris2
+23:16-17 " "
+23:17-20 "Nat"
+23:20-21 " "
+23:21-23 "->" keyword.operator.arrow.idris2
+23:23-24 " "
+23:24-27 "Nat"
+24:0-7 "twoArgs"
+24:7-8 " "
+24:8-9 "_" variable.language.wildcard.idris2
+24:9-10 "x"
+24:10-11 " "
+24:11-12 "=" keyword.operator.equals.idris2
+24:12-13 " "
+24:13-14 "x"

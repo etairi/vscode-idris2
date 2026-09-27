@@ -1,0 +1,574 @@
+# vscode-textmate snapshot. One token per line: LINE:START-END "text" scopes (0-based,
+# end exclusive, root scope omitted). Regenerate with UPDATE_SNAPSHOTS=1.
+0:0-2 "--" comment.line.double-dash.idris2 punctuation.definition.comment.idris2
+0:2-97 " Excerpt from idris-compiler-tools, https://github.com/JankaGramofonomanka/idris-compiler-tools" comment.line.double-dash.idris2
+1:0-2 "--" comment.line.double-dash.idris2 punctuation.definition.comment.idris2
+1:2-92 " commit e323d4707231ea0fb57b6b4015a35a6440cdc42a, file lng-compiler/src/Data/Attached.idr." comment.line.double-dash.idris2
+2:0-2 "--" comment.line.double-dash.idris2 punctuation.definition.comment.idris2
+2:2-99 " Copyright (c) 2023 Jan Serwatka. MIT License; the full notice is in NOTICE.md next to this file." comment.line.double-dash.idris2
+3:0-2 "--" comment.line.double-dash.idris2 punctuation.definition.comment.idris2
+3:2-124 " Changes: module renamed to IctAttached; `import Data.Some` and the two functions over `Some` (inSome, outOfSome) removed." comment.line.double-dash.idris2
+4:0-3 "|||" comment.line.documentation.idris2 punctuation.definition.comment.idris2
+4:3-64 " A module defining the `Attached` data type and its interface" comment.line.documentation.idris2
+5:0-6 "module" keyword.other.module.idris2
+5:6-7 " "
+5:7-18 "IctAttached" entity.name.namespace.idris2
+9:0-3 "|||" comment.line.documentation.idris2 punctuation.definition.comment.idris2
+9:3-36 " A data item attached to a value." comment.line.documentation.idris2
+10:0-3 "|||" comment.line.documentation.idris2 punctuation.definition.comment.idris2
+10:3-75 " The purpose of this data type is tag values, while keeping track of the" comment.line.documentation.idris2
+11:0-3 "|||" comment.line.documentation.idris2 punctuation.definition.comment.idris2
+11:3-26 " tag in the type-level." comment.line.documentation.idris2
+12:0-6 "export" storage.modifier.visibility.idris2
+13:0-4 "data" meta.declaration.data.idris2 storage.type.data.idris2
+13:4-5 " " meta.declaration.data.idris2
+13:5-13 "Attached" meta.declaration.data.idris2 entity.name.type.data.idris2
+13:13-14 " " meta.declaration.data.idris2
+13:14-15 ":" meta.declaration.data.idris2 keyword.operator.colon.idris2
+13:15-16 " " meta.declaration.data.idris2
+13:16-17 "(" meta.declaration.data.idris2 meta.parens.idris2 punctuation.section.parens.begin.idris2
+13:17-18 "x" meta.declaration.data.idris2 meta.parens.idris2 variable.parameter.idris2
+13:18-19 " " meta.declaration.data.idris2 meta.parens.idris2
+13:19-20 ":" meta.declaration.data.idris2 meta.parens.idris2 keyword.operator.colon.idris2
+13:20-21 " " meta.declaration.data.idris2 meta.parens.idris2
+13:21-22 "t" meta.declaration.data.idris2 meta.parens.idris2
+13:22-23 ")" meta.declaration.data.idris2 meta.parens.idris2 punctuation.section.parens.end.idris2
+13:23-24 " " meta.declaration.data.idris2
+13:24-26 "->" meta.declaration.data.idris2 keyword.operator.arrow.idris2
+13:26-27 " " meta.declaration.data.idris2
+13:27-31 "Type" meta.declaration.data.idris2 support.type.primitive.idris2
+13:31-32 " " meta.declaration.data.idris2
+13:32-34 "->" meta.declaration.data.idris2 keyword.operator.arrow.idris2
+13:34-35 " " meta.declaration.data.idris2
+13:35-39 "Type" meta.declaration.data.idris2 support.type.primitive.idris2
+13:39-40 " " meta.declaration.data.idris2
+13:40-45 "where" meta.declaration.data.idris2 keyword.other.where.idris2
+14:0-2 "  " meta.declaration.data.idris2
+14:2-8 "Attach" meta.declaration.data.idris2 entity.name.function.constructor.idris2
+14:8-9 " " meta.declaration.data.idris2
+14:9-10 ":" meta.declaration.data.idris2 keyword.operator.colon.idris2
+14:10-11 " " meta.declaration.data.idris2
+14:11-12 "(" meta.declaration.data.idris2 meta.parens.idris2 punctuation.section.parens.begin.idris2
+14:12-13 "0" meta.declaration.data.idris2 meta.parens.idris2 storage.modifier.multiplicity.idris2
+14:13-14 " " meta.declaration.data.idris2 meta.parens.idris2
+14:14-15 "x" meta.declaration.data.idris2 meta.parens.idris2 variable.parameter.idris2
+14:15-16 " " meta.declaration.data.idris2 meta.parens.idris2
+14:16-17 ":" meta.declaration.data.idris2 meta.parens.idris2 keyword.operator.colon.idris2
+14:17-18 " " meta.declaration.data.idris2 meta.parens.idris2
+14:18-19 "t" meta.declaration.data.idris2 meta.parens.idris2
+14:19-20 ")" meta.declaration.data.idris2 meta.parens.idris2 punctuation.section.parens.end.idris2
+14:20-21 " " meta.declaration.data.idris2
+14:21-23 "->" meta.declaration.data.idris2 keyword.operator.arrow.idris2
+14:23-24 " " meta.declaration.data.idris2
+14:24-25 "(" meta.declaration.data.idris2 meta.parens.idris2 punctuation.section.parens.begin.idris2
+14:25-26 "y" meta.declaration.data.idris2 meta.parens.idris2 variable.parameter.idris2
+14:26-27 " " meta.declaration.data.idris2 meta.parens.idris2
+14:27-28 ":" meta.declaration.data.idris2 meta.parens.idris2 keyword.operator.colon.idris2
+14:28-29 " " meta.declaration.data.idris2 meta.parens.idris2
+14:29-31 "t'" meta.declaration.data.idris2 meta.parens.idris2
+14:31-32 ")" meta.declaration.data.idris2 meta.parens.idris2 punctuation.section.parens.end.idris2
+14:32-33 " " meta.declaration.data.idris2
+14:33-35 "->" meta.declaration.data.idris2 keyword.operator.arrow.idris2
+14:35-36 " " meta.declaration.data.idris2
+14:36-44 "Attached" meta.declaration.data.idris2
+14:44-45 " " meta.declaration.data.idris2
+14:45-46 "x" meta.declaration.data.idris2
+14:46-47 " " meta.declaration.data.idris2
+14:47-49 "t'" meta.declaration.data.idris2
+16:0-6 "export" storage.modifier.visibility.idris2
+16:6-7 " "
+16:7-13 "infixr" keyword.other.fixity.idris2
+16:13-14 " "
+16:14-15 "6" constant.numeric.integer.decimal.idris2
+16:15-16 " "
+16:16-19 ":~:" keyword.operator.idris2
+17:0-3 "|||" comment.line.documentation.idris2 punctuation.definition.comment.idris2
+17:3-27 " An alias for `Attached`" comment.line.documentation.idris2
+18:0-6 "public" storage.modifier.visibility.idris2
+18:6-7 " "
+18:7-13 "export" storage.modifier.visibility.idris2
+19:0-1 "(" punctuation.section.parens.begin.idris2
+19:1-4 ":~:" entity.name.function.idris2
+19:4-5 ")" punctuation.section.parens.end.idris2
+19:5-6 " "
+19:6-7 ":" keyword.operator.colon.idris2
+19:7-8 " "
+19:8-9 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+19:9-10 "x" meta.parens.idris2 variable.parameter.idris2
+19:10-11 " " meta.parens.idris2
+19:11-12 ":" meta.parens.idris2 keyword.operator.colon.idris2
+19:12-13 " " meta.parens.idris2
+19:13-14 "t" meta.parens.idris2
+19:14-15 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+19:15-16 " "
+19:16-18 "->" keyword.operator.arrow.idris2
+19:18-19 " "
+19:19-23 "Type" support.type.primitive.idris2
+19:23-24 " "
+19:24-26 "->" keyword.operator.arrow.idris2
+19:26-27 " "
+19:27-31 "Type" support.type.primitive.idris2
+20:0-1 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+20:1-4 ":~:" meta.parens.idris2 keyword.operator.idris2
+20:4-5 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+20:5-6 " "
+20:6-7 "=" keyword.operator.equals.idris2
+20:7-8 " "
+20:8-16 "Attached"
+22:0-3 "|||" comment.line.documentation.idris2 punctuation.definition.comment.idris2
+22:3-46 " Combine two items attached to the same tag" comment.line.documentation.idris2
+23:0-6 "export" storage.modifier.visibility.idris2
+24:0-7 "combine" entity.name.function.idris2
+24:7-8 " "
+24:8-9 ":" keyword.operator.colon.idris2
+24:9-10 " "
+24:10-11 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+24:11-12 "a" meta.parens.idris2
+24:12-13 " " meta.parens.idris2
+24:13-15 "->" meta.parens.idris2 keyword.operator.arrow.idris2
+24:15-16 " " meta.parens.idris2
+24:16-17 "b" meta.parens.idris2
+24:17-18 " " meta.parens.idris2
+24:18-20 "->" meta.parens.idris2 keyword.operator.arrow.idris2
+24:20-21 " " meta.parens.idris2
+24:21-22 "c" meta.parens.idris2
+24:22-23 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+24:23-24 " "
+24:24-26 "->" keyword.operator.arrow.idris2
+24:26-27 " "
+24:27-35 "Attached"
+24:35-36 " "
+24:36-37 "x"
+24:37-38 " "
+24:38-39 "a"
+24:39-40 " "
+24:40-42 "->" keyword.operator.arrow.idris2
+24:42-43 " "
+24:43-51 "Attached"
+24:51-52 " "
+24:52-53 "x"
+24:53-54 " "
+24:54-55 "b"
+24:55-56 " "
+24:56-58 "->" keyword.operator.arrow.idris2
+24:58-59 " "
+24:59-67 "Attached"
+24:67-68 " "
+24:68-69 "x"
+24:69-70 " "
+24:70-71 "c"
+25:0-7 "combine"
+25:7-8 " "
+25:8-9 "f"
+25:9-10 " "
+25:10-11 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+25:11-17 "Attach" meta.parens.idris2
+25:17-18 " " meta.parens.idris2
+25:18-19 "x" meta.parens.idris2
+25:19-20 " " meta.parens.idris2
+25:20-21 "a" meta.parens.idris2
+25:21-22 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+25:22-23 " "
+25:23-24 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+25:24-30 "Attach" meta.parens.idris2
+25:30-31 " " meta.parens.idris2
+25:31-32 "x" meta.parens.idris2
+25:32-33 " " meta.parens.idris2
+25:33-34 "b" meta.parens.idris2
+25:34-35 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+25:35-36 " "
+25:36-37 "=" keyword.operator.equals.idris2
+25:37-38 " "
+25:38-44 "Attach"
+25:44-45 " "
+25:45-46 "x"
+25:46-47 " "
+25:47-48 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+25:48-49 "f" meta.parens.idris2
+25:49-50 " " meta.parens.idris2
+25:50-51 "a" meta.parens.idris2
+25:51-52 " " meta.parens.idris2
+25:52-53 "b" meta.parens.idris2
+25:53-54 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+27:0-3 "|||" comment.line.documentation.idris2 punctuation.definition.comment.idris2
+27:3-31 " Attach a data item to a tag" comment.line.documentation.idris2
+28:0-6 "export" storage.modifier.visibility.idris2
+29:0-6 "attach" entity.name.function.idris2
+29:6-7 " "
+29:7-8 ":" keyword.operator.colon.idris2
+29:8-9 " "
+29:9-10 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+29:10-11 "0" meta.parens.idris2 storage.modifier.multiplicity.idris2
+29:11-12 " " meta.parens.idris2
+29:12-13 "x" meta.parens.idris2 variable.parameter.idris2
+29:13-14 " " meta.parens.idris2
+29:14-15 ":" meta.parens.idris2 keyword.operator.colon.idris2
+29:15-16 " " meta.parens.idris2
+29:16-17 "t" meta.parens.idris2
+29:17-18 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+29:18-19 " "
+29:19-21 "->" keyword.operator.arrow.idris2
+29:21-22 " "
+29:22-23 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+29:23-24 "y" meta.parens.idris2 variable.parameter.idris2
+29:24-25 " " meta.parens.idris2
+29:25-26 ":" meta.parens.idris2 keyword.operator.colon.idris2
+29:26-27 " " meta.parens.idris2
+29:27-29 "t'" meta.parens.idris2
+29:29-30 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+29:30-31 " "
+29:31-33 "->" keyword.operator.arrow.idris2
+29:33-34 " "
+29:34-42 "Attached"
+29:42-43 " "
+29:43-44 "x"
+29:44-45 " "
+29:45-47 "t'"
+30:0-6 "attach"
+30:6-7 " "
+30:7-8 "=" keyword.operator.equals.idris2
+30:8-9 " "
+30:9-15 "Attach"
+32:0-3 "|||" comment.line.documentation.idris2 punctuation.definition.comment.idris2
+32:3-33 " Detach a data item from a tag" comment.line.documentation.idris2
+33:0-6 "export" storage.modifier.visibility.idris2
+34:0-6 "detach" entity.name.function.idris2
+34:6-7 " "
+34:7-8 ":" keyword.operator.colon.idris2
+34:8-9 " "
+34:9-17 "Attached"
+34:17-18 " "
+34:18-19 "x"
+34:19-20 " "
+34:20-21 "t"
+34:21-22 " "
+34:22-24 "->" keyword.operator.arrow.idris2
+34:24-25 " "
+34:25-26 "t"
+35:0-6 "detach"
+35:6-7 " "
+35:7-8 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+35:8-14 "Attach" meta.parens.idris2
+35:14-15 " " meta.parens.idris2
+35:15-16 "x" meta.parens.idris2
+35:16-17 " " meta.parens.idris2
+35:17-18 "a" meta.parens.idris2
+35:18-19 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+35:19-20 " "
+35:20-21 "=" keyword.operator.equals.idris2
+35:21-22 " "
+35:22-23 "a"
+37:0-3 "|||" comment.line.documentation.idris2 punctuation.definition.comment.idris2
+37:3-58 " Detach a data item from a tag and attach it to another" comment.line.documentation.idris2
+38:0-6 "export" storage.modifier.visibility.idris2
+39:0-8 "reattach" entity.name.function.idris2
+39:8-9 " "
+39:9-10 ":" keyword.operator.colon.idris2
+39:10-11 " "
+39:11-12 "{" meta.braces.idris2 punctuation.section.braces.begin.idris2
+39:12-13 "x" meta.braces.idris2 variable.parameter.idris2
+39:13-14 " " meta.braces.idris2
+39:14-15 ":" meta.braces.idris2 keyword.operator.colon.idris2
+39:15-16 " " meta.braces.idris2
+39:16-17 "t" meta.braces.idris2
+39:17-18 "}" meta.braces.idris2 punctuation.section.braces.end.idris2
+39:18-19 " "
+39:19-21 "->" keyword.operator.arrow.idris2
+39:21-22 " "
+39:22-23 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+39:23-24 "y" meta.parens.idris2 variable.parameter.idris2
+39:24-25 " " meta.parens.idris2
+39:25-26 ":" meta.parens.idris2 keyword.operator.colon.idris2
+39:26-27 " " meta.parens.idris2
+39:27-28 "t" meta.parens.idris2
+39:28-29 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+39:29-30 " "
+39:30-32 "->" keyword.operator.arrow.idris2
+39:32-33 " "
+39:33-41 "Attached"
+39:41-42 " "
+39:42-43 "x"
+39:43-44 " "
+39:44-45 "a"
+39:45-46 " "
+39:46-48 "->" keyword.operator.arrow.idris2
+39:48-49 " "
+39:49-57 "Attached"
+39:57-58 " "
+39:58-59 "y"
+39:59-60 " "
+39:60-61 "a"
+40:0-8 "reattach"
+40:8-9 " "
+40:9-10 "y"
+40:10-11 " "
+40:11-12 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+40:12-18 "Attach" meta.parens.idris2
+40:18-19 " " meta.parens.idris2
+40:19-20 "x" meta.parens.idris2
+40:20-21 " " meta.parens.idris2
+40:21-22 "a" meta.parens.idris2
+40:22-23 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+40:23-24 " "
+40:24-25 "=" keyword.operator.equals.idris2
+40:25-26 " "
+40:26-32 "Attach"
+40:32-33 " "
+40:33-34 "y"
+40:34-35 " "
+40:35-36 "a"
+42:0-6 "export" storage.modifier.visibility.idris2
+43:0-14 "implementation" storage.type.implementation.idris2
+43:14-15 " "
+43:15-22 "Functor"
+43:22-23 " "
+43:23-24 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+43:24-32 "Attached" meta.parens.idris2
+43:32-33 " " meta.parens.idris2
+43:33-34 "x" meta.parens.idris2
+43:34-35 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+43:35-36 " "
+43:36-41 "where" keyword.other.where.idris2
+44:0-2 "  "
+44:2-5 "map"
+44:5-6 " "
+44:6-7 "f"
+44:7-8 " "
+44:8-9 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+44:9-15 "Attach" meta.parens.idris2
+44:15-16 " " meta.parens.idris2
+44:16-17 "x" meta.parens.idris2
+44:17-18 " " meta.parens.idris2
+44:18-19 "y" meta.parens.idris2
+44:19-20 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+44:20-21 " "
+44:21-22 "=" keyword.operator.equals.idris2
+44:22-23 " "
+44:23-29 "Attach"
+44:29-30 " "
+44:30-31 "x"
+44:31-32 " "
+44:32-33 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+44:33-34 "f" meta.parens.idris2
+44:34-35 " " meta.parens.idris2
+44:35-36 "y" meta.parens.idris2
+44:36-37 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+46:0-6 "export" storage.modifier.visibility.idris2
+47:0-14 "implementation" storage.type.implementation.idris2
+47:14-15 " "
+47:15-23 "Foldable"
+47:23-24 " "
+47:24-25 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+47:25-33 "Attached" meta.parens.idris2
+47:33-34 " " meta.parens.idris2
+47:34-35 "x" meta.parens.idris2
+47:35-36 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+47:36-37 " "
+47:37-42 "where" keyword.other.where.idris2
+48:0-2 "  "
+48:2-7 "foldr"
+48:7-8 " "
+48:8-9 "f"
+48:9-10 " "
+48:10-13 "acc"
+48:13-14 " "
+48:14-15 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+48:15-21 "Attach" meta.parens.idris2
+48:21-22 " " meta.parens.idris2
+48:22-23 "x" meta.parens.idris2
+48:23-24 " " meta.parens.idris2
+48:24-28 "elem" meta.parens.idris2
+48:28-29 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+48:29-30 " "
+48:30-31 "=" keyword.operator.equals.idris2
+48:31-32 " "
+48:32-33 "f"
+48:33-34 " "
+48:34-38 "elem"
+48:38-39 " "
+48:39-42 "acc"
+50:0-6 "export" storage.modifier.visibility.idris2
+51:0-14 "implementation" storage.type.implementation.idris2
+51:14-15 " "
+51:15-26 "Traversable"
+51:26-27 " "
+51:27-28 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+51:28-36 "Attached" meta.parens.idris2
+51:36-37 " " meta.parens.idris2
+51:37-38 "x" meta.parens.idris2
+51:38-39 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+51:39-40 " "
+51:40-45 "where" keyword.other.where.idris2
+52:0-2 "  "
+52:2-10 "traverse"
+52:10-11 " "
+52:11-12 "f"
+52:12-13 " "
+52:13-14 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+52:14-20 "Attach" meta.parens.idris2
+52:20-21 " " meta.parens.idris2
+52:21-22 "x" meta.parens.idris2
+52:22-23 " " meta.parens.idris2
+52:23-24 "y" meta.parens.idris2
+52:24-25 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+52:25-26 " "
+52:26-27 "=" keyword.operator.equals.idris2
+52:27-28 " "
+52:28-32 "pure"
+52:32-33 " "
+52:33-34 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+52:34-40 "Attach" meta.parens.idris2
+52:40-41 " " meta.parens.idris2
+52:41-42 "x" meta.parens.idris2
+52:42-43 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+52:43-44 " "
+52:44-47 "<*>" keyword.operator.idris2
+52:47-48 " "
+52:48-49 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+52:49-50 "f" meta.parens.idris2
+52:50-51 " " meta.parens.idris2
+52:51-52 "y" meta.parens.idris2
+52:52-53 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+55:0-3 "|||" comment.line.documentation.idris2 punctuation.definition.comment.idris2
+55:3-54 " Distribute the attachment to the lements of a list" comment.line.documentation.idris2
+56:0-6 "export" storage.modifier.visibility.idris2
+57:0-10 "distribute" entity.name.function.idris2
+57:10-11 " "
+57:11-12 ":" keyword.operator.colon.idris2
+57:12-13 " "
+57:13-21 "Attached"
+57:21-22 " "
+57:22-23 "x"
+57:23-24 " "
+57:24-25 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+57:25-29 "List" meta.parens.idris2
+57:29-30 " " meta.parens.idris2
+57:30-31 "a" meta.parens.idris2
+57:31-32 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+57:32-33 " "
+57:33-35 "->" keyword.operator.arrow.idris2
+57:35-36 " "
+57:36-40 "List"
+57:40-41 " "
+57:41-42 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+57:42-50 "Attached" meta.parens.idris2
+57:50-51 " " meta.parens.idris2
+57:51-52 "x" meta.parens.idris2
+57:52-53 " " meta.parens.idris2
+57:53-54 "a" meta.parens.idris2
+57:54-55 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+58:0-10 "distribute"
+58:10-11 " "
+58:11-12 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+58:12-18 "Attach" meta.parens.idris2
+58:18-19 " " meta.parens.idris2
+58:19-20 "x" meta.parens.idris2
+58:20-21 " " meta.parens.idris2
+58:21-22 "l" meta.parens.idris2
+58:22-23 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+58:23-24 " "
+58:24-25 "=" keyword.operator.equals.idris2
+58:25-26 " "
+58:26-31 "foldr"
+58:31-32 " "
+58:32-33 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+58:33-34 "\\" meta.parens.idris2 keyword.operator.lambda.idris2
+58:34-38 "elem" meta.parens.idris2 variable.parameter.idris2
+58:38-39 " " meta.parens.idris2
+58:39-41 "=>" meta.parens.idris2 keyword.operator.arrow.double.idris2
+58:41-42 " " meta.parens.idris2
+58:42-43 "(" meta.parens.idris2 meta.parens.idris2 punctuation.section.parens.begin.idris2
+58:43-49 "Attach" meta.parens.idris2 meta.parens.idris2
+58:49-50 " " meta.parens.idris2 meta.parens.idris2
+58:50-51 "x" meta.parens.idris2 meta.parens.idris2
+58:51-52 " " meta.parens.idris2 meta.parens.idris2
+58:52-56 "elem" meta.parens.idris2 meta.parens.idris2
+58:56-57 " " meta.parens.idris2 meta.parens.idris2
+58:57-59 "::" meta.parens.idris2 meta.parens.idris2 keyword.operator.idris2
+58:59-60 ")" meta.parens.idris2 meta.parens.idris2 punctuation.section.parens.end.idris2
+58:60-61 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+58:61-62 " "
+58:62-65 "Nil"
+58:65-66 " "
+58:66-67 "l"
+60:0-3 "|||" comment.line.documentation.idris2 punctuation.definition.comment.idris2
+60:3-83 " Move the attachment to the dependent (the second) element of the dependent pair" comment.line.documentation.idris2
+61:0-6 "export" storage.modifier.visibility.idris2
+62:0-11 "detachParam" entity.name.function.idris2
+62:11-12 " "
+62:12-13 ":" keyword.operator.colon.idris2
+62:13-14 " "
+62:14-15 "{" meta.braces.idris2 punctuation.section.braces.begin.idris2
+62:15-16 "f" meta.braces.idris2 variable.parameter.idris2
+62:16-17 " " meta.braces.idris2
+62:17-18 ":" meta.braces.idris2 keyword.operator.colon.idris2
+62:18-19 " " meta.braces.idris2
+62:19-20 "a" meta.braces.idris2
+62:20-21 " " meta.braces.idris2
+62:21-23 "->" meta.braces.idris2 keyword.operator.arrow.idris2
+62:23-24 " " meta.braces.idris2
+62:24-28 "Type" meta.braces.idris2 support.type.primitive.idris2
+62:28-29 "}" meta.braces.idris2 punctuation.section.braces.end.idris2
+62:29-30 " "
+62:30-32 "->" keyword.operator.arrow.idris2
+62:32-33 " "
+62:33-41 "Attached"
+62:41-42 " "
+62:42-43 "x"
+62:43-44 " "
+62:44-45 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+62:45-46 "y" meta.parens.idris2
+62:46-47 " " meta.parens.idris2
+62:47-49 "**" meta.parens.idris2 keyword.operator.dependent-pair.idris2
+62:49-50 " " meta.parens.idris2
+62:50-51 "f" meta.parens.idris2
+62:51-52 " " meta.parens.idris2
+62:52-53 "y" meta.parens.idris2
+62:53-54 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+62:54-55 " "
+62:55-57 "->" keyword.operator.arrow.idris2
+62:57-58 " "
+62:58-59 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+62:59-60 "y" meta.parens.idris2
+62:60-61 " " meta.parens.idris2
+62:61-63 "**" meta.parens.idris2 keyword.operator.dependent-pair.idris2
+62:63-64 " " meta.parens.idris2
+62:64-72 "Attached" meta.parens.idris2
+62:72-73 " " meta.parens.idris2
+62:73-74 "x" meta.parens.idris2
+62:74-75 " " meta.parens.idris2
+62:75-76 "(" meta.parens.idris2 meta.parens.idris2 punctuation.section.parens.begin.idris2
+62:76-77 "f" meta.parens.idris2 meta.parens.idris2
+62:77-78 " " meta.parens.idris2 meta.parens.idris2
+62:78-79 "y" meta.parens.idris2 meta.parens.idris2
+62:79-80 ")" meta.parens.idris2 meta.parens.idris2 punctuation.section.parens.end.idris2
+62:80-81 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+63:0-11 "detachParam"
+63:11-12 " "
+63:12-13 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+63:13-19 "Attach" meta.parens.idris2
+63:19-20 " " meta.parens.idris2
+63:20-21 "x" meta.parens.idris2
+63:21-22 " " meta.parens.idris2
+63:22-23 "(" meta.parens.idris2 meta.parens.idris2 punctuation.section.parens.begin.idris2
+63:23-24 "y" meta.parens.idris2 meta.parens.idris2
+63:24-25 " " meta.parens.idris2 meta.parens.idris2
+63:25-27 "**" meta.parens.idris2 meta.parens.idris2 keyword.operator.dependent-pair.idris2
+63:27-28 " " meta.parens.idris2 meta.parens.idris2
+63:28-30 "fy" meta.parens.idris2 meta.parens.idris2
+63:30-31 ")" meta.parens.idris2 meta.parens.idris2 punctuation.section.parens.end.idris2
+63:31-32 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+63:32-33 " "
+63:33-34 "=" keyword.operator.equals.idris2
+63:34-35 " "
+63:35-36 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+63:36-37 "y" meta.parens.idris2
+63:37-38 " " meta.parens.idris2
+63:38-40 "**" meta.parens.idris2 keyword.operator.dependent-pair.idris2
+63:40-41 " " meta.parens.idris2
+63:41-47 "Attach" meta.parens.idris2
+63:47-48 " " meta.parens.idris2
+63:48-49 "x" meta.parens.idris2
+63:49-50 " " meta.parens.idris2
+63:50-52 "fy" meta.parens.idris2
+63:52-53 ")" meta.parens.idris2 punctuation.section.parens.end.idris2

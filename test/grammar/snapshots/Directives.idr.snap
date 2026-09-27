@@ -1,0 +1,473 @@
+# vscode-textmate snapshot. One token per line: LINE:START-END "text" scopes (0-based,
+# end exclusive, root scope omitted). Regenerate with UPDATE_SNAPSHOTS=1.
+0:0-3 "|||" comment.line.documentation.idris2 punctuation.definition.comment.idris2
+0:3-92 " Directives (pragmas): the `%` names accepted by src/Idris/Parser.idr that can stand in a" comment.line.documentation.idris2
+1:0-3 "|||" comment.line.documentation.idris2 punctuation.definition.comment.idris2
+1:3-87 " module checked by Idris 2 0.8.0. The settings at the end restate the Prelude's own." comment.line.documentation.idris2
+2:0-6 "module" keyword.other.module.idris2
+2:6-7 " "
+2:7-17 "Directives" entity.name.namespace.idris2
+4:0-6 "import" keyword.control.import.idris2
+4:6-7 " "
+4:7-11 "Data" entity.name.namespace.idris2
+4:11-12 "." entity.name.namespace.idris2 punctuation.separator.namespace.idris2
+4:12-16 "Vect" entity.name.namespace.idris2
+5:0-6 "import" keyword.control.import.idris2
+5:6-7 " "
+5:7-15 "Language" entity.name.namespace.idris2
+5:15-16 "." entity.name.namespace.idris2 punctuation.separator.namespace.idris2
+5:16-26 "Reflection" entity.name.namespace.idris2
+7:0-8 "%default" keyword.other.directive.idris2
+7:8-9 " "
+7:9-14 "total" storage.modifier.totality.idris2
+8:0-9 "%language" keyword.other.directive.idris2
+8:9-10 " "
+8:10-24 "ElabReflection" support.constant.extension.idris2
+9:0-10 "%auto_lazy" keyword.other.directive.idris2
+9:10-11 " "
+9:11-13 "on" constant.language.idris2
+10:0-18 "%unbound_implicits" keyword.other.directive.idris2
+10:18-19 " "
+10:19-21 "on" constant.language.idris2
+11:0-26 "%prefix_record_projections" keyword.other.directive.idris2
+11:26-27 " "
+11:27-30 "off" constant.language.idris2
+12:0-16 "%ambiguity_depth" keyword.other.directive.idris2
+12:16-17 " "
+12:17-18 "3" constant.numeric.integer.decimal.idris2
+13:0-15 "%totality_depth" keyword.other.directive.idris2
+13:15-16 " "
+13:16-17 "5" constant.numeric.integer.decimal.idris2
+14:0-20 "%auto_implicit_depth" keyword.other.directive.idris2
+14:20-21 " "
+14:21-23 "50" constant.numeric.integer.decimal.idris2
+15:0-21 "%nf_metavar_threshold" keyword.other.directive.idris2
+15:21-22 " "
+15:22-24 "25" constant.numeric.integer.decimal.idris2
+16:0-15 "%search_timeout" keyword.other.directive.idris2
+16:15-16 " "
+16:16-20 "1000" constant.numeric.integer.decimal.idris2
+17:0-8 "%logging" keyword.other.directive.idris2
+17:8-9 " "
+17:9-12 "off" constant.language.idris2
+18:0-8 "%logging" keyword.other.directive.idris2
+18:8-9 " "
+18:9-10 "\"" string.quoted.double.idris2 punctuation.definition.string.begin.idris2
+18:10-14 "elab" string.quoted.double.idris2
+18:14-15 "\"" string.quoted.double.idris2 punctuation.definition.string.end.idris2
+18:15-16 " "
+18:16-17 "0" constant.numeric.integer.decimal.idris2
+20:0-5 "%name" keyword.other.directive.idris2
+20:5-6 " "
+20:6-10 "Vect"
+20:10-11 " "
+20:11-13 "xs"
+20:13-14 "," punctuation.separator.comma.idris2
+20:14-15 " "
+20:15-17 "ys"
+22:0-3 "%cg" keyword.other.directive.idris2
+22:3-4 " "
+22:4-8 "chez" support.constant.backend.idris2
+22:8-32 " extraRuntime=runtime.ss" string.unquoted.directive.idris2
+23:0-3 "%cg" keyword.other.directive.idris2
+23:3-4 " "
+23:4-14 "javascript" support.constant.backend.idris2
+23:14-15 " "
+23:15-16 "{" punctuation.section.braces.begin.idris2
+23:16-23 "minimal" string.unquoted.directive.idris2
+23:23-24 "}" punctuation.section.braces.end.idris2
+25:0-7 "%inline" keyword.other.directive.idris2
+26:0-6 "double" entity.name.function.idris2
+26:6-7 " "
+26:7-8 ":" keyword.operator.colon.idris2
+26:8-9 " "
+26:9-12 "Nat"
+26:12-13 " "
+26:13-15 "->" keyword.operator.arrow.idris2
+26:15-16 " "
+26:16-19 "Nat"
+27:0-6 "double"
+27:6-7 " "
+27:7-8 "n"
+27:8-9 " "
+27:9-10 "=" keyword.operator.equals.idris2
+27:10-11 " "
+27:11-12 "n"
+27:12-13 " "
+27:13-14 "+" keyword.operator.idris2
+27:14-15 " "
+27:15-16 "n"
+29:0-9 "%noinline" keyword.other.directive.idris2
+30:0-6 "triple" entity.name.function.idris2
+30:6-7 " "
+30:7-8 ":" keyword.operator.colon.idris2
+30:8-9 " "
+30:9-12 "Nat"
+30:12-13 " "
+30:13-15 "->" keyword.operator.arrow.idris2
+30:15-16 " "
+30:16-19 "Nat"
+31:0-6 "triple"
+31:6-7 " "
+31:7-8 "n"
+31:8-9 " "
+31:9-10 "=" keyword.operator.equals.idris2
+31:10-11 " "
+31:11-12 "3" constant.numeric.integer.decimal.idris2
+31:12-13 " "
+31:13-14 "*" keyword.operator.idris2
+31:14-15 " "
+31:15-16 "n"
+33:0-9 "%tcinline" keyword.other.directive.idris2
+34:0-2 "tc" entity.name.function.idris2
+34:2-3 " "
+34:3-4 ":" keyword.operator.colon.idris2
+34:4-5 " "
+34:5-8 "Nat"
+34:8-9 " "
+34:9-11 "->" keyword.operator.arrow.idris2
+34:11-12 " "
+34:12-15 "Nat"
+35:0-2 "tc"
+35:2-3 " "
+35:3-4 "=" keyword.operator.equals.idris2
+35:4-5 " "
+35:5-6 "S"
+37:0-5 "%hint" keyword.other.directive.idris2
+38:0-7 "natHint" entity.name.function.idris2
+38:7-8 " "
+38:8-9 ":" keyword.operator.colon.idris2
+38:9-10 " "
+38:10-13 "Nat"
+39:0-7 "natHint"
+39:7-8 " "
+39:8-9 "=" keyword.operator.equals.idris2
+39:9-10 " "
+39:10-11 "0" constant.numeric.integer.decimal.idris2
+41:0-10 "%deprecate" keyword.other.directive.idris2
+42:0-3 "old" entity.name.function.idris2
+42:3-4 " "
+42:4-5 ":" keyword.operator.colon.idris2
+42:5-6 " "
+42:6-9 "Nat"
+43:0-3 "old"
+43:3-4 " "
+43:4-5 "=" keyword.operator.equals.idris2
+43:5-6 " "
+43:6-7 "1" constant.numeric.integer.decimal.idris2
+45:0-8 "%foreign" keyword.other.directive.idris2
+45:8-9 " "
+45:9-10 "\"" string.quoted.double.idris2 punctuation.definition.string.begin.idris2
+45:10-21 "C:puts,libc" string.quoted.double.idris2
+45:21-22 "\"" string.quoted.double.idris2 punctuation.definition.string.end.idris2
+46:0-10 "prim__puts" entity.name.function.idris2
+46:10-11 " "
+46:11-12 ":" keyword.operator.colon.idris2
+46:12-13 " "
+46:13-19 "String" support.type.primitive.idris2
+46:19-20 " "
+46:20-22 "->" keyword.operator.arrow.idris2
+46:22-23 " "
+46:23-29 "PrimIO"
+46:29-30 " "
+46:30-33 "Int" support.type.primitive.idris2
+48:0-7 "%export" keyword.other.directive.idris2
+48:7-8 " "
+48:8-9 "\"" string.quoted.double.idris2 punctuation.definition.string.begin.idris2
+48:9-30 "javascript:exportedFn" string.quoted.double.idris2
+48:30-31 "\"" string.quoted.double.idris2 punctuation.definition.string.end.idris2
+49:0-8 "exported" entity.name.function.idris2
+49:8-9 " "
+49:9-10 ":" keyword.operator.colon.idris2
+49:10-11 " "
+49:11-14 "Nat"
+49:14-15 " "
+49:15-17 "->" keyword.operator.arrow.idris2
+49:17-18 " "
+49:18-21 "Nat"
+50:0-8 "exported"
+50:8-9 " "
+50:9-10 "=" keyword.operator.equals.idris2
+50:10-11 " "
+50:11-12 "S"
+52:0-5 "%spec" keyword.other.directive.idris2
+52:5-6 " "
+52:6-7 "a"
+53:0-11 "specialised" entity.name.function.idris2
+53:11-12 " "
+53:12-13 ":" keyword.operator.colon.idris2
+53:13-14 " "
+53:14-15 "{" meta.braces.idris2 punctuation.section.braces.begin.idris2
+53:15-16 "a" meta.braces.idris2 variable.parameter.idris2
+53:16-17 " " meta.braces.idris2
+53:17-18 ":" meta.braces.idris2 keyword.operator.colon.idris2
+53:18-19 " " meta.braces.idris2
+53:19-23 "Type" meta.braces.idris2 support.type.primitive.idris2
+53:23-24 "}" meta.braces.idris2 punctuation.section.braces.end.idris2
+53:24-25 " "
+53:25-27 "->" keyword.operator.arrow.idris2
+53:27-28 " "
+53:28-32 "List"
+53:32-33 " "
+53:33-34 "a"
+53:34-35 " "
+53:35-37 "->" keyword.operator.arrow.idris2
+53:37-38 " "
+53:38-42 "List"
+53:42-43 " "
+53:43-44 "a"
+54:0-11 "specialised"
+54:11-12 " "
+54:12-13 "=" keyword.operator.equals.idris2
+54:13-14 " "
+54:14-16 "id"
+56:0-10 "%transform" keyword.other.directive.idris2
+56:10-11 " "
+56:11-12 "\"" string.quoted.double.idris2 punctuation.definition.string.begin.idris2
+56:12-23 "double-plus" string.quoted.double.idris2
+56:23-24 "\"" string.quoted.double.idris2 punctuation.definition.string.end.idris2
+56:24-25 " "
+56:25-31 "double"
+56:31-32 " "
+56:32-33 "n"
+56:33-34 " "
+56:34-35 "=" keyword.operator.equals.idris2
+56:35-36 " "
+56:36-37 "n"
+56:37-38 " "
+56:38-39 "+" keyword.operator.idris2
+56:39-40 " "
+56:40-41 "n"
+58:0-6 "%macro" keyword.other.directive.idris2
+59:0-5 "three" entity.name.function.idris2
+59:5-6 " "
+59:6-7 ":" keyword.operator.colon.idris2
+59:7-8 " "
+59:8-12 "Elab"
+59:12-13 " "
+59:13-16 "Nat"
+60:0-5 "three"
+60:5-6 " "
+60:6-7 "=" keyword.operator.equals.idris2
+60:7-8 " "
+60:8-12 "pure"
+60:12-13 " "
+60:13-14 "3" constant.numeric.integer.decimal.idris2
+62:0-9 "usesMacro" entity.name.function.idris2
+62:9-10 " "
+62:10-11 ":" keyword.operator.colon.idris2
+62:11-12 " "
+62:12-15 "Nat"
+63:0-9 "usesMacro"
+63:9-10 " "
+63:10-11 "=" keyword.operator.equals.idris2
+63:11-12 " "
+63:12-17 "three"
+65:0-10 "elaborated" entity.name.function.idris2
+65:10-11 " "
+65:11-12 ":" keyword.operator.colon.idris2
+65:12-13 " "
+65:13-16 "Nat"
+66:0-10 "elaborated"
+66:10-11 " "
+66:11-12 "=" keyword.operator.equals.idris2
+66:12-13 " "
+66:13-21 "%runElab" keyword.other.directive.idris2
+66:21-22 " "
+66:22-23 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+66:23-27 "pure" meta.parens.idris2
+66:27-28 " " meta.parens.idris2
+66:28-29 "3" meta.parens.idris2 constant.numeric.integer.decimal.idris2
+66:29-30 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+68:0-8 "searched" entity.name.function.idris2
+68:8-9 " "
+68:9-10 ":" keyword.operator.colon.idris2
+68:10-11 " "
+68:11-14 "Nat"
+69:0-8 "searched"
+69:8-9 " "
+69:9-10 "=" keyword.operator.equals.idris2
+69:10-11 " "
+69:11-18 "%search" keyword.other.directive.idris2
+71:0-5 "world" entity.name.function.idris2
+71:5-6 " "
+71:6-7 ":" keyword.operator.colon.idris2
+71:7-8 " "
+71:8-14 "%World" support.type.primitive.idris2
+72:0-5 "world"
+72:5-6 " "
+72:6-7 "=" keyword.operator.equals.idris2
+72:7-8 " "
+72:8-16 "%MkWorld" support.constant.idris2
+74:0-6 "logged" entity.name.function.idris2
+74:6-7 " "
+74:7-8 ":" keyword.operator.colon.idris2
+74:8-9 " "
+74:9-12 "Nat"
+75:0-6 "logged"
+75:6-7 " "
+75:7-8 "=" keyword.operator.equals.idris2
+75:8-9 " "
+75:9-17 "%logging" keyword.other.directive.idris2
+75:17-18 " "
+75:18-19 "\"" string.quoted.double.idris2 punctuation.definition.string.begin.idris2
+75:19-23 "elab" string.quoted.double.idris2
+75:23-24 "\"" string.quoted.double.idris2 punctuation.definition.string.end.idris2
+75:24-25 " "
+75:25-26 "0" constant.numeric.integer.decimal.idris2
+75:26-27 " "
+75:27-28 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+75:28-34 "double" meta.parens.idris2
+75:34-35 " " meta.parens.idris2
+75:35-36 "1" meta.parens.idris2 constant.numeric.integer.decimal.idris2
+75:36-37 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+77:0-9 "syntactic" entity.name.function.idris2
+77:9-10 " "
+77:10-11 ":" keyword.operator.colon.idris2
+77:11-12 " "
+77:12-15 "Nat"
+77:15-16 " "
+77:16-18 "->" keyword.operator.arrow.idris2
+77:18-19 " "
+77:19-22 "Nat"
+78:0-9 "syntactic"
+78:9-10 " "
+78:10-11 "n"
+78:11-12 " "
+78:12-16 "with" keyword.control.with.idris2
+78:16-17 " "
+78:17-27 "%syntactic" keyword.other.directive.idris2
+78:27-28 " "
+78:28-29 "(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+78:29-30 "n" meta.parens.idris2
+78:30-31 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+79:0-2 "  "
+79:2-11 "syntactic"
+79:11-12 " "
+79:12-13 "n"
+79:13-14 " "
+79:14-15 "|" keyword.operator.pipe.idris2
+79:15-16 " "
+79:16-17 "Z"
+79:17-18 " "
+79:18-19 "=" keyword.operator.equals.idris2
+79:19-20 " "
+79:20-21 "0" constant.numeric.integer.decimal.idris2
+80:0-2 "  "
+80:2-11 "syntactic"
+80:11-12 " "
+80:12-13 "n"
+80:13-14 " "
+80:14-15 "|" keyword.operator.pipe.idris2
+80:15-16 " "
+80:16-17 "S"
+80:17-18 " "
+80:18-19 "k"
+80:19-20 " "
+80:20-21 "=" keyword.operator.equals.idris2
+80:21-22 " "
+80:22-23 "k"
+82:0-4 "data" meta.declaration.data.idris2 storage.type.data.idris2
+82:4-5 " " meta.declaration.data.idris2
+82:5-10 "Peano" meta.declaration.data.idris2 entity.name.type.data.idris2
+82:10-11 " " meta.declaration.data.idris2
+82:11-12 "=" meta.declaration.data.idris2 keyword.operator.equals.idris2
+82:12-13 " " meta.declaration.data.idris2
+82:13-15 "PZ" meta.declaration.data.idris2 entity.name.function.constructor.idris2
+82:15-16 " " meta.declaration.data.idris2
+82:16-17 "|" meta.declaration.data.idris2 keyword.operator.pipe.idris2
+82:17-18 " " meta.declaration.data.idris2
+82:18-20 "PS" meta.declaration.data.idris2 entity.name.function.constructor.idris2
+82:20-21 " " meta.declaration.data.idris2
+82:21-26 "Peano" meta.declaration.data.idris2
+84:0-8 "%builtin" keyword.other.directive.idris2
+84:8-9 " "
+84:9-16 "Natural" support.constant.builtin.idris2
+84:16-17 " "
+84:17-22 "Peano"
+86:0-5 "%hide" keyword.other.directive.idris2
+86:5-6 " "
+86:6-13 "Prelude" entity.name.namespace.idris2
+86:13-14 "." entity.name.namespace.idris2 punctuation.separator.namespace.idris2
+86:14-19 "Types" entity.name.namespace.idris2
+86:19-20 "." entity.name.namespace.idris2 punctuation.separator.namespace.idris2
+86:20-24 "List" entity.name.namespace.idris2
+86:24-25 "." punctuation.separator.namespace.idris2
+86:25-31 "length"
+87:0-7 "%unhide" keyword.other.directive.idris2
+87:7-8 " "
+87:8-15 "Prelude" entity.name.namespace.idris2
+87:15-16 "." entity.name.namespace.idris2 punctuation.separator.namespace.idris2
+87:16-21 "Types" entity.name.namespace.idris2
+87:21-22 "." entity.name.namespace.idris2 punctuation.separator.namespace.idris2
+87:22-26 "List" entity.name.namespace.idris2
+87:26-27 "." punctuation.separator.namespace.idris2
+87:27-33 "length"
+88:0-5 "%hide" keyword.other.directive.idris2
+88:5-6 " "
+88:6-13 "Prelude" entity.name.namespace.idris2
+88:13-14 "." entity.name.namespace.idris2 punctuation.separator.namespace.idris2
+88:14-17 "Ops" entity.name.namespace.idris2
+88:17-18 "." punctuation.separator.namespace.idris2
+88:18-24 "infixl" keyword.other.fixity.idris2
+88:24-26 ".(" meta.parens.idris2 punctuation.section.parens.begin.idris2
+88:26-27 "+" meta.parens.idris2 keyword.operator.idris2
+88:27-28 ")" meta.parens.idris2 punctuation.section.parens.end.idris2
+89:0-7 "private" storage.modifier.visibility.idris2
+89:7-8 " "
+89:8-14 "infixl" keyword.other.fixity.idris2
+89:14-15 " "
+89:15-16 "8" constant.numeric.integer.decimal.idris2
+89:16-17 " "
+89:17-18 "+" keyword.operator.idris2
+91:0-5 "%pair" keyword.other.directive.idris2
+91:5-6 " "
+91:6-13 "Builtin" entity.name.namespace.idris2
+91:13-14 "." punctuation.separator.namespace.idris2
+91:14-18 "Pair"
+91:18-19 " "
+91:19-26 "Builtin" entity.name.namespace.idris2
+91:26-27 "." punctuation.separator.namespace.idris2
+91:27-30 "fst"
+91:30-31 " "
+91:31-38 "Builtin" entity.name.namespace.idris2
+91:38-39 "." punctuation.separator.namespace.idris2
+91:39-42 "snd"
+92:0-8 "%rewrite" keyword.other.directive.idris2
+92:8-9 " "
+92:9-16 "Builtin" entity.name.namespace.idris2
+92:16-17 "." punctuation.separator.namespace.idris2
+92:17-22 "Equal"
+92:22-23 " "
+92:23-30 "Builtin" entity.name.namespace.idris2
+92:30-31 "." punctuation.separator.namespace.idris2
+92:31-44 "rewrite__impl"
+93:0-11 "%integerLit" keyword.other.directive.idris2
+93:11-12 " "
+93:12-19 "Prelude" entity.name.namespace.idris2
+93:19-20 "." entity.name.namespace.idris2 punctuation.separator.namespace.idris2
+93:20-23 "Num" entity.name.namespace.idris2
+93:23-24 "." punctuation.separator.namespace.idris2
+93:24-35 "fromInteger"
+94:0-10 "%stringLit" keyword.other.directive.idris2
+94:10-11 " "
+94:11-18 "Builtin" entity.name.namespace.idris2
+94:18-19 "." punctuation.separator.namespace.idris2
+94:19-29 "fromString"
+95:0-8 "%charLit" keyword.other.directive.idris2
+95:8-9 " "
+95:9-16 "Builtin" entity.name.namespace.idris2
+95:16-17 "." punctuation.separator.namespace.idris2
+95:17-25 "fromChar"
+96:0-10 "%doubleLit" keyword.other.directive.idris2
+96:10-11 " "
+96:11-18 "Builtin" entity.name.namespace.idris2
+96:18-19 "." punctuation.separator.namespace.idris2
+96:19-29 "fromDouble"
+97:0-16 "%allow_overloads" keyword.other.directive.idris2
+97:16-17 " "
+97:17-24 "Prelude" entity.name.namespace.idris2
+97:24-25 "." entity.name.namespace.idris2 punctuation.separator.namespace.idris2
+97:25-28 "Num" entity.name.namespace.idris2
+97:28-29 "." punctuation.separator.namespace.idris2
+97:29-40 "fromInteger"

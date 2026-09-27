@@ -1,0 +1,17 @@
+{- Lexical corner cases of the package lexer (src/Parser/Lexer/Common.idr and
+   src/Parser/Lexer/Package.idr). {- Block comments nest. -} -}
+package tally-lexical --- more than two dashes still start a line comment
+version = "0.3" -- the deprecated string form: a warning, not an error
+langversion >= 0.7.0 && < 1.0
+brief = "a \"quoted\" word -- not a comment {- nor this -}
+over two lines"
+{- A character literal hides a quote or a dash: '"' '-' -}
+{- A string literal hides a close: "-}" -}
+{- A line comment hides a close too: -- -}
+   so the comment only ends here -}
+depends = base >= 0.5.1 && <= 1.0 , contrib == 0.8.0 , network > 0.1 && < 2
+modules = Tally,Tally.Parse--a comment may touch a name
+sourcedir = "ipkg-sources"
+main = Tally--in 0.8.0 a capitalised name ends at a dash (master reads "Tally--in")
+executable = "tally cli"
+{--} a top-level '{--}' does not close the comment it opens -}

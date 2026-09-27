@@ -1,0 +1,27 @@
+-- A hand-written package description: fields separated by blank lines, the
+-- '=' of a long list on a line of its own, entries ending in commas, and
+-- entries commented out.
+package tally-handwritten
+
+version = 0.2.0
+sourcedir = "ipkg-sources"
+
+modules
+  =
+    -- the command-line entry point
+    Main,
+
+    Tally,
+    Tally.Parse,
+--  Tally.Parse.Experimental,
+    Tally.Parse.Lexer,
+    Tally.Report
+
+depends = contrib, test
+
+main = Main
+executable = tally
+opts = "--no-color --console-width 0"
+
+builddir = "tally_build"
+outputdir = "tally_out"

@@ -1,12 +1,17 @@
 {
   "comments": {
     "lineComment": "--",
-    "blockComment": ["{-", "-}"]
+    "blockComment": ["{-","-}"]
   },
   "autoClosingPairs": [
-    { "open": "\"", "close": "\"", "notIn": ["string"] }
+    {"open":"\"","close":"\"","notIn":["string"]},
+    {"open":"{-","close":" -}","notIn":["string"]}
   ],
   "surroundingPairs": [
-    ["\"", "\""]
+    ["\"","\""]
+  ],
+  "wordPattern": "(?<![A-Za-z_\\u00A1-\\uFFFF][\\w'\\-\\u00A1-\\uFFFF]*|[0-9])[A-Za-z_\\u00A1-\\uFFFF][\\w'\\-\\u00A1-\\uFFFF]*",
+  "onEnterRules": [
+    {"beforeText":"^(?:(?!--(?!-*\\})).)*(?<![<>=])=\\s*(?:--(?!-*\\}).*)?$","action":{"indent":"indent"}}
   ]
 }

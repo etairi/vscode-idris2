@@ -1,0 +1,193 @@
+# Milestone dependency data: the machine-readable form of the "Dependencies" and "Upstream"
+# bullets of docs/ROADMAP.md §5 (and of U3's "Dependencies" bullet in §6).
+#
+# scripts/deps-graph.mjs draws the Mermaid graph of ROADMAP §4 from this file:
+#   npm run docs:graph         rewrites the block between the deps-graph markers in ROADMAP.md
+#   npm run docs:graph:check   exits 1 when that block or this file has drifted from ROADMAP.md
+# The check compares, for every milestone section of ROADMAP.md, the milestone ids named in its
+# "Dependencies" bullet (M14: its "Depends on" sentences) with requires + oneOf + optional +
+# notRequired below, and the U-item ids named in its "Upstream" bullet with the upstream items.
+# So a change to a bullet in §5 needs the matching change here, and vice versa.
+#
+# Fields of a milestone:
+#   requires      hard dependencies, drawn solid. An entry is an id or {id, label}.
+#   oneOf         an OR node: the milestone needs one of `members`, drawn as a hexagon whose
+#                 incoming edges are dotted (so the legend's "solid = all required" does not
+#                 apply to them) and whose outgoing edge is solid.
+#   optional      enhancements that never block, drawn dotted: {from, label}.
+#   upstream      upstream items (§6) that improve the milestone, drawn dotted from their track
+#                 node: {items, label}; every item must belong to one track.
+#   notRequired   ids the Dependencies bullet names without depending on them
+#                 ("M3 is not required"), with the reason; not drawn.
+# Node labels (milestone, track and OR-node `label`) are drawn quoted and must not contain `"`.
+# Edge labels must not contain | " ( ) [ ] { }, which end or break a Mermaid `-->|label|` edge
+# label. The script rejects both. Quote a label that contains `#` (YAML reads ` #` as a comment).
+
+tracks:
+  - id: U1
+    label: U1 upstream idris2-lsp
+  - id: U2
+    label: U2 upstream Idris2 IDE mode
+  - id: U3
+    label: U3 upstream unsaved buffers
+    # §6 U3 "Dependencies. Experience from U2; a design discussion with the maintainers first."
+    optional:
+      - from: U2
+        label: experience from U2
+
+milestones:
+  - id: M0
+    label: M0 Language foundation & harness
+
+  - id: M1
+    label: M1 Toolchain & project discovery
+    requires: [M0]
+    upstream:
+      - items: [U1.2]
+        label: U1.2 exact version
+
+  - id: M2
+    label: M2 IDE-mode core
+    requires: [M0, M1]
+    upstream:
+      - items: [U2.8, U2.9, U2.5]
+        label: U2.8 stdio output, U2.9 error id, U2.5 severity
+
+  - id: M3
+    label: M3 Read-only intelligence
+    requires: [M2]
+    upstream:
+      - items: [U2.2, U2.1, U2.11]
+        label: U2.2 name-at, U2.1 who-calls, U2.11 highlight fields
+
+  - id: M4
+    label: M4 Interactive editing & holes
+    requires: [M0]
+    oneOf:
+      id: E
+      label: M2 or M5 (one of)
+      members: [M2, M5]
+    notRequired:
+      - id: M3
+        reason: "M3 is not required."
+    upstream:
+      - items: [U2.3, U2.4, U2.2]
+        label: U2.3 add-missing, U2.4 hole locations, U2.2 name-at
+      - items: [U1.3]
+        label: U1.3 README kind table
+
+  - id: M5
+    label: M5 idris2-lsp backend & routing
+    requires: [M0, M1]
+    notRequired:
+      - id: M2
+        reason: "Independent of M2 (`auto` degrades to `NullBackend` without it)."
+    upstream:
+      - items: [U1.1, U1.2, U1.3, U1.5]
+        label: U1.1 0.8.0 branch, U1.2 real version, U1.3 capabilities, U1.5 dirty files
+
+  - id: M6
+    label: M6 Shadow typecheck
+    requires: [M2]
+    optional:
+      - from: M4
+        label: holes/edits on dirty text
+    upstream:
+      - items: [U3]
+        label: removes the shadow copies
+      - items: [U1.5]
+        label: U1.5 for LSP users
+
+  - id: M7
+    label: M7 Goal panel
+    requires: [M4]
+    optional:
+      - from: M6
+        label: live updates while typing
+    upstream:
+      - items: [U2.4]
+        label: U2.4 structured hole types
+
+  - id: M8
+    label: M8 REPL & doc-eval
+    requires: [M1]
+    optional:
+      - from: M3
+        label: doc-eval lens, Query box
+      - from: M2
+        label: check-session isolation test
+
+  - id: M9
+    label: M9 Build, run, problems
+    requires: [M1]
+    optional:
+      - from: M11
+        label: project model reuse
+    notRequired:
+      - id: M2
+        reason: "Build tasks use the project's own build directory, never `effectiveCheckBuildDir` (M2)."
+    upstream:
+      - items: [U2.5]
+        label: U2.5 json diagnostics
+
+  - id: M10
+    label: M10 Test Explorer
+    requires: [M9]
+
+  - id: M11
+    label: M11 ipkg, pack.toml, scaffolding
+    requires: [M1]
+    optional:
+      - from: M9
+        label: build the scaffolded project
+    upstream:
+      - items: [U2.7]
+        label: U2.7 multi-ipkg
+
+  - id: M12
+    label: M12 Literate Idris
+    requires: [M0, M2]
+    optional:
+      - from: M3
+        label: tokens/hover inside blocks
+      - from: M4
+        label: editing inside blocks
+    upstream:
+      - items: [U2.6]
+        label: "U2.6 Idris2 #1508"
+      - items: [U1.4]
+        label: U1.4 literate over LSP
+
+  - id: M13
+    label: M13 Unicode input
+    requires: [M0]
+
+  # §5 M14 has no Dependencies bullet: each of its five items ships separately and says what it
+  # depends on ("Depends on M3 (or M5)." for the namespace browser, "Depends on M3." for three
+  # items, "Depends on M0 only." for the web extension).
+  - id: M14
+    label: M14 Extras
+    requires:
+      - id: M3
+        label: namespace browser, workspace symbols, type definition, docs links
+      - id: M0
+        label: web extension, needs only M0
+    optional:
+      - from: M5
+        label: namespace browser via browseNamespace, instead of M3
+    upstream:
+      - items: [U1.6]
+        label: U1.6 references, call hierarchy
+      - items: [U2.1, U2.12]
+        label: U2.1 references, call hierarchy, U2.12 implementations
+
+  - id: M15
+    label: M15 Release polish
+    requires: [M0]
+    notRequired:
+      - id: M4
+        reason: "realistically after M0–M4 (a recommendation, not a dependency)"
+
+  - id: M16
+    label: M16 Idris 1 legacy - optional
+    requires: [M2]

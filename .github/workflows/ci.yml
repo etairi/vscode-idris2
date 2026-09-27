@@ -1,46 +1,149 @@
-# Continuous integration for vscode-idris2.
-#
-# NOTE: this workflow has NOT been executed yet. There is no remote repository; it was written
-# by hand from docs/ROADMAP.md §7.2 / docs/ARCHITECTURE.md §13 (generator-code emits no CI
-# workflow) and must be validated on the first push. Later milestones add the grammar, e2e (macOS with
-# `brew install idris2`) and `vsce package` steps described there.
+# Continuous integration for vscode-idris2, per docs/ROADMAP.md §7.2 and docs/ARCHITECTURE.md §13
+# as they apply to M0:
+#   ubuntu-latest   types, lint, unit, grammar, the §4 graph check, integration (xvfb), `vsce
+#                   package` (the .vsix is uploaded as an artifact), and the grammar corpus test,
+#                   which fetches a pinned third-party repository (needs network)
+#   macos-latest    lint, unit, grammar, integration, and `idris2 --check` of every fixture and
+#                   snippet expansion with Homebrew idris2
+#   windows-latest  lint, unit, integration (sockets, path quoting and an idris2 install route
+#                   are unverified on Windows, ROADMAP E13)
+# `npm test` runs `pretest` first (compile-tests, check-types, lint, esbuild bundle), so the
+# integration step repeats type-checking and lint on purpose: the separate steps name the
+# failing stage.
 name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push to a pull request supersedes its running check. Every other run (a push to main,
+# a manual run) gets a group of its own, so it is never cancelled — not even while pending, which
+# a shared group with cancel-in-progress: false would still do to all but the newest pending
+# run — and every commit on main keeps its own CI result.
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('ci-pr-{0}', github.ref) || format('ci-run-{0}', github.run_id) }}
+  cancel-in-progress: true
 
 jobs:
-  test:
-    name: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+  linux:
+    name: ubuntu-latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
-
       - run: npm ci
 
-      # mocha on Node, no VS Code (compile-tests: tsc → out/)
-      - run: npm run test:unit
+      - name: Type-check
+        run: npm run check-types
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm run test:unit
+      - name: Grammar tests
+        run: npm run test:grammar
+      - name: ROADMAP §4 graph matches docs/milestones.yaml
+        run: npm run docs:graph:check
 
-      # `npm test` first runs `pretest` = compile-tests + compile (check-types + lint + esbuild
-      # bundle), so there is deliberately no separate `npm run compile` step: it would repeat
-      # type-check, lint and bundling. @vscode/test-cli then downloads VS Code and runs
-      # test/integration in an Extension Host. Linux runners have no display, so the Electron
-      # process runs under xvfb.
-      - name: Integration tests (Linux)
-        if: runner.os == 'Linux'
+      # @vscode/test-electron downloads the latest stable VS Code that satisfies engines.vscode
+      # into .vscode-test/vscode-<platform>-<version>. The cache key is that version, so a new
+      # release gets a new entry. Only the download is cached, never .vscode-test/user-data:
+      # every run starts with a fresh profile.
+      - name: Resolve the VS Code version to test against
+        id: vscode
+        shell: bash
+        run: node -e "fetch('https://update.code.visualstudio.com/api/releases/stable?released=true').then(r => r.json()).then(v => console.log('version=' + v[0])).catch(() => console.log('version=unknown'))" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: .vscode-test/vscode-*
+          key: vscode-test-${{ runner.os }}-${{ runner.arch }}-${{ steps.vscode.outputs.version }}
+      - name: Integration tests
+        # Linux runners have no display: run the Electron process under a virtual X server.
         run: xvfb-run -a npm test
 
-      - name: Integration tests (macOS, Windows)
-        if: runner.os != 'Linux'
+      - name: Package the extension (vsce package)
+        run: npm run package
+      - uses: actions/upload-artifact@v7
+        with:
+          name: vscode-idris2-vsix
+          path: '*.vsix'
+          if-no-files-found: error
+
+      - name: Grammar corpus test (fetches the pinned corpus from GitHub)
+        run: npm run test:corpus
+
+  macos:
+    name: macos-latest
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm run test:unit
+      - name: Grammar tests
+        run: npm run test:grammar
+
+      - name: Resolve the VS Code version to test against
+        id: vscode
+        shell: bash
+        run: node -e "fetch('https://update.code.visualstudio.com/api/releases/stable?released=true').then(r => r.json()).then(v => console.log('version=' + v[0])).catch(() => console.log('version=unknown'))" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: .vscode-test/vscode-*
+          key: vscode-test-${{ runner.os }}-${{ runner.arch }}-${{ steps.vscode.outputs.version }}
+      - name: Integration tests
+        run: npm test
+
+      - name: Install Idris 2 (Homebrew)
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: '1'
+          HOMEBREW_NO_INSTALL_CLEANUP: '1'
+        run: |
+          brew install idris2
+          idris2 --version
+      - name: idris2 --check / --dump-ipkg-json every fixture and snippet expansion
+        run: npm run check:fixtures
+
+  windows:
+    name: windows-latest
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Resolve the VS Code version to test against
+        id: vscode
+        shell: bash
+        run: node -e "fetch('https://update.code.visualstudio.com/api/releases/stable?released=true').then(r => r.json()).then(v => console.log('version=' + v[0])).catch(() => console.log('version=unknown'))" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: .vscode-test/vscode-*
+          key: vscode-test-${{ runner.os }}-${{ runner.arch }}-${{ steps.vscode.outputs.version }}
+      - name: Integration tests
         run: npm test
