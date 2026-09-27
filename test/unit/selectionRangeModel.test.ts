@@ -2,7 +2,12 @@ import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { LiterateStyle } from '../../src/project/literate';
-import { buildSyntaxModel, selectionRangesAt } from '../../src/features/syntax/selectionRangeModel';
+import {
+  buildSyntaxModel,
+  isModelledStyle,
+  selectionRangesAt,
+  type ModelledStyle,
+} from '../../src/features/syntax/selectionRangeModel';
 
 function repositoryRoot(): string {
   for (let dir = __dirname; ; dir = path.dirname(dir)) {
@@ -17,7 +22,7 @@ function repositoryRoot(): string {
 }
 
 /** The selected texts, innermost first, at the `occurrence`-th occurrence of `at` in `text`. */
-function chain(text: string, at: string, occurrence = 1, literate?: LiterateStyle): string[] {
+function chain(text: string, at: string, occurrence = 1, literate?: ModelledStyle): string[] {
   let offset = -1;
   for (let k = 0; k < occurrence; k++) {
     offset = text.indexOf(at, offset + 1);
@@ -199,6 +204,14 @@ suite('features/syntax selection ranges', () => {
     const model = buildSyntaxModel(vlen, undefined);
     const ranges = selectionRangesAt(model, vlen.indexOf('\n\nimport') + 1);
     assert.deepStrictEqual(ranges, [{ start: 0, end: vlen.length }]);
+  });
+
+  test('the model reads plain source and bird tracks only; the fenced styles wait for M12', () => {
+    const styles: (LiterateStyle | undefined)[] = [undefined, 'bird', 'cmark', 'org', 'tex', 'typst'];
+    assert.deepStrictEqual(
+      styles.map((style) => isModelledStyle(style)),
+      [true, true, false, false, false, false],
+    );
   });
 
   test('an empty text yields the whole (empty) document, never an empty chain', () => {

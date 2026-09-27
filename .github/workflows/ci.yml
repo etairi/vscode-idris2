@@ -1,12 +1,16 @@
 # Continuous integration for vscode-idris2, per docs/ROADMAP.md §7.2 and docs/ARCHITECTURE.md §13
-# as they apply to M0:
+# as they apply to M1:
 #   ubuntu-latest   types, lint, unit, grammar, the §4 graph check, integration (xvfb), `vsce
 #                   package` (the .vsix is uploaded as an artifact), and the grammar corpus test,
 #                   which fetches a pinned third-party repository (needs network)
-#   macos-latest    lint, unit, grammar, integration, and `idris2 --check` of every fixture and
-#                   snippet expansion with Homebrew idris2
+#   macos-latest    lint, unit, grammar, integration, then with Homebrew idris2: `idris2 --check`
+#                   of every fixture and snippet expansion, and the e2e suite (`npm run
+#                   test:e2e`, test/e2e/ against the real compiler)
 #   windows-latest  lint, unit, integration (sockets, path quoting and an idris2 install route
 #                   are unverified on Windows, ROADMAP E13)
+# "Integration" is every suite of .vscode-test.mjs except e2e: `integration`, `simple-ipkg` and
+# `toolchain-path`, all driven by the fake tools of test/fake-tools (on Windows through their
+# `.cmd` launchers). No job before the macOS e2e step has a real idris2 on PATH.
 # `npm test` runs `pretest` first (compile-tests, check-types, lint, esbuild bundle), so the
 # integration step repeats type-checking and lint on purpose: the separate steps name the
 # failing stage.
@@ -119,6 +123,10 @@ jobs:
           idris2 --version
       - name: idris2 --check / --dump-ipkg-json every fixture and snippet expansion
         run: npm run check:fixtures
+      # test:e2e compiles again (compile-tests, check-types, lint, bundle), then runs only the
+      # `e2e` suite of .vscode-test.mjs, whose Extension Host finds this idris2 on PATH.
+      - name: E2E tests (real idris2)
+        run: npm run test:e2e
 
   windows:
     name: windows-latest

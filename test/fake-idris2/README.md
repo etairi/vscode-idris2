@@ -6,17 +6,52 @@ dependencies) and runs on every CI runner.
 
 ```sh
 node test/fake-idris2/fake-idris2.mjs --version            # Idris 2, version 0.8.0
+node test/fake-idris2/fake-idris2.mjs --ttc-version        # M1: recorded output
+node test/fake-idris2/fake-idris2.mjs --paths              #   "
+node test/fake-idris2/fake-idris2.mjs --list-packages      #   "
+node test/fake-idris2/fake-idris2.mjs --dump-ipkg-json [file.ipkg]   # M1: recorded, per fixture
 node test/fake-idris2/fake-idris2.mjs --ide-mode           # IDE protocol on stdin/stdout
 node test/fake-idris2/fake-idris2.mjs --ide-mode-socket [host:port]
 ```
 
 Any other command line is rejected with exit code 2 and a message on stderr naming the
 arguments. The real compiler would accept many of them, so the fake does not pretend to be the
-real compiler's `Error: Unknown flag …` (stderr, exit 1).
+real compiler's `Error: Unknown flag …` (stderr, exit 1). Tests start it through the launchers
+in `test/fake-tools/bin`, and its fault modes (`FAKE_IDRIS2_MODE`, `FAKE_IDRIS2_DELAY_MS`,
+`FAKE_IDRIS2_VERSION`) are described in `test/fake-tools/README.md`.
+
+## Recorded command-line output (M1)
+
+`recorded-cli-0.8.0.json` holds what the real compiler printed for the toolchain probes, and
+the fake prints it back byte for byte:
+
+- `--version`, `--ttc-version`, `--paths`, `--list-packages`: one run each of
+  `/opt/homebrew/bin/idris2` (Homebrew `idris2` 0.8.0_2, macOS arm64) on 2026-09-27, with stdout
+  not a terminal, from an empty directory; every run exited 0 with nothing on stderr. `--paths`
+  prints the working directory (twice); the recording has `{{cwd}}` there and the fake puts its
+  own working directory in. The Homebrew paths in `--paths` and `--list-packages` are the
+  development machine's. `--list-packages` also lists the packages in `<cwd>/depends`
+  (`findPackages`, `src/Idris/SetOptions.idr` on v0.8.0) [src]; the fake does not.
+- `--dump-ipkg-json`: one entry per fixture ipkg, keyed by the SHA-256 of the file's bytes. The
+  fake answers only for a file whose hash has a recording and exits 2 otherwise, so a changed
+  fixture fails loudly instead of being answered with stale output; `test/unit/fakeTools.test.ts`
+  checks every recorded hash against its fixture. Without a file argument the fake uses the only
+  `.ipkg` of the working directory, as `localPackageFile` does (`src/Idris/Package.idr` 937–946 on
+  v0.8.0); a file without the `.ipkg` extension gets the compiler's `Packages must have an
+  '.ipkg' extension: "<file>".` (stdout, exit 1, `processPackage`). As in the compiler, whose
+  argument is `Optional` (`src/Idris/CommandLine.idr` 291, 483–486), an argument that starts
+  with `-` is not the file; what the compiler then prints (for `-x.ipkg`, its list of options
+  that may override package options, exit 0 [live, M1 review]) is not mirrored: the fake exits 2
+  as for any argument list it does not implement.
+
+To record a fixture again, run `timeout 120 idris2 --dump-ipkg-json <file>.ipkg` once in the
+fixture's directory (one compiler process at a time, CLAUDE.md), and replace the entry's
+`stdout`, `sha256` (`shasum -a 256 <file>.ipkg`) and `recorded` date.
 
 ## What M0 implements
 
-The **handshake and the `version` command**, over stdio and TCP. Anything else that parses as an
+The **handshake and the `version` command**, over stdio and TCP (M1 lets `FAKE_IDRIS2_VERSION`
+set the version the command reports). Anything else that parses as an
 s-expression is answered the way the compiler answers a request it cannot interpret. The unit
 test is `test/unit/fakeIdris2.test.ts`.
 

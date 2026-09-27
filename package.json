@@ -1,7 +1,7 @@
 {
   "name": "vscode-idris2",
   "displayName": "Idris 2",
-  "description": "Idris 2 support for Visual Studio Code: highlighting, editing support and snippets so far; compiler integration is planned (see the README).",
+  "description": "Idris 2 support for Visual Studio Code: highlighting, editing support, snippets and toolchain setup so far; checking with the compiler is planned (see the README).",
   "version": "0.0.1",
   "publisher": "etairi",
   "license": "MIT",
@@ -31,7 +31,14 @@
   ],
   "capabilities": {
     "untrustedWorkspaces": {
-      "supported": true
+      "supported": "limited",
+      "description": "In Restricted Mode the extension runs no program: it does not start idris2, idris2-lsp or pack, not even to read their versions, and it reads .ipkg files with a limited built-in reader instead of the compiler. Highlighting, snippets and editing support work as usual. Workspace values of the idris2.toolchain paths and environment apply only once the workspace is trusted.",
+      "restrictedConfigurations": [
+        "idris2.toolchain.idris2Path",
+        "idris2.toolchain.lspPath",
+        "idris2.toolchain.packPath",
+        "idris2.toolchain.env"
+      ]
     }
   },
   "contributes": {
@@ -95,6 +102,49 @@
         "path": "./snippets/ipkg.json"
       }
     ],
+    "configuration": {
+      "title": "Idris 2",
+      "properties": {
+        "idris2.toolchain.idris2Path": {
+          "type": "string",
+          "default": "",
+          "scope": "machine-overridable",
+          "order": 1,
+          "markdownDescription": "Path to the `idris2` executable. Empty (the default): search `PATH`, then pack's directories (its bin directory, `$PACK_BIN_DIR` or else `~/.local/bin`, then the `bin` directory of pack's current collection under its state directory, if that exists), then on macOS and Linux `/opt/homebrew/bin` and `/usr/local/bin`, and on every platform `~/.idris2/bin`; with `#idris2.toolchain.preferPack#`, pack's directories come before `PATH`. Only absolute directories are searched (on Windows, ones with a drive or a `\\\\server\\share` root). For pack's directories `~` is the `HOME` of the environment pack's wrappers run with (see `#idris2.toolchain.env#`). When set, only this value is used: an absolute path (on Windows, one with a drive or a `\\\\server\\share` root; one without an extension is tried with the extensions of `PATHEXT`), or a bare command name looked up on `PATH`; if it names nothing, the tool is reported missing and no other place is searched. A leading `~` stands for your home directory. A workspace value applies only in a trusted workspace."
+        },
+        "idris2.toolchain.lspPath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine-overridable",
+          "order": 2,
+          "markdownDescription": "Path to the `idris2-lsp` executable. Empty (the default): searched in the same places as `idris2` (see `#idris2.toolchain.idris2Path#`). When set, only this value is used: an absolute path (on Windows, one with a drive or a `\\\\server\\share` root; one without an extension is tried with the extensions of `PATHEXT`), or a bare command name looked up on `PATH`; if it names nothing, the tool is reported missing and no other place is searched. A leading `~` stands for your home directory. A workspace value applies only in a trusted workspace."
+        },
+        "idris2.toolchain.packPath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine-overridable",
+          "order": 3,
+          "markdownDescription": "Path to the `pack` executable. Empty (the default): searched in the same places as `idris2` (see `#idris2.toolchain.idris2Path#`). The extension never starts pack by itself; it only puts pack commands into a terminal for you to run. (pack's own `idris2` and `idris2-lsp` wrapper scripts call pack whenever they run, including when the extension reads their versions.) When set, only this value is used: an absolute path (on Windows, one with a drive or a `\\\\server\\share` root; one without an extension is tried with the extensions of `PATHEXT`), or a bare command name looked up on `PATH`; if it names nothing, the tool is reported missing and no other place is searched. A leading `~` stands for your home directory. A workspace value applies only in a trusted workspace."
+        },
+        "idris2.toolchain.preferPack": {
+          "type": "boolean",
+          "default": false,
+          "scope": "window",
+          "order": 4,
+          "markdownDescription": "Search pack's directories before `PATH` (see `#idris2.toolchain.idris2Path#`), so that `idris2` and `idris2-lsp` come from the same pack collection even when another `idris2` is first on `PATH`."
+        },
+        "idris2.toolchain.env": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": {
+            "type": "string"
+          },
+          "scope": "machine-overridable",
+          "order": 5,
+          "markdownDescription": "Environment variables for the `idris2`, `idris2-lsp` and `pack` processes the extension starts, for example `{ \"IDRIS2_PREFIX\": \"/opt/idris2\" }`. Each entry replaces the inherited variable of the same name; values are used as written, without `~` or variable expansion. The search for the executables reads `PATH` (and `PATHEXT` on Windows) and pack's `HOME`, `XDG_*` and `PACK_*` directory variables from this environment too. A workspace value applies only in a trusted workspace."
+        }
+      }
+    },
     "configurationDefaults": {
       "[idris2]": {
         "editor.semanticHighlighting.enabled": true,
@@ -139,6 +189,153 @@
         "command": "idris2.openDocumentation",
         "title": "Open Idris 2 Documentation",
         "category": "Idris 2"
+      },
+      {
+        "command": "idris2.showStatusMenu",
+        "title": "Show Commands…",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.showSetupInformation",
+        "title": "Show Setup Information",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.rescanToolchain",
+        "title": "Rescan Toolchain",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.installIdris2",
+        "title": "Install Idris 2…",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.installPack",
+        "title": "Install pack…",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.installIdris2Lsp",
+        "title": "Install or Update idris2-lsp with pack",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.reportIssue",
+        "title": "Report Issue…",
+        "category": "Idris 2"
+      }
+    ],
+    "submenus": [
+      {
+        "id": "idris2.editorTitle",
+        "label": "Idris 2",
+        "icon": "$(tools)"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "idris2.installPack",
+          "when": "!idris2.packFound"
+        },
+        {
+          "command": "idris2.installIdris2Lsp",
+          "when": "idris2.packFound"
+        }
+      ],
+      "editor/title": [
+        {
+          "submenu": "idris2.editorTitle",
+          "when": "idris2.isIdrisDocument",
+          "group": "navigation"
+        }
+      ],
+      "idris2.editorTitle": [
+        {
+          "command": "idris2.showSetupInformation",
+          "group": "1_toolchain@1"
+        },
+        {
+          "command": "idris2.rescanToolchain",
+          "group": "1_toolchain@2"
+        },
+        {
+          "command": "idris2.installIdris2",
+          "group": "2_install@1"
+        },
+        {
+          "command": "idris2.installPack",
+          "group": "2_install@2",
+          "when": "!idris2.packFound"
+        },
+        {
+          "command": "idris2.installIdris2Lsp",
+          "group": "2_install@3",
+          "when": "idris2.packFound"
+        },
+        {
+          "command": "idris2.showOutput",
+          "group": "3_help@1"
+        },
+        {
+          "command": "idris2.openSettings",
+          "group": "3_help@2"
+        },
+        {
+          "command": "idris2.openDocumentation",
+          "group": "3_help@3"
+        },
+        {
+          "command": "idris2.reportIssue",
+          "group": "3_help@4"
+        }
+      ]
+    },
+    "walkthroughs": [
+      {
+        "id": "gettingStarted",
+        "title": "Get Started with Idris 2",
+        "description": "Find the Idris 2 toolchain, install what is missing, and open a project.",
+        "steps": [
+          {
+            "id": "findToolchain",
+            "title": "Find the Idris 2 toolchain",
+            "description": "The extension looks for `idris2`, `idris2-lsp` and `pack` on this machine. Setup Information shows what it found and where.\n[Show Setup Information](command:idris2.showSetupInformation)",
+            "media": {
+              "markdown": "media/walkthrough/toolchain.md"
+            },
+            "completionEvents": [
+              "onCommand:idris2.showSetupInformation",
+              "onCommand:idris2.rescanToolchain"
+            ]
+          },
+          {
+            "id": "install",
+            "title": "Install what is missing",
+            "description": "The extension installs nothing by itself: each command opens a terminal with the install command typed in for you to review and run, or opens the installation instructions.\n[Install Idris 2…](command:idris2.installIdris2)\n[Install pack…](command:idris2.installPack)\n[Install or Update idris2-lsp with pack](command:idris2.installIdris2Lsp)",
+            "media": {
+              "markdown": "media/walkthrough/install.md"
+            },
+            "completionEvents": [
+              "onCommand:idris2.installIdris2",
+              "onCommand:idris2.installPack",
+              "onCommand:idris2.installIdris2Lsp"
+            ]
+          },
+          {
+            "id": "openProject",
+            "title": "Open an Idris 2 project",
+            "description": "Open the folder of your package (the directory with its `.ipkg` file), or any folder of `.idr` files.\n[Open Folder](command:workbench.action.files.openFolder)",
+            "media": {
+              "markdown": "media/walkthrough/project.md"
+            },
+            "completionEvents": [
+              "onCommand:workbench.action.files.openFolder",
+              "onCommand:workbench.action.files.openFileFolder"
+            ]
+          }
+        ]
       }
     ]
   },
@@ -155,6 +352,7 @@
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile",
     "test": "vscode-test",
+    "test:e2e": "npm run compile-tests && npm run compile && vscode-test --label e2e",
     "test:unit": "npm run compile-tests && mocha --ui tdd \"out/test/unit/**/*.test.js\"",
     "build:grammar": "node scripts/build-grammar.mjs",
     "build:language-configuration": "node scripts/build-language-configuration.mjs",

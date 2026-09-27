@@ -1,0 +1,3 @@
+package bad
+sourcedir = "src"
+pkgs = contrib

@@ -1,13 +1,27 @@
 #!/usr/bin/env node
 // fake-idris2: a stand-in for the `idris2` binary that tests run instead of the real compiler
-// (docs/ARCHITECTURE.md §12). M0 skeleton: `--version`, and the IDE protocol's start-up
-// handshake plus the `version` command over stdio (`--ide-mode`) and TCP (`--ide-mode-socket`).
-// The behaviour mirrors Idris 2 0.8.0 (15a3e4e); each rule cites the compiler source it follows.
-// README.md says what was compared byte for byte with the real binary and what is not mirrored.
+// (docs/ARCHITECTURE.md §12). M0: `--version`, and the IDE protocol's start-up handshake plus the
+// `version` command over stdio (`--ide-mode`) and TCP (`--ide-mode-socket`). M1: the toolchain
+// probes `--ttc-version`, `--paths`, `--list-packages` and `--dump-ipkg-json`, answered from
+// output recorded from the real compiler (recorded-cli-0.8.0.json), and the fault modes of
+// test/fake-tools/faults.mjs. The behaviour mirrors Idris 2 0.8.0 (15a3e4e); each rule cites the
+// compiler source it follows. README.md says what was compared byte for byte with the real
+// binary and what is not mirrored.
+import { createHash } from 'node:crypto';
+import fs from 'node:fs';
 import net from 'node:net';
+import path from 'node:path';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
+import { applyFaults, notImplemented } from '../fake-tools/faults.mjs';
 
-const VERSION_LINE = 'Idris 2, version 0.8.0';
+const TOOL = 'fake-idris2';
+const here = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(here, '..', '..');
+/** Output of the real compiler, one run per flag; README.md "Recorded command-line output". */
+const RECORDED = JSON.parse(fs.readFileSync(path.join(here, 'recorded-cli-0.8.0.json'), 'utf8'));
+
+const VERSION_PREFIX = 'Idris 2, version ';
 const ALAS = 'Alas the file is done, aborting';
 const READ_FAILED = 'Failed to read a character';
 
@@ -169,7 +183,12 @@ const int = (value) => ({ t: 'int', value: BigInt(value) });
  * "version")`), so `((:version) 1)` is not a command (F4).
  */
 const COMMANDS = new Map([
-  [':version', () => list(sym('ok'), list(list(int(0), int(8), int(0)), list(str(''))))],
+  // `AVersion`: ((major minor patch) (tag)), the tag "" when the build has none
+  // (Protocol/IDE/Result.idr 84–88).
+  [':version', () => {
+    const v = ideVersion();
+    return list(sym('ok'), list(list(int(v.major), int(v.minor), int(v.patch)), list(str(v.tag))));
+  }],
 ]);
 
 /**
@@ -341,22 +360,113 @@ function serveSocket(address) {
   });
 }
 
-function main(argv) {
+// ---------------------------------------------------------------------------------------------
+// Version (Libraries/Data/Version.idr `showVersion True`: <major>.<minor>.<patch>[-<tag>])
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * The text after `Idris 2, version `: FAKE_IDRIS2_VERSION when set (any text, so that tests can
+ * simulate a development build such as `0.8.0-1c630e67c` or an unparsable version), otherwise
+ * the recorded one.
+ */
+function versionText() {
+  const configured = process.env.FAKE_IDRIS2_VERSION;
+  if (configured !== undefined && configured !== '') {
+    return configured;
+  }
+  const line = RECORDED.flags['--version'].stdout.trimEnd();
+  return line.slice(VERSION_PREFIX.length);
+}
+
+/** The version the IDE-mode `version` command reports; only defined for `showVersion`'s shape. */
+function ideVersion() {
+  const m = /^(\d+)\.(\d+)\.(\d+)(?:-(.*))?$/.exec(versionText());
+  if (m === null) {
+    process.stderr.write(`${TOOL}: FAKE_IDRIS2_VERSION=${JSON.stringify(versionText())} has no `
+      + '<major>.<minor>.<patch>[-<tag>] form, so the IDE-mode version reply is undefined\n');
+    process.exit(2);
+  }
+  return { major: m[1], minor: m[2], patch: m[3], tag: m[4] ?? '' };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Command-line probes, answered from recorded output
+// ---------------------------------------------------------------------------------------------
+
+/** Prints `recording.stdout` (with the working directory substituted) and exits with its code. */
+function replay(recording) {
+  const text = recording.stdout.split(RECORDED.cwdPlaceholder).join(process.cwd());
+  process.stdout.write(text, () => process.exit(recording.exitCode));
+}
+
+/**
+ * `--dump-ipkg-json [file]` (processPackage and localPackageFile, src/Idris/Package.idr 937–1000
+ * on v0.8.0): without a file, the only `.ipkg` of the working directory. The fake answers only
+ * for an ipkg whose bytes hash to a recording, so a changed fixture is noticed instead of being
+ * answered with stale output.
+ */
+function dumpIpkgJson(file) {
+  let target = file;
+  if (target === undefined) {
+    const candidates = fs.readdirSync(process.cwd()).filter((name) => name.endsWith('.ipkg'));
+    if (candidates.length !== 1) {
+      // The real texts are UserErrors rendered by the compiler; only their substance is mirrored.
+      process.stderr.write(`${TOOL}: ${candidates.length} .ipkg files in the working directory `
+        + '(the compiler needs exactly one when no file is given)\n');
+      process.exit(1);
+    }
+    target = candidates[0];
+  }
+  if (!target.endsWith('.ipkg')) {
+    // `putStrLn ("Packages must have an '.ipkg' extension: " ++ show file ++ ".")`, exit 1.
+    process.stdout.write(`Packages must have an '.ipkg' extension: ${JSON.stringify(target)}.\n`,
+      () => process.exit(1));
+    return;
+  }
+  const absolute = path.resolve(process.cwd(), target);
+  const sha256 = createHash('sha256').update(fs.readFileSync(absolute)).digest('hex');
+  const recording = RECORDED.dumpIpkgJson.find((r) => r.sha256 === sha256);
+  if (recording === undefined) {
+    const known = RECORDED.dumpIpkgJson.map((r) => r.ipkg).join(', ');
+    process.stderr.write(`${TOOL}: no recorded --dump-ipkg-json output for ${absolute} (sha256 `
+      + `${sha256}); recordings exist for ${known} (see ${path.relative(repoRoot, path.join(here, 'README.md'))})\n`);
+    process.exit(2);
+  }
+  replay(recording);
+}
+
+async function main(argv) {
+  const mode = await applyFaults(TOOL, 'FAKE_IDRIS2');
   if (argv.length === 1 && argv[0] === '--version') {
-    process.stdout.write(VERSION_LINE + '\n');
+    // `garbage`: a first line that does not start with `Idris 2, version `.
+    const line = mode === 'garbage' ? `${TOOL}: garbage instead of a version line` : VERSION_PREFIX + versionText();
+    process.stdout.write(line + '\n');
+    return;
+  }
+  if (argv.length === 1 && Object.hasOwn(RECORDED.flags, argv[0])) {
+    replay(RECORDED.flags[argv[0]]);
+    return;
+  }
+  // [Optional "package file"] (src/Idris/CommandLine.idr 291, 483–486 on v0.8.0): an argument
+  // that starts with '-' is not the file. The compiler then reads it as another option (for
+  // `-x.ipkg` it printed its list of options that may override package options, exit 0); the
+  // fake does not mirror that and answers as for any argument list it does not implement.
+  if (argv[0] === '--dump-ipkg-json' && argv.length <= 2 && !(argv[1] ?? '').startsWith('-')) {
+    dumpIpkgJson(argv[1]);
     return;
   }
   if (argv.length === 1 && argv[0] === '--ide-mode') {
+    ideVersion(); // reject an unusable FAKE_IDRIS2_VERSION before the handshake
     serveStdio();
     return;
   }
   // [Optional "host:port"]: the next argument is taken unless it starts with '-'.
   if (argv[0] === '--ide-mode-socket' && argv.length <= 2 && !(argv[1] ?? '').startsWith('-')) {
+    ideVersion();
     serveSocket(argv[1] ?? 'localhost:0');
     return;
   }
-  process.stderr.write(`fake-idris2: arguments not implemented by the fake: ${JSON.stringify(argv)}\n`);
-  process.exit(2);
+  notImplemented(TOOL, argv);
 }
 
-main(process.argv.slice(2));
+await main(process.argv.slice(2));

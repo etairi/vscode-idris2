@@ -1,0 +1,6 @@
+package versions
+version = "0.1"
+langversion >= 0.5 && < 1
+depends = contrib >= 0.3 && < 1.0, base == 0.8.0, prelude <= 02.010
+main = Main
+executable = my-exe

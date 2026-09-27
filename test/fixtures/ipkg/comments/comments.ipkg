@@ -1,0 +1,6 @@
+package comments
+{- outer {- inner -} still "-}" outer -}
+sourcedir = "a" -- trailing
+{- nested {-} -}
+builddir = "b"
+{--} version = 9.9.9

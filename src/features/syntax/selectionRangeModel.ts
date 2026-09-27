@@ -36,6 +36,20 @@
 import { birdPrefixWidth, type LiterateStyle } from '../../project/literate';
 import { lex, type Group, type Token } from './lexer';
 
+/**
+ * The literate styles the model reads: plain source (`undefined`) and bird tracks, the ones M0
+ * handles (F11). The fenced styles (`cmark`, `org`, `tex`, `typst`), which the double-extension
+ * rows M1 added to the document selector reach (`Foo.idr.md` in its host language), need a
+ * fence-aware reading, which belongs to M12 (ROADMAP E19); read as plain source, their prose
+ * would be lexed as Idris.
+ */
+export type ModelledStyle = Extract<LiterateStyle, 'bird'> | undefined;
+
+/** Whether `buildSyntaxModel` can read a document of this literate style (see `ModelledStyle`). */
+export function isModelledStyle(style: LiterateStyle | undefined): style is ModelledStyle {
+  return style === undefined || style === 'bird';
+}
+
 export interface OffsetRange {
   readonly start: number;
   readonly end: number;
@@ -89,7 +103,7 @@ const DELIMITER_KINDS: ReadonlySet<Token['kind']> = new Set([
  * The text the compiler parses, with every offset kept: for bird-track documents, prose lines
  * and the stripped markers are replaced by spaces (`birdPrefixWidth`, F11).
  */
-function unlitPreservingOffsets(text: string, style: LiterateStyle | undefined): string {
+function unlitPreservingOffsets(text: string, style: ModelledStyle): string {
   if (style !== 'bird') {
     return text;
   }
@@ -169,7 +183,7 @@ function layoutGroup(token: Token): Group | undefined {
   return opens ? token.outer : (token.delimits ?? token.outer);
 }
 
-export function buildSyntaxModel(text: string, literate: LiterateStyle | undefined): SyntaxModel {
+export function buildSyntaxModel(text: string, literate: ModelledStyle): SyntaxModel {
   const code = unlitPreservingOffsets(text, literate);
   const { tokens, groups } = lex(code);
   const lineStarts = computeLineStarts(code);

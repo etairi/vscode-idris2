@@ -1,0 +1,5 @@
+package lit
+sourcedir = "src"
+modules = Lit.Bird
+        , Lit.Mark
+        , Lit.Twice

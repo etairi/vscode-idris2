@@ -46,3 +46,33 @@ independent of Idris 2 releases (`docs/ROADMAP.md` §7.4).
   - CI for ubuntu, macOS and Windows, with `vsce package` on ubuntu; green on all three since
     run 36327327811 (2026-09-27).
   - The manual checklist `docs/checklists/M0.md`.
+- M1, toolchain and project discovery:
+  - Discovery of `idris2`, `idris2-lsp` and `pack` (settings, `PATH`, pack's directories, the
+    usual installation directories) and the version probes `idris2 --version`, `--ttc-version`,
+    `--paths`, `--list-packages` and `idris2-lsp --version`, run one at a time with a 5 s limit
+    and never through a shell except `cmd.exe` for Windows batch files; the pair verdict between
+    `idris2-lsp` and `idris2`.
+  - The settings `idris2.toolchain.idris2Path`, `lspPath`, `packPath`, `preferPack` and `env`.
+  - A language status item (`Idris 2 <version> · syntax only`, or a warning), the **Idris 2**
+    editor-title menu and the same list behind **Idris 2: Show Commands…**.
+  - **Idris 2: Show Setup Information**, **Rescan Toolchain** and **Report Issue…**.
+  - **Idris 2: Install Idris 2…**, **Install pack…** and **Install or Update idris2-lsp with
+    pack**, which type the command into a terminal started in the home directory without
+    running it (or open the installation instructions).
+  - One-time warnings for a missing compiler and for a server that likely does not fit it.
+  - The walkthrough **Get Started with Idris 2**.
+  - Project discovery: the `.ipkg` a file belongs to, found as the compiler finds it, read with
+    `idris2 --dump-ipkg-json` (when it lies inside a workspace folder) or a built-in reader, and
+    the module ↔ path mapping.
+  - Literate files with a double extension (`Main.idr.md`, `Notes.lidr.tex`, …) count as Idris
+    documents.
+- M1, changed:
+  - Restricted Mode support is now limited: in an untrusted workspace the extension runs no
+    program, and VS Code ignores workspace values of the toolchain paths and environment.
+- M1, engineering:
+  - One process runner for everything the extension starts (`src/core/process.ts`).
+  - Fake `idris2`, `idris2-lsp` and `pack` for the integration tests (`test/fake-tools`), the
+    integration suites `simple-ipkg` and `toolchain-path`, and the e2e suite against the real
+    `idris2` (`npm run test:e2e`, also run by the macOS CI job).
+  - `check:fixtures` also checks literate fixtures with a double extension.
+  - The manual checklist `docs/checklists/M1.md`.

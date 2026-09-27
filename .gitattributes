@@ -3,3 +3,9 @@
 # language-configuration/*.json) byte for byte with generator output, which a CRLF checkout
 # (core.autocrlf=true, common on Windows) would break.
 * text=auto eol=lf
+
+# Windows batch files (the fake-tool launchers in test/fake-tools/bin) are checked out with CRLF,
+# the line ending cmd.exe is written for. Whether the one-line launchers would also work with LF
+# was not tried. The Unix launchers beside them get LF from the rule above; their executable
+# bit is recorded by git itself (mode 100755), not here.
+*.cmd text eol=crlf

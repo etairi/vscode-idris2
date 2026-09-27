@@ -10,7 +10,7 @@ import { DisposableStore } from '../../core/disposable';
 /** Verified to answer HTTP 200 on 2026-09-26. */
 const DOCUMENTATION_URL = 'https://idris2.readthedocs.io/en/latest/';
 
-export function registerHelpCommands(log: vscode.LogOutputChannel, extensionId: string): vscode.Disposable {
+export function registerHelpCommands(log: { show(): void }, extensionId: string): vscode.Disposable {
   const store = new DisposableStore();
   store.add(vscode.commands.registerCommand('idris2.showOutput', () => log.show()));
   store.add(

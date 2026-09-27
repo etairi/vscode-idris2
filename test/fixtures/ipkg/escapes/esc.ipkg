@@ -1,0 +1,6 @@
+package esc
+authors = "first line
+second line"
+brief = "say \"hi\""
+sourcedir = "src\\main"
+modules = Esc.M

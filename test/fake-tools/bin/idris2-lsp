@@ -1,0 +1,3 @@
+#!/bin/sh
+# Launcher for the fake idris2-lsp (test/fake-tools/README.md): runs the script with the node on PATH.
+exec node "$(dirname "$0")/../fake-idris2-lsp.mjs" "$@"

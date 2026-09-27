@@ -42,8 +42,8 @@ document (the reviewers' runs were reproduced independently before being recorde
 | F7 | **No severity field.** A warning-only load (`Unreachable clause: f n`) sends one `:warning` frame and then `(:return (:ok ()) ID)`; a load with a warning and an error sends both as `:warning` frames then `:error`. Reloading a file whose TTC is fresh emits **no** `Building` write-string and **no** `:warning` frames, but **does** re-emit the `:highlight-source` frames. | [live] |
 | F8 | **Shadow typecheck of an unsaved copy.** Copy `Foo/B.idr` (with a new `?arg`) to `<shadow>/Foo/B.idr` where no `.ipkg` exists above; spawn with cwd `<shadow>`, env `IDRIS2_PATH=<proj>/build/ttc` (the directory *containing* the TTC-version directory), `--build-dir <shadow>/build`; `:load-file "Foo/B.idr"` → `Building Foo.B`, `(:ok ())`, `:metavariables` lists `Foo.B.arg`, and every file under `<proj>/build/ttc` keeps its mtime. Without `IDRIS2_PATH`, or with it pointing at the version subdirectory, → `Module Foo.A not found`. | [live] |
 | F9 | `idris2 --check` exit codes: 1 for a type error and for a coverage error, **0 for `Module Nope.Thing not found`**; `--typecheck`/`--build` of a clean ipkg exit 0. Qualifies landscape §4.2. | [live] |
-| F10 | `.ipkg` parse errors: `idris2 --dump-ipkg-json bad.ipkg` prints `Error: Unrecognised property "pkgs".` then `"bad.ipkg":3:1--3:5` and a snippet, exit 1 (same shape for a trailing comma: `Expected end of file.`). In IDE mode a malformed `.ipkg` in the cwd chain turns `:load-file` into `(:return (:error "<the same text>"))` with **no** `:warning` frame. With several `.ipkg` files in one directory the compiler picks one of them. | [live] |
-| F11 | **Literate positions.** `.lidr` (bird tracks): all reply columns are *unlit* columns (`> module Lit` reports `module` at (0 0)–(0 6); an error under `> g = "x"` reports (5 4)–(5 7) for file columns 6–9), and requests expect unlit columns too (`(:type-of "n" 6 2)` succeeds for `n` at file column 4). Lines are file lines even with prose lines in between. Edit replies come back **with** `> ` (`> f 0 = ?f_rhs_0`, `> h k = ?h_rhs`, make-lemma `definition-type` `> f_rhs : Nat -> Nat`; `replace-metavariable` unprefixed). `.md` (fenced): lines and columns exact, replies plain. Added in M0 (2026-09-27): `:case-split` in a `.lidr` takes 1-based *unlit* columns (`> f n = ?f_rhs` on line 6: C = 1–4 succeed, 5–6 fail), and the CLI text of `idris2 --check` is unlit too (an error under `> g = "x"`, file columns 6–9, is reported `Err:6:5--6:8`). Added in M0 review: **the compiler picks the literate style by file name, and a CRLF break in a `.lidr` joins two lines.** `isLitFile` is a case-sensitive suffix test (`src/Parser/Unlit.idr`): a bird-track `Up.LIDR` fails at its first `>` (1:1). `reduce` in `src/Libraries/Text/Literate.idr` (same on master) keeps a newline token only when it is exactly `"\n"`: `> g : Nat\r\n> g = 1` fails with `Undefined name Natg`, an all-CRLF `.lidr` with `Couldn't parse declaration` at 1:14; the same text with LF, and a CRLF `.idr`, pass. Hence `"files.eol": "\n"` in the `[lidr]` defaults (`files.eol` is language-overridable: `scope: 6` in VS Code 1.139.1's workbench bundle, the `language-overridable` value). | [live] + [src] |
+| F10 | `.ipkg` parse errors: `idris2 --dump-ipkg-json bad.ipkg` prints `Error: Unrecognised property "pkgs".` then `"bad.ipkg":3:1--3:5` and a snippet, exit 1 (same shape for a trailing comma: `Expected end of file.`). In IDE mode a malformed `.ipkg` in the cwd chain turns `:load-file` into `(:return (:error "<the same text>"))` with **no** `:warning` frame. With several `.ipkg` files in one directory the compiler picks one of them. **Addendum (M1, 2026-09-27): which one.** `findIpkgFile` lists each directory with `listDir` and takes `find (\f => extension f == Just "ipkg")` of the names, unsorted, stopping (with nothing) at a directory it cannot list [src v0.8.0 `Core/Directory.idr` 333–349]; so the first `.ipkg` in the order the file system lists the directory wins. On APFS, in a directory whose `ls -f` order was `c.ipkg b.ipkg d.ipkg X.idr a.ipkg`, `idris2 --find-ipkg --check X.idr` read `c.ipkg` [live, M1 project work]; other file systems and Windows not tried. Node's `fs.readdir` sorts names, `fs.opendir` keeps that order (`project/ipkg.ts`). | [live] + [src] |
+| F11 | **Literate positions.** `.lidr` (bird tracks): all reply columns are *unlit* columns (`> module Lit` reports `module` at (0 0)–(0 6); an error under `> g = "x"` reports (5 4)–(5 7) for file columns 6–9), and requests expect unlit columns too (`(:type-of "n" 6 2)` succeeds for `n` at file column 4). Lines are file lines even with prose lines in between. Edit replies come back **with** `> ` (`> f 0 = ?f_rhs_0`, `> h k = ?h_rhs`, make-lemma `definition-type` `> f_rhs : Nat -> Nat`; `replace-metavariable` unprefixed). `.md` (fenced): lines and columns exact, replies plain. Added in M0 (2026-09-27): `:case-split` in a `.lidr` takes 1-based *unlit* columns (`> f n = ?f_rhs` on line 6: C = 1–4 succeed, 5–6 fail), and the CLI text of `idris2 --check` is unlit too (an error under `> g = "x"`, file columns 6–9, is reported `Err:6:5--6:8`). Added in M0 review: **the compiler picks the literate style by file name, and a CRLF break in a `.lidr` joins two lines.** `isLitFile` is a case-sensitive suffix test (`src/Parser/Unlit.idr`): a bird-track `Up.LIDR` fails at its first `>` (1:1). `reduce` in `src/Libraries/Text/Literate.idr` (same on master) keeps a newline token only when it is exactly `"\n"`: `> g : Nat\r\n> g = 1` fails with `Undefined name Natg`, an all-CRLF `.lidr` with `Couldn't parse declaration` at 1:14; the same text with LF, and a CRLF `.idr`, pass. Hence `"files.eol": "\n"` in the `[lidr]` defaults (`files.eol` is language-overridable: `scope: 6` in VS Code 1.139.1's workbench bundle, the `language-overridable` value). **Addendum (M1 review, 2026-09-27): case folding.** On the development machine's case-insensitive APFS volume, `idris2 --check Main.idr` with `import Up` and only a file `Up.IDR` beside it printed `1/2: Building Up (Up.idr)` and exited 0: the compiler opens `<dir>/Up.idr`, and the file system resolves that name to `Up.IDR`. `project/index.ts` compares names case-sensitively, as the compiler's name tests do, so `pathToModule` gives `Up.IDR` no module name (M1 As built, *Modules ↔ paths*). | [live] + [src] |
 | F12 | `--build-dir build/.vscode-idris2` with an auto-discovered ipkg writes TTCs under that directory — **unless the ipkg has a `builddir` field, which overrides the flag** (TTC went to `out/`). | [live] |
 | F13 | `:load-file` calls `findIpkg`, which walks **up from the process cwd**, `changeDir`s to the ipkg directory and applies `sourcedir`/`depends`/`builddir`/`opts`. From the ipkg directory both `src/Foo/B.idr` and its absolute path load; from a foreign cwd both fail (`Module Foo.A not found`), also with `--find-ipkg`; from `src/Foo`, `B.idr` loads without `--find-ipkg` but fails with it (`Source file "B.idr" is not in the source directory`). | [live] + [src `Idris/Package.idr` 1093–1110, `IDEMode/REPL.idr` 143–147] |
 | F14 | `((:enable-syntax :False) 1)` → `"Syntax highlight option changed to False"`; the following load emits **zero** `:highlight-source` frames (31 without it for an 8-line file). | [live] |
@@ -52,10 +52,10 @@ document (the reviewers' runs were reproduced independently before being recorde
 | F17 | `@vscode/test-cli` 0.0.15 failed with `listen EINVAL … .vscode-test/user-data/1.13-main.sock` when the user-data-dir path exceeded the Unix socket limit (103 characters) — run tests from a short path or with a short `--user-data-dir`. | [live: `gen-test.log`] |
 | F18 | **Unicode in source.** `--check` accepts identifiers `α`, `x₁`, `ℕ` (exit 0) and rejects `→` as arrow, `λ` as lambda and a Unicode operator `∘∘` (exit 1). | [live] |
 | F19 | `idris2 --mkdoc proj.ipkg` writes `build/docs/index.html`, `build/docs/docs/<Module>.html` with anchors `id="Foo.A.shout"` / `href="Foo.A.html#Foo.A.shout"`. | [live] |
-| F20 | `idris2-lsp --version` prints `Idris2 LSP: <server version>` and `Idris2 API: <compiler version>` (exact rendering untested); `serverInfo.version` is the constant `"0.1"`; `processSettings` reads the option keys from the **top level** of the JSON it is given (`initializationOptions` and `didChangeConfiguration.settings`); `loadURI` requires `PostSession`, `changeDir`s to the file's folder, needs `findIpkg` (`Cannot find the ipkg file` otherwise) and reads the file from disk; handlers exist for `repl`, `metavars`, `exprSearchWithHints`, `refineHole`, `browseNamespace` while `refineHoleWithHints` is advertised; `references`/`rename`/`workspaceSymbol` are `false`, semantic tokens `range = false`, `full = true`. | [src `Server/Main.idr` 206–218, `Capabilities.idr`, `ProcessMessage.idr`] |
+| F20 | `idris2-lsp --version` prints `Idris2 LSP: <server version>` and `Idris2 API: <compiler version>` (exact rendering untested); `serverInfo.version` is the constant `"0.1"`; `processSettings` reads the option keys from the **top level** of the JSON it is given (`initializationOptions` and `didChangeConfiguration.settings`); `loadURI` requires `PostSession`, `changeDir`s to the file's folder, needs `findIpkg` (`Cannot find the ipkg file` otherwise) and reads the file from disk; handlers exist for `repl`, `metavars`, `exprSearchWithHints`, `refineHole`, `browseNamespace` while `refineHoleWithHints` is advertised; `references`/`rename`/`workspaceSymbol` are `false`, semantic tokens `range = false`, `full = true`. **Addendum (M1, 2026-09-27): the rendering, from source.** Both lines are `show` of a `Version`, i.e. `showVersion True`: `<major>.<minor>.<patch>`, then `-<tag>` when the tag is not empty [src v0.8.0 `Libraries/Data/Version.idr` 26–38, `Idris/Version.idr`]. The tag is the Makefile's `VERSION_TAG`, which defaults to `git rev-parse --short=9 HEAD` when the build runs in a git checkout at an untagged commit, else is empty [src: Idris2 `Makefile` 19–27, 79–83; idris2-lsp `Makefile` 8–20, 58]; so a server built from `9a2f0ad` in a checkout prints `Idris2 LSP: 0.1.0-9a2f0ad6a`. Any argument list other than `["--version"]` (and `[]`, which starts the server) prints `Invalid Arguments` on stdout and exits 0 [src `Server/Main.idr` 211–218]. Still no server was run. | [src `Server/Main.idr` 206–218, `Capabilities.idr`, `ProcessMessage.idr`] |
 | F21 | idris2-lsp `main` (`9a2f0ad`) pins the Idris2 submodule at `6ca00e7`; `PostSession` occurs 4× in master `IDEMode/REPL.idr` and 0× in the v0.8.0 copy of that file (local copy fetched by a planning agent; provenance not re-verified). Inference: idris2-lsp `main` does not build against the release 0.8.0 API; no `idris2-0.8.0` branch exists [landscape §3]. Build not attempted. | [src] + [inference] |
-| F22 | pack layout: user config `$XDG_CONFIG_HOME/pack/pack.toml`, installs under `$XDG_STATE_HOME/pack/install/<collection>/…` with binaries in `…/bin` and wrappers in `~/.local/bin`; `pack install-app idris2-lsp`, `pack switch <collection>`, `pack new lib|bin <name>`, `[custom.all.<pkg>]` entries. The `nightly-260924` collection pins `[idris2] version = "0.8.0", commit = 1c630e6…` (i.e. master labelled 0.8.0) and `[db.idris2-lsp] commit = 9a2f0ad…`, so pack keeps compiler and server in lock-step. | [doc: pack README, pack-db collection file] |
-| F23 | ipkg fields accepted by master's parser: `package`, `version`, `langversion`, `authors`, `maintainers`, `license`, `brief`, `readme`, `homepage`, `sourceloc`, `bugtracker`, `depends`, `modules`, `main`, `executable`, `opts`/`options`, `sourcedir`, `datadir`, `builddir`, `outputdir`, `prebuild`, `postbuild`, `preinstall`, `postinstall`, `preclean`, `postclean`. `--dump-ipkg-json` emits `name`, `depends` (with bounds), `modules`, `version`, `authors`, `main`, `executable`, `sourcedir` [live]. | [src `Idris/Package.idr` 80–206] |
+| F22 | pack layout: user config `$XDG_CONFIG_HOME/pack/pack.toml`, installs under `$XDG_STATE_HOME/pack/install/<collection>/…` with binaries in `…/bin` and wrappers in `~/.local/bin`; `pack install-app idris2-lsp`, `pack switch <collection>`, `pack new lib|bin <name>`, `[custom.all.<pkg>]` entries. The `nightly-260924` collection pins `[idris2] version = "0.8.0", commit = 1c630e6…` (i.e. master labelled 0.8.0) and `[db.idris2-lsp] commit = 9a2f0ad…`, so pack keeps compiler and server in lock-step. **Corrections (M1, 2026-09-27), from pack's source at `6baee7d`:** the collection chosen by `pack switch` is written to **`<state>/pack.toml`**, not to the user's `$XDG_CONFIG_HOME/pack/pack.toml`, and overrides it (`collectionToml = MkF pd.state packToml`, `writeCollection`, `foldl update … (global::collToml::local)`, `src/Pack/Config/Environment.idr` 65–66, 449–457, 474–487, 695–702); `PACK_USER_DIR`, `PACK_STATE_DIR` and `PACK_BIN_DIR` replace the config, state and bin (`~/.local/bin`) directories (`getPackDirs`, 313–350); installs are keyed by the **compiler commit**, `<state>/install/<idris2 commit>/…` (`commitDir`, 133–134), not by the collection, and no code writes the README's `install/<collection>/bin`; the `idris2`/`idris2-lsp` in `~/.local/bin` are `sh` wrappers that run `pack app-path <app>` (and, for `idris2`, `package-path`, `libs-path`, `data-path`) on every run and then the binary as their child (`appLink`, `src/Pack/Runner/Install.idr` 139–188, 324). **These runs can reach the network** (traced in the M1 review): every configured command, `app-path` and the path queries included, first runs `getConfig`, whose `defaultColl` fetches the package database with git when `<state>/db` is missing (`when !(missing dbDir) updateDB`, `Environment.idr` 386–389, `updateDB` 354–359); and `env` resolves meta commits with `resolveMeta (fetch > MissingOnly)` (672–673), where a commit written `fetch-latest:<branch>` always runs `git ls-remote` and one written `latest:<branch>` does so when its commit file is missing (`FromString MetaCommit`, `src/Pack/Database/Types.idr` 35–39; `resolveMeta`, 396–413; `gitLatest`, `src/Pack/Core/Git.idr` 49–51). pack is still not installed here (§9 Q2). | [doc: pack README, pack-db collection file] + [src: idris2-pack `6baee7d`] |
+| F23 | ipkg fields accepted by master's parser: `package`, `version`, `langversion`, `authors`, `maintainers`, `license`, `brief`, `readme`, `homepage`, `sourceloc`, `bugtracker`, `depends`, `modules`, `main`, `executable`, `opts`/`options`, `sourcedir`, `datadir`, `builddir`, `outputdir`, `prebuild`, `postbuild`, `preinstall`, `postinstall`, `preclean`, `postclean`. `--dump-ipkg-json` emits `name`, `depends` (with bounds), `modules`, `version`, `authors`, `main`, `executable`, `sourcedir` [live]. **Addendum (M1, 2026-09-27):** string values are printed raw (`toJson str = "\"\{str}\""`, and an ipkg string literal keeps its escapes): `sourcedir = "src\\main"` is printed as `"src\\main"`, which `JSON.parse` would decode to a different value, and a newline inside a literal is printed raw, which is invalid JSON; a deprecation warning (`version = "0.1"`) is printed on stdout before the JSON; errors go to stderr with exit 1 [live, M1 project work, recorded in `test/unit/support/ipkgRecordings.ts`]. A module's source is looked for with the literate extensions before `.idr` (`listOfExtensionsStr`): `Twice.md` beside `Twice.idr` is the module's source [live: `Building Lit.Twice (src/Lit/Twice.md)`]. | [src `Idris/Package.idr` 80–206] + [live] |
 | F24 | `Test.Golden` (shipped as source in the Homebrew `test` package): a test is a directory with `run` (shell script taking `$1` = executable under test) and `expected`; the compiled runner is invoked `runtests <path-to-executable> [--timing] [--interactive] [--[no-]color] [--cg CG] [--threads N] [--failure-file P] [--only-file P] [[--only\|--except] NAMES]`; failures are shown with `git diff --no-index … expected output`. Output format for machine parsing [open]. | [src `test-0.8.0/Test/Golden.idr`] |
 | F25 | `-p contrib` makes a loose file's `import Data.String.Extra` resolve from a cwd without an ipkg; without it → `Module Data.String.Extra not found`. `idris2 --client ':t id'` answers one-shot. `idris2 --version` → `Idris 2, version 0.8.0`. | [live] |
 | F26 | LSP `metavars` premises carry `location`, `name`, `type`, `isImplicit` **and** `multiplicity` (the last is absent from `doc/commands.md`). | [src `Language/LSP/Metavars.idr` 38–41] |
@@ -479,6 +479,430 @@ M0 → M1 → M2 → M3 → M14).
 - **Open questions.** Q2 (install pack now?), E2 (also: the exact pack install command and
   the per-OS Idris 2 install route on Linux/Windows).
 - **Upstream.** U1.2 (a server flag printing its TTC version) makes the verdict exact.
+- **As built (2026-09-27).** Where the implementation reads or departs from the text above:
+  - *Status (2026-09-27): implemented and reviewed three times (next three bullets); CI had not run
+    when this was written.* First integration, local gates on the development machine (macOS arm64, Node v24.13.0, VS Code
+    1.139.1, Homebrew `idris2` 0.8.0): types, lint, 546 unit tests, 195 grammar tests, the §4
+    graph check, `check:fixtures` (63 checks), the three fake-tool integration suites (40 tests,
+    two full runs), the e2e suite (9 tests: the first run failed in the install test, which
+    was then fixed, see `test/e2e/install.test.ts` `useRecorder`; the three runs after the fix
+    passed) and `vsce package` [live]. The Windows-only tests (the `.cmd` round trip through
+    `cmd.exe`, the time-out path without process groups, the `.cmd` launchers of the fake
+    tools) have never run.
+  - *Review fixes (2026-09-27).* The M1 review (security, acceptance, environments, code
+    quality) found the problems the bullets below now describe as fixed: package files that are
+    not regular files, a block comment that made the fallback reader take exponential time,
+    `idris2.toolchain.env` values in the issue report, the group escalation after a wrapper
+    had died, the pack-directory test of the verdict, and more. After the fixes every local
+    gate was run again, one after another, on the same machine: types, lint, 579 unit tests
+    (1 Windows-only pending), 195 grammar tests, the §4 graph check, `check:fixtures` (63
+    checks, through a `timeout 120 idris2` wrapper), the three fake-tool integration suites
+    (33 + 4 + 3 tests), the e2e suite (9 tests), `vsce package` and `vsce ls` (17 files) — all
+    green in one run each [live]. Every Windows-only test (the new `taskkill` one included)
+    has still never run.
+  - *Second review fixes (2026-09-27).* A second four-way review found, among others: install
+    terminals that started in the workspace folder, where pack would apply the project's
+    `pack.toml` (*Install commands*); folders deleted, moved or restored, which the file
+    watchers report without their files, leaving roots, listings and compiler models stale
+    (*Model*); `dispose()` relying on a grace timer (*Processes*); a QuickPick order that
+    differed from VS Code's for entries without a group or an `@order` (*Status item*); and
+    overstatements in the README. The bullets below describe the fixed state. After the fixes
+    every local gate was run again, one after another, on the same machine: types, lint, 592
+    unit tests (1 Windows-only pending), 195 grammar tests, the §4 graph check,
+    `check:fixtures` (63 checks, through a `timeout 120 idris2` wrapper), the three fake-tool
+    integration suites (33 + 4 + 3 tests), the e2e suite (9 tests), `vsce package` and
+    `vsce ls` (17 files) — all green in one run each [live]. The Windows-only tests have still
+    never run.
+  - *Third review fixes (2026-09-27).* A third four-way review found: on Windows the search
+    also looked in `/opt/homebrew/bin` and `/usr/local/bin`, which `path.win32` turns into
+    `\opt\homebrew\bin` and `\usr\local\bin` on the current drive, where another local user
+    could plant an executable (*Discovery order*); `--dump-ipkg-json` started in the package
+    directory although the compiler changes into it by itself (*Model*, *Processes*); a comment
+    that misread the flag's argument as `Required` (it is `Optional`, so `-x.ipkg` is not taken
+    as the file); names such as `a?b.ipkg` that the compiler's walk reads through its path
+    parser (*Project discovery*); pack's directories taken from `os.homedir()` instead of pack's
+    `$HOME` (*pack*); pack's directories recognised only when spelled alike, not through a
+    symbolic link (*Discovery order*); two abbreviations of one commit judged a mismatch (*Pair
+    verdict*); the remaining follow-up probes run, each with its own 5 s limit, after one had
+    timed out (*Probes*); the status
+    item not following a change of the active document's language mode (*Status item*); and a
+    stale paragraph in `src/README.md`. The bullets below describe the fixed state. After the
+    fixes every local gate was run again, one after another, on the same machine: types, lint,
+    614 unit tests (1 Windows-only pending), 195 grammar tests, the §4 graph check,
+    `check:fixtures` (63 checks, through a `timeout 120 idris2` wrapper), the three fake-tool
+    integration suites (33 + 4 + 3 tests), the e2e suite (9 tests), `vsce package` and
+    `vsce ls` (17 files) — all green in one run each [live]; the packaged-extension check of
+    *Restricted Mode* was repeated on the package built from them. The new Windows-only
+    behaviour is unit-tested with simulated paths; nothing was run on Windows.
+  - *Restricted Mode* (decision). `capabilities.untrustedWorkspaces` is `"limited"` with
+    `restrictedConfigurations` = `idris2.toolchain.{idris2Path,lspPath,packPath,env}`, the
+    settings that name an executable or an environment. In an untrusted workspace nothing is
+    started — no `--version` probe, no `--dump-ipkg-json`: the one process runner
+    (`core/process.ts`) refuses every request, and the services check `workspace.isTrusted`
+    first so that they report it. File-system work still runs (locating the tools, the ipkg
+    walk, the fallback reader). The status item reads `Restricted Mode — toolchain detection
+    disabled`; granting trust (`onDidGrantWorkspaceTrust`) rescans. Checked on the packaged
+    extension in a `/tmp/vi2-*` profile: untrusted, the "Idris 2" log shows the scan "Restricted
+    Mode: nothing run" and no command; trusted (`--disable-workspace-trust`), exactly five:
+    `idris2 --version`, `--ttc-version`, `--paths`, `--list-packages` and `--dump-ipkg-json
+    simple.ipkg` [live, VS Code 1.139.1 from `.vscode-test/`, `.vsix` sha256 `281c71cd…`];
+    neither run's Extension Host or renderer log has an `[error]` or `[warning]` line (the
+    main-process log has VS Code's own `url.parse()` deprecation line, as in M0), and the
+    "Idris 2" log shows the status texts (`Status: Idris 2 0.8.0 · syntax only`). The final
+    package (`2a4ff4ec…`) differs from the checked one only in `readme.md`, `changelog.md` and
+    the description of `idris2.toolchain.env` in `package.json` (`diff -r` of the unpacked
+    files; `dist/extension.js` identical) [live]. Repeated after the review fixes on the
+    package built from them (`.vsix` sha256 `478a9f67…`, folder `simple-ipkg` with
+    `src/Foo/B.idr` open, one launch each way): trusted, the same five commands, the model read
+    first with the fallback reader (before the first scan had finished) and then with
+    `--dump-ipkg-json`; untrusted, no command and the model read twice with the fallback reader
+    (at activation and after the scan's new snapshot); no `[error]` or `[warning]` line in
+    either Extension Host or renderer log [live]. Repeated once more after the second review's
+    fixes, on the package built from them (`.vsix` sha256 `4369cc92…`, same folder and file,
+    one launch each way): the same result — trusted, the same five commands (the probes in
+    `/opt/homebrew/bin`, `--dump-ipkg-json` in the package directory), status `Idris 2 0.8.0 ·
+    syntax only`; untrusted, no command, status `Restricted Mode — toolchain detection
+    disabled`; no child process of the Extension Host left after the scans, and no `[error]` or
+    `[warning]` line in either Extension Host or renderer log [live]. Repeated after the third
+    review's fixes, on the package built from them (`.vsix` sha256 `c3c0bb63…`, same folder and
+    file, one launch each way, the extension's log at debug level): trusted, the same five
+    commands, each started in `/opt/homebrew/bin`, and `--dump-ipkg-json` given the absolute
+    path of `simple.ipkg`; the model read first with the fallback reader and then with
+    `--dump-ipkg-json`; status `Idris 2 0.8.0 · syntax only`; untrusted, no command, the model
+    read twice with the fallback reader, status `Restricted Mode — toolchain detection
+    disabled`; no child process of the Extension Host left after the scans, and no `[error]` or
+    `[warning]` line in either Extension Host or renderer log [live]. The test runner always trusts the workspace,
+    so Restricted Mode is otherwise covered by unit tests and `docs/checklists/M1.md`.
+  - *Processes.* Every command goes through `core/process.ts`: one at a time in call order (so
+    the extension never runs two probes at once), spawned without a shell, 5 s limit per probe,
+    stdin closed, at most 1 MiB kept per output stream. On POSIX the child leads its own
+    process group and a time-out signals the group (SIGTERM, SIGKILL 2 s later) until the result
+    is settled, also after the child itself has ended: pack's `idris2` wrapper and the
+    `#!/bin/sh` launcher the Chez backend writes (Homebrew's `idris2` is one [live]) die on
+    SIGTERM at once and run the real program as their child, which a group signal sent only
+    while the child lived would have missed if the program ignored SIGTERM (found in the review,
+    now a unit test). A grandchild that ignores SIGTERM and does not hold the output pipes is
+    not reached once they have closed. On Windows a time-out runs `%SystemRoot%\System32\
+    taskkill.exe /T /F /PID <child>`, which ends the child and what it started while the child
+    lives [open: never run on Windows]. Not reached, on POSIX: a descendant that left the group
+    (`setsid`, `setpgid`), and a background grandchild of a child that exited normally, which is
+    never signalled — the result is settled without it after the 2 s grace period when it holds
+    the pipes (both measured in the second review with `createTunedProcessRunner` on macOS,
+    Node 24 [live]); the README says "as far as the operating system allows". A Windows
+    `.cmd`/`.bat` (Node spawns none without a
+    shell; a name with trailing dots or spaces counts, as Windows resolves it) runs as
+    `cmd.exe /d /s /v:off /c ""file" "arg" …"` with an absolute `cmd.exe` (`ComSpec`, else
+    `SystemRoot`; otherwise refused), and a path or argument containing `"`, `%`, `!`, a
+    line break or a trailing backslash is refused rather than escaped [open: never run on
+    Windows]. `deactivate()` disposes the runner: queued and later requests reject, the running
+    process is killed at once (`SIGKILL` to the group; the first version sent SIGTERM and left
+    SIGKILL to a 2 s timer, which the Extension Host may not outlive, since `deactivate()` is
+    synchronous), and the toolchain service starts no probe after its own disposal; the
+    "Idris 2" log is silent once disposed, because VS Code's channel throws `Channel has been
+    closed` from every method then [src: VS Code 1.139.1 extension host bundle].
+    **Running the compiler in a directory can execute code from that directory**: the
+    Homebrew `idris2` 0.8.0 is a Chez program that loads `libc.dylib` by its leaf name
+    (`idris2_app/idris2.ss` line 10), and macOS `dlopen` also searches the working directory for
+    a leaf name. A `libc.dylib` with a constructor, put into a directory with a one-line
+    `p.ipkg`, ran its constructor during `timeout 120 idris2 --dump-ipkg-json p.ipkg` there
+    (exit 0, marker file written), also with a non-empty `DYLD_LIBRARY_PATH` [live, 2026-09-27,
+    reproduced by the fixer after the second review found it]. On Windows the standard DLL
+    search order of an unpackaged program puts the current folder (step 11) before the `PATH`
+    directories (step 12), after the known DLLs such as `msvcrt.dll` (Microsoft, "Dynamic-link
+    library search order", read 2026-09-27 [doc]); the `.bat` launcher only prepends
+    `idris2_app` to `PATH` (`startChezCmd`, `src/Compiler/Scheme/Chez.idr` 422–432 on v0.8.0),
+    and the program loads its support library by name (line 104) [src], so a
+    `libidris2_support.dll` in the working directory would come first, if Chez's
+    `load-shared-object` uses the standard search [open: not tried on Windows]. Therefore no
+    process starts in a package directory (third review; before it, `--dump-ipkg-json` did):
+    probes and `--dump-ipkg-json` start in the tool's own directory, and the compiler, given the
+    `.ipkg`'s absolute path, changes into the package directory only after it has started —
+    with the absolute path run from `/opt/homebrew/bin`, the planted `libc.dylib` was not loaded
+    (marker file unchanged) and the output was the same [live, 2026-09-27, one run each] (*Model*).
+    The trust gate is still essential, not a courtesy: M2's sessions have to run in the project
+    directory, and pack's wrapper merges the `pack.toml` files of its working directory and its
+    parents (*Roots outside the workspace folders*). The runner accepts only fully qualified
+    paths for the executable and the working directory — on Windows a drive or UNC root, not
+    `\x`, which names a directory on the current drive (`isFullyQualifiedPath`), nor `C:x`; the
+    same holds for `ComSpec` and `SystemRoot`. The runner passes `PATH` as configured (an empty
+    or relative entry would let a child such as the Homebrew launcher, which calls `uname` and
+    `zsh` by name, resolve them in its working directory); it is not filtered, because the
+    demonstrated case does not go through `PATH` and the directories concerned are the tools'
+    own.
+  - *Discovery order* as in the scope, with these readings: a non-empty
+    `idris2.toolchain.<tool>Path` is the only place looked at (an absolute path, or a bare
+    command name looked up on `PATH`); if it names nothing the tool is missing, with no fallback
+    (principle 4). Only absolute directories are searched, `PATH` entries included, and on
+    Windows only those with a drive or UNC root: `\tools` would be resolved on the Extension
+    Host's current drive (a setting spelled so is reported as neither an absolute path nor a
+    command name). `/opt/homebrew/bin` and `/usr/local/bin` are searched on macOS and Linux only;
+    on Windows they would become `\opt\homebrew\bin` and `\usr\local\bin` on the current
+    drive, whose root other local users can normally create folders in [doc: Microsoft's
+    default ACLs, recalled by the third review, not re-checked] (the third review found them
+    searched there; a unit test now asserts that a Windows search visits no directory without a
+    drive or UNC root). pack's directories are its bin directory (`$PACK_BIN_DIR`, else
+    `~/.local/bin`) and `<state>/install/<collection>/bin` when it exists (see *pack*). Whether
+    a tool lies in one of them is decided by comparing its directory with theirs as written and,
+    failing that, with symbolic links resolved (`fs.realpath`): a `PATH` entry `~/bin` linking to
+    `~/.local/bin`, or `/tmp` against `/private/tmp` on macOS, counts (third review). On
+    Windows each name is tried with the `PATHEXT` extensions the runner can start (`.com .exe
+    .bat .cmd`), and so is an absolute path in a setting that has none of them
+    (`C:\tools\idris2` finds `C:\tools\idris2.exe`, as `cmd.exe` resolves a typed path; the
+    first version reported it missing). One pair of double quotes around a path setting is
+    removed (Windows Explorer's "Copy as path"). A "not found" reason names the candidates that
+    exist but cannot be run (no execute bit, a directory).
+  - *Probes.* `idris2 --version`; only when that printed its `Idris 2, version ` line,
+    `--ttc-version`, `--paths` and `--list-packages`, of which those after one that timed out
+    are not run but recorded as not run (Setup Information says so): each would wait for its
+    own limit (a hung compiler, or a pack wrapper waiting for the network), which made one scan
+    take 15 s with a fake `idris2` that sleeps after `--version` [live, third review], and a scan
+    follows every settings change; then
+    `idris2-lsp --version`, which is
+    `probed` only when both `Idris2 LSP:` and `Idris2 API:` lines are printed, because the server
+    answers any other argument list with `Invalid Arguments` and exit 0 (F20 addendum). Each
+    tool's working directory is its own directory: the compiler also lists the packages in
+    `<cwd>/depends`. The `└` line of `--list-packages` is the directory the package was found
+    **in**, not the package's own (all seven Homebrew packages print `…/libexec/idris2-0.8.0`)
+    [live]. The version parser takes `<maj>.<min>.<patch>[-<tag>]` with a free-text tag (F20
+    addendum), so `0.8.0-1c630e6a2` and `0.9.0-dev` both parse.
+  - *Pair verdict* (`toolchain/verdict.ts`). **Deviation:** the text above makes a
+    Homebrew/release `idris2` with a non-pack server "likely mismatch" in addition to the
+    textual rule; as built, **equal texts are `compatible` whatever the layout** (tag
+    included: `0.8.0` ≠ `0.8.0-1c630e6a2`), different texts are `likelyMismatch`, and the layout
+    only chooses the explanation (server in pack's directories and `idris2` elsewhere; different
+    pack collections; a release `idris2` with a server from outside pack; else the two
+    versions). Reason: a server built against the release API prints that release's version, the
+    strongest evidence available, and "found in pack's directories" says where a file is, not who
+    built it. "In pack's directories" is decided by the executable's directory, whichever search
+    step found it (`ToolLocation.inPackDirectory`): pack's README asks users to put
+    `~/.local/bin` on `PATH` [doc], where the search meets it first (the review found that the
+    first version looked at the search step only). **Addition (third review):** two texts with
+    the same `major.minor.patch` whose tags are 7 to 40 hexadecimal digits, one a prefix of the
+    other ignoring case, are the same commit and `compatible`: `git rev-parse --short=9` (both
+    Makefiles [src]) prints at least 9 characters, more where 9 are ambiguous (git-rev-parse(1)
+    [doc]), and Idris2's `flake.nix` passes Nix's 7-character `shortRev` to `nix/package.nix`,
+    which is not in the checkout read, so whether a Nix build prints it is [open]. `unknown` covers a missing `idris2`, Restricted Mode, a failed probe and an
+    unparsed version; no verdict when no server is found. An `idris2` without a version tag is
+    called an *untagged* build, not a release: the tag is also empty for any build made outside
+    a git checkout (`Makefile` 19–27), and master `1c630e6` still says 0.8.0 [src], so a
+    tarball or Nix build of a development commit prints `0.8.0` too, and two untagged builds of
+    different commits compare equal (`compatible`).
+  - *pack* (Q2: not installed until M5; every pack fact here is [doc] or [src], none observed).
+    pack is never started by the extension, but its `idris2`/`idris2-lsp` wrappers run pack
+    themselves, so probing a pack-installed `idris2` runs `pack app-path` and three path queries
+    (F22 corrections) — the settings' descriptions say so. The current collection is read from
+    `<state>/pack.toml`, else `<config>/pack.toml`; `PACK_USER_DIR`/`PACK_STATE_DIR`/`PACK_BIN_DIR`
+    are honoured (only absolute values, as pack parses them). `~` in pack's directories is
+    `$HOME` of the effective environment (the Extension Host's with `idris2.toolchain.env`),
+    which pack's wrappers see, not `os.homedir()` (the first version; the third review): pack
+    stops with `NoPackDir` unless `$HOME` is an absolute path, before it reads any other variable
+    (`getPackDirs`, Environment.idr 343–345 [src]), so without one no pack directory is searched
+    — on Windows, which sets `USERPROFILE` rather than `HOME`, none unless `HOME` is set. `install/<collection>/bin` is
+    searched as the scope says, but no code in `6baee7d` creates it and `pack gc` would delete it
+    [src], so `ToolLocation.packCollection` and the "different collections" explanation will
+    not occur with that pack. Tested against simulated layouts (`test/fake-tools/packLayout.ts`)
+    and file-system fakes only. Those wrapper runs can reach the network (E2 status, F22
+    corrections [src]), so the README's Privacy section says so.
+  - *Project discovery* (`project/ipkg.ts`). The walk is the compiler's: up to the root, first
+    `.ipkg` in the order the file system lists the directory (read with `fs.opendir`; F10
+    addendum), stopping at a directory it cannot list. A name counts as the compiler's
+    `extension` decides, which reads it with its path parser (`Libraries.Utils.Path.parse`,
+    ported): on POSIX `a?b.ipkg` and `x\.ipkg` do not count, `a.ipkg\` does [live, third review,
+    `idris2 --find-ipkg --check`; the first version compared only the text after the last `.`].
+    It walks the path as given; the compiler walks `getcwd()`, the physical path, so a loose
+    file below a symbolic link whose physical ancestors hold an `.ipkg` the logical ones do not
+    is classified differently (documented, not handled). **Deviation (risks above):** several `.ipkg` files in one directory are warned
+    about (status item turns to a warning and names them, Setup Information, the log) but there
+    is no "let the user pick": the compiler's choice follows the directory order, and a pick in
+    the extension could not change which `.ipkg` the compiler applies.
+  - *Model.* `idris2 --dump-ipkg-json <absolute path of the .ipkg>`, started in the compiler's
+    own directory, when the workspace is trusted and `idris2` was probed; its strings are read
+    raw, because the compiler prints them unescaped (F23 addendum). The compiler splits the path
+    with its own parser and changes into the directory part (`processPackage`,
+    `src/Idris/Package.idr` 966–973): for all 12 recorded fixtures (two of them malformed)
+    stdout, stderr and exit code were byte-identical to the recordings made by name in the
+    package directory, errors with their `"<name>.ipkg":L:C` locations included [live, fixer,
+    2026-09-27, on copies of the fixtures, one run at a time]. The first version passed the
+    bare name, which the compiler does not take as the file when it starts with `-` (the
+    argument is `Optional`, `src/Idris/CommandLine.idr` 291, 483–486 [src]; `-x.ipkg` printed no
+    JSON [live]). Because that parser treats `:` and `?` as punctuation (stopping there), `\` as a
+    separator and drops components of white space, and `setWorkingDir` ignores a failed `chdir`,
+    a directory named `co:lon`, `back\slash` or `' '` made the compiler read another path
+    (`Packages must have an '.ipkg' extension`, `Error: File error in p.ipkg : File Not Found`)
+    [live, fixer, 2026-09-27]; such paths (`compilerReadsPathAsGiven`) are read with the fallback
+    reader and a warning in the log. On Windows, how the compiler splits `C:\…` was not run
+    [open]. **Deviation:** the fallback reader is not "tiny" but a port of the compiler's ipkg
+    lexer and grammar (`src/Parser/Lexer/Package.idr`, `Idris/Package.idr`); on
+    all 12 recorded fixtures and 16 edge cases it yields the compiler's model, or its error
+    text and range, and differs in not checking that the listed modules and `main` exist
+    (the compiler resolves both, `addFields` in `src/Idris/Package.idr` 268–281 [src]; `main =
+    Main.main` without a file is its error and the fallback reader's model [live, second
+    review]) and in the other ways `readIpkgText` lists [live recordings,
+    `test/unit/support/ipkgRecordings.ts`]. It reads the text as the compiler's
+    `readFile` delivers it, line by line through C strings: one U+FEFF at the start of a line
+    is dropped (a byte-order mark at the start of the file, and one starting line 2, were
+    accepted; one inside a line was a token), and a NUL ends its line, the line break included,
+    so the next line is joined to it (`"a\0junk` + newline + `b"` read as `"ab"`) [live,
+    recorded]. Its nested-comment automaton is the compiler's, memoised on (state, position,
+    depth) and evaluated with an explicit stack: the first port was exponential in the number
+    of `{-` when a comment failed late (the review measured 15 s for a 100-byte file; the
+    compiler's lexer backtracks the same way [src]), and a comment with a few thousand `-`
+    between words exhausted the stack; a pathological comment now ends with an error of the
+    reader's own after a work limit (about 0.17 s and a 241 MB peak for the Node process on a
+    crafted 1 MiB file, against 155 MB for a plain 1 MiB file [live, Node 24.13]).
+    Before either reader, the extension reads the file itself and requires a regular file of
+    at most 256 KiB (symbolic links followed; examined with `stat`, opened with `O_NONBLOCK` and
+    examined again), so a FIFO, a directory or a link to `/dev/zero` named `*.ipkg` is an
+    error model and the compiler is not run on it (the review: a FIFO blocked a libuv thread for
+    good, `/dev/zero` peaked at 730 MB); pack's `pack.toml` is read the same way, up to 1 MiB.
+    The 256 KiB (first 1 MiB) bounds the fallback reader, which runs on the Extension Host's
+    thread in linear time: a crafted `depends` list took 0.47 s at 375 KB and 1.3 s at 1 MB,
+    while the largest of the 43 real package files at hand (Idris 2 sources, idris2-pack, the
+    corpora) is `idris2api.ipkg` at 7,771 bytes [live, Node 24.13]. A parse error is part of the root's
+    model (`status: 'error'`, the compiler's message and its range, 1-based as printed), not a
+    thrown `IpkgParseError`: the root still exists and its sessions still run in its directory,
+    where the compiler reports the same error on every load (F10); the `IdrisError` kind is
+    left for the backends (M2).
+    The index caches walks and models (keyed case-insensitively on Windows); an `.ipkg`
+    created or deleted in a workspace folder drops its directory's model and every walk, a
+    changed one only its directory's model, a change of the workspace folders drops every
+    model, a new toolchain snapshot drops all, and an `.ipkg` above the workspace folders (not
+    watched) is re-read after the next snapshot. Any other path created or deleted in a
+    workspace folder — a file or a folder — is gathered for 250 ms and then handled from what is
+    there now, because a folder deleted, moved or restored is reported alone, without its files
+    (vscode.d.ts `createFileSystemWatcher` [doc]; VS Code 1.139.1's `coalesce` in `watcherMain.js`
+    drops the deletions below a deleted folder [src]; the first version watched module files
+    only and kept stale roots and models after such a move): walks and roots at or below the path
+    are dropped; a compiler model read without error is dropped when the path could have held one
+    of its module sources (a listed module or `main`: the source directory, a folder on the way,
+    or a candidate file); when the path is a folder now or has a module source name, compiler
+    errors (`Module <M> not found`) and reads still running are dropped; and the package files
+    are listed again when the path is a folder now or holds a listed package. Build output
+    therefore changes nothing. One race is left: a folder deleted while a read runs leaves that
+    read's result until the next change. Models are read when `classify` or `roots()` asks for
+    one, not for every package of the workspace after each snapshot; the compiler runs with the
+    environment of the snapshot that probed it (the first version took the current settings').
+  - *Roots outside the workspace folders* (decision, M1 review). `--dump-ipkg-json` ran in the
+    `.ipkg`'s directory, which can execute code found there (*Processes*), and VS Code's
+    workspace trust covers the workspace folders, not the directories above them. (Since the
+    third review it starts in the compiler's directory, so reading such a file with the
+    compiler would no longer start a program there; the decision is kept, since the sessions of
+    M2 will run in that directory.) So an `.ipkg` outside every workspace folder (`simple-ipkg`
+    opened at `src/`, or a planted `/tmp/x.ipkg`
+    above a trusted `/tmp/proj`) is read with the fallback reader, which yields the same model,
+    and the status detail and Setup Information say that the root lies outside
+    (`ProjectRoot.insideWorkspace`). This closes the planted-`.ipkg` case only: with pack's
+    wrapper, every run — also one for a root inside a trusted folder — reads the `pack.toml` of
+    its directory and of **all** parent directories and merges them over the global
+    configuration (`findInAllParentDirs`, idris2-pack `src/Pack/Config/Environment.idr` 482,
+    `src/Pack/Core/IO.idr` 300–316 [src]), so a `/tmp/pack.toml` planted by another local user
+    reaches a run in a trusted `/tmp/proj` [src; not run: no pack]. Since the third review the
+    extension's own runs start in the tool's directory (e.g. `~/.local/bin`, whose parents are
+    the home directory and `/`), so this applies to M2's sessions, not to M1's runs. The
+    classification and the session directory are unchanged (F13); **M2 has to decide** whether
+    a session may start in such a directory, and in the directory of a loose file outside the
+    workspace folders.
+  - *Modules ↔ paths.* `moduleToPaths` returns the compiler's `nsToSource` order: the literate
+    extensions (after the prefixes `""`, `.idr`, `.lidr`), then `.yaff`, then `.idr`, so
+    `Foo.md` beside `Foo.idr` is the module's source (F23 addendum). `pathToModule` drops every
+    extension (`Foo/B.idr.md` → `Foo.B`, as `mbPathToNS`) and accepts only the names the
+    compiler's `splitIdrisFileName` accepts. A `sourcedir` with `\` separators is split on `\`
+    too, on every platform [live: `sourcedir = "src\\main"` resolved in `src/main` on macOS].
+    Names are compared as the compiler compares them, case-sensitively, although on a
+    case-insensitive file system the compiler loads a differently cased file (F11 addendum):
+    `Up.IDR` then has no module name here, and a `sourcedir = "SRC"` over `src/` maps no file
+    (documented, not handled). A path component with `\`, `:` or `?` (possible on POSIX) or of
+    white space only, which the compiler's path parser splits or drops (`A\B.idr` is `A.B` to
+    it [src; not run]), gets no module name (third review; not modelled).
+  - *Literate table and selector* (decision). `project/literate.ts` holds the compiler's full
+    table (`.lidr`; `.md .markdown .dj`; `.org`; `.tex .ltx`; `.typ`; with the `.idr.`/`.lidr.`
+    prefixes). The selector and `isIdrisDocument` gained pattern rows **only** for the double
+    extensions (`**/*.idr.<ext>`, `**/*.lidr.<ext>`), matched on the file path so that the
+    selector and the predicate stay equal (checked in VS Code on `loose-file/Doc.idr.md`); a
+    bare `.md`/`.tex`/`.org`/`.typ` stays its host language's until M12. Consequences kept out of
+    scope until M12: the syntactic selection ranges are not offered for these fenced documents
+    (their prose would be lexed as Idris; `isModelledStyle`), a workspace whose only Idris files
+    have double extensions does not activate the extension (no activation event covers them),
+    and `core/positions.ts` still applies a column offset for bird tracks only, although the
+    compiler also strips Org's `#+IDRIS:` marker (E19).
+  - *Status item and menus.* One `LanguageStatusItem` on the selector: `Idris 2 <version> ·
+    syntax only` (the registry holds no backend in M1), `idris2 not found — Setup…` /
+    `idris2 not working — Setup…` as warnings, `Restricted Mode — toolchain detection disabled`,
+    busy while scanning; each change of its text is written to the "Idris 2" log (`Status: …`),
+    since VS Code cannot read the item back. Its QuickPick (**Idris 2: Show Commands…**) lists
+    exactly the entries of the **Idris 2** editor-title submenu, read from `package.json` at run
+    time, in the order of VS Code's `MenuInfo.compareMenuItems` (grouped entries before ungrouped
+    ones, `navigation` first, a missing `@order` counting as 0) [src: VS Code 1.139.1 workbench
+    bundle]; the first version put entries without an order last and ungrouped ones first,
+    which the current manifest does not exercise. When another Idris file becomes active, the
+    previous file's package (and a warning about it) is cleared at once instead of being shown
+    until the new classification arrives. A change of the active document's language mode is
+    followed too: VS Code reports it as the document closing and opening, without an
+    active-editor event (`$acceptModelLanguageChanged` in the VS Code 1.139.1 extension host
+    bundle [src]), so the item listens to `onDidOpenTextDocument` as well (third review: a
+    Markdown file switched to Idris 2 kept the previous file's package and warning). The `stopped` label of ARCHITECTURE §3.2 arrives with
+    the first backend (M2).
+  - *Setup Information* is a read-only Markdown virtual document (`idris2-setup:`), re-rendered on
+    every toolchain, project or trust change, with every probe's raw output and parsed values;
+    **Report Issue…** passes it to `vscode.openIssueReporter` (not in `@types/vscode` 1.138;
+    registered only when `telemetry.feedback.enabled` is on [src: VS Code 1.139.1 bundle]) and
+    falls back to the clipboard. Because the text goes into an issue, it shows the values of
+    `idris2.toolchain.env` only for the path variables (`PATH`, `PATHEXT`, `CHEZ`,
+    `IDRIS2_*`, `PACK_*`, `XDG_*`, any `user:password@` in a URL masked — everything from `//`
+    to the last `@` of the word, since URL parsers take the user information up to the last
+    `@`) and only the names of the others (a proxy URL with a password, a token), and says so in
+    its first paragraph. Inline code uses a delimiter longer than any run of backticks in the
+    value (CommonMark code spans).
+  - *Install commands.* `sendText(text, false)`: typed, never run (e2e: a recorder terminal
+    profile saw the exact text and no line break). **Install Idris 2…** pre-types
+    `brew install idris2` on macOS and opens Idris 2's INSTALL.md elsewhere; **Install pack…**
+    pre-types pack's install command (E2 status) and opens pack's INSTALL.md on Windows;
+    **Install or Update idris2-lsp with pack** types `<pack> install-app idris2-lsp` with the
+    absolute path of the pack found, quoted for POSIX shells (PowerShell's `& '…'` on Windows,
+    with `'` and U+2018–U+201B doubled, the quote characters of PowerShell's `IsSingleQuote`
+    [src]; whether the terminal is PowerShell is [open]), and without pack offers **Install
+    pack…**. A pack path with a control character is not typed at all (a warning says why): a
+    shell acts on such a character as it is typed (a line break or Ctrl-O runs the line in
+    bash), whatever the quoting; on POSIX neither is one with a backslash, because fish reads
+    `\'` and `\\` inside single quotes as escapes (fish manual, "Quotes", read 2026-09-27 [doc]),
+    so the POSIX quoting could end the word early there. The two pack terminals get
+    `idris2.toolchain.env`. **Every install terminal starts in the home directory** (`cwd`), not
+    in the workspace folder where VS Code would start it: pack reads the `pack.toml` of its
+    working directory and of every parent (see *Roots outside the workspace folders*), so a
+    project's `pack.toml` could otherwise name its own `idris2-lsp` source (`[custom.all.
+    idris2-lsp]`) and turn the build-hook prompt off (`install.safety-prompt = false`), and
+    Enter on the harmless-looking text would build it (second review [src]; not run: no pack).
+    The home directory's parents are normally root-owned; without a known home directory no
+    terminal is opened and a warning shows the text. With the terminal there, the commands need
+    no trust gate. "Update" in the command's title means the current collection's server:
+    `install-app` does nothing for an application already installed at the collection's commit
+    (`installApp`, `appStatus`: the installed path contains the commit, idris2-pack
+    `src/Pack/Runner/Install.idr` 414–441, `src/Pack/Runner/Database.idr` 240–253 [src]); a
+    newer server comes with a newer collection (`pack switch latest`, pack's README [doc]). The
+    README and the walkthrough say so.
+  - *Notifications.* "Shown once" means once per window for each distinct condition: for a
+    missing compiler the value of `idris2Path`, for a mismatch both paths and the verdict's
+    reason. **Deviation:** the mismatch warning offers **Show Setup Information** and **Open
+    Settings** (`idris2.toolchain`), not the three actions of the outcome text: installing
+    Idris 2 or reading the log does not resolve a mismatch, choosing another path does, and
+    Setup Information explains the verdict. Nothing is remembered across windows; no warning in Restricted Mode, where
+    workspace path settings are ignored and "not found" could be wrong.
+  - *Acceptance as tested.* The fake binaries live in `test/fake-tools/bin` (sh and `.cmd`
+    launchers), not in a fixture's `bin/`. "With `idris2` absent a single actionable warning" is
+    tested in the integration suite with `idris2Path` set to a nonexistent file, not in e2e: the
+    e2e runs where `idris2` is installed, and `/opt/homebrew/bin` is a directory the search
+    always visits. Integration suites: `integration` (loose-file, fake tools named in user
+    settings), `simple-ipkg` (workspace folder `simple-ipkg/src`, below the `.ipkg`) and
+    `toolchain-path` (fake tools found through `PATH`). The install commands are checked in
+    both the integration and the e2e suite with a terminal recorder as the default profile
+    (`test/integration/terminalRecorder.ts`): the exact text, no line break; in the integration
+    suite on every platform, Windows included [open: the recorder has never run under Windows'
+    ConPTY], where the first version only waited 3 s for a log file not to appear.
+  - *Unit-test time.* The suite now spawns real child processes (the runner, the fake tools,
+    pack's wrappers in simulated layouts) and takes 8–10 s on the development machine (10 s for
+    592 tests after the second review, 9 s for 614 after the third), above the "< 5 s" of §7.1 and ARCHITECTURE §12; the
+    review fixes added about 3 s (process-group escalation after a wrapper's death, the
+    runner's dispose, the 250 ms pause of the path-event tests).
 
 ### M2 — IDE-mode core: transport, session, diagnostics (L)
 
@@ -546,7 +970,11 @@ M0 → M1 → M2 → M3 → M14).
   :False)` for sessions that do not need tokens (F14); a hung compiler → timeouts already
   designed; ipkg with `builddir` shares the build dir with user builds → documented (Q21).
 - **Open questions.** E5 (warning kinds), E13 (Windows), E21 (TTC coexistence when `builddir` is
-  set), Q6 (default trigger).
+  set), Q6 (default trigger); whether a session may start in the directory of an `.ipkg` that
+  lies outside every workspace folder, or in the directory of a loose file outside them (e.g.
+  `~/Downloads`), neither of which workspace trust covers — running the compiler in a directory
+  can execute code found there (M1 reads such an `.ipkg` without the compiler; M1 As built
+  *Processes*, *Roots outside the workspace folders*) [open].
 - **Upstream.** U2.8 (frame program output on stdio), U2.9 (fresh error id), U2.5 (severity).
 
 ### M3 — Read-only intelligence over IDE mode: hover, definition, tokens, completion, docs, inlay hints, evaluation (M/L)
@@ -1318,6 +1746,12 @@ retiring every backend risk before UI work is preferred.
   never committed) and `JankaGramofonomanka/idris-compiler-tools` (MIT → excerpts may be
   committed with attribution).
 
+**Decided by the user on 2026-09-27**
+
+- **Q2**: pack (and with it `idris2-lsp` and pack's own compiler) is installed only in M5. M1
+  implements pack detection and pack's layout from its README and source (idris2-pack
+  `6baee7d`) and tests them against simulated layouts only (M1 "As built").
+
 **Decisions**
 
 - **Q1** Publisher id, licence (MIT recommended, §7.6), icon/logo rights; whether to publish to
@@ -1367,8 +1801,23 @@ retiring every backend risk before UI work is preferred.
   e2e suite? Also: confirm the install command the "Install pack…" terminal pre-types against
   the pack README of that day (F36 [doc]), and the Linux/Windows install routes for
   "Install Idris 2…".
+  **Status 2026-09-27 (M1): partly done.** The install command was re-verified: line 26 of the
+  README at `6baee7d` and of the README on `main` fetched that day is exactly the command the
+  terminal pre-types [doc]; checked again against `6baee7d` at the final M1 integration
+  (`PACK_INSTALL_COMMAND` in `src/toolchain/install.ts`). Linux and Windows: "Install Idris 2…" opens Idris 2's INSTALL.md
+  instead of pre-typing a command (no per-distribution command was chosen), and "Install pack…"
+  opens pack's INSTALL.md on Windows, which names no Windows route [doc]. The layout part moves
+  to M5 with the install (Q2); it now also covers what M1 read in pack's source but could not
+  observe: the collection file (`<state>/pack.toml`, F22), how long a probe through pack's
+  wrappers takes against the 5 s probe limit (each run of the `idris2` wrapper runs pack four
+  times, F22), whether `pack app-path` does reach the network (every configured command other
+  than `pack fetch` runs with fetch mode `MissingOnly`, idris2-pack `src/Pack/Runner.idr`
+  182–184; traced in the M1 review: it can, see F22 corrections [src]), and
+  whether pack's builds carry a version tag, which decides the textual verdict between pack's
+  `idris2` and its `idris2-lsp`.
 - **E3** (M1/M5) Attempt to build idris2-lsp `main` against Homebrew 0.8.0's `idris2api` (expect
   failure at `PostSession`) and find the last commit that builds — input to U1.1.
+  **Status 2026-09-27: not attempted in M1** (nothing in M1 depends on it); moved to M5.
 - **E4** — **closed**: the LINE argument of `:load-file` is ignored on 0.8.0 and master (F31
   [src + live]); "check up to cursor" is not available via IDE mode and is listed under U2.10.
 - **E5** (M2) Provoke each warning kind of F28 (`Shadowing`, `Deprecated`, `IncompatibleVisibility`,

@@ -3,6 +3,7 @@
 .vscode-test.mjs
 .github/**
 .corpus/**
+.lane-out/**
 docs/**
 out/**
 node_modules/**

@@ -1,0 +1,38 @@
+{
+  "$comment": "Output of the real idris2 for the fake (test/fake-idris2/README.md, Recorded command-line output). Do not edit by hand.",
+  "recorded": "2026-09-27",
+  "compiler": "/opt/homebrew/bin/idris2, Homebrew idris2 0.8.0_2 (macOS arm64); stdout not a terminal, empty stderr",
+  "cwdPlaceholder": "{{cwd}}",
+  "flags": {
+    "--version": {
+      "stdout": "Idris 2, version 0.8.0\n",
+      "exitCode": 0
+    },
+    "--ttc-version": {
+      "stdout": "2025081600\n",
+      "exitCode": 0
+    },
+    "--paths": {
+      "stdout": "+ Working Directory      :: \"{{cwd}}\"\n+ Source Directory       :: Nothing\n+ Build Directory        :: \"build\"\n+ Local Depend Directory :: \"depends\"\n+ Output Directory       :: \"build/exec\"\n+ Installation Prefix    :: \"/opt/homebrew/Cellar/idris2/0.8.0_2/libexec\"\n+ Extra Directories      :: [\".\"]\n+ Package Search Paths   :: [/opt/homebrew/Cellar/idris2/0.8.0_2/libexec/idris2-0.8.0]\n+ Package Directories    :: [\"/opt/homebrew/Cellar/idris2/0.8.0_2/libexec/idris2-0.8.0/base-0.8.0\", \"/opt/homebrew/Cellar/idris2/0.8.0_2/libexec/idris2-0.8.0/prelude-0.8.0\"]\n+ CG Library Directories :: [\"/opt/homebrew/Cellar/idris2/0.8.0_2/libexec/idris2-0.8.0/lib\", \"{{cwd}}\"]\n+ Data Directories       :: [\"/opt/homebrew/Cellar/idris2/0.8.0_2/libexec/idris2-0.8.0/support\"]\n",
+      "exitCode": 0
+    },
+    "--list-packages": {
+      "stdout": "Idris2 TTC Version: 2025081600\n─────\nbase (0.8.0)\n  ├ TTC Versions: 2025081600\n  └ /opt/homebrew/Cellar/idris2/0.8.0_2/libexec/idris2-0.8.0\ncontrib (0.8.0)\n  ├ TTC Versions: 2025081600\n  └ /opt/homebrew/Cellar/idris2/0.8.0_2/libexec/idris2-0.8.0\nidris2 (0.8.0)\n  ├ TTC Versions: 2025081600\n  └ /opt/homebrew/Cellar/idris2/0.8.0_2/libexec/idris2-0.8.0\nlinear (0.8.0)\n  ├ TTC Versions: 2025081600\n  └ /opt/homebrew/Cellar/idris2/0.8.0_2/libexec/idris2-0.8.0\nnetwork (0.8.0)\n  ├ TTC Versions: 2025081600\n  └ /opt/homebrew/Cellar/idris2/0.8.0_2/libexec/idris2-0.8.0\nprelude (0.8.0)\n  ├ TTC Versions: 2025081600\n  └ /opt/homebrew/Cellar/idris2/0.8.0_2/libexec/idris2-0.8.0\ntest (0.8.0)\n  ├ TTC Versions: 2025081600\n  └ /opt/homebrew/Cellar/idris2/0.8.0_2/libexec/idris2-0.8.0\n",
+      "exitCode": 0
+    }
+  },
+  "dumpIpkgJson": [
+    {
+      "ipkg": "test/fixtures/workspaces/simple-ipkg/simple.ipkg",
+      "sha256": "45fbe92a34ee08c37f6315bd74257f336e853136f9a81a017d4daac3fbd38ea0",
+      "recorded": "2026-09-27",
+      "args": [
+        "--dump-ipkg-json",
+        "simple.ipkg"
+      ],
+      "cwd": "test/fixtures/workspaces/simple-ipkg",
+      "stdout": "{\"name\": \"simple\",\"depends\": [{\"contrib\": {\"lowerInclusive\": true,\"lowerBound\": \"*\",\"upperInclusive\": true,\"upperBound\": \"*\"}}],\"modules\": [\"Foo.A\",\"Foo.B\"],\"version\": \"0.1.0\",\"sourcedir\": \"src\"}\n",
+      "exitCode": 0
+    }
+  ]
+}

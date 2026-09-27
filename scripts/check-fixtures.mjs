@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 // Checks that every committed Idris fixture is valid for the installed compiler:
-//   *.idr, *.lidr  →  idris2 --check    (from the file's source root, see sourceRoot below)
+//   *.idr, *.lidr  →  idris2 --check    (from the file's source root, see sourceRoot below);
+//                     also the literate double extensions *.idr.<ext> and *.lidr.<ext>
+//                     (<ext> from the compiler's table, src/project/literate.ts), which the
+//                     extension treats as Idris whatever their language mode; a bare .md, .tex,
+//                     … fixture is its host language's and is not checked
 //   *.ipkg         →  idris2 --dump-ipkg-json   (from the file's directory)
 // Files named *.invalid.idr / *.invalid.lidr / *.invalid.ipkg are skipped: they are fixtures
 // that are deliberately not valid Idris.
@@ -33,6 +37,9 @@ function run(args, cwd) {
   }
   return { status: r.status, output: `${r.stdout}${r.stderr}` };
 }
+
+/** `.idr.<ext>` / `.lidr.<ext>` for each literate extension of `src/Parser/Unlit.idr`. */
+const DOUBLE_EXTENSION = /\.(idr|lidr)\.(lidr|org|md|markdown|dj|tex|ltx|typ)$/;
 
 function* walk(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
@@ -253,7 +260,7 @@ function* snippetChecks(dir) {
 
 /** The idris2 invocation that checks `file`: [cwd, args]. */
 function checkCommand(file) {
-  if (/\.(idr|lidr)$/.test(file)) {
+  if (/\.(idr|lidr)$/.test(file) || DOUBLE_EXTENSION.test(file)) {
     const cwd = sourceRoot(file);
     return [cwd, ['--check', path.relative(cwd, file)]];
   }
@@ -288,7 +295,7 @@ try {
       console.log(`skip  ${rel}`);
       continue;
     }
-    if (/\.(idr|lidr|ipkg)$/.test(file)) {
+    if (/\.(idr|lidr|ipkg)$/.test(file) || DOUBLE_EXTENSION.test(file)) {
       check(rel, file);
     }
   }

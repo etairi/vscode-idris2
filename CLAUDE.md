@@ -8,7 +8,8 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   **Features are implemented in the milestone that owns them, with the scope written there.**
   Do not pull a later milestone's feature forward, and do not stub it with an empty module:
   placeholders for future parts are the README files in `src/` and `test/`. M0 is implemented
-  and accepted (2026-09-27, ROADMAP M0 "As built"); the one planned stub is M0's
+  and accepted (2026-09-27, ROADMAP M0 "As built"); M1 is implemented (2026-09-27, ROADMAP M1
+  "As built", which lists its deviations from the M1 text). The one planned stub is M0's
   `src/webview/goalPanel.ts` (an empty second esbuild entry, ROADMAP M0 "Out"), which M7
   replaces.
 - `docs/ARCHITECTURE.md` — the technical design: repository layout (§2), the `IdrisBackend`
@@ -27,7 +28,8 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   `etairi` (provisional, not yet created on the Marketplace); language id `idris2` (the clashing
   `j-nava.idris2-language-support` was uninstalled from the user's VS Code); grammar written
   fresh, using existing grammars only as reference; implementation order M0 → M1 → M2 with one
-  commit per milestone. Still undecided: the icon — do not invent one.
+  commit per milestone. Still undecided: the icon — do not invent one. Decided on 2026-09-27
+  (ROADMAP §9 Q2): pack, and with it `idris2-lsp`, is installed only in M5.
 - Test corpora (`test/corpus/corpus.json`, fetched by `scripts/fetch-corpus.mjs` into the
   git-ignored `.corpus/`): `idris-compiler-tools` (MIT, Jan Serwatka) and the Idris 2 v0.8.0
   libraries (BSD-3, Edwin Brady) may be excerpted into fixtures, each excerpt with an attribution
@@ -45,7 +47,9 @@ npm run test:unit     # compile-tests (tsc → out/) + mocha --ui tdd on out/tes
 npm run test:grammar  # TextMate snapshots + scope assertions + timing (out/test/grammar/**)
 npm run test:corpus   # fetch the pinned corpora (network) and tokenise them; with
                       # IDRIS2_LEXER_ORACLE=1 also compare with the 0.8.0 lexer (needs idris2)
-npm test              # pretest (compile-tests + compile) + vscode-test (.vscode-test.mjs)
+npm test              # pretest (compile-tests + compile) + vscode-test (.vscode-test.mjs):
+                      # the suites integration, simple-ipkg, toolchain-path (fake tools)
+npm run test:e2e      # compile + the e2e suite against the real idris2 on PATH
 npm run check:fixtures        # idris2 --check / --dump-ipkg-json on every fixture and snippet
                               # expansion (temp copy)
 npm run docs:graph:check      # ROADMAP §4 graph == docs/milestones.yaml (docs:graph rewrites)
@@ -56,15 +60,19 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
 
 - Tests use mocha's **tdd** interface (`suite`/`test`) everywhere. Unit tests live in
   `test/unit/`, must not import `vscode`, and import sources as `../../src/...`. Integration
-  tests live in `test/integration/` and run in the Extension Host on
-  `test/fixtures/workspaces/loose-file`.
+  tests live in `test/integration/`: the top-level files form the suite `integration`
+  (workspace `test/fixtures/workspaces/loose-file`), `simple-ipkg/` the suite `simple-ipkg`
+  (workspace folder `simple-ipkg/src`), `path/` the suite `toolchain-path`; all three use the
+  fake tools of `test/fake-tools`, never a real compiler. `test/e2e/` runs against the real
+  `idris2` (`npm run test:e2e`). They read extension state through the test API `activate()`
+  returns in `ExtensionMode.Test` (`src/extension.ts`).
 - `tsconfig.json` has `rootDir: "."` with `include: ["src", "test"]`, so `compile-tests` emits
   `out/src/**` and `out/test/**`; the runtime bundle is produced by `esbuild.mjs` only.
   ARCHITECTURE §2 describes the file as `noEmit`; that is realised by the `--noEmit` flag of
   `check-types`/`watch:tsc` rather than in the file, because mocha and `@vscode/test-cli` run
   compiled `.js` and need `compile-tests` to emit into `out/`. Deliberate deviation.
 - Script names follow ARCHITECTURE §13 since M0: `package` = `vsce package`,
-  `vscode:prepublish` = check-types + lint + production bundle. `test:e2e` arrives with M2.
+  `vscode:prepublish` = check-types + lint + production bundle. `test:e2e` exists since M1.
 - Every `.ts` file under `src/` must be imported by something or be an esbuild entry point
   (`src/webview/goalPanel.ts` is M0's stub entry); every file under `test/` must be a test or
   something a test uses (harness, fixtures, snapshots, corpus list, fake compiler). No dead code.
@@ -118,11 +126,12 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
   comment settings by the language of the token at the cursor, so the mapping made the `.idr`
   Enter rules run on bird-track lines (verified in VS Code 1.139.1;
   `test/integration/editor.test.ts` fails if it comes back).
-- `capabilities.untrustedWorkspaces.supported` is `true` because M0 executes nothing from the
-  workspace; without it VS Code disables the whole extension, highlighting included, in
-  Restricted Mode (observed). **The first milestone that spawns a process (M1) must change it
-  to `"limited"`** and list every setting that names an executable or arguments in
-  `restrictedConfigurations`, and gate spawning on `workspace.isTrusted`.
+- Restricted Mode: M1 changed `capabilities.untrustedWorkspaces.supported` from `true` to
+  `"limited"` (without either VS Code disables the whole extension, highlighting included, in
+  Restricted Mode — observed in M0). Every later setting that names an executable, arguments or
+  environment variables must be added to `restrictedConfigurations` (a unit test in
+  `test/unit/manifest.test.ts` lists them), and nothing may be spawned in an untrusted
+  workspace (see the M1 rules).
 - Manual runs of VS Code (e.g. checking a `.vsix`) must not touch the user's profile: pass
   `--user-data-dir`, `--extensions-dir` **and** `--shared-data-dir`, each a short `/tmp/vi2-*`
   path (F17). VS Code 1.139 otherwise opens `~/.vscode-shared/sharedStorage` even with a
@@ -136,6 +145,40 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
   2026-09-27). For the same reason `test/integration/editor.test.ts` presses Enter with
   `editor.action.insertLineAfter`, which runs the same routine as a typed Enter [src], and not
   with the `type` command.
+
+## Rules established by M1
+
+- **Every process the extension starts goes through the one runner in `src/core/process.ts`**:
+  it refuses everything while the workspace is untrusted, runs one process at a time in call
+  order, never uses a shell (a Windows `.cmd`/`.bat` goes through a quoted `cmd.exe` command
+  line or is refused), and stops a timed-out process group (until its result is settled, also
+  after the group leader has ended); `deactivate()` disposes it. No other module in `src/`
+  imports `child_process`. Terminals (the install commands) only ever get text without a line
+  break or any other control character, and start in the home directory, never in a workspace
+  folder: pack reads the `pack.toml` of its working directory and of every parent (ROADMAP M1
+  As built, *Install commands*).
+- **Starting the compiler in a directory can execute code from that directory** (the Homebrew
+  `idris2` loaded a planted `libc.dylib` from its working directory; ROADMAP M1 As built,
+  *Processes*). M1's own runs (probes, `--dump-ipkg-json <absolute .ipkg path>`) therefore start
+  in the tool's own directory, and the runner accepts only fully qualified executable and
+  working-directory paths (`isFullyQualifiedPath`: on Windows a drive or UNC root, never `\x`
+  or `C:x`). A session that must run in a project directory (M2) is a decision to record, not
+  a default.
+- Unit tests never run the real compiler; they use `test/fake-tools` (sh and `.cmd` launchers
+  that run the Node fakes with the `node` on `PATH`) or recorded output. Recorded compiler
+  output is keyed by the fixture's SHA-256 in two places, `test/unit/support/ipkgRecordings.ts`
+  and `test/fake-idris2/recorded-cli-0.8.0.json`: changing an `.ipkg` fixture fails the unit
+  tests until it is re-recorded (the procedure is in the file header and in
+  `test/fake-idris2/README.md`; one `timeout 120 idris2` at a time).
+- e2e tests call `extensionIdle` (`test/e2e/helpers.ts`) before running `idris2` themselves, so
+  that the extension's own probes and the test's process never overlap.
+- `.vscode-test.mjs` gives each suite its own profile and passes `--force-disable-user-env`;
+  keep both (without the flag the Extension Host takes the login shell's `PATH`, observed).
+  Integration tests that change a setting restore it.
+- pack is not installed on the development machine until M5 (ROADMAP §9 Q2): pack facts are
+  [doc]/[src] and tested only against simulated layouts (`test/fake-tools/packLayout.ts`).
+- On this machine `ls` is aliased to `eza` in the shells the agents get, and it hung without a
+  terminal (2026-09-27); scripts use `/bin/ls`.
 
 ## Working rules
 
