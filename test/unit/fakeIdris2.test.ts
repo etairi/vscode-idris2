@@ -89,6 +89,27 @@ class FrameReader {
 const exitOf = (child: ChildProcessWithoutNullStreams): Promise<number | null> =>
   new Promise((resolve) => child.on('exit', (code) => resolve(code)));
 
+/**
+ * These tests check the fake's replies and exit code, not how its side of the connection goes
+ * away. On the GitHub windows-latest runner the client socket receives ECONNRESET when the fake
+ * exits (observed in CI, 2026-09-27; macOS and Linux see an orderly close), and without a
+ * handler that error is uncaught and fails the test. Ignore exactly that error; the returned
+ * function rethrows any other socket error, so call it at the end of the test.
+ */
+function tolerateReset(socket: net.Socket): () => void {
+  let unexpected: Error | undefined;
+  socket.on('error', (error: NodeJS.ErrnoException) => {
+    if (error.code !== 'ECONNRESET') {
+      unexpected ??= error;
+    }
+  });
+  return () => {
+    if (unexpected) {
+      throw unexpected;
+    }
+  };
+}
+
 const HANDSHAKE = '(:protocol-version 2 1)\n';
 const VERSION_OK = (id: string) => `(:return (:ok ((0 8 0) (""))) ${id})\n`;
 const ALAS = 'Alas the file is done, aborting\n';
@@ -260,11 +281,13 @@ suite('test/fake-idris2 (M0 skeleton)', function () {
       await new Promise<void>((resolve) => child.stdout.once('data', () => resolve()));
     }
     const socket = net.connect(Number(stdout.trim()), '127.0.0.1');
+    const checkSocket = tolerateReset(socket);
     const reader = new FrameReader(socket);
     assert.deepStrictEqual(await reader.next(), { prefix: 0x18, text: HANDSHAKE });
     socket.end('(:version 1)');
     assert.strictEqual(await exit, 0);
     assert.match(stdout, /^[0-9]+\n$/);
+    checkSocket();
   });
 
   test('socket: prints the port, serves the protocol, exits 1 when the client leaves', async () => {
@@ -276,6 +299,7 @@ suite('test/fake-idris2 (M0 skeleton)', function () {
     assert.strictEqual(portLine.prefix, -1);
 
     const socket = net.connect(Number(portLine.text), '127.0.0.1');
+    const checkSocket = tolerateReset(socket);
     const reader = new FrameReader(socket);
     assert.deepStrictEqual(await reader.next(), { prefix: 0x18, text: HANDSHAKE });
     socket.write(request('(:version 99999999999999999999)'));
@@ -289,5 +313,6 @@ suite('test/fake-idris2 (M0 skeleton)', function () {
     socket.end();
     assert.deepStrictEqual(await stdout.next(), { prefix: -1, text: ALAS });
     assert.strictEqual(await exit, 1);
+    checkSocket();
   });
 });
