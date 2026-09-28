@@ -1029,10 +1029,11 @@ M0 → M1 → M2 → M3 → M14).
     transports sent the active file's load right after the one being compiled with
     `maxBackgroundChecks` 1, and first-in, first-out with 0 [live, the fixer's experiment]; the
     integration and e2e suites were not run in that lane (the integration that followed ran them:
-    *The final state* above). **CI** has not run on this tree (E13
-    [pending CI]): after the milestone commit and push, the `windows-latest` and `ubuntu-latest`
-    jobs must be green before the tag, and the run id is recorded here; a failing job means the
-    README's "tested with simulated tools only" sentence must be corrected.
+    *The final state* above). **CI**: the milestone commit `09a3809` ran as CI run 36482113256 —
+    ubuntu-latest and macos-latest green (unit 1,497, grammar 195, all six integration suites,
+    the corpus test on ubuntu, and the 56 e2e tests against Homebrew idris2 on macOS) [live];
+    windows-latest failed 25 unit tests, after which native Windows was dropped (§9, decided
+    2026-09-28 (platforms)) and the Windows job removed.
     **The user's decisions of 2026-09-28 on Q20, Q21 and Q22** (§9) were implemented after the
     rounds below (marked *Q20*, *Q21*, *Q22*: *Transport*, *Resource limits*, *Sessions*,
     *Configuration changes*): in the implementer's lane types, lint and 1,470 unit tests (1
@@ -2127,9 +2128,10 @@ M0 → M1 → M2 → M3 → M14).
     with exactly the `Error:`/`Warning:` and location lines listed in `EXPECTED_PROBLEMS`
     (`scripts/check-fixtures.mjs`), instead of failing the gate; a mutated expectation made it
     fail (2 checks) [live].
-  - *E13* (Windows): not run. CI runs unit and integration on Windows with the fake compiler,
-    the `diagnostics` suite over the extension's socket transport, `loose-stdio` over stdio
-    [pending CI]; the fake is a Node program and writes `\n`, so these runs say nothing about the
+  - *E13* (Windows): closed as out of scope (§9, decided 2026-09-28 (platforms)); the text below
+    records what was known when it was dropped. CI ran unit and integration on Windows with the
+    fake compiler, the `diagnostics` suite over the extension's socket transport, `loose-stdio`
+    over stdio (last run 36482113256: 25 unit tests failed); the fake is a Node program and writes `\n`, so these runs say nothing about the
     real compiler's line ends. The real compiler's socket mode, the line ends of its stdout under
     `--ide-mode` (text mode would write `\r\n`; the decoder undoes it, unit-tested only), the
     `:load-file` path (sent as the document's path) and `--build-dir` with backslashes remain
@@ -2990,6 +2992,17 @@ retiring every backend risk before UI work is preferred.
 ---
 
 ## 9. Open questions and decisions needed from the user
+
+**Decided by the user on 2026-09-28 (platforms)**
+
+- **Q17 / E13**: native Windows is **out of scope**. Idris 2 needs MSYS2 to build on Windows
+  (`docs/source/tutorial/windows.rst` of v0.8.0 [doc]) and upstream CI runs its Windows job only on
+  request (`[ci: windows]` in the commit message, `.github/workflows/ci-idris2-and-libs.yml`
+  [src]). The Windows CI job was removed; Windows users are pointed to WSL, where the extension
+  runs on Linux. Existing Windows code paths are kept, tested only by simulated-`win32` unit tests
+  on macOS/Linux; E13 is closed as out of scope. The last Windows CI run (36482113256, M2 commit
+  `09a3809`) had 25 failing unit tests, all in tests that simulate POSIX paths on a Windows host,
+  temp-directory cleanup and a socket fault test — none was investigated further.
 
 **Decided by the user on 2026-09-28 (M2 review questions)**
 

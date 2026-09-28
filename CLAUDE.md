@@ -274,6 +274,14 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
   the checks still waiting (`DocumentChecks.cancelWaiting`) before it stops the sessions. Both
   limits count per VS Code window (each has its own extension host, pool and checks).
 
+## Platforms
+
+- Supported: macOS and Linux (and Windows through WSL, which is Linux). **Native Windows is
+  out of scope** (user decision, 2026-09-28; ROADMAP §9): CI has no Windows job, and no new
+  Windows-specific work is done. Existing Windows code paths stay as they are and are covered
+  only by unit tests that simulate `process.platform = 'win32'` on macOS/Linux; keep those
+  passing, but do not extend them.
+
 ## Working rules
 
 - Do not commit, tag, publish or install anything globally unless asked.

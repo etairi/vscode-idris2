@@ -6,6 +6,11 @@ independent of Idris 2 releases (`docs/ROADMAP.md` §7.4).
 
 ## [Unreleased]
 
+### Changed
+
+- Native Windows is no longer supported or tested: the Windows CI job is removed; Windows
+  users should run VS Code with WSL, where the extension runs on Linux.
+
 ### Added
 
 - Extension icon: the official Idris logo (BSD-3, see `THIRD_PARTY_NOTICES.md`), with a light

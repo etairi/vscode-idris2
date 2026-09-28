@@ -7,15 +7,17 @@
 #                   of every fixture and snippet expansion, and the e2e suite (`npm run
 #                   test:e2e`, test/e2e/ against the real compiler: the M1 toolchain tests and
 #                   M2's protocol facts, sessions, fake-parity and E21 tests)
-#   windows-latest  lint, unit, integration (the real compiler's socket mode, path quoting and an
-#                   idris2 install route are unverified on Windows, ROADMAP E13)
+# There is no Windows job: native Windows is not supported (ROADMAP §9, decided 2026-09-28). Idris 2
+# needs MSYS2 to build there, and Windows users are pointed to WSL, where the extension runs on
+# Linux. The Windows code paths that exist are exercised only by unit tests that simulate
+# process.platform = 'win32' on macOS and Linux.
 # "Integration" is every suite of .vscode-test.mjs except e2e — M1's `integration`, `simple-ipkg`
 # and `toolchain-path`, and M2's `diagnostics` (socket transport, the opt-in), `loose-stdio`
 # (stdio, the default since ROADMAP §9 Q20) and `consent` — all driven by the fake tools of
 # test/fake-tools; the fake compiler answers IDE
 # mode from the transcripts recorded from the real one (FAKE_IDRIS2_TRANSCRIPTS, set by
-# .vscode-test.mjs). On Windows they run through the `.cmd` launchers, and the `diagnostics` suite
-# exercises the extension's socket transport against the fake's. No job before the macOS e2e
+# .vscode-test.mjs). The `diagnostics` suite exercises the extension's
+# socket transport against the fake's. No job before the macOS e2e
 # step has a real idris2 on PATH. The e2e tests that compare the compiler with the recordings
 # (test/fixtures/transcripts/0.8.0) are skipped, and reported as pending, when Homebrew installs
 # another version; the protocol facts still run against it.
@@ -135,31 +137,3 @@ jobs:
       # `e2e` suite of .vscode-test.mjs, whose Extension Host finds this idris2 on PATH.
       - name: E2E tests (real idris2)
         run: npm run test:e2e
-
-  windows:
-    name: windows-latest
-    runs-on: windows-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-
-      - name: Lint
-        run: npm run lint
-      - name: Unit tests
-        run: npm run test:unit
-
-      - name: Resolve the VS Code version to test against
-        id: vscode
-        shell: bash
-        run: node -e "fetch('https://update.code.visualstudio.com/api/releases/stable?released=true').then(r => r.json()).then(v => console.log('version=' + v[0])).catch(() => console.log('version=unknown'))" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@v6
-        with:
-          path: .vscode-test/vscode-*
-          key: vscode-test-${{ runner.os }}-${{ runner.arch }}-${{ steps.vscode.outputs.version }}
-      - name: Integration tests
-        run: npm test

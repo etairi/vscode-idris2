@@ -50,6 +50,9 @@ language with first-class dependent types.
   (tested with Idris 2 0.8.0). Highlighting, editing support and snippets work without it.
 - Optional: [pack](https://github.com/stefan-hoeck/idris2-pack) and
   [idris2-lsp](https://github.com/idris-community/idris2-lsp).
+- macOS or Linux. On Windows, use VS Code with
+  [WSL](https://code.visualstudio.com/docs/remote/wsl): the extension then runs in Linux
+  with a Linux `idris2`. Native Windows is not supported.
 
 ## Installation
 
@@ -214,7 +217,7 @@ can override them in your settings under `[idris2]` and `[lidr]`.
   one file opened in both) each run their own compiler, and both write the same build directory
   (`build/.vscode-idris2` by default). Whether two compilers writing there at once can spoil its
   build files has not been settled; **Stop Backend** in one of the windows avoids it.
-- Windows support is experimental; it is tested with simulated tools only.
+- Native Windows is not supported (Idris 2 itself needs MSYS2 to build there); use WSL.
 - pack and idris2-lsp support has been tested against simulated installations only.
 - The compiler rebuilds a file only when it was saved after its build output was written. A file
   saved again while the compiler was still building it keeps the result of the text it read
