@@ -1,0 +1,10 @@
+{"kind":"meta","format":1,"scenario":"load-md","description":"Literate Markdown (fenced, double extension .idr.md) with a type error: lines and columns are exact","facts":["F11"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-09-27","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build/.vscode-idris2"],"cwd":"test/fixtures/workspaces/broken","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"ErrMd.idr.md":"ae45be842c69222095d4674d658751455b7ee0756c97cad925b36b1398255aa4"}}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"0000a1","text":"((:load-file \"${ROOT}/ErrMd.idr.md\") 1)\n"}
+{"kind":"recv","prefix":"0000b8","text":"(:write-string \"1/1: Building ErrMd (${ROOT}/ErrMd.idr.md)\" 1)\n"}
+{"kind":"recv","prefix":"000217","text":"(:warning (\"ErrMd.idr.md\" (8 4) (8 7) \"While processing right hand side of g. Can't find an implementation for FromString Nat.\n\nErrMd:9:5--9:8\n 5 | ```idris\n 6 | module ErrMd\n 7 | \n 8 | g : Nat\n 9 | g = \\\"x\\\"\n         ^^^\n\" ((36 1 ((:decor :bound))) (72 10 ((:decor :type))) (83 3 ((:decor :type))) (72 14 ((:decor :bound))) (89 14 ((:decor :type))) (105 3 ((:decor :type))) (119 3 ((:decor :type))) (137 3 ((:decor :type))) (143 3 ((:decor :type))) (156 3 ((:decor :type))) (177 3 ((:text-formatting :bold) (:decor :postulate))))) 1)\n"}
+{"kind":"recv","prefix":"0000bc","text":"(:return (:error \"Error(s) building file ${ROOT}/ErrMd.idr.md\") 1)\n"}
+{"kind":"close"}
+{"kind":"unframed","text":"Alas the file is done, aborting\n"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":[]}

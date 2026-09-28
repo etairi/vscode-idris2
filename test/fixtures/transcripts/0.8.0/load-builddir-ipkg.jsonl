@@ -1,0 +1,18 @@
+{"kind":"meta","format":1,"scenario":"load-builddir-ipkg","description":"A package whose .ipkg sets builddir: --build-dir is given anyway, and the TTC files go to the builddir (the field overrides the flag)","facts":["F12"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-09-27","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build/.vscode-idris2"],"cwd":"test/fixtures/workspaces/builddir-ipkg","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"builddir.ipkg":"1c8cda7df28f5b6a706c2d3c591d2a304a77ccbfd9102266e844587db62b9558","src/Hello.idr":"8d6cce4662d4ea5890662eb21b41fa21030e53b7aab05835f836d2866096cfc5"}}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"0000a2","text":"((:load-file \"${ROOT}/src/Hello.idr\") 1)\n"}
+{"kind":"recv","prefix":"0000b9","text":"(:write-string \"1/1: Building Hello (${ROOT}/src/Hello.idr)\" 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Hello.idr\") (:start 0 0) (:end 0 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Hello.idr\") (:start 0 7) (:end 0 12)) ((:decor :module)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Hello.idr\") (:start 2 0) (:end 2 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000151","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Hello.idr\") (:start 3 0) (:end 3 5)) ((:name \"hello\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Hello.idr\") (:start 3 6) (:end 3 7)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Hello.idr\") (:start 3 8) (:end 3 14)) ((:decor :type)))))) 1)\n"}
+{"kind":"recv","prefix":"000156","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Hello.idr\") (:start 4 0) (:end 4 5)) ((:name \"hello\") (:namespace \"Hello\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Hello.idr\") (:start 4 6) (:end 4 7)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Hello.idr\") (:start 4 8) (:end 4 15)) ((:decor :data)))))) 1)\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok ()) 1)\n"}
+{"kind":"close"}
+{"kind":"unframed","text":"Alas the file is done, aborting\n"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":["out/ttc/2025081600/Hello.ttc","out/ttc/2025081600/Hello.ttm"]}

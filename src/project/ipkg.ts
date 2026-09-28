@@ -171,6 +171,11 @@ function showCompilerPath(p: CompilerPath, separator: string): string {
   return volume + (p.hasRoot ? separator : '') + p.body.join(separator) + (p.hasTrailSep ? separator : '');
 }
 
+/** The path the compiler reads for the POSIX path `file` (`show (parse file)` with `/`). */
+export function compilerReading(file: string): string {
+  return showCompilerPath(parseCompilerPath(file), '/');
+}
+
 /**
  * Whether the compiler reads the absolute path `file` as that same path: its `splitParent` of
  * `file` (which `--dump-ipkg-json` changes into) then names `file`'s directory and base name.
@@ -185,7 +190,7 @@ function showCompilerPath(p: CompilerPath, separator: string): string {
  */
 export function compilerReadsPathAsGiven(file: string, platform: NodeJS.Platform): boolean {
   if (platform !== 'win32') {
-    return showCompilerPath(parseCompilerPath(file), '/') === file;
+    return compilerReading(file) === file;
   }
   const expected = file.replace(/\//g, '\\').replace(/^[a-z](?=:)/, (letter) => letter.toUpperCase());
   return showCompilerPath(parseCompilerPath(file), '\\') === expected;
@@ -242,7 +247,17 @@ export function ipkgCandidates(dir: string, names: readonly string[]): IpkgCandi
  * directories above the link (not below it). The extension starts every session in the
  * directory this walk returns (or in the file's own directory, for a loose file), so the
  * compiler finds the same package file in its first step, except for a loose file below a link
- * whose physical ancestors hold a package file that the logical ones do not.
+ * whose physical ancestors hold a package file that the logical ones do not: before each load of
+ * a loose file, `backend/ide/backend.ts` walks again from the real path and refuses the load
+ * when a package file is found.
+ *
+ * The walk goes up with `path.dirname`; the compiler's with `splitParent`, which parses the path
+ * with its own parser (`findIpkgFile`, `src/Core/Directory.idr` 333–349; `splitParent`,
+ * `src/Libraries/Utils/Path.idr` 323–332, 456–460 on v0.8.0 [src]). They visit the same
+ * directories only when the compiler reads the path as given (`compilerReadsPathAsGiven`): on
+ * POSIX a `\` is a separator to it, so from `r/x\y` it goes up to `r/x`, a directory this walk never
+ * lists [M2 second verification of the third review: live with 0.8.0]; so `backend.ts` sends no
+ * load from a session directory whose real path the compiler reads otherwise.
  */
 export async function findIpkg(
   startDir: string,
@@ -526,7 +541,7 @@ class RawJsonReader {
 /**
  * The `IpkgModel` of a parsed `--dump-ipkg-json` object (`toJson` in `ToJson.idr`): `name`,
  * `depends` (one-key objects `{"<pkg>": <bounds>}`) and `modules` always; `version`, `main`,
- * `executable`, `sourcedir`, `builddir` and `outputdir` when set. Other keys are ignored.
+ * `executable`, `sourcedir`, `builddir`, `outputdir` and `opts` when set. Other keys are ignored.
  * `undefined` when a field has an unexpected shape.
  */
 function modelFromJson(json: ReadonlyMap<string, DumpJsonValue>): IpkgModel | undefined {
@@ -549,7 +564,7 @@ function modelFromJson(json: ReadonlyMap<string, DumpJsonValue>): IpkgModel | un
     return undefined;
   }
   const optional: Record<string, string> = {};
-  for (const key of ['version', 'main', 'executable', 'sourcedir', 'builddir', 'outputdir'] as const) {
+  for (const key of ['version', 'main', 'executable', 'sourcedir', 'builddir', 'outputdir', 'opts'] as const) {
     const value = json.get(key);
     if (value === undefined) {
       continue;
@@ -560,6 +575,17 @@ function modelFromJson(json: ReadonlyMap<string, DumpJsonValue>): IpkgModel | un
     optional[key] = value;
   }
   return { name, depends: deps, modules: [...modules], ...optional };
+}
+
+/**
+ * The words of an `.ipkg`'s `opts` as the compiler splits them before it parses them as
+ * command-line options at every load of the package (`processOptions`: `getOpts (words opts)`,
+ * `src/Idris/Package.idr` 460–467 on v0.8.0; `words` splits at `isSpace`: space, `\t`, `\r`,
+ * `\n`, `\f`, `\v` and U+00A0, `libs/base/Data/String.idr` 47, `Prelude/Types.idr` 929–937
+ * [src]). The field's text is used as written, as the compiler reads it (`strField`).
+ */
+export function packageOptionWords(opts: string | undefined): readonly string[] {
+  return opts === undefined ? [] : opts.split(/[ \t\r\n\f\v\u00a0]+/).filter((word) => word !== '');
 }
 
 /** `PkgVersionBounds` as `toJson` prints it; `"*"` is an absent bound. */
@@ -1156,6 +1182,7 @@ interface FieldValues {
   sourcedir?: string;
   builddir?: string;
   outputdir?: string;
+  opts?: string;
 }
 
 /** The grammar of `src/Idris/Package.idr` over the tokens of `lexIpkg`. */
@@ -1188,8 +1215,8 @@ class IpkgParser {
     }
     const t = this.peek();
     if (t.kind === 'end') {
-      const { version, main, executable, sourcedir, builddir, outputdir } = fields;
-      const optional = Object.entries({ version, main, executable, sourcedir, builddir, outputdir }).filter(
+      const { version, main, executable, sourcedir, builddir, outputdir, opts } = fields;
+      const optional = Object.entries({ version, main, executable, sourcedir, builddir, outputdir, opts }).filter(
         (entry): entry is [string, string] => entry[1] !== undefined,
       );
       return { name, depends: fields.depends, modules: fields.modules, ...Object.fromEntries(optional) };
@@ -1348,7 +1375,7 @@ class IpkgParser {
 type FieldParser = (p: IpkgParser, fields: FieldValues) => void;
 
 /** A field whose value is a string literal (`strField`); only the ones `IpkgModel` has are kept. */
-function stringField(key?: 'sourcedir' | 'builddir' | 'outputdir'): FieldParser {
+function stringField(key?: 'sourcedir' | 'builddir' | 'outputdir' | 'opts'): FieldParser {
   return (p, fields) => {
     p.equals();
     const value = p.string();
@@ -1361,9 +1388,12 @@ function stringField(key?: 'sourcedir' | 'builddir' | 'outputdir'): FieldParser 
 /** The alternatives of `field`, by property name. */
 const FIELD_PARSERS: ReadonlyMap<string, FieldParser> = new Map<string, FieldParser>([
   ...[
-    'authors', 'maintainers', 'license', 'brief', 'readme', 'homepage', 'sourceloc', 'bugtracker', 'options', 'opts',
+    'authors', 'maintainers', 'license', 'brief', 'readme', 'homepage', 'sourceloc', 'bugtracker',
     'prebuild', 'postbuild', 'preinstall', 'postinstall', 'preclean', 'postclean',
   ].map((name): [string, FieldParser] => [name, stringField()]),
+  // `strField POpts "options"` and `strField POpts "opts"` (`src/Idris/Package.idr` 96–97): one field.
+  ['options', stringField('opts')],
+  ['opts', stringField('opts')],
   ['sourcedir', stringField('sourcedir')],
   ['builddir', stringField('builddir')],
   ['outputdir', stringField('outputdir')],

@@ -79,3 +79,104 @@ independent of Idris 2 releases (`docs/ROADMAP.md` §7.4).
     `idris2` (`npm run test:e2e`, also run by the macOS CI job).
   - `check:fixtures` also checks literate fixtures with a double extension.
   - The manual checklist `docs/checklists/M1.md`.
+- M2, IDE-mode core and diagnostics:
+  - Errors and warnings from the compiler's IDE mode as diagnostics (collection `idris2`), for
+    files in a package and loose files, literate files included: checked when a file is first
+    shown after opening and on every save (`idris2.checking.trigger` `onSave`; `afterDelay`
+    also saves after a pause; `manual`). Errors in imported modules are shown on those files,
+    a malformed `.ipkg` on the `.ipkg`, and a file whose check stopped elsewhere says so and is
+    checked again once those files are clean; saving the `.ipkg` checks its files again, and a
+    file changed on disk outside the editor (a checkout, a formatter) is checked again; typing
+    checks nothing, and an undo back to the checked text shows its result as current again. The
+    result of a check is shown even when the file was saved again while it ran (a save during
+    the compiler's build of the file still shows the earlier text's result, see the README's
+    known limitations). The
+    severity of a warning follows the compiler's warning texts, also with `-Werror` in the
+    `.ipkg`'s `opts`.
+  - One compiler process per project root (the `.ipkg`'s directory, or a loose file's), over its
+    standard input and output (`idris2 --ide-mode`) on every platform, so that nothing listens on
+    a network port; a local socket (`--ide-mode-socket`) only when chosen in the user settings
+    (`idris2.ideMode.transport`), whose description says that the compiler serves the first
+    program that connects to its port. The extension's build files go to
+    `build/.vscode-idris2` unless the `.ipkg` sets `builddir` or a `--build-dir` in `opts`, or
+    `extraArgs` has one (`idris2.ideMode.isolateBuildDir`).
+    Time limits, restarts after a crash (at most three within five minutes, after 0, 2 and 10
+    seconds; the fourth crash within five minutes gives up), and stopping when idle or when the
+    last file of a root is closed. No limit by default on how many compiler processes run or how
+    many files are checked at once; both limits below count per VS Code window.
+    `idris2.ideMode.maxSessions` stops the least recently used idle
+    process above it (never a busy one, never the active file's; it starts again at its next
+    check; nothing is stopped while the root of a file just opened is being found), and
+    `idris2.ideMode.maxBackgroundChecks` lets at most that many files other than the active one be
+    checked at once (the active file is checked at once, and a waiting file that becomes active
+    too, and within its project its check goes before the others waiting, after the one being
+    compiled; a file whose folder waits for the user's permission takes no turn meanwhile, a check
+    that was the active file's counts once another file is active, and **Stop Backend** drops the
+    checks still waiting). Over standard input and output, the
+    compiler's own output in the protocol stream (log lines from `%logging`, program output) is
+    logged, not treated as an error (except a log line that quotes a protocol header, see the
+    README's known limitations). A compiler that speaks another major version of the protocol
+    than 2 is not used. With the socket, when the compiler gets no answer to the extension's
+    connection (another program may have connected first), that compiler is stopped and not
+    restarted by itself. On macOS and Linux the compiler is started in its folder's real path, as the consent
+    check judged it, and its build files go below that real path. A file is not checked when, right before the check is sent, the compiler
+    would not use the package it was started for — for a file without a package, a package file above its folder
+    after all (one created later, or above a symbolic link); for a package, its `.ipkg` renamed or
+    removed; or when its folder was moved, deleted or replaced while the compiler ran — since the
+    compiler would then move to another package's folder and stay there; that compiler is
+    stopped. On macOS and Linux a file whose path the compiler would read differently (`\`, `:`
+    or `?` in it) is not checked; that check, made right before a file is sent to the compiler, has
+    the load's time limit. A time-out's message says how many bytes of an incomplete reply had
+    arrived.
+  - After a restart because a setting, the toolchain or the package changed, the visible files are
+    checked again; after a crash, a file whose check the crash interrupted is checked once more.
+  - Consent for folders outside the trusted workspace folders: the compiler starts there only
+    after **Allow**, **Always Allow for This Folder** or **Don't Allow**; the question names the
+    package file that chose the folder; while it waits, the status item reads `checking…` and its
+    **Allow…** shows the question again; **Idris 2: Manage Allowed Folders…** revokes the
+    remembered ones; other open windows ask again the next time they start the compiler there (a
+    compiler already running there in another window keeps running).
+    **Check File** in a folder not allowed says so, with **Allow…**. The question states its
+    warning first and names the folder last, in quotes, so that a folder's name cannot add to or
+    hide it; the status item's detail puts its permission text before the quoted paths. Folder
+    names and compiler messages in notifications, input boxes and the status item are shown as
+    text, never as links. A revocation holds in its window at once.
+  - Commands **Idris 2: Check File**, **Restart Backend**, **Stop Backend**, **Show Protocol
+    Trace** and **Idris 2 (Developer): Send Raw Protocol Request…** (the request is typed by the
+    user); crash notices with **Show Output** and **Restart**, one per project until its compiler
+    answers again.
+  - Settings `idris2.checking.trigger`, `checking.delay`, `idris2.ideMode.transport`,
+    `isolateBuildDir`, `loosePackages`, `extraArgs`, `requestTimeout`, `longActionTimeout`,
+    `idleTimeout`, `maxSessions`, `maxBackgroundChecks`, `idris2.diagnostics.includeSourceExcerpt`
+    and `idris2.trace.protocol`.
+  - The language status reads `Idris 2 <version> · IDE mode · …` with `checking…`, `✓`,
+    `up to date` (no errors; warnings not reported again because the file was not rebuilt),
+    `n errors`, `n warnings`, `stale` (saying whether a save or **Check File** checks the file),
+    `package file error`, `stopped`, `failed` or `not allowed here` (with an **Allow…** link). A file closed and opened again in the same window
+    gets back the warnings it showed, if its text did not change. When a project's last file is
+    closed, the diagnostics its checks put on files that are not open are removed with its
+    compiler process.
+- M2, changed:
+  - `idris2.ideMode.loosePackages` and `idris2.ideMode.extraArgs` are restricted settings: their
+    workspace values apply only in a trusted workspace. `idris2.ideMode.transport` and
+    `idris2.trace.protocol` can be set in user settings only (not in a workspace's, nor in a remote
+    machine's such as a dev container's).
+  - `idris2.ideMode.transport` offers `stdio` (the default on every platform) and `socket`; the
+    value `auto` of earlier development builds (the socket on macOS and Linux) is gone and reads
+    as `stdio`, while `socket` in the user settings is kept. `idris2.ideMode.extraArgs` with
+    `--ide-mode` or `--ide-mode-socket` starts no compiler (it would bypass that setting).
+  - `afterDelay` saves nothing in Restricted Mode, where nothing is checked.
+- M2, engineering:
+  - The IDE protocol layer (`src/backend/ide/`): s-expression reader and writer ported from the
+    compiler's, framing (requests in UTF-8 bytes, replies in code points), request builders and
+    reply decoders, stdio and socket transports, the session state machine and the session pool.
+  - 34 IDE-mode transcripts recorded from Idris 2 0.8.0 (`npm run record:transcripts`), which the
+    fake compiler replays over both transports; fault injection in the fake compiler.
+  - Integration suites `diagnostics` (the socket), `loose-stdio` (the default, with a workspace
+    that asks for the socket in vain) and `consent`; e2e tests for the protocol
+    facts F1–F7, F10, F12–F14 and F29–F33 of the roadmap, the extension's sessions with the real
+    compiler (over stdio, and over the socket when opted into), the fake against the real
+    compiler, and a session beside `idris2 --build`.
+  - `check:fixtures` requires the deliberately broken fixtures to fail with their recorded
+    errors.
+  - The manual checklist `docs/checklists/M2.md`.

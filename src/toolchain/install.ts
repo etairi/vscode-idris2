@@ -41,6 +41,7 @@
 import type * as vscode from 'vscode';
 import type { Config } from '../core/config';
 import { DisposableStore, type IDisposable } from '../core/disposable';
+import { plainText } from '../core/notificationText';
 import type { PackState, ToolchainService } from './types';
 
 export const INSTALL_IDRIS2_COMMAND = 'idris2.installIdris2';
@@ -160,14 +161,16 @@ export function registerInstallCommands(api: InstallApi, deps: InstallDeps): IDi
       return;
     }
     if (action.kind === 'refused') {
-      await api.window.showWarningMessage(`Idris 2: ${action.reason}`);
+      await api.window.showWarningMessage(plainText(`Idris 2: ${action.reason}`));
       return;
     }
     if (deps.homeDir === undefined) {
       // VS Code would start the shell in the workspace folder (see the module comment).
       await api.window.showWarningMessage(
-        `Idris 2: the home directory is unknown, so no terminal is opened for "${action.text}" (a terminal would ` +
-          "start in the workspace folder, whose pack.toml pack would read). Run it in a directory of your choice.",
+        plainText(
+          `Idris 2: the home directory is unknown, so no terminal is opened for "${action.text}" (a terminal would ` +
+            "start in the workspace folder, whose pack.toml pack would read). Run it in a directory of your choice.",
+        ),
       );
       return;
     }
@@ -194,7 +197,7 @@ export function registerInstallCommands(api: InstallApi, deps: InstallDeps): IDi
       }
       const installPack = 'Install pack…';
       const choice = await api.window.showInformationMessage(
-        'idris2-lsp is installed with pack, and pack was not found. Install pack first, or set idris2.toolchain.packPath.',
+        plainText('idris2-lsp is installed with pack, and pack was not found. Install pack first, or set idris2.toolchain.packPath.'),
         installPack,
       );
       if (choice === installPack) {

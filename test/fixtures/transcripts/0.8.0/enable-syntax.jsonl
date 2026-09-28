@@ -1,0 +1,11 @@
+{"kind":"meta","format":1,"scenario":"enable-syntax","description":"(:enable-syntax :False), then a load without any :highlight-source frame","facts":["F14"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-09-27","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build/.vscode-idris2"],"cwd":"test/fixtures/workspaces/broken","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"Clean.idr":"4f802b8f59f48e473ab27910d428c50c4eff75c7e103766c1de6c0ae80ffea19"}}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"00001c","text":"((:enable-syntax :False) 1)\n"}
+{"kind":"recv","prefix":"00003d","text":"(:return (:ok \"Syntax highlight option changed to False\") 1)\n"}
+{"kind":"send","prefix":"00009e","text":"((:load-file \"${ROOT}/Clean.idr\") 2)\n"}
+{"kind":"recv","prefix":"0000b5","text":"(:write-string \"1/1: Building Clean (${ROOT}/Clean.idr)\" 2)\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok ()) 2)\n"}
+{"kind":"close"}
+{"kind":"unframed","text":"Alas the file is done, aborting\n"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":["build/.vscode-idris2/ttc/2025081600/Clean.ttc","build/.vscode-idris2/ttc/2025081600/Clean.ttm"]}

@@ -1,0 +1,5 @@
+package builddir
+version = 0.1.0
+sourcedir = "src"
+builddir = "out"
+modules = Hello

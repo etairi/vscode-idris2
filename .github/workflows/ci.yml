@@ -1,16 +1,24 @@
 # Continuous integration for vscode-idris2, per docs/ROADMAP.md §7.2 and docs/ARCHITECTURE.md §13
-# as they apply to M1:
+# as they apply to M2:
 #   ubuntu-latest   types, lint, unit, grammar, the §4 graph check, integration (xvfb), `vsce
 #                   package` (the .vsix is uploaded as an artifact), and the grammar corpus test,
 #                   which fetches a pinned third-party repository (needs network)
 #   macos-latest    lint, unit, grammar, integration, then with Homebrew idris2: `idris2 --check`
 #                   of every fixture and snippet expansion, and the e2e suite (`npm run
-#                   test:e2e`, test/e2e/ against the real compiler)
-#   windows-latest  lint, unit, integration (sockets, path quoting and an idris2 install route
-#                   are unverified on Windows, ROADMAP E13)
-# "Integration" is every suite of .vscode-test.mjs except e2e: `integration`, `simple-ipkg` and
-# `toolchain-path`, all driven by the fake tools of test/fake-tools (on Windows through their
-# `.cmd` launchers). No job before the macOS e2e step has a real idris2 on PATH.
+#                   test:e2e`, test/e2e/ against the real compiler: the M1 toolchain tests and
+#                   M2's protocol facts, sessions, fake-parity and E21 tests)
+#   windows-latest  lint, unit, integration (the real compiler's socket mode, path quoting and an
+#                   idris2 install route are unverified on Windows, ROADMAP E13)
+# "Integration" is every suite of .vscode-test.mjs except e2e — M1's `integration`, `simple-ipkg`
+# and `toolchain-path`, and M2's `diagnostics` (socket transport, the opt-in), `loose-stdio`
+# (stdio, the default since ROADMAP §9 Q20) and `consent` — all driven by the fake tools of
+# test/fake-tools; the fake compiler answers IDE
+# mode from the transcripts recorded from the real one (FAKE_IDRIS2_TRANSCRIPTS, set by
+# .vscode-test.mjs). On Windows they run through the `.cmd` launchers, and the `diagnostics` suite
+# exercises the extension's socket transport against the fake's. No job before the macOS e2e
+# step has a real idris2 on PATH. The e2e tests that compare the compiler with the recordings
+# (test/fixtures/transcripts/0.8.0) are skipped, and reported as pending, when Homebrew installs
+# another version; the protocol facts still run against it.
 # `npm test` runs `pretest` first (compile-tests, check-types, lint, esbuild bundle), so the
 # integration step repeats type-checking and lint on purpose: the separate steps name the
 # failing stage.

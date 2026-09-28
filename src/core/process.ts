@@ -32,7 +32,7 @@
  *   closed; and a background grandchild of a child that exited normally, which is never
  *   signalled (the result is settled without it after `GRACE_MS` if it holds the pipes). On
  *   Windows `taskkill /T /F` ends the child and its descendants while the child lives (see
- *   `signalChild`). A descendant that survives and keeps the output pipes open delays the
+ *   `signalTree`). A descendant that survives and keeps the output pipes open delays the
  *   result only by the grace period (`GRACE_MS`), but it keeps running until it ends by
  *   itself.
  * - **Output.** stdout and stderr are decoded as UTF-8 once the process has ended (so a
@@ -43,6 +43,15 @@
  *   to the limit; the log says why.
  * - The child's stdin is `/dev/null` (`'ignore'`): a tool that reads its input sees end of file
  *   at once instead of waiting until the timeout.
+ *
+ * Since M2 the module also starts the long-running compiler processes of the IDE-mode sessions
+ * (`startLongRunningProcess`, at the end of the file; its caller is `backend/ide/transport.ts`).
+ * The rules above apply to them — trust, fully qualified paths, no shell but a quoted batch
+ * file, the environment overlay, process-group termination, and an immediate `SIGKILL` for
+ * `dispose` — except the queue, which would hold every probe behind a session for minutes, and
+ * the output limit: their output is streamed to the session, which bounds what it buffers
+ * (`backend/ide/transport.ts`). They are not owned by the runner: the session pool stops them,
+ * and `deactivate()` disposes the pool.
  */
 import { spawn, type ChildProcess } from 'child_process';
 import * as path from 'path';
@@ -50,6 +59,10 @@ import type { ProcessRequest, ProcessResult, ProcessRunner, ProcessRunnerOptions
 import type { IDisposable } from './disposable';
 import { unsupported } from './errors';
 import type { Log } from './log';
+import type { WorkspaceTrust } from './trust';
+
+/** Why nothing is started in an untrusted workspace (the `Unsupported` reason of every refusal). */
+export const RESTRICTED_MODE_REASON = 'Restricted Mode: the extension starts no program until the workspace is trusted.';
 
 /** The time limit of every toolchain probe (ROADMAP M1, "execFile with a 5 s timeout"). */
 export const PROBE_TIMEOUT_MS = 5_000;
@@ -62,7 +75,7 @@ const OUTPUT_LIMIT_BYTES = 1024 * 1024;
  * sent `SIGKILL`; also how long the result waits for the output pipes to close after the
  * child has exited (a grandchild that inherited them may keep them open).
  */
-const GRACE_MS = 2_000;
+export const GRACE_MS = 2_000;
 
 /** An environment as `process.env` has it: names to values, `undefined` for unset ones. */
 export type Environment = Readonly<Record<string, string | undefined>>;
@@ -215,20 +228,30 @@ export function describeFailure(result: ProcessResult, timeoutMs: number): strin
   return result.exitCode === 0 ? undefined : `exited with code ${result.exitCode}`;
 }
 
-function displayCommand(executable: string, args: readonly string[]): string {
+/** A command line for logs and the protocol trace: parts other than plain words are JSON-quoted. */
+export function displayCommand(executable: string, args: readonly string[]): string {
   return [executable, ...args].map((part) => (/^[\w./:=@+,-]+$/.test(part) ? part : JSON.stringify(part))).join(' ');
 }
 
-function requestProblem(request: ProcessRequest, platform: NodeJS.Platform): string | undefined {
+/** The command-line part of a request: what `ProcessRequest` and `LongRunningRequest` share. */
+interface CommandLine {
+  readonly executable: string;
+  readonly args: readonly string[];
+  readonly cwd?: string;
+  readonly env?: Readonly<Record<string, string>>;
+}
+
+function pathProblem(request: CommandLine, platform: NodeJS.Platform): string | undefined {
   if (!isFullyQualifiedPath(request.executable, platform)) {
     return `the executable ${JSON.stringify(request.executable)} is not an absolute path (with a drive or UNC root on Windows)`;
   }
   if (request.cwd !== undefined && !isFullyQualifiedPath(request.cwd, platform)) {
     return `the working directory ${JSON.stringify(request.cwd)} is not an absolute path (with a drive or UNC root on Windows)`;
   }
-  if (!Number.isFinite(request.timeoutMs) || request.timeoutMs <= 0) {
-    return `the time limit ${request.timeoutMs} is not a positive number of milliseconds`;
-  }
+  return undefined;
+}
+
+function nulProblem(request: CommandLine): string | undefined {
   const strings = [request.executable, ...request.args, request.cwd ?? ''];
   for (const [key, value] of Object.entries(request.env ?? {})) {
     strings.push(key, value);
@@ -237,6 +260,84 @@ function requestProblem(request: ProcessRequest, platform: NodeJS.Platform): str
     return 'a NUL character in the executable, an argument, the working directory or the environment';
   }
   return undefined;
+}
+
+function requestProblem(request: ProcessRequest, platform: NodeJS.Platform): string | undefined {
+  const problem = pathProblem(request, platform);
+  if (problem !== undefined) {
+    return problem;
+  }
+  if (!Number.isFinite(request.timeoutMs) || request.timeoutMs <= 0) {
+    return `the time limit ${request.timeoutMs} is not a positive number of milliseconds`;
+  }
+  return nulProblem(request);
+}
+
+/**
+ * What to spawn for `executable` with `args`: the file itself, or on Windows, for a batch file,
+ * `cmd.exe` with the quoted command line of `batchFileCommand` (spawned verbatim), or the reason
+ * it is refused.
+ */
+function spawnCommand(
+  executable: string,
+  args: readonly string[],
+  platform: NodeJS.Platform,
+  baseEnv: Environment,
+): { readonly file: string; readonly args: readonly string[]; readonly verbatim: boolean } | { readonly refused: string } {
+  if (platform === 'win32' && isBatchFile(executable)) {
+    const command = batchFileCommand(executable, args, commandInterpreter(baseEnv));
+    return 'refused' in command ? command : { ...command, verbatim: true };
+  }
+  return { file: executable, args, verbatim: false };
+}
+
+/**
+ * Sends `signal` to `child`'s process group (POSIX), or stops `child` and what it started
+ * (Windows). The callers call it only until the child's result is settled.
+ *
+ * POSIX: the group is signalled even after the child has ended, because a wrapper script
+ * (pack's, or Homebrew's `idris2`, both `sh` scripts that run the real program as their child)
+ * dies on SIGTERM at once while the program may ignore it. While the result is not settled some
+ * process still holds the output pipes; as long as it is in the group, the group's ID cannot be
+ * reused, since POSIX does not hand out a process group ID while the group has a member. `ESRCH`
+ * (the group is gone) is ignored.
+ *
+ * Windows: while the child lives, `taskkill /T /F` ends it and its descendants (for a batch
+ * file, `cmd.exe` and the program it runs), and `child.kill` when taskkill cannot be started.
+ * Once the child has ended, its descendants cannot be found any more (`/T` walks down from a
+ * live process), so they keep running.
+ */
+function signalTree(
+  child: ChildProcess,
+  signal: NodeJS.Signals,
+  platform: NodeJS.Platform,
+  baseEnv: Environment,
+  childExited: boolean,
+): void {
+  if (platform !== 'win32') {
+    try {
+      if (child.pid !== undefined) {
+        process.kill(-child.pid, signal);
+      }
+    } catch {
+      // ESRCH: the group is gone.
+    }
+    return;
+  }
+  if (childExited) {
+    return;
+  }
+  const taskkill = child.pid === undefined ? undefined : system32Program(baseEnv, 'taskkill.exe');
+  if (taskkill === undefined) {
+    child.kill(signal);
+    return;
+  }
+  try {
+    const killer = spawn(taskkill, ['/T', '/F', '/PID', String(child.pid)], { stdio: 'ignore', windowsHide: true });
+    killer.on('error', () => child.kill(signal));
+  } catch {
+    child.kill(signal);
+  }
 }
 
 /** Knobs of the runner that tests change; `createProcessRunner` uses the defaults. */
@@ -278,9 +379,7 @@ export function createTunedProcessRunner(options: ProcessRunnerOptions, tuning: 
         return Promise.reject(new Error('The process runner has been disposed.'));
       }
       if (!options.trust.isTrusted) {
-        return Promise.reject(
-          unsupported('Restricted Mode: the extension starts no program until the workspace is trusted.'),
-        );
+        return Promise.reject(unsupported(RESTRICTED_MODE_REASON));
       }
       const problem = requestProblem(request, tuning.platform);
       if (problem !== undefined) {
@@ -342,27 +441,21 @@ function execute(request: ProcessRequest, log: Log, tuning: ProcessRunnerTuning)
   const shown = displayCommand(request.executable, request.args);
   const started = performance.now();
 
-  let file = request.executable;
-  let args: readonly string[] = request.args;
-  let verbatim = false;
-  if (platform === 'win32' && isBatchFile(file)) {
-    const command = batchFileCommand(file, args, commandInterpreter(tuning.baseEnv));
-    if ('refused' in command) {
-      log.warn(`${shown}: ${command.refused}`);
-      const result: ProcessResult = {
-        exitCode: null,
-        signal: null,
-        stdout: '',
-        stderr: '',
-        timedOut: false,
-        spawnError: command.refused,
-        durationMs: performance.now() - started,
-      };
-      return { result: Promise.resolve(result), cancel: () => undefined };
-    }
-    ({ file, args } = command);
-    verbatim = true;
+  const command = spawnCommand(request.executable, request.args, platform, tuning.baseEnv);
+  if ('refused' in command) {
+    log.warn(`${shown}: ${command.refused}`);
+    const result: ProcessResult = {
+      exitCode: null,
+      signal: null,
+      stdout: '',
+      stderr: '',
+      timedOut: false,
+      spawnError: command.refused,
+      durationMs: performance.now() - started,
+    };
+    return { result: Promise.resolve(result), cancel: () => undefined };
   }
+  const { file, args, verbatim } = command;
   log.debug(`Running ${shown} (cwd ${cwd})`);
 
   let cancel: () => void = () => undefined;
@@ -424,49 +517,10 @@ function execute(request: ProcessRequest, log: Log, tuning: ProcessRunnerTuning)
       resolve(result);
     }
 
-    /**
-     * Sends `signal` to the child's process group (POSIX), or stops the child and what it
-     * started (Windows), until the result is settled.
-     *
-     * POSIX: the group is signalled even after the child has ended, because a wrapper script
-     * (pack's, or Homebrew's `idris2`, both `sh` scripts that run the real program as their
-     * child) dies on SIGTERM at once while the program may ignore it. While the result is not
-     * settled some process still holds the output pipes; as long as it is in the group, the
-     * group's ID cannot be reused, since POSIX does not hand out a process group ID while the
-     * group has a member. `ESRCH` (the group is gone) is ignored.
-     *
-     * Windows: while the child lives, `taskkill /T /F` ends it and its descendants (for a batch
-     * file, `cmd.exe` and the program it runs), and `child.kill` when taskkill cannot be
-     * started. Once the child has ended, its descendants cannot be found any more (`/T` walks
-     * down from a live process), so they keep running.
-     */
+    /** `signalTree` until the result is settled (see there for what is reached). */
     function signalChild(signal: NodeJS.Signals): void {
-      if (settled) {
-        return;
-      }
-      if (platform !== 'win32') {
-        try {
-          if (child.pid !== undefined) {
-            process.kill(-child.pid, signal);
-          }
-        } catch {
-          // ESRCH: the group is gone.
-        }
-        return;
-      }
-      if (exited !== undefined) {
-        return;
-      }
-      const taskkill = child.pid === undefined ? undefined : system32Program(tuning.baseEnv, 'taskkill.exe');
-      if (taskkill === undefined) {
-        child.kill(signal);
-        return;
-      }
-      try {
-        const killer = spawn(taskkill, ['/T', '/F', '/PID', String(child.pid)], { stdio: 'ignore', windowsHide: true });
-        killer.on('error', () => child.kill(signal));
-      } catch {
-        child.kill(signal);
+      if (!settled) {
+        signalTree(child, signal, platform, tuning.baseEnv, exited !== undefined);
       }
     }
 
@@ -555,4 +609,222 @@ function execute(request: ProcessRequest, log: Log, tuning: ProcessRunnerTuning)
     );
   });
   return { result, cancel: () => cancel() };
+}
+
+// -------------------------------------------------------------------------------------------
+// Long-running processes (M2): the IDE-mode sessions of `backend/ide/transport.ts`
+// -------------------------------------------------------------------------------------------
+
+/**
+ * A process that runs until it is stopped: the compiler of an IDE-mode session
+ * (`idris2 --ide-mode`, `--ide-mode-socket`; ARCHITECTURE §5). The runner's rules apply to it
+ * except the queue: such a process runs for minutes, alongside the probes, so it is started at
+ * once and the session pool keeps one per root and role (ARCHITECTURE §5.1).
+ */
+export interface LongRunningRequest {
+  /** Fully qualified (`isFullyQualifiedPath`). */
+  readonly executable: string;
+  readonly args: readonly string[];
+  /**
+   * Fully qualified, and required: a session runs in its root's directory (the `.ipkg`'s, or a
+   * loose file's; D4, F13), which the caller has decided may run the compiler (the consent gate
+   * of `core/trust.ts`), since starting the compiler there can execute code found there (ROADMAP
+   * M1 As built, *Processes*).
+   */
+  readonly cwd: string;
+  /** Variables that replace inherited ones of the same name, as `ProcessRequest.env`. */
+  readonly env?: Readonly<Record<string, string>>;
+  /**
+   * `pipe`: the caller writes to the process's stdin (`write`); `ignore`: stdin is the null
+   * device, so a program that reads it sees end of file at once.
+   */
+  readonly stdin: 'pipe' | 'ignore';
+}
+
+/** How a long-running process ended; `spawnError` is set when it could not be started or was refused. */
+export interface LongRunningExit {
+  readonly code: number | null;
+  readonly signal: string | null;
+  readonly spawnError?: string;
+}
+
+/**
+ * The callbacks of one long-running process, given when it is started so that no output is
+ * missed. `onSpawn` fires once the process has started (never for a refused or failed start);
+ * `onStdout`/`onStderr` receive the bytes as they arrive; `onExit` fires exactly once, after
+ * the last output, when the process has ended and its output pipes have closed (or the grace
+ * period after its end has passed while a descendant still held them), or when it could not be
+ * started — never synchronously inside `startLongRunningProcess`.
+ */
+export interface LongRunningHandlers {
+  onSpawn(): void;
+  onStdout(chunk: Uint8Array): void;
+  onStderr(chunk: Uint8Array): void;
+  onExit(exit: LongRunningExit): void;
+}
+
+export interface LongRunningProcess {
+  /** Writes to stdin (`stdin: 'pipe'`); ignored once the process has ended. A write error is logged. */
+  write(bytes: Uint8Array): void;
+  /**
+   * Stops the process as a timed-out run is stopped: `SIGTERM` to its process group, `SIGKILL`
+   * after the grace period, and the result settled without the output pipes after one more
+   * (POSIX); `taskkill /T /F` on Windows. `onExit` follows. Idempotent.
+   */
+  stop(): void;
+  /** Kills the process group at once with `SIGKILL` (`taskkill /T /F` on Windows), without logging: for `dispose`. */
+  kill(): void;
+}
+
+/** What `startLongRunningProcess` needs from its caller. */
+export interface LongRunningOptions {
+  readonly trust: WorkspaceTrust;
+  readonly log: Log;
+  readonly platform: NodeJS.Platform;
+  /** The environment the process inherits before `LongRunningRequest.env` is overlaid (`process.env`). */
+  readonly baseEnv: Environment;
+  /** `GRACE_MS` unless a test shortens it. */
+  readonly graceMs?: number;
+}
+
+/**
+ * Starts a long-running process under the runner's rules: nothing while the workspace is not
+ * trusted (throws `IdrisException` `Unsupported`), only fully qualified executable and working
+ * directory paths and no NUL (throws `Error`), no shell but the quoted `cmd.exe` command line of
+ * a Windows batch file (`batchFileCommand`; a refused one ends with `spawnError`), the
+ * environment overlay, its own process group on POSIX, and `stop`/`kill` as above. The command
+ * line is logged at debug level, a failed start at warn level, the end at debug level (the
+ * session reports unexpected ends itself).
+ */
+export function startLongRunningProcess(
+  request: LongRunningRequest,
+  handlers: LongRunningHandlers,
+  options: LongRunningOptions,
+): LongRunningProcess {
+  if (!options.trust.isTrusted) {
+    throw unsupported(RESTRICTED_MODE_REASON);
+  }
+  const { platform, log } = options;
+  const graceMs = options.graceMs ?? GRACE_MS;
+  const problem = pathProblem(request, platform) ?? nulProblem(request);
+  if (problem !== undefined) {
+    throw new Error(`Invalid process request: ${problem}.`);
+  }
+  const shown = displayCommand(request.executable, request.args);
+  const notStarted = (spawnError: string): LongRunningProcess => {
+    log.warn(`${shown} could not be started (${spawnError})`);
+    queueMicrotask(() => handlers.onExit({ code: null, signal: null, spawnError }));
+    return { write: () => undefined, stop: () => undefined, kill: () => undefined };
+  };
+  const command = spawnCommand(request.executable, request.args, platform, options.baseEnv);
+  if ('refused' in command) {
+    return notStarted(command.refused);
+  }
+  log.debug(`Starting ${shown} (cwd ${request.cwd})`);
+
+  let child: ChildProcess;
+  try {
+    child = spawn(command.file, [...command.args], {
+      cwd: request.cwd,
+      env: overlayEnvironment(options.baseEnv, request.env ?? {}, platform),
+      stdio: [request.stdin, 'pipe', 'pipe'],
+      windowsHide: true,
+      windowsVerbatimArguments: command.verbatim,
+      // A new process group on POSIX, so that `stop` reaches the grandchildren too.
+      detached: platform !== 'win32',
+    });
+  } catch (error) {
+    // See `execute`: `spawn` throws for the spawn errors it does not report through 'error'.
+    return notStarted(error instanceof Error ? error.message : String(error));
+  }
+
+  let exited: { code: number | null; signal: NodeJS.Signals | null } | undefined;
+  let stopping = false;
+  let killed = false;
+  let settled = false;
+  const timers: NodeJS.Timeout[] = [];
+
+  const finish = (outcome: LongRunningExit): void => {
+    if (settled) {
+      return;
+    }
+    settled = true;
+    timers.forEach(clearTimeout);
+    if (outcome.spawnError !== undefined) {
+      log.warn(`${shown} could not be started (${outcome.spawnError})`);
+    } else if (!killed) {
+      log.debug(`${shown} ended (${outcome.signal === null ? `exit code ${outcome.code}` : outcome.signal})`);
+    }
+    handlers.onExit(outcome);
+  };
+  const signalChild = (signal: NodeJS.Signals): void => {
+    if (!settled) {
+      signalTree(child, signal, platform, options.baseEnv, exited !== undefined);
+    }
+  };
+  /** Settles without waiting for pipes that a surviving descendant still holds open. */
+  const abandonPipes = (): void => {
+    child.stdout?.destroy();
+    child.stderr?.destroy();
+    finish({ code: exited?.code ?? null, signal: exited?.signal ?? null });
+  };
+
+  // EPIPE after the process has ended; the end itself is reported by 'close'.
+  child.stdin?.on('error', (error: Error) => {
+    if (!killed) {
+      log.debug(`${shown}: writing to its input failed (${error.message})`);
+    }
+  });
+  child.stdout?.on('data', (chunk: Buffer) => handlers.onStdout(chunk));
+  child.stderr?.on('data', (chunk: Buffer) => handlers.onStderr(chunk));
+  child.on('spawn', () => handlers.onSpawn());
+  // As in `execute`: a spawn failure leaves `pid` unset and is reported by 'error'; the 'close'
+  // that follows is ignored because the result is settled.
+  child.on('error', (error: NodeJS.ErrnoException) => {
+    if (child.pid === undefined) {
+      finish({ code: null, signal: null, spawnError: error.code === undefined ? error.message : `${error.code}: ${error.message}` });
+    } else if (!killed) {
+      log.warn(`${shown}: ${error.message}`);
+    }
+  });
+  child.on('exit', (code, signal) => {
+    exited = { code, signal };
+    // After a stop, the SIGKILL that follows the grace period comes first (see `stop`).
+    if (!stopping) {
+      timers.push(setTimeout(abandonPipes, graceMs));
+    }
+  });
+  child.on('close', (code: number | null, signal: NodeJS.Signals | null) => finish({ code, signal }));
+
+  return {
+    write(bytes: Uint8Array): void {
+      if (!settled && child.stdin !== null && child.stdin.writable) {
+        child.stdin.write(bytes);
+      }
+    },
+    stop(): void {
+      if (stopping || settled) {
+        return;
+      }
+      stopping = true;
+      signalChild('SIGTERM');
+      timers.push(
+        setTimeout(() => {
+          signalChild('SIGKILL');
+          timers.push(setTimeout(abandonPipes, graceMs));
+        }, graceMs),
+      );
+    },
+    kill(): void {
+      if (settled) {
+        return;
+      }
+      killed = true;
+      signalChild('SIGKILL');
+      if (!stopping) {
+        stopping = true;
+        timers.push(setTimeout(abandonPipes, graceMs));
+      }
+    },
+  };
 }

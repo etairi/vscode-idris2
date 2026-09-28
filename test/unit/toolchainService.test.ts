@@ -112,7 +112,7 @@ suite('toolchain/service', () => {
     const service = createToolchainService({
       config: {
         toolchain: () => settings.value,
-        onDidChange: (_group, listener) => changed.event(listener),
+        onDidChange: (_group, listener) => changed.event(() => listener({ affects: (key) => key.startsWith('toolchain.') })),
       },
       trust: {
         get isTrusted() {

@@ -9,7 +9,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import type { TestApi } from '../../src/extension';
 import { type FakeTool } from '../fake-tools/paths';
-import { EXTENSION_ID, extensionApi, setToolchainSetting, settledScan, waitFor, workspaceFile } from './support';
+import { EXTENSION_ID, extensionApi, setToolchainSetting, settledScan, statusText, waitFor, workspaceFile } from './support';
 import { closeTerminals, commandWordFor, resetTerminalProfile, typedBy, useTerminalRecorder } from './terminalRecorder';
 
 interface Manifest {
@@ -86,18 +86,19 @@ suite('M1 toolchain UI (fake tools)', () => {
     assert.strictEqual(snapshot.verdict?.kind, 'compatible');
   });
 
-  test('the status item reads "Idris 2 0.8.0 · syntax only" (no backend in M1) and names the loose file', async () => {
+  test('the status item reads "Idris 2 0.8.0 · IDE mode · ✓" once Hello.idr is checked (M2) and names the loose file', async () => {
     const doc = await vscode.workspace.openTextDocument(workspaceFile('Hello.idr'));
     await vscode.window.showTextDocument(doc);
-    assert.strictEqual(api.statusItem.text, 'Idris 2 0.8.0 · syntax only');
+    await statusText(api, 'Idris 2 0.8.0 · IDE mode · ✓');
     assert.strictEqual(api.statusItem.severity, vscode.LanguageStatusSeverity.Information);
     assert.strictEqual(api.statusItem.busy, false);
-    assert.deepStrictEqual(api.statusItem.command, { command: 'idris2.showStatusMenu', title: 'Show Commands…' });
+    // The detail is also the command's tooltip, a plain string (toolchain/status.ts: no trusted markdown for a pinned item).
+    assert.deepStrictEqual(api.statusItem.command, { command: 'idris2.showStatusMenu', title: 'Show Commands…', tooltip: api.statusItem.detail });
     await waitFor('the status detail to name the loose file', () =>
-      api.statusItem.detail?.includes(`loose file (no .ipkg above ${path.dirname(doc.uri.fsPath)})`) ? true : undefined,
+      api.statusItem.detail?.includes(`loose file (no .ipkg above “${path.dirname(doc.uri.fsPath)}”)`) ? true : undefined,
     );
     assert.strictEqual(vscode.languages.match(api.statusItem.selector, doc) > 0, true);
-    assert.strictEqual(api.registry.labelFor(await api.projects.classify(doc.uri.fsPath)), 'syntax only');
+    assert.strictEqual(api.registry.labelFor(await api.projects.classify(doc.uri.fsPath)), 'IDE mode');
   });
 
   test('Show Setup Information opens a read-only document with the paths, raw and parsed versions, verdict and trust', async () => {

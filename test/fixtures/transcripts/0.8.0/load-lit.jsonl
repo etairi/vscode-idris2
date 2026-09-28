@@ -1,0 +1,26 @@
+{"kind":"meta","format":1,"scenario":"load-lit","description":"A clean bird-track .lidr: positional :type-of of the local n (file column 9) succeeds at its unlit column 7 and fails at its file column 9","facts":["F11"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-09-27","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build/.vscode-idris2"],"cwd":"test/fixtures/workspaces/loose-file","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"Lit.lidr":"a89bc3ccd85c80cc900841d4d6d5c9f67c3cef1df38cc0bf301a9ea92a3a5fa1"}}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"00009d","text":"((:load-file \"${ROOT}/Lit.lidr\") 1)\n"}
+{"kind":"recv","prefix":"0000b2","text":"(:write-string \"1/1: Building Lit (${ROOT}/Lit.lidr)\" 1)\n"}
+{"kind":"recv","prefix":"0000f0","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit.lidr\") (:start 0 0) (:end 0 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f0","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit.lidr\") (:start 0 7) (:end 0 10)) ((:decor :module)))))) 1)\n"}
+{"kind":"recv","prefix":"00014d","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit.lidr\") (:start 4 0) (:end 4 6)) ((:name \"double\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f0","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit.lidr\") (:start 4 7) (:end 4 8)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000154","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit.lidr\") (:start 4 9) (:end 4 12)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f2","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit.lidr\") (:start 4 13) (:end 4 15)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000155","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit.lidr\") (:start 4 16) (:end 4 19)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000150","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit.lidr\") (:start 5 0) (:end 5 6)) ((:name \"double\") (:namespace \"Lit\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000145","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit.lidr\") (:start 5 7) (:end 5 8)) ((:name \"n\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit.lidr\") (:start 5 9) (:end 5 10)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000147","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit.lidr\") (:start 5 11) (:end 5 12)) ((:name \"n\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000155","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit.lidr\") (:start 5 13) (:end 5 14)) ((:name \"+\") (:namespace \"Prelude.Num\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000147","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit.lidr\") (:start 5 15) (:end 5 16)) ((:name \"n\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok ()) 1)\n"}
+{"kind":"send","prefix":"000017","text":"((:type-of \"n\" 6 7) 2)\n"}
+{"kind":"recv","prefix":"000035","text":"(:return (:ok \"n : Nat\" ((4 3 ((:decor :type))))) 2)\n"}
+{"kind":"send","prefix":"000017","text":"((:type-of \"n\" 6 9) 3)\n"}
+{"kind":"recv","prefix":"0000dd","text":"(:return (:error \"Undefined name n. \n\n(Interactive):1:1--1:1\n 1 | > module Lit\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (66 0 ((:text-formatting :bold) (:decor :postulate))))) 3)\n"}
+{"kind":"close"}
+{"kind":"unframed","text":"Alas the file is done, aborting\n"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":["build/.vscode-idris2/ttc/2025081600/Lit.ttc","build/.vscode-idris2/ttc/2025081600/Lit.ttm"]}

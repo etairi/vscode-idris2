@@ -12,13 +12,24 @@ node test/fake-idris2/fake-idris2.mjs --list-packages      #   "
 node test/fake-idris2/fake-idris2.mjs --dump-ipkg-json [file.ipkg]   # M1: recorded, per fixture
 node test/fake-idris2/fake-idris2.mjs --ide-mode           # IDE protocol on stdin/stdout
 node test/fake-idris2/fake-idris2.mjs --ide-mode-socket [host:port]
+# M2: with the options of a session's command line (ARCHITECTURE §5.2), in any order
+node test/fake-idris2/fake-idris2.mjs --ide-mode-socket --no-color -p contrib --build-dir <dir>
 ```
 
-Any other command line is rejected with exit code 2 and a message on stderr naming the
-arguments. The real compiler would accept many of them, so the fake does not pretend to be the
-real compiler's `Error: Unknown flag …` (stderr, exit 1). Tests start it through the launchers
-in `test/fake-tools/bin`, and its fault modes (`FAKE_IDRIS2_MODE`, `FAKE_IDRIS2_DELAY_MS`,
-`FAKE_IDRIS2_VERSION`) are described in `test/fake-tools/README.md`.
+`--no-color`, `-p`/`--package <pkg>` and `--build-dir <dir>` are accepted next to either IDE
+mode and ignored (the replies come from the transcripts, whatever packages or build directory
+their recording used). Any other command line — including `--find-ipkg`, which the extension
+must never pass (F13), and two IDE modes at once — is rejected with exit code 2 and a message on
+stderr naming the arguments. The real compiler would accept many of them, so the fake does not
+pretend to be the real compiler's `Error: Unknown flag …` (stderr, exit 1). Tests start it
+through the launchers in `test/fake-tools/bin`, and its fault modes (`FAKE_IDRIS2_MODE`,
+`FAKE_IDRIS2_DELAY_MS`, `FAKE_IDRIS2_VERSION`) are described in `test/fake-tools/README.md`.
+
+| Variable | Effect |
+|---|---|
+| `FAKE_IDRIS2_TRANSCRIPTS=<dir>` | IDE mode replays the transcripts in `<dir>` ("Transcript replay" below); `.vscode-test.mjs` sets it to `test/fixtures/transcripts/0.8.0` for every fake-tool suite. Unset: the M0 behaviour below |
+| `FAKE_IDRIS2_IDE_FAULT=<fault>@<n>[,…]` | injects a protocol fault at the n-th request ("Injected protocol faults" below) |
+| `FAKE_IDRIS2_LOG=<file>` | every invocation first appends `{"pid", "args", "cwd"}` as one JSON line to `<file>` (like `FAKE_PACK_LOG`), so a test can see which command lines were started, and how often |
 
 ## Recorded command-line output (M1)
 
@@ -51,9 +62,9 @@ fixture's directory (one compiler process at a time, CLAUDE.md), and replace the
 ## What M0 implements
 
 The **handshake and the `version` command**, over stdio and TCP (M1 lets `FAKE_IDRIS2_VERSION`
-set the version the command reports). Anything else that parses as an
-s-expression is answered the way the compiler answers a request it cannot interpret. The unit
-test is `test/unit/fakeIdris2.test.ts`.
+set the version the command reports). Without `FAKE_IDRIS2_TRANSCRIPTS`, anything else that
+parses as an s-expression is answered the way the compiler answers a request it cannot
+interpret. The unit test is `test/unit/fakeIdris2.test.ts`.
 
 Everything below mirrors Idris 2 **0.8.0** (`15a3e4e`, the Homebrew build on the development
 machine). The code cites the source file behind each rule. The relevant files (`IDEMode/REPL.idr`
@@ -129,28 +140,85 @@ The fake reproduces all three.
   replies. The mechanism is inferred from the observation and the shared `r+` stream, not read
   in libc's source; Linux was not tried. The fake answers every request, so a client must not
   pipeline requests on the socket and tests cannot catch it if it does.
-- Clients that connect after the first socket client: the fake never reads from them (the real
-  compiler calls `accept` once); not compared with the real compiler.
+- Clients that connect after the first socket client: the real compiler calls `accept` once, and
+  its listening socket stays open, so a later connection completes in the listen backlog and
+  receives nothing (0 bytes in 3 s after connecting second [live, 0.8.0, ROADMAP M2 As built
+  *Transport*]). The fake completes such a connection too — Node accepts it — and never reads
+  from it or writes to it (`serveSocket`), so the client sees the same: a connection and no
+  bytes. Not modelled: the backlog's limit on how many such connections complete.
 
-## Intended for M2: transcript replay (not implemented)
+## Transcript replay (M2)
 
-M2 turns the fake into a replayer of sessions recorded from the real compiler by the e2e suite
-(`IDRIS2_RECORD=1`, ARCHITECTURE §12). The plan below is a proposal that M2 may revise. The code
-already has the seam: `createSession(send)` returns `{ start, receive }` and knows nothing about
-transports, so a replaying session can replace it in both `serveStdio` and `serveSocket`.
+With `FAKE_IDRIS2_TRANSCRIPTS=<dir>`, IDE mode answers from the sessions recorded from the real
+compiler in `<dir>` (`test/fixtures/transcripts/<version>/*.jsonl`, written by
+`scripts/record-transcripts.mjs`; the format is in that directory's README). The fake reads every
+transcript when it starts and exits 2, before the handshake, if the directory cannot be read,
+holds no transcript, or a transcript cannot be replayed (not format 1, or an event other than a
+frame or program output between the first request and the recorder's `close`, such as a crash
+`exit`). The handshake, `:version`, the framing rules, the end-of-input behaviour and the socket
+rules above stay the fake's own; everything else is replayed:
 
-- **Location.** `test/fixtures/transcripts/<idris2-version>/<name>.jsonl`, one JSON object per
-  line.
-- **First line.** `{"kind":"meta","idris2":"0.8.0","commit":"15a3e4e","transport":"socket",
-  "args":[…],"cwd":"<fixture workspace, relative>","recorded":"<ISO date>"}`.
-- **Other lines, in wire order.**
-  - `{"kind":"request","text":"((:load-file \"Bad.idr\") 1)\n"}`
-  - `{"kind":"reply","text":"(:return (:ok ()) 1)\n"}`: a frame's text without its prefix. The
-    fake recomputes the prefix with the compiler's rule (code points), and the recorder asserts
-    that the recorded prefix equals that count.
-  - `{"kind":"stdout","text":"hi\n"}`: unframed process output (F5).
-- **Replay.** The fake is selected with an environment variable naming the transcript. It sends
-  every `reply`/`stdout` line up to the first `request`. After that, each incoming request must
-  equal the next `request` line, and the replies up to the next `request` are sent back. A
-  mismatch is a test failure, reported as a `:return :error` whose text names the expected
-  request. Ids are replayed as recorded, so a test must send the recorded ids.
+- **Matching.** A request is compared with the recorded requests after two normalisations: the
+  id is set aside (`(COMMAND ID)` is compared by `COMMAND`), and every string that is a path in
+  the working directory — the real path, or the spelling the process was started with, compared
+  case-insensitively and with either separator on Windows — is written `${ROOT}/…`; a path that
+  reaches the working directory through a symbolic link is written `${LINK}/…` (transcript
+  `load-symlink`). Requests are compared as the compiler reads them, one character per byte (F1
+  addendum), and an unparsable request by its text.
+- **Which recording.** Only scenarios whose fixture files (`meta.fixtures`, relative to the
+  working directory) have the recorded SHA-256 *now* are eligible, so an edited or unrelated
+  file is never answered with a stale reply, and two scenarios with the same request (for
+  example `Main.idr` under `bad-ipkg/` and under `warnings/old-version/`) are told apart by their
+  files. Among the recorded requests that match, the one whose recorded predecessors equal the
+  longest run of this session's latest requests wins; ties go to a request whose whole recorded
+  prefix matched (a session replayed from its start), then to the first scenario by name, then
+  to the earlier request. So a session that repeats a recording gets exactly the recording, and
+  one that does not gets the reply recorded after the most similar history: loading `Bad`,
+  `Warn`, `Warn` (never recorded together) gives the third load `load-warn`'s reload — no
+  `Building` line, no `:warning` (F7). Compiler state that no transcript recorded (a file built
+  in another order, `:enable-syntax` followed by another file) is therefore approximated, not
+  modelled.
+- **Replies.** The recorded group — every frame and the program output up to the next recorded
+  request — is sent with the paths spelled as this session spelled them (the separator after the
+  root included) and each frame's prefix recomputed (code points, F1 addendum). A reply's id is
+  the live request's id where the recording had the recorded request's id, and otherwise the
+  session's previous recognised id (F4: the compiler's only other choice; every reply of the
+  0.8.0 recordings is one of the two). Program output goes where the compiler sends it for this
+  transport (F5): into the protocol stream over stdio, to the process stdout over the socket, so
+  a stdio recording also replays over the socket. It is written with the reply it was recorded
+  in, also over the socket, where the real compiler's stdout is a block-buffered pipe: its log
+  lines (`load-logging`) arrive only when it exits (F5 addendum); that timing is not mirrored.
+- **No recording.** A request no eligible scenario matches is answered `(:return (:error
+  "fake-idris2: no recorded reply for <normalised command>") ID)` — with the request's own id,
+  so that the client's pending request ends instead of waiting, or with the id of the last
+  recognised request for an unparsable one (F4) — and the same text goes to stderr as one line. This is not compiler
+  behaviour: it makes a test that sends something unrecorded fail with a message that names it.
+  Record the scenario (`npm run record:transcripts`, one compiler process at a time) instead of
+  writing replies by hand.
+
+`test/unit/fakeIdris2Replay.test.ts` replays every transcript over both transports (ids shifted,
+through a symbolic link where the recording used one) and compares each item of the stream, the
+program output, the end of input and the exit code with the recording; it also checks that every
+fixture file a transcript read still has its recorded SHA-256. The e2e test
+`test/e2e/fakeParity.test.ts` gives the real compiler and the fake the same bytes for three
+scenarios over both transports and for `load-logging` over stdio, and requires identical
+streams, prefixes included.
+
+Not replayed: `stderr` events (none in the 0.8.0 recordings), timing (replies are written at once;
+use `FAKE_IDRIS2_IDE_FAULT=hang@n` for a request that never returns), and the files the compiler
+writes (`files` events; no TTCs appear).
+
+## Injected protocol faults
+
+`FAKE_IDRIS2_IDE_FAULT` is a comma-separated list of `<fault>@<n>`: the n-th request the process
+receives (1-based, every request counts, `:version` too) triggers the fault. Each process counts
+from 1, so `crash@1` makes every restarted session crash on its first request too (a test of the
+give-up rule). With or without transcripts. Any other value exits 2 before the handshake.
+
+| Fault | Effect |
+|---|---|
+| `crash` | no reply; `fake-idris2: simulated crash at request n (FAKE_IDRIS2_IDE_FAULT)` on stderr; exit 3 |
+| `crash-in-reply` | the first 29 bytes of a reply frame of 64 code points, `000040(:write-string "partial`, in the protocol stream (over the socket too), then `fake-idris2: simulated crash inside a reply at request n (FAKE_IDRIS2_IDE_FAULT)` on stderr, then exit 3: a process that dies in the middle of a reply (the extension reports the exit with the incomplete frame) |
+| `hang` | no reply and no further reading, not even of the end of input; exits 1 after `FAKE_TOOL_HANG_LIMIT_MS` (default 60,000 ms) like `FAKE_IDRIS2_MODE=hang`, so a process a test failed to kill does not outlive the run |
+| `noise` | the unframed line `fake-idris2: injected noise (FAKE_IDRIS2_IDE_FAULT)` in the protocol stream (over the socket too) before the replies; the extension logs it as the process's output over stdio and treats it as a protocol error on the socket, where the compiler writes only frames |
+| `id-mismatch` | the request's `:return` carries its id plus 1000000 (the other frames keep theirs) |

@@ -1,6 +1,7 @@
 /**
- * Shared helpers of the e2e suite (test/README.md): the extension's test API, polling, and
- * running the real tools.
+ * Shared helpers of the e2e suite (test/README.md): the extension's test API, polling, running
+ * the real tools, and (M2) quieting the extension's IDE-mode sessions before a test starts a
+ * compiler of its own.
  * The suite runs in the Extension Host on test/fixtures/workspaces/simple-ipkg with the real
  * toolchain (.vscode-test.mjs, label `e2e`).
  */
@@ -11,6 +12,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 // Type-only: the tests talk to the running extension, not to a second copy of its modules.
 import type { TestApi } from '../../src/extension';
+import { ideProcesses } from './ideDriver';
 
 const EXTENSION_ID = 'etairi.vscode-idris2';
 
@@ -98,4 +100,29 @@ export function runReal(executable: string, args: readonly string[], cwd?: strin
   assert.strictEqual(result.status, 0, `${executable} ${args.join(' ')}: exit ${result.status}, stderr ${result.stderr}`);
   assert.strictEqual(result.stderr, '', `${executable} ${args.join(' ')} wrote to stderr`);
   return result.stdout;
+}
+
+/** The probed `idris2` of the current toolchain snapshot (absolute path). */
+export function probedIdris2(api: TestApi): string {
+  const idris2 = api.toolchain.current?.idris2;
+  assert.ok(idris2?.status === 'probed', `idris2 was not probed: ${JSON.stringify(idris2)}`);
+  return idris2.location.path;
+}
+
+/** The version text of the probed `idris2` (`0.8.0`, or with a tag), for choosing transcripts. */
+export function probedVersion(api: TestApi): string {
+  const idris2 = api.toolchain.current?.idris2;
+  assert.ok(idris2?.status === 'probed' && idris2.info.version, `idris2 has no parsed version: ${JSON.stringify(idris2)}`);
+  return idris2.info.version.text;
+}
+
+/**
+ * Stops every IDE-mode session of the extension and waits until none of its compiler processes
+ * is left, then until it is idle (`extensionIdle`). Called before a test starts a compiler of its
+ * own, so that at most one runs at a time (CLAUDE.md). A session starts again on its next request.
+ */
+export async function quiesce(api: TestApi): Promise<void> {
+  api.sessions.stop();
+  await waitFor('the extension\'s IDE-mode processes to end', () => (ideProcesses().length === 0 ? true : undefined), 30000);
+  await extensionIdle(api);
 }

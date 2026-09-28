@@ -3,112 +3,17 @@
 // `idris2 --ide-mode` and `idris2 --ide-mode-socket`; see test/fake-idris2/README.md.
 import * as assert from 'assert';
 import { ChildProcessWithoutNullStreams, spawn, spawnSync } from 'child_process';
-import * as fs from 'fs';
 import * as net from 'net';
-import * as path from 'path';
-import { StringDecoder } from 'string_decoder';
+import { FrameReader, fakeEnvironment, requestFrame, tolerateReset } from '../fake-idris2/client';
+import { fakeScript } from '../fake-tools/paths';
 
-function repoRoot(): string {
-  for (let dir = __dirname; ; dir = path.dirname(dir)) {
-    const manifest = path.join(dir, 'package.json');
-    if (fs.existsSync(manifest) && JSON.parse(fs.readFileSync(manifest, 'utf8')).name === 'vscode-idris2') {
-      return dir;
-    }
-    if (path.dirname(dir) === dir) {
-      throw new Error(`no vscode-idris2 package.json above ${__dirname}`);
-    }
-  }
-}
+const FAKE = fakeScript('idris2');
 
-const FAKE = path.join(repoRoot(), 'test', 'fake-idris2', 'fake-idris2.mjs');
-
-/** A request frame: 6 hex digits of the UTF-8 byte length (F1), then the text and a newline. */
-function request(sexp: string): Buffer {
-  const body = Buffer.from(sexp + '\n', 'utf8');
-  return Buffer.concat([Buffer.from(body.length.toString(16).padStart(6, '0'), 'ascii'), body]);
-}
-
-interface Frame {
-  /** The 6-hex prefix as sent. */
-  readonly prefix: number;
-  /** The frame text, decoded as UTF-8, including the trailing newline. */
-  readonly text: string;
-}
-
-/**
- * Reads reply frames. The compiler's prefix counts the Unicode code points of the reply (see
- * the README), so frames are cut by code points, not bytes; a line that does not start with 6
- * hex digits is returned as an unframed line (prefix -1).
- */
-class FrameReader {
-  private pending = '';
-  private readonly decoder = new StringDecoder('utf8');
-  private readonly waiters: (() => void)[] = [];
-
-  constructor(stream: NodeJS.ReadableStream) {
-    stream.on('data', (chunk: Buffer) => {
-      this.pending += this.decoder.write(chunk);
-      this.waiters.splice(0).forEach((w) => w());
-    });
-  }
-
-  private take(): Frame | undefined {
-    const head = this.pending.slice(0, 6);
-    if (head.length < 6) {
-      return undefined;
-    }
-    if (!/^[0-9a-f]{6}$/.test(head)) {
-      const nl = this.pending.indexOf('\n');
-      if (nl < 0) {
-        return undefined;
-      }
-      const line = this.pending.slice(0, nl + 1);
-      this.pending = this.pending.slice(nl + 1);
-      return { prefix: -1, text: line };
-    }
-    const prefix = parseInt(head, 16);
-    const rest = Array.from(this.pending.slice(6));
-    if (rest.length < prefix) {
-      return undefined;
-    }
-    this.pending = rest.slice(prefix).join('');
-    return { prefix, text: rest.slice(0, prefix).join('') };
-  }
-
-  async next(): Promise<Frame> {
-    for (;;) {
-      const frame = this.take();
-      if (frame !== undefined) {
-        return frame;
-      }
-      await new Promise<void>((resolve) => this.waiters.push(resolve));
-    }
-  }
-}
+/** A request frame for the s-expression `sexp` (F1: the prefix counts UTF-8 bytes). */
+const request = (sexp: string): Buffer => requestFrame(sexp + '\n');
 
 const exitOf = (child: ChildProcessWithoutNullStreams): Promise<number | null> =>
   new Promise((resolve) => child.on('exit', (code) => resolve(code)));
-
-/**
- * These tests check the fake's replies and exit code, not how its side of the connection goes
- * away. On the GitHub windows-latest runner the client socket receives ECONNRESET when the fake
- * exits (observed in CI, 2026-09-27; macOS and Linux see an orderly close), and without a
- * handler that error is uncaught and fails the test. Ignore exactly that error; the returned
- * function rethrows any other socket error, so call it at the end of the test.
- */
-function tolerateReset(socket: net.Socket): () => void {
-  let unexpected: Error | undefined;
-  socket.on('error', (error: NodeJS.ErrnoException) => {
-    if (error.code !== 'ECONNRESET') {
-      unexpected ??= error;
-    }
-  });
-  return () => {
-    if (unexpected) {
-      throw unexpected;
-    }
-  };
-}
 
 const HANDSHAKE = '(:protocol-version 2 1)\n';
 const VERSION_OK = (id: string) => `(:return (:ok ((0 8 0) (""))) ${id})\n`;
@@ -124,7 +29,7 @@ suite('test/fake-idris2 (M0 skeleton)', function () {
 
   let children: ChildProcessWithoutNullStreams[] = [];
   const start = (...args: string[]): ChildProcessWithoutNullStreams => {
-    const child = spawn(process.execPath, [FAKE, ...args]);
+    const child = spawn(process.execPath, [FAKE, ...args], { env: fakeEnvironment({}) });
     children.push(child);
     return child;
   };
@@ -134,7 +39,7 @@ suite('test/fake-idris2 (M0 skeleton)', function () {
   });
 
   test('--version prints the 0.8.0 version line', () => {
-    const r = spawnSync(process.execPath, [FAKE, '--version'], { encoding: 'utf8' });
+    const r = spawnSync(process.execPath, [FAKE, '--version'], { encoding: 'utf8', env: fakeEnvironment({}) });
     assert.strictEqual(r.status, 0);
     assert.strictEqual(r.stdout, 'Idris 2, version 0.8.0\n');
   });

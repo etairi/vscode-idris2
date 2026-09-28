@@ -1,0 +1,39 @@
+{"kind":"meta","format":1,"scenario":"stubs","description":"The eleven commands that are stubs on 0.8.0: a :write-string notice, then an empty :ok","facts":["F3"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-09-27","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build/.vscode-idris2"],"cwd":"test/fixtures/workspaces/broken","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{}}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"00001f","text":"((:name-at \"vlen_rhs\" 8 10) 1)\n"}
+{"kind":"recv","prefix":"000061","text":"(:write-string \"name-at <name> <line> <column>: command not yet implemented. Hopefully soon!\" 1)\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok \"\") 1)\n"}
+{"kind":"send","prefix":"000019","text":"((:add-missing 5 \"f\") 2)\n"}
+{"kind":"recv","prefix":"00004e","text":"(:write-string \"add-missing: command not yet implemented. Hopefully soon!\" 2)\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok \"\") 2)\n"}
+{"kind":"send","prefix":"000014","text":"((:apropos \"id\") 3)\n"}
+{"kind":"recv","prefix":"00004b","text":"(:write-string \"apropros: command not yet implemented. Hopefully soon!\" 3)\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok \"\") 3)\n"}
+{"kind":"send","prefix":"000018","text":"((:directive \"lazy\") 4)\n"}
+{"kind":"recv","prefix":"00004c","text":"(:write-string \"directive: command not yet implemented. Hopefully soon!\" 4)\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok \"\") 4)\n"}
+{"kind":"send","prefix":"000015","text":"((:who-calls \"f\") 5)\n"}
+{"kind":"recv","prefix":"00004c","text":"(:write-string \"who-calls: command not yet implemented. Hopefully soon!\" 5)\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok ()) 5)\n"}
+{"kind":"send","prefix":"000015","text":"((:calls-who \"f\") 6)\n"}
+{"kind":"recv","prefix":"00004c","text":"(:write-string \"calls-who: command not yet implemented. Hopefully soon!\" 6)\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok ()) 6)\n"}
+{"kind":"send","prefix":"00001e","text":"((:normalise-term \"1 + 1\") 7)\n"}
+{"kind":"recv","prefix":"000051","text":"(:write-string \"normalise-term: command not yet implemented. Hopefully soon!\" 7)\n"}
+{"kind":"recv","prefix":"00001a","text":"(:return (:ok \"1 + 1\") 7)\n"}
+{"kind":"send","prefix":"000020","text":"((:show-term-implicits \"id\") 8)\n"}
+{"kind":"recv","prefix":"000056","text":"(:write-string \"show-term-implicits: command not yet implemented. Hopefully soon!\" 8)\n"}
+{"kind":"recv","prefix":"000017","text":"(:return (:ok \"id\") 8)\n"}
+{"kind":"send","prefix":"000020","text":"((:hide-term-implicits \"id\") 9)\n"}
+{"kind":"recv","prefix":"000056","text":"(:write-string \"hide-term-implicits: command not yet implemented. Hopefully soon!\" 9)\n"}
+{"kind":"recv","prefix":"000017","text":"(:return (:ok \"id\") 9)\n"}
+{"kind":"send","prefix":"00001c","text":"((:elaborate-term \"id\") 10)\n"}
+{"kind":"recv","prefix":"000052","text":"(:write-string \"elaborate-term: command not yet implemented. Hopefully soon!\" 10)\n"}
+{"kind":"recv","prefix":"000018","text":"(:return (:ok \"id\") 10)\n"}
+{"kind":"send","prefix":"00001e","text":"((:print-definition \"id\") 11)\n"}
+{"kind":"recv","prefix":"000054","text":"(:write-string \"print-definition: command not yet implemented. Hopefully soon!\" 11)\n"}
+{"kind":"recv","prefix":"000018","text":"(:return (:ok \"id\") 11)\n"}
+{"kind":"close"}
+{"kind":"unframed","text":"Alas the file is done, aborting\n"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":[]}

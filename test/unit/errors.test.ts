@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { IdrisException, errorText, unsupported, type IdrisError, type IdrisErrorKind } from '../../src/core/errors';
+import { IdrisException, cancelled, errorText, isCancelled, unsupported, type IdrisError, type IdrisErrorKind } from '../../src/core/errors';
 
 // The first test is checked by `tsc` when the tests are compiled: it fails to compile if the
 // union gains or loses a kind relative to the list from docs/ARCHITECTURE.md §2.
@@ -53,5 +53,17 @@ suite('core/errors IdrisError', () => {
     assert.throws(() => {
       throw e;
     }, IdrisException);
+  });
+
+  test('cancelled(message) is an Error named Cancelled, not an IdrisException; isCancelled tells it apart', () => {
+    const e = cancelled('The Idris 2 session was stopped (Stop Backend).');
+    assert.ok(e instanceof Error && !(e instanceof IdrisException));
+    assert.strictEqual(e.name, 'Cancelled');
+    assert.strictEqual(e.message, 'The Idris 2 session was stopped (Stop Backend).');
+    assert.strictEqual(cancelled().message, 'Cancelled');
+    assert.strictEqual(isCancelled(e), true);
+    assert.strictEqual(isCancelled(unsupported('x')), false);
+    assert.strictEqual(isCancelled(new Error('Cancelled')), false);
+    assert.strictEqual(isCancelled('Cancelled'), false);
   });
 });

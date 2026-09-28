@@ -10,7 +10,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import type { TestApi } from '../../../src/extension';
-import { extensionApi, settledScan, waitFor, workspaceFile } from '../support';
+import { extensionApi, settledScan, statusText, waitFor, workspaceFile } from '../support';
 
 suite('simple-ipkg opened at its src folder', () => {
   let api: TestApi;
@@ -61,9 +61,12 @@ suite('simple-ipkg opened at its src folder', () => {
   test('the UI lists no project (the .ipkg is outside the workspace folder), but the status names the root', async () => {
     assert.deepStrictEqual(await api.projects.roots(), []);
     await waitFor('the status detail to name the project', () =>
-      api.statusItem.detail?.includes(`project ${ipkg} (outside the workspace folders: read without the compiler)`) ? true : undefined,
+      api.statusItem.detail?.includes(`project “${ipkg}” (outside the workspace folders: read without the compiler)`) ? true : undefined,
     );
-    assert.strictEqual(api.statusItem.text, 'Idris 2 0.8.0 · syntax only');
+    // M2: checking Foo/B.idr waits for the user's permission to start the compiler in the
+    // package directory, which lies outside the folder (the consent suite answers it).
+    await statusText(api, 'Idris 2 0.8.0 · IDE mode · checking…');
+    assert.match(api.statusItem.detail ?? '', /waiting for your permission to start the compiler in /);
   });
 
   test('Setup Information shows the active document\'s root and module', async () => {

@@ -1,0 +1,3 @@
+package bad
+version = 0.1.0
+pkgs = base

@@ -1,9 +1,33 @@
 /**
- * The toolchain status surface (`toolchain/status.ts` in docs/ARCHITECTURE.md §2; ROADMAP M1):
+ * The toolchain status surface (`toolchain/status.ts` in docs/ARCHITECTURE.md §2; ROADMAP M1, M2):
  * one `LanguageStatusItem` on `idrisDocumentSelector()` whose text comes from the toolchain
- * snapshot and the backend registry (`Idris 2 0.8.0 · syntax only`), the status QuickPick
- * (**Idris 2: Show Commands…**) and the `idris2.packFound` context key. Each change of the item's
- * text or severity is written to the "Idris 2" output channel (`Status: …`).
+ * snapshot, the backend registry and, since M2, the active document's check
+ * (`Idris 2 0.8.0 · IDE mode · 2 errors`; ARCHITECTURE §6.1: `checking… / ✓ / n errors / stale /
+ * stopped`), the status QuickPick (**Idris 2: Show Commands…**) and the `idris2.packFound` context
+ * key. Each change of the item's text or severity is written to the "Idris 2" output channel
+ * (`Status: …`).
+ *
+ * When the compiler may not start in the active document's directory (the user did not allow
+ * it, ROADMAP §9 2026-09-27), the item says so (`not allowed here`) and its link is **Allow…**,
+ * which asks again; while the question is open — for a check, or because **Allow…** asked again
+ * — the item reads `checking…` and its link is **Allow…** too, which shows it again (a
+ * notification with buttons goes to the notification centre after its timeout). A file the
+ * compiler found already built, whose warnings this window does not know (F7), reads `up to date`
+ * rather than `✓`.
+ *
+ * **The detail is text, not links.** VS Code 1.139.1 parses a language status item's `detail`
+ * for `[label](command:…)` links in its hover (`_renderTextPlus` → `parseLinkedText`, links opened
+ * with commands allowed), and a pinned item's status-bar tooltip is `new MarkdownString(detail,
+ * { isTrusted: true })` unless the item's command has a tooltip [src: its workbench bundle]. The
+ * detail quotes paths and compiler output, which anybody who can name a folder controls, so it
+ * goes through `plainText` (`core/notificationText.ts`), and the command carries the detail as
+ * its tooltip, a plain string, so that no trusted markdown is made of it. (A side effect: the
+ * language status hover shows the command's tooltip as its link's hover title, so the link
+ * **Show Commands…** or **Allow…** repeats the detail shown beside it when hovered [src: the
+ * hover's `Link(…, { label: command.title, title: command.tooltip })`]. VS Code offers no other
+ * tooltip for a pinned item, so this is accepted.) The folders and package files in the detail are
+ * quoted with `shownPath`, like the question's, and a consent text (a question open, a refusal, a
+ * revocation) comes first, so that no path chosen by somebody else comes before it.
  *
  * The QuickPick lists exactly the entries of the **Idris 2** editor-title submenu
  * (`contributes.menus["idris2.editorTitle"]` in package.json), in the order VS Code shows that
@@ -17,7 +41,10 @@ import type * as vscode from 'vscode';
 import type { BackendLabel, BackendRegistry } from '../backend/registry';
 import { DisposableStore, type IDisposable } from '../core/disposable';
 import type { Log } from '../core/log';
+import { plainText, shownPath } from '../core/notificationText';
 import type { WorkspaceTrust } from '../core/trust';
+import { ALLOW_FOLDER_COMMAND } from '../features/consent/gate';
+import type { CheckStatus, CheckStatusSource } from '../features/diagnostics/checks';
 import { idrisDocumentSelector, isIdrisDocument } from '../project/literate';
 import type { Classification, ProjectIndex } from '../project/types';
 import type { ToolchainService, ToolchainSnapshot } from './types';
@@ -42,9 +69,11 @@ export interface StatusInput {
   readonly label: BackendLabel;
   /** The active Idris document's root; `undefined` when it has none or it is not known yet. */
   readonly root: Classification | undefined;
+  /** The active document's check; `undefined` when it is not checked at all (e.g. untitled). */
+  readonly check?: CheckStatus;
 }
 
-export type StatusSeverity = 'information' | 'warning';
+export type StatusSeverity = 'information' | 'warning' | 'error';
 
 export interface StatusView {
   readonly text: string;
@@ -53,19 +82,125 @@ export interface StatusView {
   readonly busy: boolean;
   /** The title of the item's command (shown as its link). */
   readonly commandTitle: string;
+  /** Set when the link is **Allow…**: the directory to ask about again (`ALLOW_FOLDER_COMMAND`). */
+  readonly allow?: string;
 }
 
 const SHOW_COMMANDS = 'Show Commands…';
 const SETUP = 'Setup…';
+const ALLOW = 'Allow…';
+
+const SEVERITY_ORDER: readonly StatusSeverity[] = ['information', 'warning', 'error'];
+
+function worse(a: StatusSeverity, b: StatusSeverity): StatusSeverity {
+  return SEVERITY_ORDER.indexOf(a) >= SEVERITY_ORDER.indexOf(b) ? a : b;
+}
+
+function count(n: number, noun: string): string {
+  return `${n} ${noun}${n === 1 ? '' : 's'}`;
+}
+
+/** What a check adds to the item: a suffix of the text, a part of the detail, and so on. */
+interface CheckView {
+  readonly suffix?: string;
+  readonly detail?: string;
+  readonly severity: StatusSeverity;
+  readonly busy?: boolean;
+  readonly allow?: string;
+  /** A text about the consent gate (a question open, a refusal, a revocation): it comes first in the detail. */
+  readonly consent?: boolean;
+}
+
+function checkView(check: CheckStatus | undefined): CheckView {
+  switch (check?.kind) {
+    case undefined:
+    case 'notChecked':
+      return { severity: 'information' };
+    case 'checking':
+      // While the consent question waits (its notification may have gone to the notification
+      // centre), the link shows it again (`features/consent/gate.ts`).
+      return check.waitingFor === undefined
+        ? { suffix: 'checking…', detail: 'checking the saved file', severity: 'information', busy: true }
+        : {
+            suffix: 'checking…',
+            detail: `waiting for your permission to start the compiler in ${shownPath(check.waitingFor)}`,
+            severity: 'information',
+            busy: true,
+            allow: check.waitingFor,
+            consent: true,
+          };
+    case 'checked': {
+      const found =
+        check.errors + check.warnings === 0
+          ? 'no errors or warnings'
+          : [check.errors > 0 ? count(check.errors, 'error') : '', check.warnings > 0 ? count(check.warnings, 'warning') : '']
+              .filter((part) => part !== '')
+              .join(', ');
+      // Stale: what to do depends on why (M2 verification of the third review: a file changed on
+      // disk is saved already, and with the manual trigger a save checks nothing).
+      const staleness = check.staleness ?? { unsaved: true, manual: false };
+      const then = staleness.unsaved
+        ? staleness.manual
+          ? 'save, then run Check File to check the changes'
+          : 'save to check the changes'
+        : 'run Check File to check it';
+      if (!check.known) {
+        // A fresh TTC: the compiler rebuilt nothing and repeated no warning (F7); no error is
+        // possible, since a file with errors gets no TTC.
+        const detail =
+          'checked: no errors; the compiler found the file already built and did not repeat its warnings, if it has any ' +
+          '(they are shown when it is built again)';
+        return check.stale
+          ? { suffix: 'stale', detail: `${detail}; ${staleness.unsaved ? 'the file has unsaved changes' : 'the file changed since'}; ${then}`, severity: 'information' }
+          : { suffix: 'up to date', detail, severity: 'information' };
+      }
+      if (check.stale) {
+        const what = staleness.unsaved ? `the saved file had ${found}` : `the file changed after it was checked, which found ${found}`;
+        return { suffix: 'stale', detail: `${what}; ${then}`, severity: 'information' };
+      }
+      const suffix = check.errors > 0 ? count(check.errors, 'error') : check.warnings > 0 ? count(check.warnings, 'warning') : '✓';
+      return { suffix, detail: `checked: ${found}`, severity: 'information' };
+    }
+    case 'packageError':
+      return {
+        suffix: check.stale ? 'stale' : 'package file error',
+        detail: `the compiler could not read ${shownPath(check.ipkg)}: ${check.message.split('\n', 1)[0]}`,
+        severity: 'warning',
+      };
+    case 'loadFailed':
+      return { suffix: 'failed', detail: `checking failed: ${check.reason}`, severity: 'warning' };
+    case 'backendFailed':
+      return { suffix: 'failed', detail: `the compiler was given up: ${check.reason}; Restart Backend to try again`, severity: 'error' };
+    case 'stopped':
+      return check.revokedDir === undefined
+        ? { suffix: 'stopped', detail: 'the compiler is stopped; the next check starts it again', severity: 'information' }
+        : {
+            suffix: 'stopped',
+            detail: `the compiler was stopped because the permission for ${shownPath(check.revokedDir)} was revoked; the next check asks again`,
+            severity: 'information',
+            consent: true,
+          };
+    case 'notAllowed':
+      return {
+        suffix: 'not allowed here',
+        detail:
+          `the compiler may not start in ${shownPath(check.dir)}, which is outside the trusted workspace folders ` +
+          `(${check.reason === 'denied' ? "you chose Don't Allow" : 'the question was closed'}); highlighting only`,
+        severity: 'warning',
+        allow: check.dir,
+        consent: true,
+      };
+  }
+}
 
 function rootDetail(root: Classification | undefined): { text: string; problem: boolean } | undefined {
   if (root === undefined) {
     return undefined;
   }
   if (root.kind === 'loose') {
-    return { text: `loose file (no .ipkg above ${root.dir})`, problem: false };
+    return { text: `loose file (no .ipkg above ${shownPath(root.dir)})`, problem: false };
   }
-  const parts = [`project ${root.ipkgPath}${root.insideWorkspace ? '' : ' (outside the workspace folders: read without the compiler)'}`];
+  const parts = [`project ${shownPath(root.ipkgPath)}${root.insideWorkspace ? '' : ' (outside the workspace folders: read without the compiler)'}`];
   let problem = false;
   if (root.model.status === 'error') {
     parts.push(`which could not be read: ${root.model.error.message.split('\n')[0]}`);
@@ -73,7 +208,7 @@ function rootDetail(root: Classification | undefined): { text: string; problem: 
   }
   if (root.otherIpkgs.length > 0) {
     // F10: the compiler takes the first .ipkg its directory listing yields.
-    parts.push(`other .ipkg files in that directory: ${root.otherIpkgs.join(', ')} — the compiler uses only one`);
+    parts.push(`other .ipkg files in that directory: ${root.otherIpkgs.map(shownPath).join(', ')} — the compiler uses only one`);
     problem = true;
   }
   return { text: parts.join('; '), problem };
@@ -85,7 +220,7 @@ export function describeStatus(input: StatusInput): StatusView {
   if (!input.trusted) {
     return {
       text: 'Restricted Mode — toolchain detection disabled',
-      detail: 'No program is run in an untrusted workspace; trust the workspace to detect idris2.',
+      detail: 'No program is run in an untrusted workspace: idris2 is neither detected nor started to check files. Trust the workspace to use it.',
       severity: 'information',
       busy,
       commandTitle: SHOW_COMMANDS,
@@ -119,12 +254,25 @@ export function describeStatus(input: StatusInput): StatusView {
   if (snapshot.verdict?.kind === 'likelyMismatch') {
     details.push(`idris2-lsp: ${snapshot.verdict.reason}`);
   }
+  // A check is shown only for a backend that checks (not for `syntax only`).
+  const check = checkView(input.label === 'syntax only' ? undefined : input.check);
+  if (check.detail !== undefined) {
+    // What the consent gate says comes first, before the paths above, which anybody who can name a
+    // folder chooses (*M2 second verification of the third review*: a folder named
+    // `…; checked: no errors; …` came before the consent sentence).
+    if (check.consent === true) {
+      details.unshift(check.detail);
+    } else {
+      details.push(check.detail);
+    }
+  }
   return {
-    text: `Idris 2${version} · ${input.label}`,
+    text: `Idris 2${version} · ${input.label}${check.suffix === undefined ? '' : ` · ${check.suffix}`}`,
     detail: details.join('; '),
-    severity: root?.problem === true ? 'warning' : 'information',
-    busy,
-    commandTitle: SHOW_COMMANDS,
+    severity: worse(root?.problem === true ? 'warning' : 'information', check.severity),
+    busy: busy || check.busy === true,
+    commandTitle: check.allow === undefined ? SHOW_COMMANDS : ALLOW,
+    ...(check.allow === undefined ? {} : { allow: check.allow }),
   };
 }
 
@@ -257,6 +405,8 @@ export interface StatusDeps {
   readonly toolchain: ToolchainService;
   readonly projects: Pick<ProjectIndex, 'classify' | 'onDidChange'>;
   readonly registry: BackendRegistry;
+  /** The active document's check (M2). */
+  readonly checks: CheckStatusSource;
   readonly trust: WorkspaceTrust;
   /** `context.extension.packageJSON`. */
   readonly manifest: unknown;
@@ -281,6 +431,12 @@ export function registerToolchainStatus(api: StatusApi, deps: StatusDeps): Toolc
   item.name = 'Idris 2';
 
   let root: Classification | undefined;
+  /** The file whose root `root` is (or is being classified); see `followActiveDocument`. */
+  let rootFor: string | undefined;
+  /** Numbers the classification requests, so that a late answer for an older one is dropped. */
+  let request = 0;
+  /** The active Idris document, while it is the one the item describes. */
+  let activeDoc: vscode.TextDocument | undefined;
   let packFound = false;
   const setPackFound = (value: boolean): void => {
     if (value !== packFound) {
@@ -298,20 +454,31 @@ export function registerToolchainStatus(api: StatusApi, deps: StatusDeps): Toolc
       trusted: deps.trust.isTrusted,
       scanning: deps.toolchain.scanning,
       snapshot,
-      label: deps.registry.labelFor(root),
+      // A file whose root is still being classified gets the provider's label, not `syntax only`.
+      label: root === undefined && rootFor !== undefined ? deps.registry.pendingLabel() : deps.registry.labelFor(root),
       root,
+      check: activeDoc === undefined ? undefined : deps.checks.statusOf(activeDoc, root),
     });
-    const shown = `Status: ${view.text}${view.severity === 'warning' ? ' (warning)' : ''}`;
+    const shown = `Status: ${view.text}${view.severity === 'information' ? '' : ` (${view.severity})`}`;
     if (shown !== logged) {
       logged = shown;
       deps.log.info(shown);
     }
     item.text = view.text;
-    item.detail = view.detail;
+    // Text, not links, also in a pinned item's tooltip (module comment).
+    const detail = plainText(view.detail);
+    item.detail = detail;
     item.busy = view.busy;
     item.severity =
-      view.severity === 'warning' ? api.LanguageStatusSeverity.Warning : api.LanguageStatusSeverity.Information;
-    item.command = { command: STATUS_MENU_COMMAND, title: view.commandTitle };
+      view.severity === 'error'
+        ? api.LanguageStatusSeverity.Error
+        : view.severity === 'warning'
+          ? api.LanguageStatusSeverity.Warning
+          : api.LanguageStatusSeverity.Information;
+    item.command =
+      view.allow === undefined
+        ? { command: STATUS_MENU_COMMAND, title: view.commandTitle, tooltip: detail }
+        : { command: ALLOW_FOLDER_COMMAND, title: view.commandTitle, tooltip: detail, arguments: [view.allow] };
     setPackFound(snapshot?.pack.status === 'found');
   };
 
@@ -321,14 +488,13 @@ export function registerToolchainStatus(api: StatusApi, deps: StatusDeps): Toolc
   // changes, the previous document's root is cleared at once, so that the item never shows it
   // (or its warning) for the new one; a new answer for the same document (after a project
   // change) replaces the old one when it arrives.
-  let request = 0;
-  let rootFor: string | undefined;
   const followActiveDocument = (): void => {
     const doc = api.window.activeTextEditor?.document;
     if (doc === undefined || !isIdrisDocument(doc)) {
       return; // the item is hidden for other editors; keep what it last said
     }
     const current = ++request;
+    activeDoc = doc;
     if (doc.uri.scheme !== 'file') {
       root = undefined;
       rootFor = undefined;
@@ -354,6 +520,7 @@ export function registerToolchainStatus(api: StatusApi, deps: StatusDeps): Toolc
 
   store.add(deps.toolchain.onDidChange(render));
   store.add(deps.registry.onDidChange(render));
+  store.add(deps.checks.onDidChange(render));
   store.add(deps.trust.onDidGrant(render));
   store.add(deps.projects.onDidChange(followActiveDocument));
   store.add(api.window.onDidChangeActiveTextEditor(followActiveDocument));

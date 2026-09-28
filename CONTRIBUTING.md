@@ -21,9 +21,11 @@ fills in the setup information for you.
 
 - Node.js 24 and npm.
 - Visual Studio Code 1.138 or newer.
-- `idris2` (0.8.0 was used) only for the end-to-end suite, `npm run check:fixtures` and the
-  lexer comparison. Unit, grammar and integration tests need no Idris installation: the
-  integration suites use the fake `idris2`, `idris2-lsp` and `pack` in `test/fake-tools/`.
+- `idris2` (0.8.0 was used) only for the end-to-end suite, `npm run check:fixtures`,
+  `npm run record:transcripts` and the lexer comparison. Unit, grammar and integration tests
+  need no Idris installation: the integration suites use the fake `idris2`, `idris2-lsp` and
+  `pack` in `test/fake-tools/`, and the fake `idris2` answers IDE-mode requests with the replies
+  recorded from the real compiler (`test/fixtures/transcripts/`).
 
 ## Build and run
 
@@ -49,12 +51,24 @@ npm run test:corpus    # tokenise pinned real-world repositories (needs network)
 IDRIS2_LEXER_ORACLE=1 npm run test:corpus   # also compare token by token with the Idris 2 lexer
 npm run check:fixtures # idris2 --check / --dump-ipkg-json on every fixture and snippet
 npm run docs:graph:check  # docs/ROADMAP.md §4 matches docs/milestones.yaml
+npm run record:transcripts # re-record the IDE-mode transcripts with the idris2 on PATH
 ```
 
+`npm test` runs six suites, each in its own VS Code instance: `integration`, `simple-ipkg` and
+`toolchain-path` (toolchain and project discovery), and `diagnostics` (the `broken` workspace
+over the socket transport, chosen in the suite's user settings), `loose-stdio` (loose files over
+standard input and output, the default, in a workspace whose own settings ask for the socket in
+vain) and `consent` (a package above the opened folder, which needs the user's consent). The e2e
+suite runs the protocol facts of `docs/ROADMAP.md` §0 against the real compiler, the extension's
+own sessions (over stdio, and over the socket when opted into), and a comparison of the fake
+compiler with the real one.
+
 Please run no more than one `idris2` process at a time; type-checking library code in
-parallel uses a lot of memory. `check:fixtures` and the lexer comparison already run the
-compiler one file at a time, and `IDRIS2=<path>` selects the binary (for example a wrapper that
-adds a time limit).
+parallel uses a lot of memory. `check:fixtures`, `record:transcripts` and the lexer comparison
+already run the compiler one process at a time, and `IDRIS2=<path>` selects the binary (for
+example a wrapper that adds a time limit). The one e2e test that runs two at once
+(`test/e2e/e21.test.ts`: one IDE-mode session beside one `idris2 --build`) uses a one-module
+fixture.
 
 Each integration suite uses its own profile under `.vscode-test/`. VS Code's IPC socket path in
 that profile must stay under 103 characters, so keep the checkout at a short path;
@@ -71,7 +85,20 @@ that profile must stay under 103 characters, so keep the checkout at a short pat
 - After a grammar change, run `UPDATE_SNAPSHOTS=1 npm run test:grammar`, read the snapshot diff
   line by line, and explain the changes in your commit message.
 - Every `.idr`/`.lidr` fixture must pass `idris2 --check` and every `.ipkg` fixture
-  `idris2 --dump-ipkg-json` (`npm run check:fixtures`).
+  `idris2 --dump-ipkg-json` (`npm run check:fixtures`). The deliberately broken files of
+  `test/fixtures/workspaces/broken` are the exception: `EXPECTED_PROBLEMS` in
+  `scripts/check-fixtures.mjs` lists the errors each must report, and the check fails when one
+  reports anything else.
+
+## IDE-mode transcripts
+
+`test/fixtures/transcripts/<version>/` holds IDE-mode sessions recorded from the real compiler
+by `npm run record:transcripts` (format and scenarios in
+[test/fixtures/transcripts/README.md](test/fixtures/transcripts/README.md)). They are the ground
+truth for the fake compiler and the protocol tests. Each transcript carries the SHA-256 of the
+fixture files it read, and the fake answers only while they match: after changing such a
+fixture, record its scenarios again (`npm run record:transcripts <scenario> …`) and review the
+diff.
 
 ## Test corpora and licences
 
@@ -84,8 +111,8 @@ used as fixtures with an attribution header and an entry in
 ## Trying a packaged extension
 
 To try a `.vsix` without touching your own VS Code profile, follow
-[docs/checklists/M1.md](docs/checklists/M1.md): it installs the package into separate
-`--user-data-dir`, `--extensions-dir` and `--shared-data-dir` directories.
+[docs/checklists/M2.md](docs/checklists/M2.md) (or `M1.md`): it installs the package into
+separate `--user-data-dir`, `--extensions-dir` and `--shared-data-dir` directories.
 
 ## License
 

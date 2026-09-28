@@ -1,7 +1,7 @@
 {
   "name": "vscode-idris2",
   "displayName": "Idris 2",
-  "description": "Idris 2 language support: syntax highlighting, editing support, snippets and toolchain detection. Compiler integration is in development.",
+  "description": "Idris 2 language support: the compiler's errors and warnings, syntax highlighting, editing support, snippets and toolchain detection. Types, holes and interactive editing are in development.",
   "version": "0.0.1",
   "publisher": "etairi",
   "license": "MIT",
@@ -46,12 +46,14 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": "limited",
-      "description": "In Restricted Mode the extension runs no program: it does not start idris2, idris2-lsp or pack, not even to read their versions, and it reads .ipkg files with a limited built-in reader instead of the compiler. Highlighting, snippets and editing support work as usual. Workspace values of the idris2.toolchain paths and environment apply only once the workspace is trusted.",
+      "description": "In Restricted Mode the extension runs no program: it does not start idris2, idris2-lsp or pack, not even to read their versions or to check a file, and it reads .ipkg files with a limited built-in reader instead of the compiler. Highlighting, snippets and editing support work as usual. Workspace values of the idris2.toolchain paths and environment and of idris2.ideMode.loosePackages and idris2.ideMode.extraArgs apply only once the workspace is trusted.",
       "restrictedConfigurations": [
         "idris2.toolchain.idris2Path",
         "idris2.toolchain.lspPath",
         "idris2.toolchain.packPath",
-        "idris2.toolchain.env"
+        "idris2.toolchain.env",
+        "idris2.ideMode.loosePackages",
+        "idris2.ideMode.extraArgs"
       ]
     }
   },
@@ -156,6 +158,132 @@
           "scope": "machine-overridable",
           "order": 5,
           "markdownDescription": "Environment variables for the `idris2`, `idris2-lsp` and `pack` processes the extension starts, for example `{ \"IDRIS2_PREFIX\": \"/opt/idris2\" }`. Each entry replaces the inherited variable of the same name; values are used as written, without `~` or variable expansion. The search for the executables reads `PATH` (and `PATHEXT` on Windows) and pack's `HOME`, `XDG_*` and `PACK_*` directory variables from this environment too. A workspace value applies only in a trusted workspace."
+        },
+        "idris2.checking.trigger": {
+          "type": "string",
+          "enum": [
+            "onSave",
+            "afterDelay",
+            "manual"
+          ],
+          "default": "onSave",
+          "scope": "resource",
+          "order": 10,
+          "markdownEnumDescriptions": [
+            "Check a file when it is opened and each time it is saved.",
+            "As `onSave`, and also save an Idris file with unsaved changes once `#idris2.checking.delay#` milliseconds have passed without an edit.",
+            "Check a file only with **Idris 2: Check File**."
+          ],
+          "markdownDescription": "When the compiler checks an Idris file and reports its errors and warnings. `onSave` (the default): when the file is opened and each time it is saved. `afterDelay`: as `onSave`, and in addition an Idris file with unsaved changes is saved automatically once `#idris2.checking.delay#` milliseconds have passed without an edit — this writes your files. `manual`: only **Idris 2: Check File** checks a file. The compiler always checks the file as saved on disk, not the unsaved text in the editor."
+        },
+        "idris2.checking.delay": {
+          "type": "integer",
+          "default": 700,
+          "minimum": 100,
+          "maximum": 2147483647,
+          "scope": "resource",
+          "order": 11,
+          "markdownDescription": "Milliseconds without an edit after which an Idris file with unsaved changes is saved when `#idris2.checking.trigger#` is `afterDelay`. From 100 to 2147483647 (about 24.8 days)."
+        },
+        "idris2.ideMode.transport": {
+          "type": "string",
+          "enum": [
+            "stdio",
+            "socket"
+          ],
+          "default": "stdio",
+          "scope": "application",
+          "order": 20,
+          "markdownEnumDescriptions": [
+            "Start `idris2 --ide-mode` and use its standard input and output. Nothing listens on a network port.",
+            "Start `idris2 --ide-mode-socket` and connect to the local port it prints. The compiler serves the first program that connects to that port, without checking which one: another program on this computer that connects first can use the compiler as you, including running programs."
+          ],
+          "markdownDescription": "How the extension talks to the compiler's IDE mode. `stdio` (the default, on every platform) starts `idris2 --ide-mode` and uses its standard input and output; nothing listens on a port. `socket` starts `idris2 --ide-mode-socket` and connects to the port it prints on `127.0.0.1`: the compiler serves the **first** connection to that port, from any program on this computer and without checking which one, so another program that connects before the extension can use the compiler as you, including running programs. The extension notices when its own connection gets no answer, stops that compiler and does not restart it by itself, but by then the other program may have acted. `socket` was tried on macOS only. This setting is read from your user settings only — not from a workspace's, nor from a remote machine's (such as those a dev container's configuration fills) —, so nothing but your own choice opens the socket. Changing it restarts the running IDE-mode processes."
+        },
+        "idris2.ideMode.isolateBuildDir": {
+          "type": "boolean",
+          "default": true,
+          "scope": "window",
+          "order": 21,
+          "markdownDescription": "Keep the build files (TTC) the compiler writes for the editor in `build/.vscode-idris2` next to the package's `.ipkg` (for a file without a package, next to the file), apart from those of your own `idris2 --build` or `pack build`, by passing `--build-dir`. When the `.ipkg` sets `builddir`, or a `--build-dir` in `opts`, the compiler uses that directory whatever `--build-dir` says, so the editor and your builds share it (and no `--build-dir` is passed); **Idris 2: Stop Backend** stops the editor's compiler before a build. A `--build-dir` in `#idris2.ideMode.extraArgs#` is used instead of this one. Changing it restarts the running IDE-mode processes whose command line it changes."
+        },
+        "idris2.ideMode.loosePackages": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": [],
+          "scope": "window",
+          "order": 22,
+          "markdownDescription": "Installed packages to make available to Idris files that belong to no package (no `.ipkg` in their folder or above it), each passed to the compiler as `-p <name>`: for example `[\"contrib\"]` for a file that imports `Data.String.Extra`. Files in a package get the `depends` of their `.ipkg` instead. A workspace value applies only in a trusted workspace. Changing it restarts the running IDE-mode processes whose command line it changes."
+        },
+        "idris2.ideMode.extraArgs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "scope": "window",
+          "order": 23,
+          "markdownDescription": "Additional command-line arguments for every `idris2` IDE-mode process, placed after the extension's own (`--ide-mode` or `--ide-mode-socket`, `--no-color`, `-p`, `--build-dir`) and passed as they are, without a shell. It must not contain `--ide-mode` or `--ide-mode-socket`: the transport is chosen by `#idris2.ideMode.transport#`, in user settings only, and with either of them no IDE-mode process is started (the status says why). A workspace value applies only in a trusted workspace. Changing it restarts the running IDE-mode processes whose command line it changes."
+        },
+        "idris2.ideMode.requestTimeout": {
+          "type": "integer",
+          "default": 5000,
+          "minimum": 1000,
+          "maximum": 2147483647,
+          "scope": "window",
+          "order": 24,
+          "markdownDescription": "Milliseconds the compiler has to answer a quick request, such as the type of a name. IDE mode cannot cancel a request, so one that takes longer stops the compiler's process, and the extension starts a new one. From 1000 to 2147483647 (about 24.8 days)."
+        },
+        "idris2.ideMode.longActionTimeout": {
+          "type": "integer",
+          "default": 60000,
+          "minimum": 1000,
+          "maximum": 2147483647,
+          "scope": "window",
+          "order": 25,
+          "markdownDescription": "Milliseconds the compiler has to check a file, search for a proof or generate a definition. IDE mode cannot cancel a request, so one that takes longer stops the compiler's process, and the extension starts a new one. From 1000 to 2147483647 (about 24.8 days)."
+        },
+        "idris2.ideMode.idleTimeout": {
+          "type": "integer",
+          "default": 600000,
+          "minimum": 0,
+          "maximum": 2147483647,
+          "scope": "window",
+          "order": 26,
+          "markdownDescription": "Milliseconds after which an IDE-mode process that has had no request is stopped, to free its memory; it starts again when it is needed. `0`: never stopped for being idle. At most 2147483647 (about 24.8 days)."
+        },
+        "idris2.ideMode.maxSessions": {
+          "type": "integer",
+          "default": 0,
+          "minimum": 0,
+          "scope": "window",
+          "order": 27,
+          "markdownDescription": "The most IDE-mode compiler processes that keep running at once in this VS Code window; `0` (the default): no limit. Each window counts its own, so with two windows open up to twice as many can run. Each project (each `.ipkg` folder, and each folder of files without one) has its own process. Above the limit, the process of the project used least recently that is idle is stopped — never one that is busy, and never the one of the active editor's file; it starts again at that project's next check, which then loads its modules again. On a machine with little memory, try `3`. Changing it restarts nothing."
+        },
+        "idris2.ideMode.maxBackgroundChecks": {
+          "type": "integer",
+          "default": 0,
+          "minimum": 0,
+          "scope": "window",
+          "order": 28,
+          "markdownDescription": "The most checks of files other than the active editor's that run at once in this VS Code window (each window counts its own); `0` (the default): no limit. The others wait and run in the order they were asked for; the active editor's file is checked at once and never waits for them, and a waiting file that becomes the active one is checked at once. A file whose folder waits for your permission to start the compiler takes no turn meanwhile, and **Idris 2: Stop Backend** drops the checks still waiting. Within one project the compiler answers one request at a time: the active file's check goes before the project's other checks that wait, after the one it is working on. On a machine with little memory, try `1`. Changing it restarts nothing."
+        },
+        "idris2.diagnostics.includeSourceExcerpt": {
+          "type": "boolean",
+          "default": false,
+          "scope": "window",
+          "order": 30,
+          "markdownDescription": "Keep the source excerpt the compiler prints under the location of an error or warning in the message shown in the editor and the Problems panel. Off by default, since the editor marks the location itself."
+        },
+        "idris2.trace.protocol": {
+          "type": "boolean",
+          "default": false,
+          "scope": "application",
+          "order": 40,
+          "markdownDescription": "Record every message exchanged with the compiler's IDE mode in the output channel \"Idris 2: Protocol Trace\" (**Idris 2: Show Protocol Trace**), and enable **Idris 2 (Developer): Send Raw Protocol Request…**. For diagnosing problems: the trace contains your source text and file paths, and stays on this machine. User settings only: neither a workspace nor a remote machine's settings can turn it on."
         }
       }
     },
@@ -238,6 +366,37 @@
         "command": "idris2.reportIssue",
         "title": "Report Issue…",
         "category": "Idris 2"
+      },
+      {
+        "command": "idris2.checkFile",
+        "title": "Check File",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.restartBackend",
+        "title": "Restart Backend",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.stopBackend",
+        "title": "Stop Backend",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.showProtocolTrace",
+        "title": "Show Protocol Trace",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.sendRawRequest",
+        "title": "Send Raw Protocol Request…",
+        "category": "Idris 2 (Developer)",
+        "enablement": "config.idris2.trace.protocol && isWorkspaceTrusted"
+      },
+      {
+        "command": "idris2.manageAllowedFolders",
+        "title": "Manage Allowed Folders…",
+        "category": "Idris 2"
       }
     ],
     "submenus": [
@@ -256,6 +415,22 @@
         {
           "command": "idris2.installIdris2Lsp",
           "when": "idris2.packFound"
+        },
+        {
+          "command": "idris2.checkFile",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.restartBackend",
+          "when": "isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.stopBackend",
+          "when": "isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.sendRawRequest",
+          "when": "config.idris2.trace.protocol && isWorkspaceTrusted"
         }
       ],
       "editor/title": [
@@ -267,12 +442,28 @@
       ],
       "idris2.editorTitle": [
         {
+          "command": "idris2.checkFile",
+          "group": "0_backend@1"
+        },
+        {
+          "command": "idris2.restartBackend",
+          "group": "0_backend@2"
+        },
+        {
+          "command": "idris2.stopBackend",
+          "group": "0_backend@3"
+        },
+        {
           "command": "idris2.showSetupInformation",
           "group": "1_toolchain@1"
         },
         {
           "command": "idris2.rescanToolchain",
           "group": "1_toolchain@2"
+        },
+        {
+          "command": "idris2.manageAllowedFolders",
+          "group": "1_toolchain@3"
         },
         {
           "command": "idris2.installIdris2",
@@ -293,16 +484,20 @@
           "group": "3_help@1"
         },
         {
-          "command": "idris2.openSettings",
+          "command": "idris2.showProtocolTrace",
           "group": "3_help@2"
         },
         {
-          "command": "idris2.openDocumentation",
+          "command": "idris2.openSettings",
           "group": "3_help@3"
         },
         {
-          "command": "idris2.reportIssue",
+          "command": "idris2.openDocumentation",
           "group": "3_help@4"
+        },
+        {
+          "command": "idris2.reportIssue",
+          "group": "3_help@5"
         }
       ]
     },
@@ -374,7 +569,8 @@
     "test:corpus": "node scripts/fetch-corpus.mjs && npm run compile-tests && mocha --ui tdd out/test/grammar/corpus.test.js",
     "check:fixtures": "node scripts/check-fixtures.mjs",
     "docs:graph": "node scripts/deps-graph.mjs --write",
-    "docs:graph:check": "node scripts/deps-graph.mjs --check"
+    "docs:graph:check": "node scripts/deps-graph.mjs --check",
+    "record:transcripts": "node scripts/record-transcripts.mjs"
   },
   "dependencies": {
     "vscode-languageclient": "^10.1.1"

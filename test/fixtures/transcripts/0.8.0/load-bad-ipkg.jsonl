@@ -1,0 +1,8 @@
+{"kind":"meta","format":1,"scenario":"load-bad-ipkg","description":"A malformed .ipkg in the working directory: (:return (:error …)) carrying the package-file location, and no :warning frame","facts":["F10"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-09-27","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build/.vscode-idris2"],"cwd":"test/fixtures/workspaces/broken/bad-ipkg","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"bad.ipkg":"0d4d1ff34aef9ccdfc01d088cb0721c08585e242dceb2d728e12468770a2af9f","Main.idr":"3e7caf9d8fa37ee170d5b35a2bff01d6974c4f0730315b8c47ff369b48fd9a53"}}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"00009d","text":"((:load-file \"${ROOT}/Main.idr\") 1)\n"}
+{"kind":"recv","prefix":"00008f","text":"(:return (:error \"Unrecognised property \\\"pkgs\\\".\n\n\\\"bad.ipkg\\\":3:1--3:5\n 1 | package bad\n 2 | version = 0.1.0\n 3 | pkgs = base\n     ^^^^\") 1)\n"}
+{"kind":"close"}
+{"kind":"unframed","text":"Alas the file is done, aborting\n"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":[]}

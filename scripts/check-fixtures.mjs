@@ -7,7 +7,12 @@
 //                     … fixture is its host language's and is not checked
 //   *.ipkg         →  idris2 --dump-ipkg-json   (from the file's directory)
 // Files named *.invalid.idr / *.invalid.lidr / *.invalid.ipkg are skipped: they are fixtures
-// that are deliberately not valid Idris.
+// that are deliberately not valid Idris. The fixtures of the `broken` workspace (M2: the
+// IDE-mode transcripts and the diagnostics tests load them) keep their names, which their module
+// names and the recorded transcripts depend on; instead EXPECTED_PROBLEMS below lists what each
+// must report, and such a file passes only when the compiler exits 1 with exactly those
+// `Error:`/`Warning:` lines and location lines — so a broken fixture that starts to compile, or
+// fails for another reason, is reported.
 //
 // It then checks every snippet in snippets/*.json the same way: each body is expanded as VS Code
 // expands it with its defaults (every option of a choice in turn) into a host file from
@@ -258,6 +263,33 @@ function* snippetChecks(dir) {
   }
 }
 
+/**
+ * The deliberately broken fixtures (paths relative to test/fixtures) and the `Error:`/`Warning:`
+ * lines and location lines each must print, in order; observed with Idris 2 0.8.0 on 2026-09-27.
+ */
+const EXPECTED_PROBLEMS = {
+  'workspaces/broken/Bad.idr': ['Error: While processing right hand side of f. When unifying:', 'Bad:4:7--4:12'],
+  'workspaces/broken/Err.lidr': ["Error: While processing right hand side of g. Can't find an implementation for FromString Nat.", 'Err:9:5--9:8'],
+  'workspaces/broken/ErrMd.idr.md': [
+    "Error: While processing right hand side of g. Can't find an implementation for FromString Nat.",
+    'ErrMd:9:5--9:8',
+  ],
+  'workspaces/broken/Mixed.idr': [
+    'Warning: Unreachable clause: f n',
+    'Mixed:5:1--5:4',
+    'Error: While processing right hand side of g. When unifying:',
+    'Mixed:8:7--8:8',
+  ],
+  'workspaces/broken/Part.idr': ['Error: g is not covering.', 'Part:3:1--3:15', 'Error: main is not covering.', 'Part:6:1--6:13'],
+  'workspaces/broken/UsesBad.idr': ['Error: While processing right hand side of f. When unifying:', 'Bad:4:7--4:12'],
+  'workspaces/broken/bad-ipkg/bad.ipkg': ['Error: Unrecognised property "pkgs".', '"bad.ipkg":3:1--3:5'],
+};
+
+/** The `Error:`/`Warning:` lines and the location lines (`Mod:L:C--L:C`, `"x.ipkg":L:C--L:C`) of `output`. */
+function problemLines(output) {
+  return output.split(/\r?\n/).filter((line) => /^(Error|Warning): /.test(line) || /^("[^"]*"|\S+):\d+:\d+--\d+:\d+$/.test(line));
+}
+
 /** The idris2 invocation that checks `file`: [cwd, args]. */
 function checkCommand(file) {
   if (/\.(idr|lidr)$/.test(file) || DOUBLE_EXTENSION.test(file)) {
@@ -274,13 +306,20 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vi2-fixtures-'));
 let failures = 0;
 let checked = 0;
 
-function check(label, file) {
+function check(label, file, expected) {
   const [cwd, args] = checkCommand(file);
   checked++;
   const r = run(args, cwd);
-  const bad = r.status !== 0 || /not found/i.test(r.output) || /^Error:/m.test(r.output);
-  console.log(`${bad ? 'FAIL' : 'ok  '}  ${label}   (idris2 ${args.join(' ')} in ${path.relative(tmp, cwd) || '.'})`);
+  const bad =
+    expected === undefined
+      ? r.status !== 0 || /not found/i.test(r.output) || /^Error:/m.test(r.output)
+      : r.status !== 1 || JSON.stringify(problemLines(r.output)) !== JSON.stringify(expected);
+  const as = expected === undefined ? '' : ', expected to fail';
+  console.log(`${bad ? 'FAIL' : 'ok  '}  ${label}   (idris2 ${args.join(' ')} in ${path.relative(tmp, cwd) || '.'}${as})`);
   if (bad) {
+    if (expected !== undefined) {
+      console.log(`      expected exit 1 with:\n${expected.map((line) => `      ! ${line}`).join('\n')}`);
+    }
     failures++;
     console.log(`      exit ${r.status}\n${r.output.replace(/^/gm, '      | ')}`);
     console.log(fs.readFileSync(file, 'utf8').replace(/^/gm, '      > '));
@@ -289,6 +328,13 @@ function check(label, file) {
 
 try {
   fs.cpSync(fixtures, tmp, { recursive: true, filter: (src) => path.basename(src) !== 'build' });
+  for (const rel of Object.keys(EXPECTED_PROBLEMS)) {
+    if (!fs.existsSync(path.join(tmp, rel))) {
+      checked++;
+      failures++;
+      console.log(`FAIL  ${rel}: listed in EXPECTED_PROBLEMS but missing`);
+    }
+  }
   for (const file of walk(tmp)) {
     const rel = path.relative(tmp, file);
     if (/\.invalid\.(idr|lidr|ipkg)$/.test(file)) {
@@ -296,7 +342,7 @@ try {
       continue;
     }
     if (/\.(idr|lidr|ipkg)$/.test(file) || DOUBLE_EXTENSION.test(file)) {
-      check(rel, file);
+      check(rel, file, EXPECTED_PROBLEMS[rel.split(path.sep).join('/')]);
     }
   }
   const snippetDir = path.join(tmp, '.snippets');

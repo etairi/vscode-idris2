@@ -1,0 +1,36 @@
+{"kind":"meta","format":1,"scenario":"load-simple-ipkg","description":"A package with depends = contrib, loaded by absolute path from the .ipkg directory; the TTC files go to build/.vscode-idris2; the reload has no Building line","facts":["F7","F12","F13","F32"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-09-27","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build/.vscode-idris2"],"cwd":"test/fixtures/workspaces/simple-ipkg","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"simple.ipkg":"45fbe92a34ee08c37f6315bd74257f336e853136f9a81a017d4daac3fbd38ea0","src/Foo/A.idr":"e4c1d0fb7a60e4a3ce9a916644370dfd66e22399b6bc8ac86c10b5e9eb4d1028","src/Foo/B.idr":"c128ffc9ad3ae8ce15cb7736995caae68caed37fe0a173aac7e9d4fbd95d55da"}}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"0000a2","text":"((:load-file \"${ROOT}/src/Foo/B.idr\") 1)\n"}
+{"kind":"recv","prefix":"000038","text":"(:write-string \"1/2: Building Foo.A (src/Foo/A.idr)\" 1)\n"}
+{"kind":"recv","prefix":"0000b9","text":"(:write-string \"2/2: Building Foo.B (${ROOT}/src/Foo/B.idr)\" 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/B.idr\") (:start 0 0) (:end 0 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/B.idr\") (:start 0 7) (:end 0 12)) ((:decor :module)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/B.idr\") (:start 2 0) (:end 2 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/B.idr\") (:start 2 7) (:end 2 12)) ((:decor :module)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/B.idr\") (:start 4 0) (:end 4 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000154","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/B.idr\") (:start 5 0) (:end 5 8)) ((:name \"greeting\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f6","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/B.idr\") (:start 5 9) (:end 5 10)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f4","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/B.idr\") (:start 5 11) (:end 5 17)) ((:decor :type)))))) 1)\n"}
+{"kind":"recv","prefix":"000159","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/B.idr\") (:start 6 0) (:end 6 8)) ((:name \"greeting\") (:namespace \"Foo.B\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f6","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/B.idr\") (:start 6 9) (:end 6 10)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000158","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/B.idr\") (:start 6 11) (:end 6 16)) ((:name \"shout\") (:namespace \"Foo.A\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f4","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/B.idr\") (:start 6 17) (:end 6 24)) ((:decor :data)))))) 1)\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok ()) 1)\n"}
+{"kind":"send","prefix":"0000a2","text":"((:load-file \"${ROOT}/src/Foo/B.idr\") 2)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/B.idr\") (:start 0 0) (:end 0 6)) ((:decor :keyword)))))) 2)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/B.idr\") (:start 0 7) (:end 0 12)) ((:decor :module)))))) 2)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/B.idr\") (:start 2 0) (:end 2 6)) ((:decor :keyword)))))) 2)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/B.idr\") (:start 2 7) (:end 2 12)) ((:decor :module)))))) 2)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/B.idr\") (:start 4 0) (:end 4 6)) ((:decor :keyword)))))) 2)\n"}
+{"kind":"recv","prefix":"000154","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/B.idr\") (:start 5 0) (:end 5 8)) ((:name \"greeting\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 2)\n"}
+{"kind":"recv","prefix":"0000f6","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/B.idr\") (:start 5 9) (:end 5 10)) ((:decor :keyword)))))) 2)\n"}
+{"kind":"recv","prefix":"0000f4","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/B.idr\") (:start 5 11) (:end 5 17)) ((:decor :type)))))) 2)\n"}
+{"kind":"recv","prefix":"000159","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/B.idr\") (:start 6 0) (:end 6 8)) ((:name \"greeting\") (:namespace \"Foo.B\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 2)\n"}
+{"kind":"recv","prefix":"0000f6","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/B.idr\") (:start 6 9) (:end 6 10)) ((:decor :keyword)))))) 2)\n"}
+{"kind":"recv","prefix":"000158","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/B.idr\") (:start 6 11) (:end 6 16)) ((:name \"shout\") (:namespace \"Foo.A\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 2)\n"}
+{"kind":"recv","prefix":"0000f4","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/B.idr\") (:start 6 17) (:end 6 24)) ((:decor :data)))))) 2)\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok ()) 2)\n"}
+{"kind":"close"}
+{"kind":"unframed","text":"Alas the file is done, aborting\n"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":["build/.vscode-idris2/ttc/2025081600/Foo/A.ttc","build/.vscode-idris2/ttc/2025081600/Foo/A.ttm","build/.vscode-idris2/ttc/2025081600/Foo/B.ttc","build/.vscode-idris2/ttc/2025081600/Foo/B.ttm"]}

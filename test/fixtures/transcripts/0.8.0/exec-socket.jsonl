@@ -1,0 +1,11 @@
+{"kind":"meta","format":1,"scenario":"exec-socket","description":":exec over the socket: the program output goes to the process stdout, the socket stream stays framed","facts":["F5"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-09-27","transport":"socket","args":["--ide-mode-socket","--no-color","--build-dir","${ROOT}/build/.vscode-idris2"],"cwd":"test/fixtures/workspaces/loose-file","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{}}
+{"kind":"stdout","text":"${PORT}\n"}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"000029","text":"((:interpret \":exec putStrLn \\\"hi\\\"\") 1)\n"}
+{"kind":"stdout","text":"hi\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok \"\") 1)\n"}
+{"kind":"close"}
+{"kind":"stdout","text":"Alas the file is done, aborting\n"}
+{"kind":"socket-end"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":["build/.vscode-idris2/exec/_tmpchez","build/.vscode-idris2/exec/_tmpchez_app/_tmpchez.ss","build/.vscode-idris2/exec/_tmpchez_app/libidris2_support.dylib"]}

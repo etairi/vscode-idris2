@@ -9,7 +9,8 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   Do not pull a later milestone's feature forward, and do not stub it with an empty module:
   placeholders for future parts are the README files in `src/` and `test/`. M0 is implemented
   and accepted (2026-09-27, ROADMAP M0 "As built"); M1 is implemented (2026-09-27, ROADMAP M1
-  "As built", which lists its deviations from the M1 text). The one planned stub is M0's
+  "As built", which lists its deviations from the M1 text); M2 is implemented (2026-09-27,
+  ROADMAP M2 "As built", likewise). The one planned stub is M0's
   `src/webview/goalPanel.ts` (an empty second esbuild entry, ROADMAP M0 "Out"), which M7
   replaces.
 - `docs/ARCHITECTURE.md` — the technical design: repository layout (§2), the `IdrisBackend`
@@ -33,7 +34,16 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   `THIRD_PARTY_NOTICES.md`, which must ship in the `.vsix`; README states no affiliation).
   The user-facing README is kept short, in the style of other language extensions;
   development details go to `CONTRIBUTING.md`, design and history to `docs/`. Decided on 2026-09-27
-  (ROADMAP §9 Q2): pack, and with it `idris2-lsp`, is installed only in M5.
+  (ROADMAP §9 Q2): pack, and with it `idris2-lsp`, is installed only in M5. Decided on
+  2026-09-27 before M2 (ROADMAP §9): a session outside the trusted workspace folders needs the
+  user's consent per directory (Allow / Always Allow for This Folder / Don't Allow), and the M2
+  defaults (`checking.trigger = onSave`, socket transport with stdio as the fallback — superseded
+  by Q20 below —, isolated build directory, `loosePackages = []`). Decided on 2026-09-28 (ROADMAP
+  §9, the M2 review questions): **Q20** the `check` session uses stdio on every platform by
+  default, the socket only as an explicit opt-in in user settings (the former `auto` reads as
+  stdio); **Q21** no resource limits by default — `idris2.ideMode.maxSessions` and
+  `idris2.ideMode.maxBackgroundChecks`, both `0` = unlimited; **Q22** the backoff/give-up reading
+  as built is confirmed.
 - Test corpora (`test/corpus/corpus.json`, fetched by `scripts/fetch-corpus.mjs` into the
   git-ignored `.corpus/`): `idris-compiler-tools` (MIT, Jan Serwatka) and the Idris 2 v0.8.0
   libraries (BSD-3, Edwin Brady) may be excerpted into fixtures, each excerpt with an attribution
@@ -52,10 +62,13 @@ npm run test:grammar  # TextMate snapshots + scope assertions + timing (out/test
 npm run test:corpus   # fetch the pinned corpora (network) and tokenise them; with
                       # IDRIS2_LEXER_ORACLE=1 also compare with the 0.8.0 lexer (needs idris2)
 npm test              # pretest (compile-tests + compile) + vscode-test (.vscode-test.mjs):
-                      # the suites integration, simple-ipkg, toolchain-path (fake tools)
+                      # the suites integration, simple-ipkg, toolchain-path, diagnostics,
+                      # loose-stdio, consent (fake tools; the fake idris2 replays transcripts)
 npm run test:e2e      # compile + the e2e suite against the real idris2 on PATH
 npm run check:fixtures        # idris2 --check / --dump-ipkg-json on every fixture and snippet
-                              # expansion (temp copy)
+                              # expansion (temp copy); the broken fixtures must fail as listed
+npm run record:transcripts    # record the IDE-mode transcripts (test/fixtures/transcripts/<ver>/)
+                              # from the idris2 on PATH (IDRIS2=<path>), one process at a time
 npm run docs:graph:check      # ROADMAP §4 graph == docs/milestones.yaml (docs:graph rewrites)
 npm run build:grammar                  # syntaxes/src/idris2.grammar.mjs → syntaxes/idris2.tmLanguage.json
 npm run build:language-configuration   # → language-configuration/{idris2,lidr,ipkg}.json
@@ -87,7 +100,9 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
   change, run `UPDATE_SNAPSHOTS=1 npm run test:grammar`, read the diff line by line, and say in
   the commit what changed and why it is right.
 - **Fixtures**: every `.idr`/`.lidr` under `test/fixtures` must pass `idris2 --check` and every
-  `.ipkg` `idris2 --dump-ipkg-json`; `npm run check:fixtures` runs both in a temporary copy so
+  `.ipkg` `idris2 --dump-ipkg-json`, except the deliberately broken files of the `broken`
+  workspace, which must fail with exactly the errors listed in `EXPECTED_PROBLEMS`
+  (`scripts/check-fixtures.mjs`); `npm run check:fixtures` runs both in a temporary copy so
   no `build/` directory lands in the repository. It also expands every snippet into a host file
   (`SNIPPET_HOSTS` in `scripts/check-fixtures.mjs`) and checks it; a new snippet needs a host. Every lexical rule of the grammar must be
   traceable to the compiler's lexer/parser (cited in the generator) or to an `idris2 --check`
@@ -183,6 +198,81 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
   [doc]/[src] and tested only against simulated layouts (`test/fake-tools/packLayout.ts`).
 - On this machine `ls` is aliased to `eza` in the shells the agents get, and it hung without a
   terminal (2026-09-27); scripts use `/bin/ls`.
+
+## Rules established by M2
+
+- **IDE-mode session processes** are started by `startLongRunningProcess` in
+  `src/core/process.ts`, under the runner's rules (nothing in Restricted Mode, fully qualified
+  executable and working directory, no shell but the quoted `.cmd`/`.bat` route, process-group
+  stop, immediate kill at `dispose`) except the one-at-a-time queue and the 1 MiB output limit
+  (the transport bounds its own buffer). The session pool (`backend/ide/pool.ts`) owns them, and
+  `deactivate()` disposes it. They are the only processes that start in a project directory (the
+  `.ipkg`'s, or a loose file's; D4, F13), and only after the consent gate
+  (`SessionGate.permit`, `features/consent/gate.ts`) allowed it — before **every** spawn — in the
+  real path the gate judged last on POSIX (`SessionLaunch.realCwd`). Never add a path that starts the
+  compiler in a directory without going through the gate. The compiler walks up for an `.ipkg` at
+  every `:load-file` (F13), so a load is sent only through `IdeBackend.load`, which walks again
+  right before the request is written (`RequestOptions.beforeSend`) and refuses a path the
+  compiler's own path parser reads otherwise (`backend.ts`).
+- **Protocol facts live in `src/backend/ide/{sexp,wire,protocol}.ts`** (ARCHITECTURE §1 goal 2).
+  The session layer gets the codec injected; `session.ts` imports only the F4/F5 predicates of
+  `protocol.ts`, `diagnostics.ts` only `decodeBuildingLine`. Requests are printable ASCII: text
+  outside U+0020–U+007E is written as the compiler's decimal escapes (raw UTF-8 is read as
+  Latin-1, F1 addendum). Reply prefixes count code points, request prefixes UTF-8 bytes (F1).
+- **Transcripts** (`test/fixtures/transcripts/<version>/*.jsonl`) are recorded only by
+  `npm run record:transcripts` from the real compiler, never written by hand; each carries the
+  SHA-256 of the fixture files it read, and the fake compiler replays a recording only while
+  they match (a changed fixture fails the tests until it is re-recorded). Recorded replies and
+  requests are compared byte for byte by the unit tests.
+- Integration suites never run the real compiler: the fake (`test/fake-idris2`) replays the
+  transcripts over stdio and the socket (`FAKE_IDRIS2_TRANSCRIPTS`, set by `.vscode-test.mjs`).
+  The e2e suite runs the real one, one process at a time, except `test/e2e/e21.test.ts` (one
+  session beside one `idris2 --build` on the one-module `builddir-ipkg` fixture).
+- **Text that VS Code parses for links is a literal or wholly one `plainText(…)` call**
+  (`src/core/notificationText.ts`; `plainText(a) + b` does not count): the message of
+  `show{Information,Warning,Error}Message`, the language status item's `detail`, an input box's
+  or QuickPick's `prompt` (also `showQuickPick`'s option) and `validationMessage` (and what
+  `validateInput` returns), and a notification progress's `title` and `message`. VS Code 1.139.1 turns `[label](command:…)` in all of these
+  into a link that runs the command, and the texts quote folder names and compiler output (ROADMAP
+  M2 As built, *Registry and status*). Call these APIs directly (`x.showWarningMessage(…)`,
+  `progress.report(…)`, never through element access, destructuring, `.call` or a stored
+  reference), give `showInputBox`, `showQuickPick`, `withProgress` and `report` an object literal,
+  and set `detail`, `prompt` and `validationMessage` with `=` on the property (not `+=`, element
+  access, `Object.assign`, `Object.defineProperty` or `Reflect.set`).
+  `test/unit/notificationText.test.ts` reads the syntax tree of `src/`, resolves names with the
+  type checker, and fails otherwise. A command handler must not reject with such a text either (VS Code
+  shows a rejected command's message as a notification, links working): catch it, log it and show
+  it through `plainText` (`guarded` in `features/consent/register.ts`). A path in a text the user
+  decides on (the consent question) goes through `shownPath` — in quotes, invisible characters,
+  spaces other than U+0020, characters drawn like a double quote (or like three or four
+  apostrophes) and runs of two or more drawn like an apostrophe (with the marks on them) written
+  out, shortened in the middle to 200 UTF-16 units —
+  and comes after the fixed text; in the status item's detail a consent text comes before any path.
+- Features see the IDE-mode backend only through `backend/registry.ts` (`BackendProvider`,
+  `BackendState`) and interfaces `extension.ts` fills from `IdeMode` (`BackendControl`,
+  `RawRequests`, `RootRelease`, `RootRestarts`, `ActiveRoot`, `LoadPreflight`), never by importing
+  `backend/ide`.
+- **Transport and limits** (ROADMAP §9 Q20, Q21, decided 2026-09-28). Sessions speak stdio
+  (`--ide-mode`) unless the user chose `socket`; `idris2.ideMode.transport` (like
+  `idris2.trace.protocol`) is `application`-scoped (VS Code reads it from the user settings only,
+  never from a workspace's nor from a remote machine's, which a dev container's configuration
+  fills, so only the user's own choice opens the socket's unauthenticated port) and its
+  description says what the port exposes; an
+  `idris2.ideMode.extraArgs` that names `--ide-mode` or `--ide-mode-socket` starts nothing
+  (`pool.ts` `extraArgsProblem`), since the compiler serves the socket whenever that flag is on its
+  command line. Every `idris2.ideMode.*`
+  key is in `IDE_MODE_SESSION_KEYS` (a change may restart sessions whose command line it changes)
+  or `IDE_MODE_LIMIT_KEYS` (a change restarts nothing) in `core/config.ts`;
+  `test/unit/manifest.test.ts` checks it. `maxSessions` and `maxBackgroundChecks` default to `0`
+  (no limit), and with `0` the pool and the checks must behave exactly as without them (no
+  eviction scheduled, no slot or question awaited). The pool evicts only an `idle` session that is
+  not the active root's, and none while the active root is `pending` (a file just opened is being
+  classified); the checks never make the active document's check wait for a slot, mark its load
+  `urgent` while a limit is set (`LoadOptions`; the session sends it before the root's loads that
+  wait, never before the one in flight or one whose package walk runs or has passed), ask the
+  backend (`LoadPreflight`) before they ask a consent question themselves, and Stop Backend drops
+  the checks still waiting (`DocumentChecks.cancelWaiting`) before it stops the sessions. Both
+  limits count per VS Code window (each has its own extension host, pool and checks).
 
 ## Working rules
 

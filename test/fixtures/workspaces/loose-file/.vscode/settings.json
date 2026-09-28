@@ -1,0 +1,4 @@
+{
+  "idris2.ideMode.transport": "socket",
+  "idris2.checking.delay": 777
+}

@@ -45,3 +45,20 @@ export class IdrisException extends Error {
 export function unsupported(reason: string): IdrisException {
   return new IdrisException({ kind: 'Unsupported', reason });
 }
+
+/**
+ * The rejection of a request that was not failed but abandoned: cancelled by its token, or
+ * dropped by a stop or a restart the user or the extension chose (`backend/ide/session.ts`). It
+ * is an `Error` named `Cancelled`, not an `IdrisError` (whose kinds ARCHITECTURE §2 fixes), so
+ * that callers keep what they showed instead of reporting a failure.
+ */
+export function cancelled(message = 'Cancelled'): Error {
+  const error = new Error(message);
+  error.name = 'Cancelled';
+  return error;
+}
+
+/** Whether `error` is a `cancelled` rejection. */
+export function isCancelled(error: unknown): boolean {
+  return error instanceof Error && error.name === 'Cancelled';
+}

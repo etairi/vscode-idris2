@@ -4,9 +4,11 @@
 // `version` command over stdio (`--ide-mode`) and TCP (`--ide-mode-socket`). M1: the toolchain
 // probes `--ttc-version`, `--paths`, `--list-packages` and `--dump-ipkg-json`, answered from
 // output recorded from the real compiler (recorded-cli-0.8.0.json), and the fault modes of
-// test/fake-tools/faults.mjs. The behaviour mirrors Idris 2 0.8.0 (15a3e4e); each rule cites the
-// compiler source it follows. README.md says what was compared byte for byte with the real
-// binary and what is not mirrored.
+// test/fake-tools/faults.mjs. M2: the session command line (`--no-color`, `-p`, `--build-dir`),
+// replay of the IDE-mode transcripts recorded from the real compiler (FAKE_IDRIS2_TRANSCRIPTS),
+// injected protocol faults (FAKE_IDRIS2_IDE_FAULT) and an invocation log (FAKE_IDRIS2_LOG). The
+// behaviour mirrors Idris 2 0.8.0 (15a3e4e); each rule cites the compiler source it follows.
+// README.md says what was compared byte for byte with the real binary and what is not mirrored.
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import net from 'node:net';
@@ -191,40 +193,346 @@ const COMMANDS = new Map([
   }],
 ]);
 
+/** The unframed line the `noise` fault writes into the protocol stream. */
+const NOISE = 'fake-idris2: injected noise (FAKE_IDRIS2_IDE_FAULT)\n';
+/** What the `crash-in-reply` fault writes before it exits: a reply frame's header and the first 23 of its 64 code points. */
+const PARTIAL_FRAME = '000040(:write-string "partial';
+/** What the `id-mismatch` fault adds to the id of a `:return`. */
+const ID_MISMATCH_OFFSET = 1000000n;
+
+/** `(CMD ID)` with an integer ID: the shape `getMsg` accepts (IDEMode/Commands.idr). */
+const isMessage = (sexp) => sexp !== undefined && sexp.t === 'list' && sexp.items.length === 2
+  && sexp.items[1].t === 'int';
+
 /**
- * One IDE-mode conversation. `send(text)` writes one reply frame. The id of an error that is
- * not attributable to a request is the id of the last *recognised* request, 0 before the first
- * (`printIDEError outf idx …`; `updateOutput i` runs only when `getMsg` succeeds; the output is
- * created as `IDEMode 0 …` in Idris/Driver.idr).
+ * One IDE-mode conversation. `io.frame(text)` writes one reply frame; `io.raw(text, done?)` writes
+ * bytes into the protocol stream without a frame (then calls `done`, once they are written); `io.output(text)` writes program output to the
+ * process stdout, which over stdio is the protocol stream itself (F5). `replayer` (transcript
+ * replay, or undefined) answers every request the built-in commands do not; `faults` maps a
+ * request's 1-based number in this process to an injected fault (FAKE_IDRIS2_IDE_FAULT).
+ *
+ * The id of an error that is not attributable to a request is the id of the last *recognised*
+ * request, 0 before the first (`printIDEError outf idx …`; `updateOutput i` runs only when
+ * `getMsg` succeeds; the output is created as `IDEMode 0 …` in Idris/Driver.idr).
  */
-function createSession(send) {
+function createSession(io, replayer, faults) {
   let lastId = 0n;
-  const reply = (sexp) => send(show(sexp) + '\n');
-  const error = (message) => reply(list(sym('return'), list(sym('error'), str(message)), int(lastId)));
+  let received = 0;
+  let hung = false;
+  let fault;
+  const reply = (sexp) => {
+    let out = sexp;
+    if (fault === 'id-mismatch' && out.items[0].t === 'sym' && out.items[0].name === 'return') {
+      out = list(...out.items.slice(0, -1), int(out.items.at(-1).value + ID_MISMATCH_OFFSET));
+    }
+    io.frame(show(out) + '\n');
+  };
+  const error = (message, id = lastId) => reply(list(sym('return'), list(sym('error'), str(message)), int(id)));
   return {
     start() { reply(list(sym('protocol-version'), int(2), int(1))); },
+    /** A `hang` fault fired: the compiler is busy for good and no longer reads its input. */
+    get hung() { return hung; },
     /** `input` is the frame payload as the compiler sees it: one character per byte. */
     receive(input) {
+      if (hung) { return; }
+      received += 1;
+      fault = faults.get(received);
+      if (fault === 'crash') {
+        process.stderr.write(`${TOOL}: simulated crash at request ${received} (FAKE_IDRIS2_IDE_FAULT)\n`);
+        process.exit(3);
+      }
+      if (fault === 'crash-in-reply') {
+        // Exits only once both writes are done, so that neither is lost at the exit.
+        io.raw(PARTIAL_FRAME, () => process.stderr.write(
+          `${TOOL}: simulated crash inside a reply at request ${received} (FAKE_IDRIS2_IDE_FAULT)\n`, () => process.exit(3)));
+        hung = true; // reads nothing more
+        return;
+      }
+      if (fault === 'hang') {
+        hung = true;
+        exitAfterHangLimit();
+        return;
+      }
+      if (fault === 'noise') { io.raw(NOISE); }
       let sexp;
+      let parseError;
       try {
         sexp = parseSExp(input);
       } catch (e) {
         if (!(e instanceof SExpError)) { throw e; }
+        parseError = e;
+      }
+      const handler = isMessage(sexp) ? COMMANDS.get(show(sexp.items[0])) : undefined;
+      if (handler !== undefined) {
+        replayer?.remember(input, sexp);
+        lastId = sexp.items[1].value;
+        reply(list(sym('return'), handler(), int(lastId)));
+        return;
+      }
+      if (replayer !== undefined) {
+        const answer = replayer.answer(input, sexp);
+        if (answer === undefined) {
+          // Not a compiler behaviour: the request has no recording, so the test cannot know
+          // what the compiler would say. Answered with the request's own id when it has one,
+          // so that the client's pending request ends with this error instead of hanging.
+          const id = isMessage(sexp) ? sexp.items[1].value : lastId;
+          const what = replayer.describe(input, sexp);
+          process.stderr.write(`${TOOL}: no recorded reply for ${what}\n`);
+          error(`${TOOL}: no recorded reply for ${what}`, id);
+          lastId = id;
+          return;
+        }
+        // Recorded replies carry the recorded request's id or, for a request the compiler did
+        // not recognise, the previous recognised one (F4); both are mapped to this session's.
+        const liveId = isMessage(sexp) ? sexp.items[1].value : undefined;
+        const previous = lastId;
+        for (const item of answer.replies) {
+          if (item.output !== undefined) {
+            io.output(item.output);
+            continue;
+          }
+          const recordedId = item.sexp.items.at(-1).value;
+          const id = recordedId === answer.recordedId && liveId !== undefined ? liveId : previous;
+          reply(list(...item.sexp.items.slice(0, -1), int(id)));
+        }
+        if (answer.recognised && liveId !== undefined) { lastId = liveId; }
+        return;
+      }
+      if (parseError !== undefined) {
         // The real message is the compiler's rendered parse error; only its prefix is mirrored.
-        error(`Parse error: ${e.message} (fake-idris2)`);
+        error(`Parse error: ${parseError.message} (fake-idris2)`);
         return;
       }
-      const isMsg = sexp.t === 'list' && sexp.items.length === 2 && sexp.items[1].t === 'int';
-      const handler = isMsg ? COMMANDS.get(show(sexp.items[0])) : undefined;
-      if (handler === undefined) {
-        // `reflow "Unrecognised command:" <++> pretty0 (show sexp)`: `Pretty String` splits
-        // with Data.String.lines (\r\n, \r, \n) and rejoins with newlines, so a CR from a
-        // `\r` escape comes back as LF.
-        error(`Unrecognised command: ${show(sexp).replace(/\r\n|\r|\n/g, '\n')}`);
-        return;
+      // `reflow "Unrecognised command:" <++> pretty0 (show sexp)`: `Pretty String` splits
+      // with Data.String.lines (\r\n, \r, \n) and rejoins with newlines, so a CR from a
+      // `\r` escape comes back as LF.
+      error(`Unrecognised command: ${show(sexp).replace(/\r\n|\r|\n/g, '\n')}`);
+    },
+  };
+}
+
+/** The `hang` fault: like FAKE_IDRIS2_MODE=hang, exit 1 after FAKE_TOOL_HANG_LIMIT_MS. */
+function exitAfterHangLimit() {
+  const text = process.env.FAKE_TOOL_HANG_LIMIT_MS;
+  const limit = text === undefined || text === '' ? 60000 : Number(text);
+  if (!Number.isInteger(limit) || limit < 0) {
+    misconfigured(`FAKE_TOOL_HANG_LIMIT_MS must be a non-negative integer, not ${JSON.stringify(text)}`);
+  }
+  setTimeout(() => process.exit(1), limit);
+}
+
+function misconfigured(message) {
+  process.stderr.write(`${TOOL}: ${message}\n`);
+  process.exit(2);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Injected faults (FAKE_IDRIS2_IDE_FAULT; README.md "Injected protocol faults")
+// ---------------------------------------------------------------------------------------------
+
+const IDE_FAULTS = new Set(['crash', 'crash-in-reply', 'hang', 'noise', 'id-mismatch']);
+
+/**
+ * FAKE_IDRIS2_IDE_FAULT = comma-separated `<fault>@<n>`: the n-th request this process receives
+ * (1-based, every request counts) triggers the fault. `crash`: a line on stderr, exit 3, no
+ * reply. `crash-in-reply`: the first bytes of a reply frame in the protocol stream, a line on
+ * stderr, exit 3. `hang`: no reply, no further reading, exit 1 after FAKE_TOOL_HANG_LIMIT_MS. `noise`: an
+ * unframed line in the protocol stream before the replies. `id-mismatch`: the `:return` carries
+ * its id plus 1000000.
+ */
+function ideFaults() {
+  const text = process.env.FAKE_IDRIS2_IDE_FAULT ?? '';
+  const faults = new Map();
+  for (const item of text === '' ? [] : text.split(',')) {
+    const m = /^([a-z-]+)@([1-9][0-9]*)$/.exec(item.trim());
+    if (m === null || !IDE_FAULTS.has(m[1]) || faults.has(Number(m[2]))) {
+      misconfigured(`FAKE_IDRIS2_IDE_FAULT must be a comma-separated list of <fault>@<n> with distinct n `
+        + `and <fault> one of ${[...IDE_FAULTS].join(', ')}, not ${JSON.stringify(text)}`);
+    }
+    faults.set(Number(m[2]), m[1]);
+  }
+  return faults;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Transcript replay (FAKE_IDRIS2_TRANSCRIPTS; README.md "Transcript replay"; the format is in
+// test/fixtures/transcripts/README.md)
+// ---------------------------------------------------------------------------------------------
+
+/** The events a reply group may contain; anything else in a transcript is refused at start. */
+const PROGRAM_OUTPUT = new Set(['unframed', 'stdout']);
+
+/** The compiler's view of a JS string: one character per UTF-8 byte (F1 addendum). */
+const latin1View = (text) => Buffer.from(text, 'utf8').toString('latin1');
+
+/** A request's matching key: its command without the id, or the whole text when unparsable. */
+function requestKey(input, sexp) {
+  if (sexp === undefined) { return `raw ${input}`; }
+  return isMessage(sexp) ? `command ${show(sexp.items[0])}` : `sexp ${show(sexp)}`;
+}
+
+/** Applies `f` to every string atom of `sexp`. */
+function mapStrings(sexp, f) {
+  if (sexp.t === 'str') { return str(f(sexp.value)); }
+  if (sexp.t === 'list') { return list(...sexp.items.map((item) => mapStrings(item, f))); }
+  return sexp;
+}
+
+/**
+ * Reads every `*.jsonl` transcript of `dir` into scenarios, sorted by name: for each recorded
+ * request its key, id and reply group (the frames and program output up to the next request or
+ * the recorder's `close`). Everything before the first request (the port line, the handshake)
+ * and after `close` (the end-of-input tail, the exit) is the fake's own behaviour and is not
+ * replayed.
+ */
+function loadScenarios(dir) {
+  let names;
+  try {
+    names = fs.readdirSync(dir).filter((name) => name.endsWith('.jsonl')).sort();
+  } catch (e) {
+    misconfigured(`FAKE_IDRIS2_TRANSCRIPTS=${JSON.stringify(dir)} cannot be read: ${e.message}`);
+  }
+  if (names.length === 0) { misconfigured(`FAKE_IDRIS2_TRANSCRIPTS=${JSON.stringify(dir)} has no .jsonl transcript`); }
+  return names.map((name) => {
+    const file = path.join(dir, name);
+    const refuse = (why) => misconfigured(`${file}: ${why}`);
+    let events;
+    try {
+      events = fs.readFileSync(file, 'utf8').split('\n').filter((line) => line !== '').map((line) => JSON.parse(line));
+    } catch (e) {
+      refuse(`not a transcript: ${e.message}`);
+    }
+    const [meta, ...rest] = events;
+    if (meta?.kind !== 'meta' || meta.format !== 1) { refuse('the first line is not a format-1 meta object'); }
+    const steps = [];
+    for (const event of rest) {
+      if (event.kind === 'close') { break; }
+      if (event.kind === 'send') {
+        const input = latin1View(event.text);
+        let sexp;
+        try { sexp = parseSExp(input); } catch (e) { if (!(e instanceof SExpError)) { throw e; } }
+        steps.push({ key: requestKey(input, sexp), id: isMessage(sexp) ? sexp.items[1].value : undefined, replies: [] });
+      } else if (steps.length === 0) {
+        continue; // the port line and the handshake
+      } else if (event.kind === 'recv') {
+        const sexp = parseSExp(event.text);
+        if (!(sexp.t === 'list' && sexp.items.length >= 2 && sexp.items.at(-1).t === 'int')) {
+          refuse(`a reply without a trailing id: ${event.text}`);
+        }
+        steps.at(-1).replies.push({ sexp });
+      } else if (PROGRAM_OUTPUT.has(event.kind) && event.text !== undefined) {
+        steps.at(-1).replies.push({ output: event.text });
+      } else {
+        refuse(`cannot replay a ${JSON.stringify(event.kind)} event before the end of input`);
       }
-      lastId = sexp.items[1].value;
-      reply(list(sym('return'), handler(), int(lastId)));
+    }
+    for (const step of steps) {
+      step.recognised = step.id !== undefined && step.replies.some((r) => r.sexp !== undefined
+        && r.sexp.items[0].name === 'return' && r.sexp.items.at(-1).value === step.id);
+    }
+    return { name: name.slice(0, -'.jsonl'.length), fixtures: meta.fixtures ?? {}, steps };
+  });
+}
+
+/**
+ * The replayer of one session. A request is normalised — its id set aside, and every string that
+ * names a path in the working directory written with `${ROOT}` (or `${LINK}` when spelled through
+ * a symbolic link to it) — and matched against the recorded requests of the scenarios whose
+ * fixture files (`meta.fixtures`, relative to the working directory) have the recorded SHA-256
+ * now. Among the recorded requests that match, the one whose recorded predecessors match the
+ * longest run of this session's latest requests wins, so that the compiler state the replies
+ * depend on (a file already built, F7; `:enable-syntax`, F14) is the recorded one as far as
+ * the transcripts allow. Ties go to a request whose whole recorded prefix matched (a session
+ * replayed from its start), then to the first scenario by name, then to the earlier request.
+ * The replies are the recorded group with the paths spelled as this session spells them.
+ */
+function createReplayer(dir) {
+  const scenarios = loadScenarios(dir);
+  const cwd = process.cwd();
+  const realRoot = fs.realpathSync(cwd);
+  const win = process.platform === 'win32';
+  const canonical = (p) => (win ? p.replace(/\\/g, '/').toLowerCase() : p);
+  const isSep = (c) => c === '/' || (win && c === '\\');
+  // How this session spells the placeholders (learnt from its requests; Latin-1 views, F1).
+  const spelling = { ROOT: latin1View(cwd), LINK: undefined };
+  let sep = path.sep;
+  /** The keys of every request of this session so far, oldest first. */
+  const history = [];
+
+  /** `v` (a string of a request) with a leading path to the working directory replaced. */
+  const normalise = (v) => {
+    for (const root of new Set([latin1View(cwd), latin1View(realRoot)])) {
+      if (canonical(v.slice(0, root.length)) === canonical(root) && (v.length === root.length || isSep(v[root.length]))) {
+        spelling.ROOT = v.slice(0, root.length);
+        sep = v[root.length] ?? sep;
+        const rest = v.slice(root.length);
+        return `\${ROOT}${win ? rest.replace(/\\/g, '/') : rest}`;
+      }
+    }
+    const text = Buffer.from(v, 'latin1').toString('utf8');
+    if (!path.isAbsolute(text)) { return v; }
+    for (let p = text; ; p = path.dirname(p)) {
+      let real;
+      try { real = fs.realpathSync(p); } catch { real = undefined; }
+      if (real === realRoot) {
+        spelling.LINK = latin1View(p);
+        return `\${LINK}${latin1View(text.slice(p.length))}`;
+      }
+      if (path.dirname(p) === p) { return v; }
+    }
+  };
+
+  /** A recorded string with the placeholders spelled as this session spells them. */
+  const substitute = (v) => v.replace(/\$\{(ROOT|LINK)\}([^\s"'()]*)/g, (whole, name, rest) =>
+    (spelling[name] === undefined ? whole : spelling[name] + (sep === '/' ? rest : rest.replace(/\//g, sep))));
+
+  const hashes = new Map();
+  const eligible = (scenario) => Object.entries(scenario.fixtures).every(([rel, sha256]) => {
+    if (!hashes.has(rel)) {
+      let hash;
+      try { hash = createHash('sha256').update(fs.readFileSync(path.join(realRoot, rel))).digest('hex'); } catch { hash = undefined; }
+      hashes.set(rel, hash);
+    }
+    return hashes.get(rel) === sha256;
+  });
+
+  return {
+    /** Records a request answered without the transcripts (`:version`), for the matching above. */
+    remember(input, sexp) {
+      history.push(requestKey(input, sexp));
+    },
+    /** The request as matched, for messages: its normalised command, or its text. */
+    describe(input, sexp) {
+      return sexp === undefined ? JSON.stringify(input) : show(isMessage(sexp) ? mapStrings(sexp.items[0], normalise) : mapStrings(sexp, normalise));
+    },
+    /** `{ replies, recordedId, recognised }` for the request, or undefined when nothing matches. */
+    answer(input, sexp) {
+      const key = requestKey(input, sexp === undefined ? undefined : mapStrings(sexp, normalise));
+      hashes.clear(); // files may have changed since the last request
+      let best;
+      for (const scenario of scenarios.filter(eligible)) {
+        scenario.steps.forEach((step, index) => {
+          if (step.key !== key) { return; }
+          let run = 0; // recorded predecessors that equal this session's latest requests
+          while (run < index && run < history.length && scenario.steps[index - 1 - run].key === history[history.length - 1 - run]) {
+            run += 1;
+          }
+          const whole = run === index;
+          if (best === undefined || run > best.run || (run === best.run && whole && !best.whole)) {
+            best = { step, run, whole };
+          }
+        });
+      }
+      history.push(key);
+      if (best === undefined) { return undefined; }
+      const { step } = best;
+      return {
+        recordedId: step.id,
+        recognised: step.recognised,
+        replies: step.replies.map((r) => (r.output !== undefined
+          ? { output: substitute(r.output) }
+          : { sexp: mapStrings(r.sexp, substitute) })),
+      };
     },
   };
 }
@@ -323,12 +631,15 @@ function connectionFailed() {
 // Transports and command line
 // ---------------------------------------------------------------------------------------------
 
-function serveStdio() {
-  const session = createSession((text) => process.stdout.write(encodeFrame(text)));
+function serveStdio(replayer, faults) {
+  const toStdout = (text, done) => process.stdout.write(text, done);
+  const session = createSession({ frame: (text) => process.stdout.write(encodeFrame(text)), raw: toStdout, output: toStdout },
+    replayer, faults);
   const reader = createReader((input) => session.receive(input));
   session.start();
   process.stdin.on('data', (chunk) => reader.push(chunk));
-  process.stdin.on('end', () => inputEnded(reader));
+  // A hung compiler is not reading, so it does not see the end of its input either.
+  process.stdin.on('end', () => { if (!session.hung) { inputEnded(reader); } });
 }
 
 /**
@@ -337,7 +648,7 @@ function serveStdio() {
  * in decimal plus a newline on stdout, accept one connection and speak the protocol on it.
  * Program output would go to the process stdout (F5); the handshake is sent after `accept`.
  */
-function serveSocket(address) {
+function serveSocket(address, replayer, faults) {
   const colon = address.indexOf(':');
   const hostPart = colon < 0 ? address : address.slice(0, colon);
   const portPart = colon < 0 ? '' : address.slice(colon + 1);
@@ -348,12 +659,16 @@ function serveSocket(address) {
   const server = net.createServer((conn) => {
     if (accepted) { conn.pause(); return; } // `accept` runs once; later clients are never served
     accepted = true;
-    const session = createSession((text) => conn.write(encodeFrame(text)));
+    const session = createSession({
+      frame: (text) => conn.write(encodeFrame(text)),
+      raw: (text, done) => conn.write(text, done),
+      output: (text) => process.stdout.write(text), // F5: program output goes to the process stdout
+    }, replayer, faults);
     const reader = createReader((input) => session.receive(input));
     session.start();
     conn.on('data', (chunk) => reader.push(chunk));
-    conn.on('end', () => inputEnded(reader));
-    conn.on('error', connectionFailed);
+    conn.on('end', () => { if (!session.hung) { inputEnded(reader); } });
+    conn.on('error', () => { if (!session.hung) { connectionFailed(); } });
   });
   server.listen({ host, port }, () => {
     process.stdout.write(`${server.address().port}\n`);
@@ -435,7 +750,46 @@ function dumpIpkgJson(file) {
   replay(recording);
 }
 
+/**
+ * An IDE-mode command line as the extension builds it (ARCHITECTURE §5.2): `--ide-mode`, or
+ * `--ide-mode-socket` with an optional `host:port` (the next argument unless it starts with '-',
+ * `[Optional "host:port"]`), in any order with `--no-color`, `-p`/`--package <pkg>` and
+ * `--build-dir <dir>`. These three are accepted and ignored: the replies come from the
+ * transcripts, whatever packages or build directory the recording used. Returns `{ socket }`
+ * (undefined for stdio), or undefined for any other command line — so `--find-ipkg`, which the
+ * extension must never pass (F13), is refused like every argument the fake does not implement.
+ */
+function ideModeArgs(argv) {
+  let mode;
+  let socket;
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if ((arg === '--ide-mode' || arg === '--ide-mode-socket') && mode === undefined) {
+      mode = arg;
+      if (arg === '--ide-mode-socket') {
+        socket = argv[i + 1] !== undefined && !argv[i + 1].startsWith('-') ? argv[++i] : 'localhost:0';
+      }
+    } else if (arg === '--no-color') {
+      continue;
+    } else if ((arg === '-p' || arg === '--package' || arg === '--build-dir') && argv[i + 1] !== undefined) {
+      i++;
+    } else {
+      return undefined;
+    }
+  }
+  return mode === undefined ? undefined : { socket };
+}
+
+/** FAKE_IDRIS2_LOG: one JSON line per invocation, `{"pid", "args", "cwd"}` (as FAKE_PACK_LOG). */
+function logInvocation(argv) {
+  const file = process.env.FAKE_IDRIS2_LOG;
+  if (file !== undefined && file !== '') {
+    fs.appendFileSync(file, `${JSON.stringify({ pid: process.pid, args: argv, cwd: process.cwd() })}\n`);
+  }
+}
+
 async function main(argv) {
+  logInvocation(argv);
   const mode = await applyFaults(TOOL, 'FAKE_IDRIS2');
   if (argv.length === 1 && argv[0] === '--version') {
     // `garbage`: a first line that does not start with `Idris 2, version `.
@@ -455,15 +809,17 @@ async function main(argv) {
     dumpIpkgJson(argv[1]);
     return;
   }
-  if (argv.length === 1 && argv[0] === '--ide-mode') {
+  const ide = ideModeArgs(argv);
+  if (ide !== undefined) {
     ideVersion(); // reject an unusable FAKE_IDRIS2_VERSION before the handshake
-    serveStdio();
-    return;
-  }
-  // [Optional "host:port"]: the next argument is taken unless it starts with '-'.
-  if (argv[0] === '--ide-mode-socket' && argv.length <= 2 && !(argv[1] ?? '').startsWith('-')) {
-    ideVersion();
-    serveSocket(argv[1] ?? 'localhost:0');
+    const faults = ideFaults();
+    const dir = process.env.FAKE_IDRIS2_TRANSCRIPTS;
+    const replayer = dir === undefined || dir === '' ? undefined : createReplayer(dir);
+    if (ide.socket === undefined) {
+      serveStdio(replayer, faults);
+    } else {
+      serveSocket(ide.socket, replayer, faults);
+    }
     return;
   }
   notImplemented(TOOL, argv);

@@ -1,0 +1,14 @@
+{"kind":"meta","format":1,"scenario":"load-lidr","description":"A bird-track .lidr with a type error after prose: reply columns are unlit, lines are file lines; after the failed load a positional :type-of of the local n of an earlier clause fails at its unlit and at its file column","facts":["F11","F16"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-09-27","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build/.vscode-idris2"],"cwd":"test/fixtures/workspaces/broken","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"Err.lidr":"a8b30d7742db9024f1f091c5eabbf5e88d0cb263d0b7f4f571acc5c1e5751883"}}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"00009d","text":"((:load-file \"${ROOT}/Err.lidr\") 1)\n"}
+{"kind":"recv","prefix":"0000b2","text":"(:write-string \"1/1: Building Err (${ROOT}/Err.lidr)\" 1)\n"}
+{"kind":"recv","prefix":"00021e","text":"(:warning (\"Err.lidr\" (8 4) (8 7) \"While processing right hand side of g. Can't find an implementation for FromString Nat.\n\nErr:9:5--9:8\n 5 | \n 6 | Prose between the code lines.\n 7 | \n 8 | > g : Nat\n 9 | > g = \\\"x\\\"\n         ^^^\n\" ((36 1 ((:decor :bound))) (72 10 ((:decor :type))) (83 3 ((:decor :type))) (72 14 ((:decor :bound))) (89 12 ((:decor :type))) (103 3 ((:decor :type))) (109 3 ((:decor :type))) (144 3 ((:decor :type))) (150 3 ((:decor :type))) (165 3 ((:decor :type))) (188 3 ((:text-formatting :bold) (:decor :postulate))))) 1)\n"}
+{"kind":"recv","prefix":"0000b8","text":"(:return (:error \"Error(s) building file ${ROOT}/Err.lidr\") 1)\n"}
+{"kind":"send","prefix":"000017","text":"((:type-of \"n\" 4 2) 2)\n"}
+{"kind":"recv","prefix":"0000dd","text":"(:return (:error \"Undefined name n. \n\n(Interactive):1:1--1:1\n 1 | > module Err\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (66 0 ((:text-formatting :bold) (:decor :postulate))))) 2)\n"}
+{"kind":"send","prefix":"000017","text":"((:type-of \"n\" 4 4) 3)\n"}
+{"kind":"recv","prefix":"0000dd","text":"(:return (:error \"Undefined name n. \n\n(Interactive):1:1--1:1\n 1 | > module Err\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (66 0 ((:text-formatting :bold) (:decor :postulate))))) 3)\n"}
+{"kind":"close"}
+{"kind":"unframed","text":"Alas the file is done, aborting\n"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":[]}

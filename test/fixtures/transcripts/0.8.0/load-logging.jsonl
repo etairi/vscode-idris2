@@ -1,0 +1,27 @@
+{"kind":"meta","format":1,"scenario":"load-logging","description":"A %logging pragma: while the file is built the compiler prints LOG lines (and an empty line) unframed into the protocol stream over stdio, between the Building write-string and the :return","facts":["F5"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-09-27","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build/.vscode-idris2"],"cwd":"test/fixtures/workspaces/broken","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"Logging.idr":"76bcd2dc84653b06a94352031cf7eff07acf19676ebe183e47f4243fea4aa8fd"}}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"0000a0","text":"((:load-file \"${ROOT}/Logging.idr\") 1)\n"}
+{"kind":"recv","prefix":"0000b9","text":"(:write-string \"1/1: Building Logging (${ROOT}/Logging.idr)\" 1)\n"}
+{"kind":"unframed","text":"LOG declare.def.lhs:3: LHS term: Logging.f\n"}
+{"kind":"unframed","text":"LOG declare.def.clause:3: RHS term: (Prelude.Types.S Prelude.Types.Z)\n"}
+{"kind":"unframed","text":"LOG declare.def:2: Case tree for Logging.f: [0] (Prelude.Types.S Prelude.Types.Z)\n"}
+{"kind":"unframed","text":"LOG declare.def:3: Working from [0] (Prelude.Types.S Prelude.Types.Z)\n"}
+{"kind":"unframed","text":"LOG declare.def:3: Catch all case in Logging.f\n"}
+{"kind":"unframed","text":"LOG declare.def:3: Initially missing in Logging.f:\n"}
+{"kind":"unframed","text":"\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Logging.idr\") (:start 0 0) (:end 0 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Logging.idr\") (:start 0 7) (:end 0 14)) ((:decor :module)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f4","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Logging.idr\") (:start 2 0) (:end 2 90)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f4","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Logging.idr\") (:start 3 0) (:end 3 68)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Logging.idr\") (:start 4 0) (:end 4 8)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00014b","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Logging.idr\") (:start 6 0) (:end 6 1)) ((:name \"f\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Logging.idr\") (:start 6 2) (:end 6 3)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000156","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Logging.idr\") (:start 6 4) (:end 6 7)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000152","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Logging.idr\") (:start 7 0) (:end 7 1)) ((:name \"f\") (:namespace \"Logging\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Logging.idr\") (:start 7 2) (:end 7 3)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f0","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Logging.idr\") (:start 7 4) (:end 7 5)) ((:decor :data)))))) 1)\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok ()) 1)\n"}
+{"kind":"close"}
+{"kind":"unframed","text":"Alas the file is done, aborting\n"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":["build/.vscode-idris2/ttc/2025081600/Logging.ttc","build/.vscode-idris2/ttc/2025081600/Logging.ttm"]}

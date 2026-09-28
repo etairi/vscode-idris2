@@ -3,17 +3,26 @@
  *
  * activate() builds, in this order: the log channel, M0's Help commands, `idris2.isIdrisDocument`
  * and selection ranges; then M1's chain Config → workspace trust → process runner → toolchain
- * service → project index → backend registry → the toolchain UI (status item and QuickPick,
- * Setup Information, install commands, notifications). deactivate() disposes all of it in
- * reverse order.
+ * service → project index → backend registry; then M2's consent gate, protocol trace, session
+ * pool and IDE-mode backend (the registry's provider for every root), the checks with their
+ * diagnostic collection, and the backend and trace commands; then the toolchain UI (status item
+ * and QuickPick, Setup Information, install commands, notifications). deactivate() disposes all
+ * of it in reverse order, which kills every session process.
  *
  * Activation stays cheap: nothing here waits for a process or the file system. The toolchain
- * service starts its first scan when it is created and the UI follows its change events; every
- * process goes through the runner, which starts nothing in an untrusted workspace (Restricted
- * Mode, package.json `capabilities.untrustedWorkspaces`).
+ * service starts its first scan when it is created and the UI follows its change events; no
+ * session process starts before an Idris document is checked (the pool starts a session with its
+ * first request). Every process goes through `core/process.ts`, which starts nothing in an
+ * untrusted workspace (Restricted Mode, package.json `capabilities.untrustedWorkspaces`).
  */
+import * as fs from 'fs';
 import * as os from 'os';
 import * as vscode from 'vscode';
+import { IdeMode } from './backend/ide/backend';
+import { createSessionPool } from './backend/ide/pool';
+import { ideCodec } from './backend/ide/protocol';
+import { systemClock } from './backend/ide/session';
+import type { SessionPool } from './backend/ide/types';
 import { BackendRegistry } from './backend/registry';
 import { Config, usableHomeDirectory } from './core/config';
 import { DisposableStore } from './core/disposable';
@@ -21,13 +30,20 @@ import { Emitter } from './core/event';
 import { createLog } from './core/log';
 import { createProcessRunner } from './core/process';
 import type { WorkspaceTrust } from './core/trust';
+import type { ConsentGate } from './features/consent/gate';
+import { registerConsent } from './features/consent/register';
+import { DocumentChecks } from './features/diagnostics/checks';
+import { registerBackendCommands, type BackendNotice } from './features/diagnostics/commands';
+import { ProtocolTraceChannel, registerTraceCommands } from './features/diagnostics/trace';
 import { registerHelpCommands } from './features/help/commands';
 import { registerSelectionRanges } from './features/syntax/selectionRanges';
 import { createProjectIndex } from './project/index';
+import { findIpkg } from './project/ipkg';
 import { trackIsIdrisDocumentContext } from './project/literate';
 import type { ProjectIndex, ProjectWorkspace } from './project/types';
 import { registerInstallCommands } from './toolchain/install';
 import { registerToolchainNotifications, type Notice } from './toolchain/notifications';
+import { readRegularTextFile } from './toolchain/fileSystem';
 import { createToolchainService } from './toolchain/service';
 import { registerSetupInformation } from './toolchain/setupInfo';
 import { registerToolchainStatus, type StatusMenuEntry } from './toolchain/status';
@@ -48,6 +64,14 @@ export interface TestApi {
   /** The toolchain notices shown in this window, in order. */
   readonly notices: readonly Notice[];
   readonly setupInformationUri: vscode.Uri;
+  /** M2: the IDE-mode session pool (the sessions, their state and command line; Stop). */
+  readonly sessions: SessionPool;
+  /** M2: the documents' check states and the "idris2" diagnostic collection. */
+  readonly checks: DocumentChecks;
+  /** M2: the consent gate (open questions, answering them, the folders allowed for good). */
+  readonly consent: ConsentGate;
+  /** M2: the crash and give-up notices shown in this window, in order. */
+  readonly backendNotices: readonly BackendNotice[];
 }
 
 let store: DisposableStore | undefined;
@@ -144,8 +168,85 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
   );
   const registry = store.add(new BackendRegistry());
 
+  // M2: IDE mode. Nothing here starts a process: a session starts with its first request.
+  const workspaceFolders = (): readonly string[] =>
+    (vscode.workspace.workspaceFolders ?? []).filter((f) => f.uri.scheme === 'file').map((f) => f.uri.fsPath);
+  const consent = store.add(
+    registerConsent(vscode, {
+      trust,
+      folders: workspaceFolders,
+      onDidChangeFolders: (listener) => vscode.workspace.onDidChangeWorkspaceFolders(() => listener()),
+      realpath: (p) => fs.promises.realpath(p),
+      platform: process.platform,
+      globalState: context.globalState,
+      log,
+    }),
+  );
+  const trace = store.add(new ProtocolTraceChannel(vscode, config));
+  const pool = store.add(
+    createSessionPool({
+      toolchain,
+      projects,
+      config,
+      trust,
+      gate: consent.gate,
+      codec: ideCodec,
+      trace,
+      log,
+      platform: process.platform,
+      processEnv: process.env,
+    }),
+  );
+  const ideMode = store.add(
+    new IdeMode({
+      pool,
+      projects,
+      config,
+      clock: systemClock,
+      gate: consent.gate,
+      api: vscode,
+      readFile: (p) => fs.promises.readFile(p, 'utf8'),
+      realpath: (p) => fs.promises.realpath(p),
+      findPackage: async (dir) => (await findIpkg(dir))?.ipkgPath,
+      directoryId: async (p) => {
+        const stat = await fs.promises.stat(p, { bigint: true });
+        return `${stat.dev}:${stat.ino}`;
+      },
+      platform: process.platform,
+    }),
+  );
+  store.add(registry.setProvider(ideMode));
+  const checks = store.add(
+    new DocumentChecks(vscode, {
+      readFile: async (p, maxBytes) => {
+        const read = await readRegularTextFile(p, maxBytes);
+        return read.ok ? read.text : undefined;
+      },
+      registry,
+      roots: ideMode,
+      projects,
+      config,
+      trust,
+      consent: consent.gate,
+      log,
+      timers: { set: (callback, ms) => setTimeout(callback, ms), clear: (handle) => clearTimeout(handle as NodeJS.Timeout) },
+    }),
+  );
+  const backendCommands = store.add(
+    registerBackendCommands(vscode, { checks, control: ideMode, projects, toolchain, trust, log }),
+  );
+  store.add(
+    registerTraceCommands(vscode, {
+      acceptArgument: context.extensionMode === vscode.ExtensionMode.Test,
+      trace,
+      raw: ideMode,
+      projects,
+      log,
+    }),
+  );
+
   const status = store.add(
-    registerToolchainStatus(vscode, { toolchain, projects, registry, trust, manifest, log }),
+    registerToolchainStatus(vscode, { toolchain, projects, registry, checks, trust, manifest, log }),
   );
   const setup = store.add(
     registerSetupInformation(vscode, {
@@ -177,6 +278,10 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
     statusMenuEntries: () => status.menuEntries(),
     notices: notifications.shown,
     setupInformationUri: setup.uri,
+    sessions: pool,
+    checks,
+    consent: consent.gate,
+    backendNotices: backendCommands.notices,
   };
 }
 

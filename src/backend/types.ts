@@ -73,11 +73,31 @@ export interface RichTextSpan {
   readonly decor?: Decor;
 }
 
-/** The result of `load`: whether the load succeeded, and the diagnostics per file (F6, F7). */
+/** The result of `load`: whether the load succeeded, and the diagnostics per file (F6, F7, F10). */
 export interface LoadResult {
+  /** The compiler accepted the file (`(:return (:ok …))` in IDE mode). */
   readonly ok: boolean;
-  /** Entries in the shape `DiagnosticCollection.set` takes; a load reports errors in any file. */
+  /**
+   * Entries in the shape `DiagnosticCollection.set` takes, for every file whose diagnostics this
+   * load determined — an empty list for a file it checked and found clean — and none for a file
+   * it did not check again: a reload whose TTC is fresh sends neither a `Building` line nor
+   * `:warning` frames (F7), so the diagnostics shown for that file still apply and are kept. A
+   * load reports problems in any file (an imported module, or the `.ipkg` for a package-file
+   * error, F10).
+   */
   readonly diagnostics: ReadonlyArray<readonly [vscode.Uri, readonly vscode.Diagnostic[]]>;
+  /**
+   * Set when the load stopped at the package file: the compiler could not read the root's
+   * `.ipkg` (F10), and `message` is its error. The document's `loadState` is then `ipkgError`
+   * (ARCHITECTURE §6.1).
+   */
+  readonly packageError?: { readonly uri: vscode.Uri; readonly message: string };
+  /**
+   * Set when the loaded document was not checked because the compiler reported errors in other
+   * files it imports (its only diagnostic then says so): those files. Fixing them does not change
+   * the document's own diagnostics, so the checks check it again once they are clean.
+   */
+  readonly blockedBy?: readonly vscode.Uri[];
 }
 
 /** The compiler's rendering `name : type` of a name at a position (`:type-of`, F30). */
@@ -148,12 +168,26 @@ export type EditResult =
   /** "No more results" */
   | { readonly type: 'exhausted' };
 
+/**
+ * How `IdrisBackend.load` queues a load (ROADMAP §9 Q21, M2 As built *Resource limits*; an addition
+ * to ARCHITECTURE §3.1, recorded there).
+ */
+export interface LoadOptions {
+  /**
+   * Asked each time the backend chooses the next request for the root's compiler: while it returns
+   * true, this load goes before the root's other requests that wait and are not being sent yet.
+   * The IDE-mode backend hands it to the session (`RequestOptions.urgent`); a backend without a
+   * queue of its own ignores it. The checks set it for the active document's load.
+   */
+  readonly urgent?: () => boolean;
+}
+
 /** §3.1 */
 export interface IdrisBackend {
   readonly kind: BackendKind;
   readonly caps: Readonly<Capabilities>;
   /** diagnostics */
-  load(doc: vscode.TextDocument): Promise<LoadResult>;
+  load(doc: vscode.TextDocument, options?: LoadOptions): Promise<LoadResult>;
   typeAt(doc: vscode.TextDocument, pos: vscode.Position, name: string): Promise<TypeInfo | undefined>;
   /** The compiler parses and ignores the mode on 0.8.0 and master (F31). */
   docsFor(name: string, mode: 'overview' | 'full'): Promise<RichText | undefined>;

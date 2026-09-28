@@ -62,11 +62,38 @@ function recorderProfile(file: string): Record<string, unknown> {
  * 2026-09-27]. The likely cause, not traced in VS Code's source, is that a terminal opened right
  * after `profiles.<os>` changes still gets the previously resolved profile, whose recorder
  * writes to the previous test's file.
+ *
+ * The same race hit the first command after the suite's own change: VS Code's terminal profile
+ * service re-reads the profiles on a change of `profiles.<os>` or `defaultProfile.<os>`, but
+ * `refreshAvailableProfiles` is throttled to one run per 2 s and detects the profiles
+ * asynchronously [src: 1.139.1 `workbench.desktop.main.js`, `_setupConfigListener`, the
+ * decorator `XF(2e3)`], so the second of the two updates below takes effect up to 2 s later. The
+ * first install test then typed into the previous default shell and timed out waiting for the
+ * recorder's file [live: 2 of 3 `npm test` runs, M2 integration 2026-09-28]. So this waits until
+ * a terminal opened with the default profile starts the recorder (which creates `file`); in three
+ * runs of the suite the first such terminal still got the previous profile and the second, about
+ * 3.3 s after the updates, the recorder [live, same day].
  */
 export async function useTerminalRecorder(file: string): Promise<void> {
   const terminalConfig = vscode.workspace.getConfiguration('terminal.integrated');
   await terminalConfig.update(`profiles.${platformKey()}`, { [PROFILE]: recorderProfile(file) }, vscode.ConfigurationTarget.Global);
   await terminalConfig.update(`defaultProfile.${platformKey()}`, PROFILE, vscode.ConfigurationTarget.Global);
+  const start = Date.now();
+  for (;;) {
+    await closeTerminals();
+    fs.rmSync(file, { force: true });
+    vscode.window.createTerminal({ name: 'vscode-idris2 recorder probe' });
+    const deadline = Date.now() + 3000;
+    while (!fs.existsSync(file) && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    if (fs.existsSync(file)) {
+      break;
+    }
+    assert.ok(Date.now() - start < 30000, 'the terminal recorder did not become the default profile within 30 s');
+  }
+  await closeTerminals();
+  fs.rmSync(file, { force: true });
 }
 
 /** Removes the user settings `useTerminalRecorder` wrote. */

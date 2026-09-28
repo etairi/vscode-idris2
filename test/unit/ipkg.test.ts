@@ -14,6 +14,7 @@ import {
   listDirectoryInOsOrder,
   MAX_IPKG_BYTES,
   modelFromDumpOutput,
+  packageOptionWords,
   parseDumpJson,
   readIpkgModel,
   readIpkgText,
@@ -214,6 +215,25 @@ suite('project/ipkg', () => {
       });
     });
 
+    test('POSIX: from a folder whose name has a \\ the compiler goes up elsewhere; the walk cannot see it, so the path is marked as misread', async function () {
+      if (process.platform === 'win32') {
+        this.skip(); // \ is the separator there, in both walks
+      }
+      // M2 second verification of the third review: r/x\y with r/x/evil.ipkg; the compiler, started in
+      // r/x\y, went up to r/x (splitParent parses \ as a separator) and adopted evil.ipkg [live, 0.8.0].
+      const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'vi2-bs-')));
+      try {
+        const start = path.join(base, 'r', 'x\\y');
+        fs.mkdirSync(start, { recursive: true });
+        fs.mkdirSync(path.join(base, 'r', 'x'));
+        fs.writeFileSync(path.join(base, 'r', 'x', 'evil.ipkg'), 'package evil\n');
+        assert.strictEqual(await findIpkg(start), undefined, 'path.dirname goes from r/x\\y to r');
+        assert.strictEqual(compilerReadsPathAsGiven(start, process.platform), false, 'so backend.ts sends no load from there');
+      } finally {
+        fs.rmSync(base, { recursive: true, force: true });
+      }
+    });
+
     test('with two package files, the walk takes the first the OS lists and names the other', async () => {
       const dir = fixture('test/fixtures/ipkg/two-ipkgs');
       const osOrder = ((await listDirectoryInOsOrder(dir)) ?? []).filter((name) => name.endsWith('.ipkg'));
@@ -388,6 +408,18 @@ suite('project/ipkg', () => {
         assert.ok(compiler !== undefined, r.name);
         assert.deepStrictEqual({ ...readIpkgText(r.text), source: 'dump-json' }, compiler, r.name);
       }
+    });
+
+    test('opts: both readers keep it as written; `options` and `opts` are one field, the last one wins; its words', () => {
+      const handwritten = FIXTURE_RECORDINGS.find((r) => r.file === 'test/fixtures/grammar/Handwritten.ipkg');
+      assert.ok(handwritten !== undefined);
+      assert.strictEqual(modelOf(modelFromDumpOutput(processResult(handwritten))).opts, '--no-color --console-width 0');
+      assert.strictEqual(modelOf(readIpkgText(fs.readFileSync(fixture(handwritten.file), 'utf8'))).opts, '--no-color --console-width 0');
+      assert.strictEqual(modelOf(readIpkgText('package p\nopts = "--build-dir a"\noptions = "--total"\n')).opts, '--total');
+      assert.strictEqual(modelOf(readIpkgText('package p\n')).opts, undefined);
+      // `words` splits at the compiler's isSpace (U+00A0 included) and drops empty words.
+      assert.deepStrictEqual(packageOptionWords(' --build-dir\t\tb\u00a0-p\r\ncontrib\f\v'), ['--build-dir', 'b', '-p', 'contrib']);
+      assert.deepStrictEqual(packageOptionWords(undefined), []);
     });
 
     test('the text as the compiler reads it: a U+FEFF starting a line is dropped, a NUL ends its line', () => {

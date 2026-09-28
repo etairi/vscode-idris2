@@ -74,6 +74,12 @@ export interface IpkgModel {
   /** As written; when set it overrides `--build-dir` (F12), which M2's isolation relies on. */
   readonly builddir?: string;
   readonly outputdir?: string;
+  /**
+   * The `opts` (or `options`) field as written: command-line options the compiler applies at
+   * every load of the package, after `builddir` (`findIpkg`, F12 addendum), so a `--build-dir`
+   * in it wins over both (`backend/ide/pool.ts` `checkBuildDir`).
+   */
+  readonly opts?: string;
 }
 
 export type IpkgModelSource = 'dump-json' | 'fallback';

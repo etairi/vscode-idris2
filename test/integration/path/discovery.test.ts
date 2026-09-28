@@ -6,7 +6,7 @@ import * as vscode from 'vscode';
 import type { TestApi } from '../../../src/extension';
 import type { ToolLocation } from '../../../src/toolchain/types';
 import { fakeLauncher, type FakeTool } from '../../fake-tools/paths';
-import { extensionApi, settledScan, waitFor, workspaceFile } from '../support';
+import { extensionApi, settledScan, statusText, waitFor, workspaceFile } from '../support';
 
 /** Windows file names are case-insensitive, and the search appends a PATHEXT extension. */
 function samePath(a: string, b: string): boolean {
@@ -52,8 +52,8 @@ suite('toolchain found through PATH (no settings)', () => {
     assert.strictEqual(snapshot.verdict?.kind, 'compatible');
   });
 
-  test('the status item and Setup Information report it', async () => {
-    assert.strictEqual(api.statusItem.text, 'Idris 2 0.8.0 · syntax only');
+  test('the status item and Setup Information report it; the fake found on PATH checks Hello.idr (M2)', async () => {
+    await statusText(api, 'Idris 2 0.8.0 · IDE mode · ✓');
     await vscode.commands.executeCommand('idris2.showSetupInformation');
     const editor = await waitFor('the Setup Information editor', () =>
       vscode.window.activeTextEditor?.document.uri.scheme === 'idris2-setup' ? vscode.window.activeTextEditor : undefined,

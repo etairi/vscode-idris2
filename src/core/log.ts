@@ -2,12 +2,45 @@
  * The extension's log channel (`core/log.ts` in docs/ARCHITECTURE.md §2).
  *
  * `activate()` creates one `LogOutputChannel` named "Idris 2" and hands it to everything that
- * needs to log; no other module creates an output channel. The optional "Idris 2: Protocol
- * Trace" channel described in ARCHITECTURE §2 arrives with the IDE-mode backend (M2).
+ * needs to log. The second channel of ARCHITECTURE §2, "Idris 2: Protocol Trace", is written
+ * through the `ProtocolTrace` interface below (M2); its implementation, **Idris 2: Show Protocol
+ * Trace** and the `idris2.trace.protocol` switch belong to the IDE-mode UI.
  */
 import * as vscode from 'vscode';
 
 const OUTPUT_CHANNEL_NAME = 'Idris 2';
+
+/**
+ * What an entry of the protocol trace records:
+ * - `send` — a request frame as written (prefix included);
+ * - `receive` — a reply frame's text (the payload after the prefix);
+ * - `unframed` — bytes of the protocol stream that are not a frame (F5: program output and the
+ *   end-of-input line over stdio; any other non-hex header);
+ * - `stdout` — the process's stdout outside the protocol stream (socket transport: every stdout
+ *   line except the port line — log lines before it, program output after it; F5);
+ * - `stderr` — the process's stderr;
+ * - `event` — a lifecycle event of the session in words (spawned with its command line, handshake,
+ *   exit, time-out, restart).
+ */
+export type TraceDirection = 'send' | 'receive' | 'unframed' | 'stdout' | 'stderr' | 'event';
+
+export interface TraceEntry {
+  /** Which session, e.g. `check /path/to/root` (the role and the session's working directory). */
+  readonly session: string;
+  readonly direction: TraceDirection;
+  readonly text: string;
+}
+
+/**
+ * The sink of the IDE-mode protocol trace (M2). The sessions call `append` for every frame and
+ * lifecycle event while `enabled` is true (`idris2.trace.protocol`), and do not build entries
+ * otherwise. The trace stays on this machine, like the log; it contains source text and paths.
+ */
+export interface ProtocolTrace {
+  /** Read at every use: follows `idris2.trace.protocol`. */
+  readonly enabled: boolean;
+  append(entry: TraceEntry): void;
+}
 
 /**
  * The logging surface modules receive. `vscode.LogOutputChannel` satisfies it; modules that are

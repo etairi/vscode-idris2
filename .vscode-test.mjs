@@ -7,20 +7,45 @@
 //                   toolchain = the fake tools, set by user settings
 //   toolchain-path  loose-file again; out/test/integration/path/*; no toolchain settings, the
 //                   fake tools are found through PATH (the directory is prepended to it)
-//   e2e             test/fixtures/workspaces/simple-ipkg; out/test/e2e/**; the real toolchain
-//                   (no toolchain settings, the runner's PATH). Only part of the configuration
-//                   when IDRIS2_E2E=1 or when run as `npm run test:e2e`, so `npm test` needs no
-//                   compiler; the suite's own environment has IDRIS2_E2E=1.
+//   diagnostics     (M2) test/fixtures/workspaces/broken; out/test/integration/diagnostics/*;
+//                   fake tools, idris2.ideMode.transport = socket, the opt-in of ROADMAP §9 Q20
+//                   (on every platform: the fake's socket mode runs on Windows too, so the
+//                   extension's socket transport is exercised there even though the real
+//                   compiler's is unverified, E13)
+//   loose-stdio     (M2) loose-file again; out/test/integration/loose-stdio/*; fake tools, no
+//                   transport setting: the default, stdio (ROADMAP §9 Q20). The workspace's
+//                   .vscode/settings.json asks for the socket, which the tests show is ignored
+//                   (user settings only); the file applies to the integration and toolchain-path
+//                   suites too, where the default is expected as well
+//   consent         (M2) test/fixtures/workspaces/simple-ipkg/src: a workspace folder inside a
+//                   package, so the session directory (the .ipkg's) lies outside every
+//                   workspace folder and needs the user's consent; out/test/integration/consent/*;
+//                   fake tools, the default transport (stdio)
+//   e2e             test/fixtures/workspaces/simple-ipkg; out/test/e2e/** (M1 and M2 files); the
+//                   real toolchain (no toolchain settings, the runner's PATH). Only part of the
+//                   configuration when IDRIS2_E2E=1 or when run as `npm run test:e2e`, so
+//                   `npm test` needs no compiler; the suite's own environment has IDRIS2_E2E=1.
 //
 // test-cli runs the suites one after another, each in its own VS Code instance [src:
 // @vscode/test-cli 0.0.15 out/bin.mjs 117-122]. Each suite has its own profile (user-data-dir), rewritten below before every run, so settings a test
-// changes never leak into another suite or the next run.
+// changes never leak into another suite or the next run. Extension state does not persist
+// either: when extension tests run, VS Code 1.139.1 keeps its storage in memory
+// (`useInMemoryStorage: !!extensionTestsLocationURI` in its main.js [src]; that
+// `ExtensionContext.globalState` goes through that storage was inferred, not traced), so every
+// suite starts with no remembered allowed folders; tests that allow one revoke it.
 //
 // Integration suites never run the real compiler: the fake tools are test/fake-tools/bin/{idris2,
 // idris2-lsp,pack} (`.cmd` launchers on Windows). User settings name them, which beats every
 // other place the search looks (idris2.toolchain.* in package.json), so the result does not
 // depend on what is installed on the machine. Tests may change these settings at run time
 // (ConfigurationTarget.Global) to switch scenarios and must restore them.
+//
+// The fake compiler's IDE mode replays the transcripts recorded from the real one (M2,
+// test/fake-idris2/README.md): every fake-tool suite's environment has
+// FAKE_IDRIS2_TRANSCRIPTS = the absolute path of test/fixtures/transcripts/<version>, which the
+// Extension Host inherits (--force-disable-user-env, below) and passes on to every process it
+// starts; a test can point one session elsewhere through idris2.toolchain.env, which the
+// extension overlays on its own environment.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { delimiter, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -64,6 +89,10 @@ const FAKE_TOOL_SETTINGS = {
   'idris2.toolchain.lspPath': fakeTool('idris2-lsp'),
   'idris2.toolchain.packPath': fakeTool('pack'),
 };
+
+// The version directory of the transcripts the fake replays: the fake reports 0.8.0 unless
+// FAKE_IDRIS2_VERSION says otherwise (test/fake-tools/README.md).
+const FAKE_ENV = { FAKE_IDRIS2_TRANSCRIPTS: resolve(root, 'test/fixtures/transcripts/0.8.0') };
 
 /** Creates (or resets) the profile `.vscode-test/<name>` with `settings` as its user settings. */
 function profile(name, settings) {
@@ -112,6 +141,7 @@ export default defineConfig([
     label: 'integration',
     files: 'out/test/integration/*.test.js',
     workspaceFolder: 'test/fixtures/workspaces/loose-file',
+    env: FAKE_ENV,
     // `.vscode-test/user-data` is also @vscode/test-electron's default profile directory
     // [src: @vscode/test-electron 3.x out/util.js 421-422, out/download.js 325].
     launchArgs: launchArgs(profile('user-data', { ...BASE_SETTINGS, ...FAKE_TOOL_SETTINGS })),
@@ -121,6 +151,7 @@ export default defineConfig([
     label: 'simple-ipkg',
     files: 'out/test/integration/simple-ipkg/*.test.js',
     workspaceFolder: 'test/fixtures/workspaces/simple-ipkg/src',
+    env: FAKE_ENV,
     launchArgs: launchArgs(profile('user-data-ipkg', { ...BASE_SETTINGS, ...FAKE_TOOL_SETTINGS })),
     mocha,
   },
@@ -128,8 +159,35 @@ export default defineConfig([
     label: 'toolchain-path',
     files: 'out/test/integration/path/*.test.js',
     workspaceFolder: 'test/fixtures/workspaces/loose-file',
-    env: { [pathKey]: `${fakeBin}${delimiter}${process.env[pathKey] ?? ''}` },
+    env: { ...FAKE_ENV, [pathKey]: `${fakeBin}${delimiter}${process.env[pathKey] ?? ''}` },
     launchArgs: launchArgs(profile('user-data-path', BASE_SETTINGS)),
+    mocha,
+  },
+  {
+    label: 'diagnostics',
+    files: 'out/test/integration/diagnostics/*.test.js',
+    workspaceFolder: 'test/fixtures/workspaces/broken',
+    env: FAKE_ENV,
+    launchArgs: launchArgs(
+      profile('user-data-diag', { ...BASE_SETTINGS, ...FAKE_TOOL_SETTINGS, 'idris2.ideMode.transport': 'socket' }),
+    ),
+    mocha,
+  },
+  {
+    label: 'loose-stdio',
+    files: 'out/test/integration/loose-stdio/*.test.js',
+    workspaceFolder: 'test/fixtures/workspaces/loose-file',
+    env: FAKE_ENV,
+    // No transport here: the default (stdio) applies, and the workspace's own "socket" must not.
+    launchArgs: launchArgs(profile('user-data-stdio', { ...BASE_SETTINGS, ...FAKE_TOOL_SETTINGS })),
+    mocha,
+  },
+  {
+    label: 'consent',
+    files: 'out/test/integration/consent/*.test.js',
+    workspaceFolder: 'test/fixtures/workspaces/simple-ipkg/src',
+    env: FAKE_ENV,
+    launchArgs: launchArgs(profile('user-data-consent', { ...BASE_SETTINGS, ...FAKE_TOOL_SETTINGS })),
     mocha,
   },
   ...(e2eEnabled

@@ -1,0 +1,10 @@
+{"kind":"meta","format":1,"scenario":"load-bad","description":"A type error: one :warning frame, then (:return (:error …))","facts":["F6","F33"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-09-27","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build/.vscode-idris2"],"cwd":"test/fixtures/workspaces/broken","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"Bad.idr":"dd7cddfab50372f6b632e3bbd7643db8cab86869af462590b59ad1fcc1516e11"}}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"00009c","text":"((:load-file \"${ROOT}/Bad.idr\") 1)\n"}
+{"kind":"recv","prefix":"0000b1","text":"(:write-string \"1/1: Building Bad (${ROOT}/Bad.idr)\" 1)\n"}
+{"kind":"recv","prefix":"00028d","text":"(:warning (\"Bad.idr\" (3 6) (3 11) \"While processing right hand side of f. When unifying:\n    Nat\nand:\n    String\nMismatch between: Nat and String.\n\nBad:4:7--4:12\n 1 | module Bad\n 2 | \n 3 | f : Nat -> String\n 4 | f x = x + 1\n           ^^^^^\n\" ((36 1 ((:decor :bound))) (58 3 ((:decor :type))) (58 3 ((:decor :bound))) (71 6 ((:decor :type))) (71 6 ((:decor :bound))) (96 3 ((:decor :type))) (96 3 ((:decor :bound))) (104 6 ((:decor :type))) (104 6 ((:decor :bound))) (113 13 ((:decor :type))) (128 3 ((:decor :type))) (144 3 ((:decor :type))) (150 3 ((:decor :type))) (173 3 ((:decor :type))) (200 5 ((:text-formatting :bold) (:decor :postulate))))) 1)\n"}
+{"kind":"recv","prefix":"0000b7","text":"(:return (:error \"Error(s) building file ${ROOT}/Bad.idr\") 1)\n"}
+{"kind":"close"}
+{"kind":"unframed","text":"Alas the file is done, aborting\n"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":[]}

@@ -1,0 +1,26 @@
+{"kind":"meta","format":1,"scenario":"warning-deprecated","description":"E5: Deprecated (%deprecate): no location line in the message","facts":["F7","F28"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-09-27","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build/.vscode-idris2"],"cwd":"test/fixtures/workspaces/broken/warnings","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"Deprecated.idr":"3bf181576def7df903a2ff41012a460fae2bb448204a90a5b8138123b573c674"}}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"0000a3","text":"((:load-file \"${ROOT}/Deprecated.idr\") 1)\n"}
+{"kind":"recv","prefix":"0000bf","text":"(:write-string \"1/1: Building Deprecated (${ROOT}/Deprecated.idr)\" 1)\n"}
+{"kind":"recv","prefix":"0000d8","text":"(:warning (\"Deprecated.idr\" (8 6) (8 9) \"Deprecation warning: Deprecated.old is deprecated and will be removed in a future version.\n  Use `new` instead.\" ((91 20 ((:decor :comment))) (91 20 ((:decor :comment))))) 1)\n"}
+{"kind":"recv","prefix":"0000f6","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Deprecated.idr\") (:start 0 0) (:end 0 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f6","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Deprecated.idr\") (:start 0 7) (:end 0 17)) ((:decor :module)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f7","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Deprecated.idr\") (:start 2 0) (:end 2 22)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f7","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Deprecated.idr\") (:start 3 0) (:end 3 10)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000150","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Deprecated.idr\") (:start 4 0) (:end 4 3)) ((:name \"old\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f6","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Deprecated.idr\") (:start 4 4) (:end 4 5)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000159","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Deprecated.idr\") (:start 4 6) (:end 4 9)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00015a","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Deprecated.idr\") (:start 5 0) (:end 5 3)) ((:name \"old\") (:namespace \"Deprecated\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f6","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Deprecated.idr\") (:start 5 4) (:end 5 5)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Deprecated.idr\") (:start 5 6) (:end 5 7)) ((:decor :data)))))) 1)\n"}
+{"kind":"recv","prefix":"000150","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Deprecated.idr\") (:start 7 0) (:end 7 3)) ((:name \"new\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f6","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Deprecated.idr\") (:start 7 4) (:end 7 5)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000159","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Deprecated.idr\") (:start 7 6) (:end 7 9)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00015a","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Deprecated.idr\") (:start 8 0) (:end 8 3)) ((:name \"new\") (:namespace \"Deprecated\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f6","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Deprecated.idr\") (:start 8 4) (:end 8 5)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00015a","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Deprecated.idr\") (:start 8 6) (:end 8 9)) ((:name \"old\") (:namespace \"Deprecated\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok ()) 1)\n"}
+{"kind":"close"}
+{"kind":"unframed","text":"Alas the file is done, aborting\n"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":["build/.vscode-idris2/ttc/2025081600/Deprecated.ttc","build/.vscode-idris2/ttc/2025081600/Deprecated.ttm"]}

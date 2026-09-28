@@ -3,8 +3,8 @@
 Status: design document, 2026-09-23. Companion to `ROADMAP.md` (what to build, in which
 increments) and `landscape.md` (the verified survey this design rests on). This file is the
 specification the skeleton and every milestone are built to; `src/README.md` and
-`test/README.md` mark which parts exist (as of M1, 2026-09-27: the parts tagged M0 or M1
-below; `ROADMAP.md` M0 and M1 "As built" record where the code departs from this text).
+`test/README.md` mark which parts exist (as of M2, 2026-09-27: the parts tagged M0, M1 or M2
+below; `ROADMAP.md` M0, M1 and M2 "As built" record where the code departs from this text).
 
 Evidence tags follow `landscape.md`: **[live]** run on this machine (macOS arm64, Homebrew
 `idris2` 0.8.0) during the planning session, **[src]** read in the named checkout (`idris2-lsp`
@@ -17,15 +17,18 @@ them by number (F1, F2, …) where a design choice depends on one.
 ## 1. Goals that shape the architecture
 
 1. **Two backends, one feature surface.** Every feature is written against `IdrisBackend`.
-   The compiler's IDE protocol (`idris2 --ide-mode-socket`) is always available; `idris2-lsp`
+   The compiler's IDE protocol (`idris2 --ide-mode`) is always available; `idris2-lsp`
    is richer but version-locked, ipkg-required and save-gated (landscape §3). Either can be
    built first; both can coexist per project root.
 2. **Protocol facts live in one place.** Wire format, coordinate conventions and reply shapes
    are isolated in `src/backend/ide/` and `src/core/positions.ts`, each pinned by tests that
    replay frames recorded from a real compiler. A compiler release should touch ≤ 3 files.
 3. **Never corrupt the checking session.** Program output over stdio IDE mode is unframed
-   (F5); `:set` persists across loads. Therefore: socket transport by default, and evaluation
-   runs in a *separate* session from checking.
+   (F5); `:set` persists across loads. Therefore: evaluation runs in a *separate* session from
+   checking, and the `check` session, which sends no `:exec` of its own, reads unframed output as
+   the process's own. (Until 2026-09-28: "socket transport by default"; the user chose stdio for the
+   `check` session on every platform, because the socket's port serves the first local
+   connection unauthenticated — D1, ROADMAP §9 Q20.)
 4. **Honest state.** Every result is labelled with its source (saved file, unsaved shadow copy,
    build) and the backend that produced it; nothing is faked with regexes.
 5. **Testable without VS Code, then with VS Code, then with the compiler.** Unit → integration
@@ -96,12 +99,20 @@ vscode-idris2/
 │  │  │                          (Windows .cmd/.bat via quoted cmd.exe or refused), process-
 │  │  │                          group termination on time-out, 1 MiB output limit,
 │  │  │                          dispose at deactivation                              (M1)
+│  │  │                          as built (M2): startLongRunningProcess starts the session
+│  │  │                          processes under the same rules, without the queue and the
+│  │  │                          output limit
 │  │  ├─ errors.ts               IdrisError union: ToolchainMissing | VersionMismatch |
 │  │  │                          BackendCrashed | RequestTimeout | ProtocolError | NoIpkg |
 │  │  │                          IpkgParseError | DirtyDocument | LoadFailed | Unsupported(reason)
 │  │  ├─ positions.ts            the ONLY module converting between the five coordinate
 │  │  │                          conventions (§7) incl. the .lidr column offset
+│  │  ├─ notificationText.ts     (as built, M2) plainText: notification messages and the
+│  │  │                          status item's detail as text, never `[..](command:..)` links
 │  │  ├─ async.ts                debounce, AsyncQueue, withTimeout, CancellationToken helpers
+│  │  │                          (as built: not created in M2 — the queue, time limits and
+│  │  │                          cancellation are in backend/ide/session.ts, the afterDelay
+│  │  │                          debounce in features/diagnostics/checks.ts)
 │  │  └─ disposable.ts
 │  ├─ toolchain/                                                                     (M1)
 │  │  ├─ types.ts                the toolchain contracts: ToolchainSnapshot, ToolState, Verdict,
@@ -154,17 +165,29 @@ vscode-idris2/
 │  │  ├─ null.ts                 NullBackend: every capability false, every call Unsupported (M0)
 │  │  ├─ registry.ts             per-ProjectRoot backend choice (auto | lsp | ideMode), per-
 │  │  │                          feature fallback, lifecycle (start lazily, stop on close);
-│  │  │                          M1: registration + status label only
+│  │  │                          M1: registration + status label only; as built (M2): one
+│  │  │                          BackendProvider for every root, BackendState, pendingLabel
 │  │  ├─ ide/                                                                        (M2, M3)
+│  │  │  ├─ types.ts             (as built, M2) the layer's contracts, types only: s-expressions,
+│  │  │  │                       frames, messages, IdeCodec, Transport, IdeSession, SessionPool
 │  │  │  ├─ sexp.ts              s-expression parser/serializer; escapes " and \; bare-symbol
-│  │  │  │                       commands (:version, :proof-search-next, :generate-def-next)
+│  │  │  │                       commands (:version, :proof-search-next, :generate-def-next);
+│  │  │  │                       as built: a port of the compiler's reader, and every character
+│  │  │  │                       outside printable ASCII written as a decimal escape (F1)
 │  │  │  ├─ wire.ts              6-hex length framing: requests count UTF-8 bytes, replies
 │  │  │  │                       count code points (F1); streaming splitter;
-│  │  │  │                       tolerant of the unframed EOF tail and other non-hex noise
-│  │  │  ├─ transport.ts         SocketTransport (default: `--ide-mode-socket`, read port from
-│  │  │  │                       stdout, net.connect) | StdioTransport (fallback)
+│  │  │  │                       tolerant of the unframed EOF tail and other non-hex noise;
+│  │  │  │                       as built: a reply header is 6–8 lower-case hex digits, "(" and
+│  │  │  │                       a reply head; a tail cut inside a frame is `truncated`; a reply
+│  │  │  │                       glued to output is cut out of the line, also after one or two
+│  │  │  │                       hex digits; `\r\n` line ends are undone (E13)
+│  │  │  ├─ transport.ts         StdioTransport (default, D1) | SocketTransport (opt-in in user
+│  │  │  │                       settings: `--ide-mode-socket`, read port from stdout, net.connect)
 │  │  │  ├─ session.ts           IdeSession state machine (§5): one in-flight request, FIFO,
 │  │  │  │                       timeouts, id-mismatch attribution, backoff, loaded-file tracking
+│  │  │  ├─ pool.ts              (as built, M2) SessionPool: one session per root and role, the
+│  │  │  │                       command line (§5.2), effectiveCheckBuildDir, trust → toolchain
+│  │  │  │                       → consent gate before every spawn, restarts on changes
 │  │  │  ├─ protocol.ts          typed request builders + reply decoders for every command
 │  │  │  ├─ diagnostics.ts       :warning frames → Diagnostic (severity rule, message split,
 │  │  │  │                       ipkg-error mapping)
@@ -194,7 +217,13 @@ vscode-idris2/
 │  │  ├─ syntax/                 lexer.ts (tolerant port of the compiler's lexer),
 │  │  │                          selectionRangeModel.ts (token → groups → layout blocks →
 │  │  │                          declaration → document), selectionRanges.ts (provider)  (M0)
+│  │  ├─ consent/                (as built, M2) the consent gate of sessions outside the
+│  │  │                          trusted workspace folders (ROADMAP §9, 2026-09-27): gate.ts,
+│  │  │                          register.ts (question, Allow…, Manage Allowed Folders…)
 │  │  ├─ diagnostics/            three DiagnosticCollections (§8)                    (M2)
+│  │  │                          as built: checks.ts (triggers, states, the "idris2"
+│  │  │                          collection), commands.ts (Check File, Stop/Restart Backend,
+│  │  │                          crash notices), trace.ts (Protocol Trace, Send Raw)
 │  │  ├─ intelligence/           hover, Type/Docs at Cursor, definition, semanticTokens,
 │  │  │                          documentSymbols, documentHighlights, completion, docs
 │  │  │                          virtual document, inlay hints (pattern-variable types) (M3)
@@ -228,7 +257,8 @@ vscode-idris2/
    │                             the terminal recorder the e2e suite shares
    ├─ e2e/                       same runner, real idris2 (IDRIS2_E2E=1 or npm run test:e2e;
    │                             M1); LSP suites need idris2-lsp; IDRIS2_RECORD=1 refreshes
-   │                             transcripts
+   │                             transcripts (as built, M2: scripts/record-transcripts.mjs,
+   │                             npm run record:transcripts, does)
    ├─ fake-idris2/               Node script replaying transcripts over stdio and socket; M1:
    │                             recorded --ttc-version/--paths/--list-packages/--dump-ipkg-json
    ├─ fake-tools/                (M1) sh and .cmd launchers of the fake idris2, idris2-lsp and
@@ -276,7 +306,7 @@ export interface Capabilities {
 export interface IdrisBackend {
   readonly kind: BackendKind;
   readonly caps: Readonly<Capabilities>;
-  load(doc: vscode.TextDocument): Promise<LoadResult>;                 // diagnostics (+ token index)
+  load(doc: vscode.TextDocument, options?: LoadOptions): Promise<LoadResult>; // diagnostics (+ token index)
   typeAt(doc, pos: vscode.Position, name: string): Promise<TypeInfo | undefined>;
   docsFor(name: string, mode: 'overview' | 'full'): Promise<RichText | undefined>;
   definition(doc, pos, name): Promise<vscode.Location[]>;
@@ -287,6 +317,12 @@ export interface IdrisBackend {
   dispose(): void;
 }
 ```
+
+`LoadOptions` (added in M2 for ROADMAP §9 Q21): `urgent?: () => boolean`, asked each time the
+backend chooses the next request for the root's compiler; while it returns true the load goes
+before the root's requests that wait and are not being sent yet. The checks set it for the active
+document's load while `idris2.ideMode.maxBackgroundChecks` is above 0 (§6.2); a backend without a
+queue of its own ignores it.
 
 Every method either returns a typed result or throws an `IdrisError`; `Unsupported(reason)`
 is an ordinary outcome that the UI turns into a sentence ("needs idris2-lsp", "save the file
@@ -407,11 +443,11 @@ fixture; it is switched on by whichever of M4/M5 ships second.
    │ LanguageClient  │   │ SessionPool per root │   │ --version --paths        │
    │ one per window  │   │ roles: check | eval  │   │ --dump-ipkg-json         │
    │ ownership via   │   │ | shadow             │   │ --build --typecheck      │
-   │ middleware      │   │ socket (default) /   │   │ --clean --install --mkdoc│
-   │                 │   │ stdio fallback       │   │ --exec, --check, pack …  │
+   │ middleware      │   │ stdio (default) /    │   │ --clean --install --mkdoc│
+   │                 │   │ socket (opt-in)      │   │ --exec, --check, pack …  │
    └────────┬────────┘   └──────────┬───────────┘   └──────────────────────────┘
       JSON-RPC/stdio          s-expressions
-        idris2-lsp        idris2 --ide-mode-socket
+        idris2-lsp        idris2 --ide-mode
 ```
 
 - **LSP client**: `vscode-languageclient/node` 10.x, `ServerOptions = { command: <idris2-lsp>,
@@ -482,11 +518,164 @@ stopped ─spawn─▶ starting ─(:protocol-version 2 1 within 10 s)─▶ rea
   `<root>/<build>/.vscode-idris2` when `ideMode.isolateBuildDir` is on and the ipkg has no
   `builddir`, else `<root>/<builddir or build>`; the shadow role (§5.2, §6.3) reads its TTCs
   from there (F32) and no other module recomputes it.
-- **Transport.** `socket` (default): spawn `idris2 --ide-mode-socket --no-color …`, read the
-  port printed on stdout (F5), `net.connect(port, '127.0.0.1')`; the process's stdout after
-  the port line is program output and is forwarded to the REPL feature when one is attached.
-  `stdio` (`idris2 --ide-mode`): fallback, selectable by `idris2.ideMode.transport`; required
-  on platforms where socket mode is unverified (Windows [open]).
+- **Transport** (D1; decided by the user on 2026-09-28, ROADMAP §9 Q20). `stdio` (default, on
+  every platform): spawn `idris2 --ide-mode --no-color …` and speak over its standard input and
+  output; no port is opened. The `check` session sends no `:exec` of its own (only a raw request
+  typed with the developer command can), so the program output that F5 finds in the stdio stream
+  does not reach it in normal use, and whatever unframed output arrives — the compiler's log
+  lines, a raw request's program output — is read as the process's output (as built, below). `socket` (`idris2 --ide-mode-socket`), an explicit
+  opt-in in user settings only: read the port printed on stdout (F5), `net.connect(port,
+  '127.0.0.1')`; the process's stdout after the port line is program output. The compiler serves
+  the first connection to that port, unauthenticated (as built, below). The transport of the
+  `eval` session, which runs `:exec`, is M3's to decide (ROADMAP §9 Q20). Until 2026-09-28 this
+  paragraph made the socket the default and stdio the fallback.
+
+As built (M2; ROADMAP M2 "As built" has the details and the evidence):
+
+- **Transport.** `idris2.ideMode.transport` is `stdio` (the default on every platform) or
+  `socket` (decided by the user on 2026-09-28, ROADMAP §9 Q20; until then the default was `auto`:
+  `socket` on macOS and Linux, `stdio` on Windows). A value `auto` still in a settings file reads
+  as `stdio`, and `socket` is kept (`core/config.ts`). The setting has `application` scope, so VS
+  Code reads it from the user settings only: it loads workspace and folder settings with the
+  scopes window, resource, language-overridable and machine-overridable (`scopes: aX`, `aX =
+  [4,5,6,7]`), a remote machine's settings with those and `machine` and `application-machine`
+  (`[2,3,4,5,6,7]`), `application` being 1, and `shouldInclude` keeps a key only when its scope is
+  listed, in the 1.139.1 workbench bundle [src]; every extension host, a remote one too, gets the
+  configuration its window read, the user's application settings included [src, the same bundle;
+  not run in a remote window]; ROADMAP M2 As built *Transport* has the detail; the integration
+  suite `loose-stdio` has a workspace `"socket"` and asserts that the session runs over stdio
+  [live: passed in all three `npm test` runs of the integration of 2026-09-28 after Q20, then with
+  `machine` scope, and with `application` scope in both `npm test` runs of the final integration
+  (ROADMAP M2 As built *Status*)]. So neither a workspace nor a dev container's
+  configuration (which fills a remote machine's settings) can choose the socket. Until the M2
+  verification of the Q20–Q22 fixes the scope was `machine`, which a remote machine's settings may
+  set, and which a remote window does not read from the local user settings. `extraArgs` cannot:
+  the compiler serves the socket whenever `--ide-mode-socket` is on its command line [src], so an
+  `extraArgs` that names it or `--ide-mode` starts nothing (`pool.ts` `extraArgsProblem`; ROADMAP M2
+  As built *Transport*, verification after Q20–Q22). With `socket` chosen, all of the
+  following applies. The compiler binds an ephemeral port on
+  `localhost`, listens and accepts the **first** connection, with no check of the peer [src
+  v0.8.0 `IDEMode/REPL.idr` 50–76, `CommandLine.idr` 181–193]; a later connection completes in
+  the backlog and receives nothing [live]. A local program that connects first — the window
+  opens at `listen()`, before the port is printed, and its length was not measured [open] —
+  gets the session, which can run programs (`:exec`, F5). Mitigated only after the fact: when
+  the extension connected, nothing at all arrived on its connection, and either the handshake limit
+  expires with the connection unanswered for at least 2 s or the process ends after that long
+  or after printing the end-of-input line (the client it served disconnected), the session is
+  `failed` (cause `handshake`) with a warning, the process is stopped and nothing is restarted
+  automatically; an exit sooner, without that line, is an ordinary crash. `stdio`, the default,
+  has no such window (README, *Privacy and security*; ROADMAP §9 Q20). The transport reads stdout up to the
+  first line that is a port (log lines of `--log` come before it [live]) and forwards the other
+  lines as the process's output; the last line of that output is part of an exit's message.
+- **Handshake** (as built): major version 2 only; 1 (Idris 1) and a new major version are
+  refused (`failed`), a minor above 1 is accepted with a warning (ROADMAP §7.4: "must be
+  `2.x`"); a first message headed `:protocol-version` of another shape fails the session at once,
+  quoting it. The 10 s limit counts from the start of the process, wrapper included.
+- **Backoff and give-up** (reading the diagram above, whose "≥ 3 crashes / 5 min" the code
+  reads as follows; confirmed by the user on 2026-09-28, ROADMAP §9 Q22): at most three automatic
+  restarts within any five minutes, after 0 s, 2 s and 10 s, counted from the old process's exit;
+  a fourth unexpected end (exit, time-out, protocol error) within five minutes is `failed`
+  (`gaveUp`) and rejects every waiting request. A stop, a restart or leaving `failed` clears the
+  count.
+- **At most `idris2.ideMode.maxSessions`** (decided by the user on 2026-09-28, ROADMAP §9 Q21;
+  `0`, the default, is no limit). A session counts while it has a process or is getting one
+  (`starting`, `ready`, `busy`, `restarting`). While more count than the limit, the pool stops the
+  least recently used `idle` one (`ready`, nothing in flight or waiting) that is not the active
+  document's root (`SessionPool.setActiveRoot`, which the checks feed, §6.2) — cause `evicted`,
+  which the status item does not show as `stopped` — until the count is within the limit or no such
+  session is left; a busy one and the active root's are never stopped for it, so the count can stay
+  above the limit until one becomes idle. "Used" is a start, a request sent or answered (their
+  order, not the clock). The limit is applied after every state change, after a change of the
+  setting and of the active root, in a microtask. An evicted root's next request starts a process
+  again, after the gate, and its first load compiles what the process has not loaded yet. While
+  the active document's root is still being found (`setActiveRoot('pending')`: a file just opened
+  is being classified) nothing is evicted, since that root may be the idle one (ROADMAP M2 As
+  built *Resource limits*, verification after Q20–Q22). The limit counts the sessions of the
+  pool of one VS Code window: each window has its own extension host, pool and checks, so two
+  windows can run up to twice as many (a limit across windows would need shared state [open]).
+- **Queue.** A request time-out rejects the in-flight request and the queue (as above); an
+  exit, a handshake time-out or a protocol error rejects only the in-flight request, and the
+  queue waits for the new process. Stop, idle, the last document closed, a changed package file
+  (below) and dispose reject
+  everything: a stop and a restart with an `Error` named `Cancelled` (abandoned, not failed, so
+  the checks keep what they showed; `core/errors.ts`), dispose with `BackendCrashed`, a revoked
+  consent with `Unsupported`. A new process is spawned only after the old one has exited, so a
+  root never has two. A request may carry a check that runs when it is the next to be sent, to a
+  process that has answered the handshake, and again for a new process (`RequestOptions.beforeSend`;
+  the requests behind it wait; a rejection rejects that request only and sends nothing), which
+  `backend.ts` uses for the package walk (§5.2); it has the request's own time limit, counted from
+  its start, after which that request alone rejects with `LoadFailed` and the process, sent
+  nothing, is kept (verification after Q20–Q22: it had none); the walk `backend.ts` makes when
+  the load is queued has the same limit (M2 verification of the Q20–Q22 fixes: it had none). A
+  request cancelled while its check runs is taken out at once, its check abandoned, and the next
+  request goes on (it waited for that check before). **Order** (Q21): first-in, first-out, except
+  that a request marked `urgent` (`RequestOptions.urgent`, asked each time the next request is
+  chosen) goes before the others waiting, but never before the one in flight nor before one whose
+  check runs or has passed for the process, so that no walk is separated from its write; the checks
+  mark the active document's load so while `maxBackgroundChecks` is above 0 (§6.2). A time-out's
+  message says how many bytes of an incomplete item had arrived (the process is stopped before they
+  could arrive as `truncated`).
+- **Id attribution** is stricter than above: the mismatching `:return` must also carry the id
+  of the last request this process recognised (0 before the first), which is the id the
+  compiler reuses (F4 [src + live]).
+- **Merged loads.** A `:load-file` of a file already waiting is merged into that entry (the
+  newer version and time limit; every caller gets the one reply); one of the file in flight
+  is queued. Only the newest caller's `beforeSend` decides: a run of an older caller's that is
+  still going is ignored, also when it settles first (*M2 integration after the second
+  verification of the third review*: a run was recognised by its process only, so an older
+  caller's check that settled first, for the same process, was taken for the newer one's —
+  the load was sent before the newer check had passed, or rejected for both callers [unit
+  test, `session.test.ts`, which failed on that code]). `loadedFile` is set by any load's `:return`, `:error` included (F16), and cleared
+  by a raw request.
+- **Configuration changes** (deviation): a change of an `idris2.ideMode.*` key that shapes a
+  session (`IDE_MODE_SESSION_KEYS`: transport, isolateBuildDir, loosePackages, extraArgs and the
+  three time limits), a new toolchain snapshot or a changed classification restarts only the
+  running sessions whose command line (executable, arguments, working directory, environment,
+  transport) would differ, and returns `failed` sessions to `stopped`, both with the cause
+  `reconfigure`; a change of `maxSessions` or `maxBackgroundChecks` only (`IDE_MODE_LIMIT_KEYS`,
+  ROADMAP §9 Q21) restarts nothing and leaves a `failed` session `failed`, since neither changes a
+  command line or why a session failed — a lower `maxSessions` stops what exceeds it at once, a
+  higher `maxBackgroundChecks` starts waiting checks (§6.2); the time limits apply from
+  the next request, the idle limit from the next idle period, so a change of a limit never
+  kills a running load. The new command line takes effect at once for what is shown: once the
+  restarted process has answered the handshake, the root's visible documents are checked again
+  (`IdeMode.onDidRestart` → `DocumentChecks`); after a crash (exit, protocol error), a visible
+  document whose load it killed is checked once more.
+- **Stop when the last document closes**: `features/diagnostics/checks.ts` calls
+  `SessionPool.release(root)` when a checked document closes and no other tracked document
+  belongs to its root; the cause is `closed`, which the status item does not show as
+  `stopped`.
+- **Unframed bytes** (differs from the paragraph above). A header is 6–8 lower-case hex digits
+  followed by `(` and one of the six reply heads (`wire.ts`), so that output such as
+  `00000a(hello)` is not taken for a frame. Over stdio an unframed item is the process's own output —
+  program output, the end-of-input line, and the compiler's log lines, which a `%logging`
+  pragma or `--log` prints in the middle of a load (ROADMAP F5 addendum [live]) — and goes to
+  the trace and the debug log; it is no error. It is a line, or the text before a reply glued to
+  it: output without a final newline is followed at once by the next reply on the same line
+  (`:exec putStr "hi"` → `hi000015(:return (:ok "") 1)`, transcript `exec-stdio-putstr`
+  [live]), so a six-digit header followed by a reply head (`(:return `, `(:output `, …) ends the
+  line before it. Output of one or two hex digits runs into the header (`:exec putStr "7"` →
+  `7000015(:return …`, transcript `exec-stdio-putstr-digit` [live]); the decoder takes the
+  shortest reading whose frame ends with `\n` (headers of 7 or 8 digits never start with `0`),
+  so only a reply of 0x1000000 code points or more can be misread (also when glued to output other
+  than a single hex digit). A log line that quotes a header and a reply head (a string in a term a
+  `%logging` pragma prints) is cut there and breaks the load over stdio (a documented limitation,
+  `wire.ts`). On the socket, which carries only frames (F5), a header needs no reply head (a reply
+  of a newer compiler is read and ignored), an unframed line is a `ProtocolError`, and whatever is
+  left at the end is `truncated`. A stream that ends inside a frame (`truncated`) is reported with
+  the exit that follows it: exit code, last stderr line and the incomplete frame. On the socket a
+  takeover (§5.1 above, Q20) is suspected only when not a byte arrived on the connection
+  (`Transport.receivedBytes`). **Line ends**:
+  a Windows stdout in text mode (E13 [open]) would write every `\n` as `\r\n` under the same
+  prefix, including the line breaks inside a reply's strings, which the compiler does not
+  escape; the decoder decides at the first frame (the handshake) whether the stream is written
+  so, and then counts and drops each `\r` before a `\n` of a frame, which undoes the
+  translation exactly (unit-tested on every 0.8.0 transcript translated so; no Windows
+  compiler was run). A well-formed `:return` with the in-flight id whose payload cannot be
+  read answers that request at once with a `ProtocolError`; the process is kept. The transport
+  holds at most `6 + 4·0xFFFFFF` bytes (≈ 64 MiB) of an incomplete item; beyond that what it
+  held is an `overflow` item (a `ProtocolError`) and the process is stopped, so an endless line
+  of program output over stdio cannot exhaust memory.
 
 ### 5.2 Spawn rules per role
 
@@ -499,7 +688,70 @@ stopped ─spawn─▶ starting ─(:protocol-version 2 1 within 10 s)─▶ rea
 `<build>` is the ipkg's `builddir` if set, else `build`. Without `--build-dir` isolation the
 `check` session shares the project's TTC directory with `idris2 --build`/`pack build`/the LSP
 server; this is documented as a limitation for ipkgs that set `builddir` ([open]: whether
-concurrent writers actually corrupt TTCs), and Stop Backend (§5.1) is the manual remedy.
+concurrent writers actually corrupt TTCs), and Stop Backend (§5.1) is the manual remedy. The
+isolated directory does not keep windows apart: sessions are per window and per root, so two VS
+Code windows whose files belong to one root (two folders of one package, one loose file opened in
+both) each run a `check` session writing the same `build/.vscode-idris2` — the same [open]
+question (ROADMAP M2 As built *E21*), the same remedy, and a README limitation.
+
+As built (M2): the `check` role only (M3 adds `eval`, M6 `shadow`). The command line is
+`<idris2 of the snapshot> --ide-mode|--ide-mode-socket --no-color [-p <pkg>…] [--build-dir
+<effectiveCheckBuildDir>] <extraArgs…>`, started through `core/process.ts`
+`startLongRunningProcess` in `ProjectIndex.sessionCwd(root)` with the snapshot's
+`idris2.toolchain.env` overlaid on the Extension Host's environment. Before every spawn the
+pool checks trust (Restricted Mode: nothing, nobody asked), waits for a running or first
+toolchain scan (no `probed` idris2: `ToolchainMissing`), asks the consent gate for the working
+directory (`SessionGate`, `core/trust.ts`; decided by the user on 2026-09-27, ROADMAP §9):
+allowed at once inside a trusted workspace folder, otherwise once the user answered **Allow**
+(this window) or **Always Allow for This Folder** (kept in the extension's global state as a
+real path; the question names the `.ipkg` that chose the directory, if any), and after its
+last wait has the gate judge the directory again (`SessionGate.recheck`, which reads its real
+path again), so that nothing starts in a folder revoked, or a directory replaced by a symbolic
+link, meanwhile; on POSIX the process is started in the real path that verdict judged
+(`SessionLaunch.realCwd`), not through the links of the spelled path, which the child would
+resolve again [reasoned; M2 second verification of the third review], and the isolated
+`--build-dir` is placed in that real path too (verification after Q20–Q22: built from the
+spelled path, a link on it re-pointed during a load redirected the TTCs, and a path through a
+link whose name the compiler's path parser misreads passed the load's check) — a running
+session's command line is compared with one built on the real path it was started in. An
+`extraArgs` that names `--ide-mode` or `--ide-mode-socket` starts nothing (§5.1 as built
+*Transport*); directories are compared by real path, with only the drive letter lower-cased
+on Windows (NTFS keeps names that differ only in case apart in case-sensitive folders), and one
+whose real path cannot be read is refused without a question (`unresolved`, with the error). The
+global state is shared by every window and a window's own write comes back to it late, so the
+store keeps when each folder was last decided, and for each folder the later decision holds —
+this window's over an older stored value, another window's newer one over this window's (ROADMAP
+M2 As built, *Consent*); a revocation holds in its window before the write completes. The
+question gives its warning first and names the folder last, quoted (`shownPath`: invisible
+characters and look-alike quotes written out, at most 200 UTF-16 units). With pack's `idris2`
+the `pack.toml` files of every parent directory are read too, above a trusted folder included,
+which the gate does not ask about (ROADMAP M2 As built, *Consent*: read [src], what such a
+file can do [open]). The path sent in
+`:load-file` is the real path of the working directory joined with the file's relative path on
+POSIX (the compiler compares it with `getcwd()`, which is physical; a path through a symbolic
+link was refused [live, transcript `load-symlink`]), and the document's own path on Windows
+[open]. Before each load the walk the compiler's `findIpkg` does at every load is done again
+from the working directory's real path — when the load is queued, and again when it is the
+next to be sent to a process that has answered the handshake (`RequestOptions.beforeSend`; a
+first load waits for the consent question and the start in between). On POSIX a path the
+compiler's own path parser reads otherwise (`\` is a separator to it; it stops at `:` and `?`)
+is not loaded, since its walk would go elsewhere [live, M2 second verification of the third
+review]. For a loose file it must find no `.ipkg` (one created
+after the file was classified, or one above the physical directory of a symbolic link), for a
+project the root's own `.ipkg` in the working directory (one renamed or removed outside the
+workspace folders, or within the index's debounce): otherwise the load is not sent, because the
+compiler would move to another package's directory, which the gate never judged, and stay there
+for every later load [live] (`LoadFailed`, with what to do; the root's sessions are stopped,
+cause `packageChanged`; ROADMAP M2 As built, *Consent*). The compiler walks from the directory it
+was started in, not from its path, so the identity of that directory (device and inode) is noted
+at each start, and a load is sent only while the directory at the session's path resolves and is
+the same one. The build directory is
+D5 as the compiler ends up using it: a `--build-dir` in the `.ipkg`'s `opts`, else its
+`builddir`, else a `--build-dir` in `extraArgs`, else the isolated `build/.vscode-idris2`
+(the only case with the extension's own `--build-dir`) or `build` (F12 and its addendum [live]);
+`effectiveCheckBuildDir` computes it. E21 (concurrent writers with `builddir`): one session beside one `idris2 --build` never
+compiled at the same instant on the one-module fixture; no error, TTC files intact — not
+settled (ROADMAP M2 As built).
 
 ### 5.3 LanguageClient lifecycle
 
@@ -542,12 +794,113 @@ interface DocumentSession {
 All views subscribe to `onDidChangeSession`. The status item shows `checking… / ✓ / n errors /
 stale / stopped`; hovers get an italic "results refer to the saved file" header when `stale`.
 
+As built (M2): no `DocumentSession` type and no `onDidChangeSession` exist under these names. The
+per-document state is `DocumentChecks`' tracked entry (`features/diagnostics/checks.ts`):
+`loadState` (with `failed`, §6.2), the root, the version and text hash the last check read (in
+place of `savedVersion`: `stale` is computed when asked, from `document.isDirty` or a version
+that differs from the checked one, e.g. after the file changed on disk — or, when no version is
+known to show the checked text (the check started with unsaved changes), a text that differs from
+it; the version is renewed when the document shows the checked text again, §6.2), and the imported files
+that blocked it (`LoadResult.blockedBy`, in place of `lastLoadHadBuilding`); views read it
+through `loadStateOf`/`statusOf` and subscribe to `DocumentChecks.onDidChange`. `holes` and
+`tokens` arrive with M4 and M3.
+
 ### 6.2 Triggers (`idris2.checking.trigger`)
 
 - `onSave` (default): `:load-file` (or the server's own `didSave` reload) on save and on open.
 - `afterDelay`: debounced `document.save()` of Idris documents only (opt-in; it writes the
   user's files) — the only mitigation that also unlocks the LSP's dirty-gated features.
 - `manual`: only the *Check File* command.
+
+As built (M2): `loadState` gains `failed` (the load was not answered: the process ended or
+timed out, the protocol broke, no compiler); a load the consent gate refused, or that
+Restricted Mode prevented, keeps the previous state, and the document is checked again once its
+directory is allowed. "On open" means when the document is first shown in an editor after it
+was opened (the visible editors at activation, and each that becomes visible); a document
+opened but never shown is not checked. `afterDelay` saves an Idris document with unsaved
+changes `idris2.checking.delay` ms after the last edit, which then checks it; never in
+Restricted Mode. The trigger is read for each document's resource scope. In Restricted Mode
+nothing is checked; granting trust checks the visible documents. A document refused by the
+consent gate is checked when it is shown after its directory was allowed, and **Check File**
+says why it refused, with **Allow…**. `afterDelay` does not save a document whose directory the
+gate refused or whose root's session was given up. A load abandoned by a stop or a restart
+(an `Error` named `Cancelled`) keeps the previous state. Every load's result is applied, file
+by file in the order the checks started, also when a newer check of the same document has
+started; only the newest check sets the document's state, and the counts are read from the
+collection (ROADMAP M2 As built, *Diagnostics*: the older result used to be dropped, which lost
+what it alone had determined). A document not checked because of errors in the files it
+imports is checked again once a load finds one of them clean (`LoadResult.blockedBy`); saving
+a root's `.ipkg` checks the root's visible documents again. Closing a document this window
+checked removes its diagnostics from view;
+the window keeps them, and a later load that determines nothing for the reopened document (a
+fresh TTC, F7) shows them again when its text is unchanged. When it was the last tracked
+document of its root — or a check finds the document in another root (its `.ipkg` was created,
+renamed or removed) — the root's sessions are released (§5.1), and the diagnostics its loads set
+on files that are not open (its `.ipkg`, imported files it built) are removed; an open file keeps
+them until it is checked or closed. A clean document whose text changes without a save (VS Code
+reloaded it because the file changed on disk) is checked again when the text differs from the
+one its check read — the running check's while one runs, else the last completed one's — so it
+reads `checking…` (with the trigger `manual`, which checks nothing by itself, `stale`). VS Code
+1.139.1 sends a file's text change with the dirty state from before it and the new state in a
+second event without content changes [src; live: the `diagnostics` integration suite asserts
+the two events of an edit (`workspace.applyEdit`) and of an undo, green in the M2 integration of
+2026-09-28], so a
+keystroke in a clean document looks like a reload at first: a text change is taken for a reload
+only when the file on disk holds the document's new text (BOM dropped, line ends as `\n`), and a
+check that starts before that is settled, or with unsaved changes, reads the file for the text it
+checks. Typing never starts a check (also not after Stop Backend); an undo back to the text the
+last completed check read (the dirty-state event that leaves it clean), or a reload back to it,
+makes that result current again — also while another check of that text runs, whose result
+replaces it if it completes — and one back to the text of a check that Stop Backend cancelled
+reads `stale`; a document whose file is deleted and created again in a workspace folder is
+checked again, also when the deletion came while its check ran, whose result is then kept off
+it. A reload is compared for every document a check was started for (a failed first check
+included), and a result is `stale` for any text but the one its check read, also when that check
+started with unsaved changes (ROADMAP M2 As built *Documents and triggers*, verification after
+Q20–Q22). A file saved while the compiler was building it keeps the TTC of the text read first
+(the compiler compares modification times [src]): the next load builds nothing, and what is
+shown is that text's result until the file is changed and saved again. The status item shows
+`checking…` (with the link **Allow…** while the consent question about its directory is open),
+`✓`, `up to date` (no errors; the file was not rebuilt, so its warnings are not known), `n
+errors`, `n warnings`, `stale` (whose detail says why — unsaved changes, or a text changed without
+a save — and whether a save or **Check File** checks it), `package file error`, `stopped` (after
+Stop Backend, or a revoked permission, which the detail names while the directory is not allowed
+again), `failed` or `not allowed here` (with the link **Allow…**).
+Its detail quotes paths (in quotes, `shownPath`; a permission text comes before them) and compiler text, so it is made link-free (`core/notificationText.ts`),
+like every notification message, input-box prompt and validation message, and progress text:
+VS Code turns `[label](command:…)` in all of them into links that run commands [src].
+
+**The active document and background checks** (decided by the user on 2026-09-28, ROADMAP §9
+Q21). The active document is the active editor's when that is an Idris file on disk, and while
+the active editor is something else (another language, an output channel — VS Code 1.139.1
+reports the focused Output panel as the active text editor [live, ROADMAP M2 As built *Resource
+limits*] —, none) the last such document, as long as it is open; the checks tell the pool its root (`ActiveRoot` →
+`SessionPool.setActiveRoot`, §5.1 *At most `maxSessions`*). With
+`idris2.ideMode.maxBackgroundChecks` above `0` (the default `0` is no limit and changes nothing
+above), a check of any other document waits after classifying the file, reading `checking…`:
+first, when the consent gate has no verdict for its folder yet, for the answer (the checks ask
+`SessionGate.permit`; an open question holds no slot) — unless the backend says the load would be
+refused before any question (`LoadPreflight` → `IdeMode.refusalBeforeQuestion`: the package walk,
+then `SessionPool.startProblem`), when nothing is asked and the load goes at once, without a slot —,
+then for one of that many slots, unless the gate refuses the folder (the load is refused at once). A check counts while it runs, is not the
+active document's, and its folder is neither refused nor asked about; the others wait in the order
+they reach the slot step, and a newer check of a waiting document takes the older one's place.
+The running checks are counted again when the active document, the limit or a verdict changes, and
+when a document closes, so a check that started as the active document's counts once another is
+active or it closed. The active
+document's check never waits for a slot, and a waiting check whose document becomes the active one
+starts at once. A waiting check does not load when its document closes, on **Stop Backend** for its
+root or for all (`DocumentChecks.cancelWaiting`, called by the command before it stops the
+sessions), or when its folder is revoked (then as refused). A higher limit (or `0`) starts waiting
+checks at once; a lower one interrupts nothing. While a check of the active document has not
+classified it, its root reads `pending` to the pool (§5.1); an active document no check tracks
+(the `manual` trigger) is classified by the checks for this. The limit is on checks, not on process
+starts (Restart Backend for every root restarts the processes together). Within one root the
+session sends one request at a time and the compiler cannot be interrupted, so the checks mark the
+active document's load `urgent` (`LoadOptions`, §3.1) while a limit is set: it goes before the
+root's loads that wait, after the one in flight and after one whose package walk runs or has
+passed — at most those two (§5.1 as built *Queue*). Both limits count per VS Code window: each
+window has its own extension host, pool and checks (ROADMAP M2 As built *Resource limits*).
 
 ### 6.3 Shadow typecheck (M6) — check-while-typing without saving
 
@@ -630,6 +983,33 @@ loaded one are attached to that file (path resolved
 against cwd). A `(:return (:error MSG))` **without** any `:warning` frame whose MSG contains
 `"<name>.ipkg":L:C--L:C` is an ipkg parse error (F10): it becomes a diagnostic on the ipkg file
 and `loadState = 'ipkgError'`.
+
+As built (M2; `backend/ide/diagnostics.ts`): the message is the frame's text with **every**
+location block removed — a location line after a blank line and the excerpt under it — so the
+text some errors print after the excerpt (`Calls non covering function Part.g` [live]) is
+kept, and `Missing cases:` with it. Frames whose FILE is `(File-Not-Found)` or `(Interactive)`
+go to the loaded document at its start, with their whole text. The known-warning table (E5)
+matches the first lines of all seven warning constructors, from `pwarningRaw` [src v0.8.0
+`Idris/Error.idr` 258–301]: `DEPRECATED: ` (all four parser warnings), `Unreachable clause: `,
+the two shadowing texts, the forward-declared visibility text, `Deprecation warning: ` and
+three `GenericWarn` texts; each was observed as a `:warning` frame followed by `(:return (:ok
+()))` [live, the `warning-*` transcripts] except the ambiguous-fixity text [src only]. A
+`%runElab` `warn` has free text and cannot be recognised. When the session was started with
+`-Werror` every frame of a failed load is an error (`WarningAsError w` prints `pwarningRaw w`
+[src `Error.idr` 795]), and so with `-Werror` in the `.ipkg`'s `opts`, which the compiler applies
+at every load. The `.ipkg` error is
+recognised by a location line with a quoted origin (`"bad.ipkg":3:1--3:5`: a package origin is
+printed with `show`, a module bare), also when frames came with it. A load determines — and so
+replaces — the diagnostics of every file named by a `Building` line or a frame, of the root's
+`.ipkg`, and after a failed load of the loaded document; other files keep theirs (F7). A failed
+load whose document got no error of its own (the error is in an imported module or the `.ipkg`,
+or has no location) gets one error at its start, "Not checked: …", with the errors it refers
+to as related information; for errors in imported modules `LoadResult.blockedBy` names those
+files, and the document is checked again once a load finds one of them clean (§6.2 as built).
+Limitation (F7): a file whose TTC is fresh from an earlier session
+shows no warnings until it is rebuilt; its status reads `up to date`, not `✓`. A document
+closed and reopened in the same window gets back what it showed, when nothing rebuilt it and
+its text is unchanged (`features/diagnostics/checks.ts`).
 
 **CLI output → `Diagnostic`** (`backend/cli/diagnostics.ts`). Format per landscape §4.2:
 `Error:`/`Warning:` block, then `<Module>:L:C--L:C` (1-based) and a snippet. `<Module>` is a
@@ -754,11 +1134,12 @@ Every key has a `markdownDescription` and a scope (`machine-overridable` for pat
 | `checking.trigger`, `checking.delay` | `"onSave"`, `700` ms | M2 |
 | `checking.saveBeforeAction` | `"always"` (`always` \| `prompt` \| `never`) | M4 |
 | `checkOnType.enabled`, `checkOnType.delay` | `true`, `500` ms (shadow) | M6 |
-| `ideMode.transport` | `"socket"` (`socket` \| `stdio`) | M2 |
+| `ideMode.transport` | `"stdio"` (`stdio` \| `socket`; user settings only; until 2026-09-28 `"auto"` as built, planned `"socket"`, ROADMAP §9 Q20) | M2 |
 | `ideMode.isolateBuildDir` | `true` | M2 |
 | `ideMode.loosePackages` | `[]` (`-p` flags for loose files) | M2 |
-| `ideMode.extraArgs` | `[]` | M2 |
+| `ideMode.extraArgs` | `[]` (never `--ide-mode` or `--ide-mode-socket`: nothing starts, §5.1 as built) | M2 |
 | `ideMode.requestTimeout`, `ideMode.longActionTimeout`, `ideMode.idleTimeout` | `5000`, `60000`, `600000` ms | M2 |
+| `ideMode.maxSessions`, `ideMode.maxBackgroundChecks` | `0`, `0` (no limit; ROADMAP §9 Q21) | M2 |
 | `diagnostics.includeSourceExcerpt` | `false` | M2 |
 | `lsp.{logFile,logSeverity,longActionTimeout,maxCodeActionResults,showImplicits,showMachineNames,fullNamespace,briefCompletions}` | server defaults [landscape §3] | M5 |
 | `lsp.trace.server` | `"off"` | M5 |
@@ -784,6 +1165,28 @@ absolute path without a runnable extension is tried with those of `PATHEXT`); `e
 process environment (not a string, an empty name, `=` in the name, a NUL) are dropped and
 listed in Setup Information.
 
+As built (M2): the `checking.*`, `ideMode.*`, `diagnostics.includeSourceExcerpt` and
+`trace.protocol` keys exist with the defaults above. `ideMode.transport` offers `stdio` and
+`socket`; until the user's decision of 2026-09-28 (ROADMAP §9 Q20) its default was `"auto"`
+(`socket` on macOS and Linux, `stdio` on Windows), and a value `auto` still in a settings file
+now reads as `stdio` (§5.1 as built). `checking.*` are `resource`-scoped and read per document;
+`ideMode.transport` is `application`-scoped (the user settings only, so that neither a workspace's
+settings nor a remote machine's, which a dev container's configuration fills, can opt a user into
+the socket, ROADMAP §9 Q20 [src: §5.1 as built]; `machine` until the M2 verification of the Q20–Q22
+fixes), and so is `trace.protocol`; the others are `window`. `ideMode.maxSessions` and
+`ideMode.maxBackgroundChecks` (ROADMAP §9 Q21) count per VS Code window, have a minimum of 0 and
+no maximum; a fraction reads rounded down, a negative number or a value of the
+wrong type as 0 (no limit). A change of them restarts nothing (§5.1 *Configuration changes*);
+`IDE_MODE_SESSION_KEYS` and `IDE_MODE_LIMIT_KEYS` in `core/config.ts` sort every `ideMode.*` key
+into one of the two kinds, which a unit test checks against `package.json`. `ideMode.loosePackages` and `ideMode.extraArgs` are in
+`restrictedConfigurations`: both become compiler arguments (the M0 rule for settings that name
+arguments). `checking.delay` has a minimum of 100 ms, `requestTimeout` and `longActionTimeout`
+of 1,000 ms; `idleTimeout` 0 means never. All four have a maximum of 2^31 − 1 ms (about 24.8
+days), because Node's `setTimeout` runs a longer delay after 1 ms (`TimeoutOverflowWarning`
+[live, Node 24.13]; before the second review a large `longActionTimeout` meant to disable the
+limit made every load time out at once). A value below its minimum or above its maximum reads
+as that bound, a value of the wrong type as the default (`core/config.ts`).
+
 Migration (M5): on first activation, if bamboo's `idris2-lsp.*` settings exist, offer to copy
 them with this key map (F36): `idris2-lsp.loglevel → idris2.lsp.logSeverity` (bamboo's key
 name differs from the server option it never actually read), `idris2-lsp.{logFile,
@@ -800,7 +1203,7 @@ briefCompletions} → idris2.lsp.<same>`, `idris2-lsp.path → idris2.toolchain.
 | Unit | mocha on Node (`npm run test:unit`, < 5 s) | nothing | `sexp` (escaping, bare symbols), `wire` (byte framing round-trips `"`, `\`, newline, `→`; EOF tail), `positions` (the §7 table, literate offset), reply decoders on recorded transcripts, `:warning` mapping, CLI parser on recorded `--check`/`--build` output, ipkg JSON, version parsing/verdicts, `IdeSession` against `FakeTransport` (id mismatch, noise, delays, crash) |
 | Grammar | `vscode-textmate` + `vscode-oniguruma` snapshots (`npm run test:grammar`) | nothing | scopes over `test/fixtures/grammar/*.idr`, `.lidr`, `.ipkg`, injections |
 | Integration | `@vscode/test-cli` (Electron, per fixture workspace) | VS Code download | activation, contributions, commands, providers, settings, routing, diagnostics rendering, hole views, task UI — driven by `test/fake-idris2` (stdio + socket) and `test/fake-lsp` replaying transcripts |
-| E2E | same runner, `IDRIS2_E2E=1` | real `idris2` (+ `idris2-lsp`) | every fact in `ROADMAP.md` §0 as a regression test; `IDRIS2_RECORD=1` refreshes `test/fixtures/transcripts/<version>/` |
+| E2E | same runner, `IDRIS2_E2E=1` | real `idris2` (+ `idris2-lsp`) | the facts in `ROADMAP.md` §0 as regression tests (planned: every row; as built in M2: F1–F7, F10, F12–F14, F29–F33); `IDRIS2_RECORD=1` refreshes `test/fixtures/transcripts/<version>/` |
 | Contract | mocha suite parameterised over backends | as above | the same fixture yields the same holes/types/edits from `IdeBackend` and `LspBackend`; owned by whichever of M4/M5 ships second (§3.3), runs against the fakes in CI and the real toolchain in e2e |
 | Manual | `docs/checklists/Mn.md` | — | 5–10 steps per milestone before tagging |
 
@@ -812,6 +1215,26 @@ tools, pack's wrapper scripts in simulated layouts) and takes 8–10 s on the de
 `simple-ipkg/src`, below its `.ipkg`) and `toolchain-path` (fake tools found through `PATH`).
 The `e2e` suite exists (`npm run test:e2e`, on `simple-ipkg`, real `idris2`); it reads the
 extension's state through the test API `activate()` returns in `ExtensionMode.Test`.
+
+As built (M2): the unit suite (1,345 tests after the second review, 17–18 s on the development
+machine; 1,398 after the third, 27 s in the fixer's lane build and 32 s in the gate run, while other
+processes loaded the machine: load average 25 a few minutes later; 1,424 after the verification of the third review, 18 s in the gate run; 1,449 after its second verification, 18 s in the fixer's lane build; 1,450 after the integration that followed, 17 s; 1,470 after Q20–Q22, 22 s in the gate run; 1,487 after the verification that followed, 18 s in the fixer's lane build; 1,497 after the verification of those fixes, 19 s in the fixer's lane build) covers the protocol modules on the
+34 transcripts recorded from 0.8.0, the session and pool against a
+fake transport and clock, the transports and `startLongRunningProcess` with real processes, and
+the pool with real transports against the fake compiler. The transcripts are recorded by
+`scripts/record-transcripts.mjs` (`npm run record:transcripts`), not by `IDRIS2_RECORD=1` of the
+e2e suite as planned above. The fake compiler replays them over stdio and the socket (keyed by
+the SHA-256 of the fixture files) and injects crash, crash-in-reply, hang, noise and id-mismatch faults
+(`FAKE_IDRIS2_IDE_FAULT`; injected noise is the process's output over stdio and a protocol
+error on the socket). Three integration suites were added: `diagnostics` (`broken`, socket
+transport, chosen in the suite's user settings), `loose-stdio` (`loose-file`, stdio, the default
+since ROADMAP §9 Q20; the workspace's own settings ask for the socket, which must be ignored) and
+`consent` (`simple-ipkg/src`, a package above the workspace folder). The e2e suite gained the protocol facts (every F1–F7, F10, F12–F14,
+F29–F33 row and every transcript against the live compiler), the extension's sessions, a
+fake-versus-real parity test and the E21 test. `check:fixtures` requires the deliberately broken
+fixtures to fail with the errors listed in its `EXPECTED_PROBLEMS`. One `consent` test failed once
+and passed in the 10 runs after it (cause [open], ROADMAP M2 As built, *Status*); the
+integration helpers' waits report the state at their deadline.
 
 Fixture workspaces: `loose-file/` (no ipkg, `import Data.Vect`), `simple-ipkg/` (`sourcedir =
 "src"`, `depends = contrib`, two modules), `multi-module/` (one error in a sub-module),
@@ -868,11 +1291,11 @@ machine and < 1,000 ms when `CI` is set (the reasoning, with the one CI data poi
 
 | # | Decision | Rationale | Rejected alternatives |
 |---|---|---|---|
-| D1 | Socket transport (`--ide-mode-socket`) by default, stdio fallback | `:exec`/IO output is written unframed into the stdio stream and corrupts framing; over the socket it goes to process stdout (F5) | stdio only with "never send :exec" (still breaks on any IO evaluation); framing program output upstream (U2, not available today) |
+| D1 | **stdio** (`--ide-mode`) for the `check` session by default on every platform; the socket (`--ide-mode-socket`) only as an explicit opt-in in user settings (`idris2.ideMode.transport`, `application` scope — not a workspace's settings nor a remote machine's; `machine` until the M2 verification of the Q20–Q22 fixes, which a dev container's configuration could fill —; an `extraArgs` naming it starts nothing, since the compiler would serve the socket whatever `transport` says; the takeover detection stays for the opt-in). Decided by the user on 2026-09-28 (ROADMAP §9 Q20); the transport of M3's `eval` session, which runs `:exec`, is revisited in M3 | The socket's port serves the first local connection, unauthenticated, and whoever wins can run programs as the user (`:interpret ":sh …"`, `:exec`) [src + live, §5.1 as built]; stdio opens no port. The original reason for the socket — `:exec`/IO output is written unframed into the stdio stream (F5) — does not apply to the `check` session, which sends no `:exec` of its own (a raw request typed with the developer command can), and the compiler's log lines and other unframed output in the stdio stream are read as the process's output since the M2 review (§5.1 as built *Unframed bytes*; one limitation left: a log line quoting a reply header, README). **History:** until 2026-09-28 D1 read "socket transport by default, stdio fallback", and M2 as first built defaulted to `auto` (socket on macOS and Linux, stdio on Windows) | the socket by default (the unauthenticated port); an authenticated socket upstream (U2, not available today); stdio only with "never send :exec" for the `eval` session (breaks on any IO evaluation — M3 decides its transport) |
 | D2 | Request frame length = UTF-8 **bytes** incl. trailing newline; **reply** frames are read by their prefix in **code points** | Verified: byte count round-trips `→`, code-point count desynchronises (F1); landscape §4.3 agrees. The compiler prefixes its replies with their length in code points (F1 addendum [live]), so a reader that cuts replies by bytes desynchronises on the first non-ASCII reply | counting characters as the rst says [doc] — wrong in practice on 0.8.0 for requests, right for replies |
 | D3 | Separate `eval` session from the `check` session | `:set` persists across loads; evaluation of IO must not touch checking state | re-asserting options after each eval via `:get-options` (fragile) |
 | D4 | One `IdeSession` pool per ProjectRoot with cwd = ipkg dir (loose: file dir), never `--find-ipkg` | `findIpkg` walks up from the process cwd and `chdir`s (F13; [src `Package.idr` 1093–1110]); loads from a foreign cwd fail even with absolute paths, and `--find-ipkg` from a subdirectory breaks relative loads (F13) | one global process (cannot serve two projects); `--find-ipkg` |
-| D5 | `--build-dir <root>/<build>/.vscode-idris2` isolation when the ipkg has no `builddir`; the resulting `effectiveCheckBuildDir` is exposed by the `SessionPool` and is what the shadow role imports from (F32) | avoids TTC races with the user's builds and the server; the ipkg field overrides the flag (F12), so isolation is conditional and documented; `<root>/build/ttc` does not exist in a fresh clone (F32) | always share the project build dir; a separate `IDRIS2_PREFIX` |
+| D5 | `--build-dir <root>/<build>/.vscode-idris2` isolation when the ipkg has no `builddir`; the resulting `effectiveCheckBuildDir` is exposed by the `SessionPool` and is what the shadow role imports from (F32) | avoids TTC races with the user's builds and the server (not between two VS Code windows checking one root, which share it, §5.2 [open]); the ipkg field overrides the flag (F12), so isolation is conditional and documented; `<root>/build/ttc` does not exist in a fresh clone (F32) | always share the project build dir; a separate `IDRIS2_PREFIX` |
 | D6 | Check-while-typing via shadow copies + `IDRIS2_PATH` (M6), not debounced auto-save by default | verified mechanism that never writes user files and needs no upstream change (F8) | debounced `document.save()` (kept as an opt-in trigger); waiting for U3 |
 | D7 | `IdrisBackend` + `NullBackend` from M0; routing per root; LSP ownership via middleware | LSP and IDE backends can be built in either order; per-root switching without client restart | document selectors (need a client restart); one backend only |
 | D8 | Forward LSP settings by sending `didChangeConfiguration` with the flat options object | `processSettings` reads top-level keys [src] | `synchronize.configurationSection` (nests by dotted path; ignored by the server) |

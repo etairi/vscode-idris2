@@ -22,6 +22,7 @@
 import type * as vscode from 'vscode';
 import { DisposableStore, type IDisposable } from '../core/disposable';
 import type { Log } from '../core/log';
+import { plainText } from '../core/notificationText';
 import type { WorkspaceTrust } from '../core/trust';
 import { isIdrisDocument } from '../project/literate';
 import type { Classification, IpkgDependency, ProjectIndex, ProjectRoot } from '../project/types';
@@ -532,7 +533,7 @@ export function registerSetupInformation(api: SetupApi, deps: SetupDeps): SetupI
         const { issuesUrl } = deps.extension;
         const open = 'Open Issues Page';
         const choice = await api.window.showInformationMessage(
-          "VS Code's issue reporter is not available. The report, with the Setup Information, was copied to the clipboard.",
+          plainText("VS Code's issue reporter is not available. The report, with the Setup Information, was copied to the clipboard."),
           ...(issuesUrl === undefined ? [] : [open]),
         );
         if (choice === open && issuesUrl !== undefined) {

@@ -20,6 +20,7 @@
 import type * as vscode from 'vscode';
 import { DisposableStore, type IDisposable } from '../core/disposable';
 import type { Log } from '../core/log';
+import { plainText } from '../core/notificationText';
 import type { ToolchainService, ToolchainSnapshot } from './types';
 
 export interface NoticeAction {
@@ -113,7 +114,7 @@ export function registerToolchainNotifications(
     shown.push(notice);
     log.warn(notice.message);
     // Not awaited: the promise settles only when the user clicks or dismisses the warning.
-    void api.window.showWarningMessage(notice.message, ...notice.actions.map((a) => a.label)).then((label) => {
+    void api.window.showWarningMessage(plainText(notice.message), ...notice.actions.map((a) => a.label)).then((label) => {
       const action = notice.actions.find((a) => a.label === label);
       if (action !== undefined && !store.isDisposed) {
         void api.commands.executeCommand(action.command, ...action.args);

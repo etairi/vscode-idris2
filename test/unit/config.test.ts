@@ -5,7 +5,12 @@ import * as path from 'path';
 import {
   Config,
   expandHome,
+  MAX_DELAY_MS,
+  readCheckingSettings,
+  readDiagnosticsSettings,
+  readIdeModeSettings,
   readToolchainSettings,
+  readTraceSettings,
   usableHomeDirectory,
   type ConfigurationChange,
   type ConfigurationHost,
@@ -23,13 +28,16 @@ function section(values: Record<string, unknown>): ConfigurationReader {
 function fakeHost(values: Record<string, unknown>): {
   host: ConfigurationHost;
   sections: string[];
+  scopes: unknown[];
   change(affected: readonly string[]): void;
 } {
   const sections: string[] = [];
+  const scopes: unknown[] = [];
   const listeners = new Set<(e: ConfigurationChange) => unknown>();
   const host: ConfigurationHost = {
-    getConfiguration: (name) => {
+    getConfiguration: (name, scope) => {
       sections.push(name);
+      scopes.push(scope);
       return section(values);
     },
     onDidChangeConfiguration: (listener) => {
@@ -46,7 +54,7 @@ function fakeHost(values: Record<string, unknown>): {
       listener(event);
     }
   };
-  return { host, sections, change };
+  return { host, sections, scopes, change };
 }
 
 suite('core/config', () => {
@@ -173,6 +181,147 @@ suite('core/config', () => {
     });
   });
 
+  suite('M2 settings (checking, ideMode, diagnostics, trace)', () => {
+    test('valid values are read as written', () => {
+      assert.deepStrictEqual(
+        readCheckingSettings(section({ 'checking.trigger': 'afterDelay', 'checking.delay': 1500 })),
+        { trigger: 'afterDelay', delayMs: 1500 },
+      );
+      assert.deepStrictEqual(
+        readIdeModeSettings(
+          section({
+            'ideMode.transport': 'stdio',
+            'ideMode.isolateBuildDir': false,
+            'ideMode.loosePackages': ['contrib', 'network'],
+            'ideMode.extraArgs': ['--log', '1'],
+            'ideMode.requestTimeout': 2000,
+            'ideMode.longActionTimeout': 120000,
+            'ideMode.idleTimeout': 0,
+            'ideMode.maxSessions': 3,
+            'ideMode.maxBackgroundChecks': 1,
+          }),
+        ),
+        {
+          transport: 'stdio',
+          isolateBuildDir: false,
+          loosePackages: ['contrib', 'network'],
+          extraArgs: ['--log', '1'],
+          requestTimeoutMs: 2000,
+          longActionTimeoutMs: 120000,
+          idleTimeoutMs: 0,
+          maxSessions: 3,
+          maxBackgroundChecks: 1,
+        },
+      );
+      assert.deepStrictEqual(readDiagnosticsSettings(section({ 'diagnostics.includeSourceExcerpt': true })), {
+        includeSourceExcerpt: true,
+      });
+      assert.deepStrictEqual(readTraceSettings(section({ 'trace.protocol': true })), { protocol: true });
+    });
+
+    test('an unknown enum value or a value of the wrong type reads as the default', () => {
+      for (const trigger of ['onType', 'ONSAVE', 7, null, ['manual']]) {
+        assert.strictEqual(readCheckingSettings(section({ 'checking.trigger': trigger })).trigger, 'onSave', String(trigger));
+      }
+      for (const transport of ['tcp', 'Socket', true, {}]) {
+        assert.strictEqual(readIdeModeSettings(section({ 'ideMode.transport': transport })).transport, 'stdio');
+      }
+      for (const delay of ['700', null, Number.NaN, Number.POSITIVE_INFINITY, [700]]) {
+        assert.strictEqual(readCheckingSettings(section({ 'checking.delay': delay })).delayMs, 700, String(delay));
+      }
+      const ide = readIdeModeSettings(
+        section({
+          'ideMode.isolateBuildDir': 'false',
+          'ideMode.loosePackages': 'contrib',
+          'ideMode.extraArgs': { a: 1 },
+          'ideMode.requestTimeout': '5',
+          'ideMode.longActionTimeout': null,
+          'ideMode.idleTimeout': Number.NaN,
+          'ideMode.maxSessions': '3',
+          'ideMode.maxBackgroundChecks': Number.POSITIVE_INFINITY,
+        }),
+      );
+      assert.deepStrictEqual(ide, {
+        transport: 'stdio',
+        isolateBuildDir: true,
+        loosePackages: [],
+        extraArgs: [],
+        requestTimeoutMs: 5000,
+        longActionTimeoutMs: 60000,
+        idleTimeoutMs: 600000,
+        maxSessions: 0,
+        maxBackgroundChecks: 0,
+      });
+      assert.strictEqual(readDiagnosticsSettings(section({ 'diagnostics.includeSourceExcerpt': 'yes' })).includeSourceExcerpt, false);
+      assert.strictEqual(readTraceSettings(section({ 'trace.protocol': 1 })).protocol, false);
+    });
+
+    test('a number below the minimum the schema declares reads as that minimum', () => {
+      assert.strictEqual(readCheckingSettings(section({ 'checking.delay': 5 })).delayMs, 100);
+      const ide = readIdeModeSettings(
+        section({ 'ideMode.requestTimeout': 0, 'ideMode.longActionTimeout': -1, 'ideMode.idleTimeout': -60000 }),
+      );
+      assert.strictEqual(ide.requestTimeoutMs, 1000);
+      assert.strictEqual(ide.longActionTimeoutMs, 1000);
+      assert.strictEqual(ide.idleTimeoutMs, 0);
+    });
+
+    test('a delay above 2^31 - 1 ms (which setTimeout would run after 1 ms) reads as 2^31 - 1', () => {
+      assert.strictEqual(MAX_DELAY_MS, 2147483647);
+      assert.strictEqual(readCheckingSettings(section({ 'checking.delay': 2 ** 31 })).delayMs, MAX_DELAY_MS);
+      const ide = readIdeModeSettings(
+        section({ 'ideMode.requestTimeout': 2 ** 31, 'ideMode.longActionTimeout': 1e12, 'ideMode.idleTimeout': Number.MAX_SAFE_INTEGER }),
+      );
+      assert.strictEqual(ide.requestTimeoutMs, MAX_DELAY_MS);
+      assert.strictEqual(ide.longActionTimeoutMs, MAX_DELAY_MS);
+      assert.strictEqual(ide.idleTimeoutMs, MAX_DELAY_MS);
+      assert.strictEqual(readIdeModeSettings(section({ 'ideMode.longActionTimeout': MAX_DELAY_MS })).longActionTimeoutMs, MAX_DELAY_MS);
+    });
+
+    test('list settings keep their string entries in order: package names only when non-empty', () => {
+      const ide = readIdeModeSettings(
+        section({
+          'ideMode.loosePackages': ['contrib', '', 3, null, 'network'],
+          'ideMode.extraArgs': ['--log', '', 5, '1'],
+        }),
+      );
+      assert.deepStrictEqual(ide.loosePackages, ['contrib', 'network']);
+      assert.deepStrictEqual(ide.extraArgs, ['--log', '', '1']);
+    });
+
+    test('Q20: the transport is stdio unless socket is written; the former default "auto" reads as stdio, "socket" is kept', () => {
+      // Decided by the user on 2026-09-28 (ROADMAP §9 Q20): stdio on every platform, the socket
+      // only as an explicit opt-in. `auto` (socket on macOS and Linux until then) is no longer
+      // offered; a settings.json that still has it gets the new default.
+      assert.strictEqual(readIdeModeSettings(section({})).transport, 'stdio');
+      assert.strictEqual(readIdeModeSettings(section({ 'ideMode.transport': 'auto' })).transport, 'stdio');
+      assert.strictEqual(readIdeModeSettings(section({ 'ideMode.transport': 'stdio' })).transport, 'stdio');
+      assert.strictEqual(readIdeModeSettings(section({ 'ideMode.transport': 'socket' })).transport, 'socket');
+    });
+
+    test('Q21: maxSessions and maxBackgroundChecks are 0 (no limit) unless set; a fraction is rounded down, a negative number is 0', () => {
+      assert.deepStrictEqual(
+        [readIdeModeSettings(section({})).maxSessions, readIdeModeSettings(section({})).maxBackgroundChecks],
+        [0, 0],
+      );
+      for (const [value, read] of [
+        [2, 2],
+        [2.9, 2],
+        [0, 0],
+        [-1, 0],
+        [0.5, 0],
+        [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
+        [null, 0],
+        ['2', 0],
+        [Number.NaN, 0],
+        [Number.NEGATIVE_INFINITY, 0],
+      ] as const) {
+        const ide = readIdeModeSettings(section({ 'ideMode.maxSessions': value, 'ideMode.maxBackgroundChecks': value }));
+        assert.deepStrictEqual([ide.maxSessions, ide.maxBackgroundChecks], [read, read], String(value));
+      }
+    });
+  });
+
   suite('Config', () => {
     test('vscode.workspace is a ConfigurationHost (a compile-time check)', () => {
       const asHost = (workspace: typeof vscode.workspace): ConfigurationHost => workspace;
@@ -187,6 +336,50 @@ suite('core/config', () => {
       values['toolchain.idris2Path'] = '/b/idris2';
       assert.strictEqual(config.toolchain().idris2Path, '/b/idris2');
       assert.deepStrictEqual(sections, ['idris2', 'idris2']);
+    });
+
+    test('checking(scope) reads the resource-scoped section for the scope; the other groups read the window\'s', () => {
+      const values: Record<string, unknown> = { 'checking.trigger': 'manual', 'ideMode.transport': 'socket', 'trace.protocol': true };
+      const { host, sections, scopes } = fakeHost(values);
+      const config = new Config(host, HOME);
+      const uri = { scheme: 'file', path: '/w/A.idr' } as unknown as vscode.Uri;
+      assert.strictEqual(config.checking(uri).trigger, 'manual');
+      assert.strictEqual(config.checking().trigger, 'manual');
+      assert.strictEqual(config.ideMode().transport, 'socket');
+      assert.strictEqual(config.diagnostics().includeSourceExcerpt, false);
+      assert.strictEqual(config.trace().protocol, true);
+      assert.deepStrictEqual(sections, ['idris2', 'idris2', 'idris2', 'idris2', 'idris2']);
+      assert.deepStrictEqual(scopes, [uri, undefined, undefined, undefined, undefined]);
+    });
+
+    test('onDidChange fires per group: ideMode, checking, diagnostics and trace each for their own keys', () => {
+      const { host, change } = fakeHost({});
+      const config = new Config(host, HOME);
+      const calls: string[] = [];
+      for (const group of ['ideMode', 'checking', 'diagnostics', 'trace'] as const) {
+        config.onDidChange(group, () => calls.push(group));
+      }
+      change(['idris2.ideMode.transport']);
+      change(['idris2.checking.delay']);
+      change(['idris2.diagnostics.includeSourceExcerpt']);
+      change(['idris2.trace.protocol']);
+      change(['idris2.toolchain.env']);
+      change(['idris2.ideModeX']);
+      assert.deepStrictEqual(calls, ['ideMode', 'checking', 'diagnostics', 'trace']);
+    });
+
+    test('onDidChange tells its listener which settings changed (keys relative to idris2.)', () => {
+      const { host, change } = fakeHost({});
+      const config = new Config(host, HOME);
+      const seen: string[][] = [];
+      const keys = ['ideMode.transport', 'ideMode.maxSessions', 'ideMode.maxBackgroundChecks', 'ideMode'];
+      config.onDidChange('ideMode', (settings) => seen.push(keys.filter((key) => settings.affects(key))));
+      change(['idris2.ideMode.maxSessions']);
+      change(['idris2.ideMode.transport', 'idris2.ideMode.maxBackgroundChecks']);
+      assert.deepStrictEqual(seen, [
+        ['ideMode.maxSessions', 'ideMode'],
+        ['ideMode.transport', 'ideMode.maxBackgroundChecks', 'ideMode'],
+      ]);
     });
 
     test('onDidChange("toolchain") fires for idris2.toolchain.* only, until disposed', () => {

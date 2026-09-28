@@ -1,9 +1,10 @@
 import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
-import { BackendRegistry } from '../../src/backend/registry';
+import { BackendRegistry, type BackendState } from '../../src/backend/registry';
 import type { BackendKind, IdrisBackend } from '../../src/backend/types';
 import { Emitter } from '../../src/core/event';
+import type { CheckStatus } from '../../src/features/diagnostics/checks';
 import type { Classification } from '../../src/project/types';
 import {
   describeStatus,
@@ -111,9 +112,9 @@ suite('toolchain/status', () => {
     });
 
     test('the detail names the root; an unreadable .ipkg or several .ipkg files in one directory are warnings', () => {
-      assert.match(describeStatus(input({ root: LOOSE })).detail, /loose file \(no \.ipkg above \/w\/loose-file\)/);
+      assert.match(describeStatus(input({ root: LOOSE })).detail, /loose file \(no \.ipkg above “\/w\/loose-file”\)/);
       const ok = describeStatus(input({ root: projectRoot() }));
-      assert.match(ok.detail, /project \/w\/simple-ipkg\/simple-ipkg\.ipkg/);
+      assert.match(ok.detail, /project “\/w\/simple-ipkg\/simple-ipkg\.ipkg”/);
       assert.strictEqual(ok.severity, 'information');
       const broken = describeStatus(
         input({
@@ -125,11 +126,11 @@ suite('toolchain/status', () => {
       assert.match(broken.detail, /could not be read: Error: Unrecognised property "pkgs"\.$/);
       assert.strictEqual(broken.severity, 'warning');
       const several = describeStatus(input({ root: projectRoot({ otherIpkgs: ['/w/simple-ipkg/b.ipkg'] }) }));
-      assert.match(several.detail, /other \.ipkg files in that directory: \/w\/simple-ipkg\/b\.ipkg/);
+      assert.match(several.detail, /other \.ipkg files in that directory: “\/w\/simple-ipkg\/b\.ipkg”/);
       assert.strictEqual(several.severity, 'warning');
       assert.ok(!ok.detail.includes('outside'));
       const outside = describeStatus(input({ root: projectRoot({ insideWorkspace: false }) }));
-      assert.match(outside.detail, /project \/w\/simple-ipkg\/simple-ipkg\.ipkg \(outside the workspace folders: read without the compiler\)/);
+      assert.match(outside.detail, /project “\/w\/simple-ipkg\/simple-ipkg\.ipkg” \(outside the workspace folders: read without the compiler\)/);
       assert.strictEqual(outside.severity, 'information');
     });
 
@@ -138,6 +139,130 @@ suite('toolchain/status', () => {
       assert.match(view.detail, /idris2-lsp: API 0\.7\.0 ≠ 0\.8\.0\.$/);
       assert.strictEqual(view.severity, 'information');
       assert.doesNotMatch(describeStatus(input({ snapshot: snapshot({ verdict: { kind: 'compatible', reason: 'same' } }) })).detail, /idris2-lsp/);
+    });
+
+    suite('the active document\'s check (M2)', () => {
+      const ide = (check: CheckStatus, overrides: Partial<StatusInput> = {}) =>
+        describeStatus(input({ label: 'IDE mode', root: LOOSE, check, ...overrides }));
+
+      test('not checked yet: no suffix; checking…: busy; waiting for permission says so in the detail', () => {
+        assert.strictEqual(ide({ kind: 'notChecked' }).text, 'Idris 2 0.8.0 · IDE mode');
+        const checking = ide({ kind: 'checking', waitingFor: undefined });
+        assert.strictEqual(checking.text, 'Idris 2 0.8.0 · IDE mode · checking…');
+        assert.strictEqual(checking.busy, true);
+        assert.match(checking.detail, /checking the saved file$/);
+        assert.strictEqual(checking.commandTitle, 'Show Commands…');
+        const waiting = ide({ kind: 'checking', waitingFor: '/w/pkg' });
+        assert.match(waiting.detail, /^waiting for your permission to start the compiler in “\/w\/pkg”; idris2 /, 'first: before any path');
+        // The question's notification may have gone to the notification centre: the link shows it again.
+        assert.strictEqual(waiting.commandTitle, 'Allow…');
+        assert.strictEqual(waiting.allow, '/w/pkg');
+      });
+
+      test('checked: ✓, n warnings, n errors (singular and plural); the detail counts both', () => {
+        const clean = ide({ kind: 'checked', errors: 0, warnings: 0, stale: false, known: true });
+        assert.strictEqual(clean.text, 'Idris 2 0.8.0 · IDE mode · ✓');
+        assert.match(clean.detail, /checked: no errors or warnings$/);
+        assert.strictEqual(ide({ kind: 'checked', errors: 0, warnings: 1, stale: false, known: true }).text, 'Idris 2 0.8.0 · IDE mode · 1 warning');
+        const both = ide({ kind: 'checked', errors: 2, warnings: 1, stale: false, known: true });
+        assert.strictEqual(both.text, 'Idris 2 0.8.0 · IDE mode · 2 errors');
+        assert.match(both.detail, /checked: 2 errors, 1 warning$/);
+        assert.strictEqual(both.severity, 'information');
+        assert.strictEqual(ide({ kind: 'checked', errors: 1, warnings: 0, stale: false, known: true }).text, 'Idris 2 0.8.0 · IDE mode · 1 error');
+      });
+
+      test('a file the compiler found already built, whose warnings are unknown: up to date, not ✓', () => {
+        const view = ide({ kind: 'checked', errors: 0, warnings: 0, stale: false, known: false });
+        assert.strictEqual(view.text, 'Idris 2 0.8.0 · IDE mode · up to date');
+        assert.match(view.detail, /checked: no errors; the compiler found the file already built and did not repeat its warnings, if it has any/);
+        assert.strictEqual(ide({ kind: 'checked', errors: 0, warnings: 0, stale: true, known: false }).text, 'Idris 2 0.8.0 · IDE mode · stale');
+      });
+
+      test('stale: unsaved changes; the detail keeps the saved file\'s counts', () => {
+        const view = ide({ kind: 'checked', errors: 1, warnings: 0, stale: true, known: true });
+        assert.strictEqual(view.text, 'Idris 2 0.8.0 · IDE mode · stale');
+        assert.match(view.detail, /the saved file had 1 error; save to check the changes$/);
+      });
+
+      test('stale: the detail says why and what checks it — a save, or Check File (manual trigger, or a file changed without a save)', () => {
+        // M2 verification of the third review: a clean file changed on disk read "the saved file had
+        // …; save to check the changes", which was wrong on both counts, and with the manual trigger a
+        // save checks nothing.
+        const stale = (unsaved: boolean, manual: boolean, known = true) =>
+          ide({ kind: 'checked', errors: 1, warnings: 0, stale: true, known, staleness: { unsaved, manual } }).detail;
+        assert.match(stale(true, false), /the saved file had 1 error; save to check the changes$/);
+        assert.match(stale(true, true), /the saved file had 1 error; save, then run Check File to check the changes$/);
+        assert.match(stale(false, true), /the file changed after it was checked, which found 1 error; run Check File to check it$/);
+        assert.match(stale(false, false), /the file changed after it was checked, which found 1 error; run Check File to check it$/);
+        assert.match(stale(false, true, false), /did not repeat its warnings.*; the file changed since; run Check File to check it$/);
+        assert.match(stale(true, false, false), /; the file has unsaved changes; save to check the changes$/);
+      });
+
+      test('a package file error, stopped, failed', () => {
+        const pkg = ide({ kind: 'packageError', ipkg: '/w/b/bad.ipkg', message: 'Unrecognised property "pkgs".', stale: false });
+        assert.strictEqual(pkg.text, 'Idris 2 0.8.0 · IDE mode · package file error');
+        assert.match(pkg.detail, /the compiler could not read “\/w\/b\/bad\.ipkg”: Unrecognised property "pkgs"\.$/);
+        assert.strictEqual(pkg.severity, 'warning');
+        const stopped = ide({ kind: 'stopped' });
+        assert.strictEqual(stopped.text, 'Idris 2 0.8.0 · IDE mode · stopped');
+        assert.strictEqual(stopped.severity, 'information');
+        assert.match(stopped.detail, /the compiler is stopped; the next check starts it again$/);
+        // Stopped because the permission was revoked: the next check asks, it does not just start.
+        const revoked = ide({ kind: 'stopped', revokedDir: '/w/pkg' });
+        assert.strictEqual(revoked.text, 'Idris 2 0.8.0 · IDE mode · stopped');
+        assert.match(revoked.detail, /^the compiler was stopped because the permission for “\/w\/pkg” was revoked; the next check asks again; idris2 /);
+        const gaveUp = ide({ kind: 'backendFailed', reason: 'exit code 3' });
+        assert.strictEqual(gaveUp.text, 'Idris 2 0.8.0 · IDE mode · failed');
+        assert.strictEqual(gaveUp.severity, 'error');
+        assert.match(gaveUp.detail, /given up: exit code 3; Restart Backend to try again$/);
+        const load = ide({ kind: 'loadFailed', reason: 'The request timed out.' });
+        assert.strictEqual(load.text, 'Idris 2 0.8.0 · IDE mode · failed');
+        assert.strictEqual(load.severity, 'warning');
+      });
+
+      test('not allowed here: a warning whose link is Allow… for that directory', () => {
+        const view = ide({ kind: 'notAllowed', dir: '/w/pkg', reason: 'denied' });
+        assert.strictEqual(view.text, 'Idris 2 0.8.0 · IDE mode · not allowed here', 'the action is the link, not the text');
+        assert.strictEqual(view.commandTitle, 'Allow…');
+        assert.strictEqual(view.allow, '/w/pkg');
+        assert.strictEqual(view.severity, 'warning');
+        assert.match(view.detail, /^the compiler may not start in “\/w\/pkg”, which is outside the trusted workspace folders \(you chose Don't Allow\); highlighting only; idris2 /);
+        assert.match(ide({ kind: 'notAllowed', dir: '/w/pkg', reason: 'unanswered' }).detail, /the question was closed/);
+      });
+
+      test('the consent text comes before the root, whose paths are quoted: a folder name cannot put a sentence before it', () => {
+        // M2 second verification of the third review: the root's raw path came first in the detail.
+        const dir = '/tmp/p; checked: no errors; this folder is inside the workspace';
+        for (const check of [
+          { kind: 'notAllowed', dir, reason: 'denied' },
+          { kind: 'checking', waitingFor: dir },
+          { kind: 'stopped', revokedDir: dir },
+        ] as const) {
+          const view = ide(check, { root: { kind: 'loose', dir } });
+          const quoted = `“${dir}”`;
+          assert.ok(view.detail.startsWith(check.kind === 'checking' ? `waiting for your permission to start the compiler in ${quoted}` : 'the compiler '), view.detail);
+          assert.ok(view.detail.includes(`loose file (no .ipkg above ${quoted})`), view.detail);
+          assert.ok(!view.detail.split(quoted).join('').includes('checked: no errors'), 'only inside quotes');
+        }
+        const project = ide({ kind: 'notAllowed', dir: '/w/p', reason: 'denied' }, { root: projectRoot({ ipkgPath: `${dir}/p.ipkg`, otherIpkgs: [`${dir}/q.ipkg`] }) });
+        assert.ok(project.detail.includes(`project “${dir}/p.ipkg”`) && project.detail.includes(`in that directory: “${dir}/q.ipkg”`), project.detail);
+      });
+
+      test('without a backend (syntax only), in Restricted Mode, or with no compiler the check is not shown', () => {
+        const check: CheckStatus = { kind: 'checked', errors: 2, warnings: 0, stale: false, known: true };
+        assert.strictEqual(describeStatus(input({ check })).text, 'Idris 2 0.8.0 · syntax only');
+        assert.strictEqual(describeStatus(input({ check, label: 'IDE mode', trusted: false })).text, 'Restricted Mode — toolchain detection disabled');
+        assert.strictEqual(
+          describeStatus(input({ check, label: 'IDE mode', snapshot: snapshot({ idris2: missing() }) })).text,
+          'idris2 not found — Setup…',
+        );
+      });
+
+      test('a root problem and a check combine: the worse severity wins', () => {
+        const view = ide({ kind: 'checked', errors: 0, warnings: 0, stale: false, known: true }, { root: projectRoot({ otherIpkgs: ['/w/x.ipkg'] }) });
+        assert.strictEqual(view.severity, 'warning');
+        assert.strictEqual(view.text, 'Idris 2 0.8.0 · IDE mode · ✓');
+      });
     });
   });
 
@@ -148,11 +273,16 @@ suite('toolchain/status', () => {
       assert.deepStrictEqual(
         statusMenuEntries(manifest, { packFound: false }).map((e) => e.command),
         [
+          'idris2.checkFile',
+          'idris2.restartBackend',
+          'idris2.stopBackend',
           'idris2.showSetupInformation',
           'idris2.rescanToolchain',
+          'idris2.manageAllowedFolders',
           'idris2.installIdris2',
           'idris2.installPack',
           'idris2.showOutput',
+          'idris2.showProtocolTrace',
           'idris2.openSettings',
           'idris2.openDocumentation',
           'idris2.reportIssue',
@@ -164,7 +294,7 @@ suite('toolchain/status', () => {
       const commands = statusMenuEntries(manifest, { packFound: true }).map((e) => e.command);
       assert.ok(commands.includes('idris2.installIdris2Lsp'));
       assert.ok(!commands.includes('idris2.installPack'));
-      assert.strictEqual(commands.indexOf('idris2.installIdris2Lsp'), 3);
+      assert.strictEqual(commands.indexOf('idris2.installIdris2Lsp'), commands.indexOf('idris2.installIdris2') + 1);
     });
 
     test('the two contexts together cover exactly the submenu, and the titles are the contributed ones', () => {
@@ -306,6 +436,8 @@ suite('toolchain/status', () => {
       const toolchain = new FakeToolchain(initial);
       const registry = new BackendRegistry();
       const trust = { isTrusted: true, onDidGrant: trustGranted.event };
+      const checksChanged = new Emitter<void>();
+      const checkState = { status: undefined as CheckStatus | undefined, asked: [] as [string, Classification | undefined][] };
       const status = registerToolchainStatus(api, {
         toolchain,
         projects: {
@@ -313,6 +445,13 @@ suite('toolchain/status', () => {
           onDidChange: projectsChanged.event,
         },
         registry,
+        checks: {
+          statusOf: (doc, root) => {
+            checkState.asked.push([doc.fileName, root]);
+            return checkState.status;
+          },
+          onDidChange: checksChanged.event,
+        },
         trust,
         manifest,
         log: { trace: () => undefined, debug: () => undefined, info: (m: string) => logged.push(m), warn: () => undefined, error: () => undefined },
@@ -333,6 +472,8 @@ suite('toolchain/status', () => {
         activeEditorChanged,
         documentOpened,
         projectsChanged,
+        checksChanged,
+        checkState,
         choose: (f: typeof picked) => (picked = f),
       };
     }
@@ -343,7 +484,7 @@ suite('toolchain/status', () => {
       const t = setup();
       assert.strictEqual(t.item.text, 'Idris 2 0.8.0 · syntax only');
       assert.strictEqual(t.item.severity, 0);
-      assert.deepStrictEqual(t.item.command, { command: 'idris2.showStatusMenu', title: 'Show Commands…' });
+      assert.deepStrictEqual(t.item.command, { command: 'idris2.showStatusMenu', title: 'Show Commands…', tooltip: t.item.detail });
       t.toolchain.setScanning(true);
       assert.strictEqual(t.item.busy, true);
       t.toolchain.publish({ idris2: missing() });
@@ -361,10 +502,73 @@ suite('toolchain/status', () => {
       t.state.activeDocument = fileDocument('idris2', '/w/simple-ipkg/src/Foo/B.idr');
       t.activeEditorChanged.fire();
       await settle();
-      assert.match(t.item.detail ?? '', /project \/w\/simple-ipkg\/simple-ipkg\.ipkg/);
-      const registration = t.registry.register(root, { kind: 'ideMode' as BackendKind } as unknown as IdrisBackend);
+      assert.match(t.item.detail ?? '', /project “\/w\/simple-ipkg\/simple-ipkg\.ipkg”/);
+      const stateChanged = new Emitter<void>();
+      const registration = t.registry.setProvider({
+        kind: 'ideMode' as BackendKind,
+        backendFor: () => ({ kind: 'ideMode' as BackendKind }) as unknown as IdrisBackend,
+        stateFor: (): BackendState => ({ kind: 'none' }),
+        onDidChangeState: stateChanged.event,
+      });
       assert.strictEqual(t.item.text, 'Idris 2 0.8.0 · IDE mode');
       registration.dispose();
+      assert.strictEqual(t.item.text, 'Idris 2 0.8.0 · syntax only');
+    });
+
+    test('M2: the active document\'s check is asked with its root, followed on change, and Allow… asks about its directory', async () => {
+      const t = setup();
+      t.registry.setProvider({
+        kind: 'ideMode' as BackendKind,
+        backendFor: () => ({ kind: 'ideMode' as BackendKind }) as unknown as IdrisBackend,
+        stateFor: (): BackendState => ({ kind: 'none' }),
+        onDidChangeState: new Emitter<void>().event,
+      });
+      t.state.activeDocument = fileDocument('idris2', '/w/loose-file/Hello.idr');
+      t.activeEditorChanged.fire();
+      await settle();
+      assert.deepStrictEqual(t.checkState.asked.at(-1), ['/w/loose-file/Hello.idr', LOOSE]);
+      t.checkState.status = { kind: 'checked', errors: 1, warnings: 0, stale: false, known: true };
+      t.checksChanged.fire();
+      assert.strictEqual(t.item.text, 'Idris 2 0.8.0 · IDE mode · 1 error');
+      assert.deepStrictEqual(t.item.command, { command: 'idris2.showStatusMenu', title: 'Show Commands…', tooltip: t.item.detail });
+      t.checkState.status = { kind: 'notAllowed', dir: '/w/loose-file', reason: 'denied' };
+      t.checksChanged.fire();
+      assert.strictEqual(t.item.text, 'Idris 2 0.8.0 · IDE mode · not allowed here');
+      assert.deepStrictEqual(t.item.command, { command: 'idris2.allowFolder', title: 'Allow…', tooltip: t.item.detail, arguments: ['/w/loose-file'] });
+      assert.strictEqual(t.item.severity, 1);
+      // A folder named with a link: the detail (parsed for links by VS Code's hover) has none, and
+      // the tooltip is that plain string, so a pinned item makes no trusted markdown of it.
+      const hostile = "/w/[Don't Allow](command:workbench.action.terminal.sendSequence?x)";
+      t.checkState.status = { kind: 'notAllowed', dir: hostile, reason: 'denied' };
+      t.checksChanged.fire();
+      assert.ok(t.item.detail?.includes("[Don't Allow]\u200b(command:"), t.item.detail);
+      assert.ok(!/\]\(/.test(t.item.detail ?? ''));
+      assert.strictEqual(t.item.command?.tooltip, t.item.detail);
+      assert.deepStrictEqual(t.logged.slice(-1), ['Status: Idris 2 0.8.0 · IDE mode · not allowed here (warning)']);
+    });
+
+    test('M2: while a file is classified its label is the provider\'s, so the item never flashes "syntax only"', async () => {
+      const t = setup();
+      t.registry.setProvider({
+        kind: 'ideMode' as BackendKind,
+        backendFor: () => ({ kind: 'ideMode' as BackendKind }) as unknown as IdrisBackend,
+        stateFor: (): BackendState => ({ kind: 'none' }),
+        onDidChangeState: new Emitter<void>().event,
+      });
+      const logged = t.logged.length;
+      let resolveSlow: (c: Classification) => void = () => undefined;
+      t.classifications.set('/w/a/Slow.idr', new Promise((resolve) => (resolveSlow = resolve)));
+      t.state.activeDocument = fileDocument('idris2', '/w/a/Slow.idr');
+      t.activeEditorChanged.fire();
+      assert.strictEqual(t.item.text, 'Idris 2 0.8.0 · IDE mode');
+      resolveSlow(LOOSE);
+      await settle();
+      assert.strictEqual(t.item.text, 'Idris 2 0.8.0 · IDE mode');
+      // One change (from the item's text without an active document), and no "syntax only" between.
+      assert.deepStrictEqual(t.logged.slice(logged), ['Status: Idris 2 0.8.0 · IDE mode']);
+      // An untitled document has no root: nothing checks it, so it is "syntax only".
+      t.state.activeDocument = { ...fileDocument('idris2', 'Untitled-1'), isUntitled: true, uri: { scheme: 'untitled', fsPath: 'Untitled-1', toString: () => 'untitled:Untitled-1' } };
+      t.activeEditorChanged.fire();
       assert.strictEqual(t.item.text, 'Idris 2 0.8.0 · syntax only');
     });
 
@@ -477,13 +681,19 @@ suite('toolchain/status', () => {
       assert.deepStrictEqual(
         shown.map((i) => (i.kind === -1 ? '---' : i.command)),
         [
+          'idris2.checkFile',
+          'idris2.restartBackend',
+          'idris2.stopBackend',
+          '---',
           'idris2.showSetupInformation',
           'idris2.rescanToolchain',
+          'idris2.manageAllowedFolders',
           '---',
           'idris2.installIdris2',
           'idris2.installPack',
           '---',
           'idris2.showOutput',
+          'idris2.showProtocolTrace',
           'idris2.openSettings',
           'idris2.openDocumentation',
           'idris2.reportIssue',

@@ -89,7 +89,10 @@ function frame(sexp: string): string {
   return Buffer.byteLength(body).toString(16).padStart(6, '0') + body;
 }
 
-suite('fake tools: launchers', () => {
+suite('fake tools: launchers', function () {
+  // Each test starts Node processes through sh (or .cmd) launchers, up to five for the pack
+  // wrapper; under load, and on CI's Windows runners, that exceeds mocha's default 2 s.
+  this.timeout(20_000);
   for (const tool of TOOLS) {
     test(`${tool}: bin/${tool} (sh) and bin/${tool}.cmd run the tool's script`, () => {
       const script = fakeScript(tool);
@@ -113,7 +116,10 @@ suite('fake tools: launchers', () => {
   }
 });
 
-suite('fake tools: idris2 probes', () => {
+suite('fake tools: idris2 probes', function () {
+  // Each test starts Node processes through sh (or .cmd) launchers, up to five for the pack
+  // wrapper; under load, and on CI's Windows runners, that exceeds mocha's default 2 s.
+  this.timeout(20_000);
   // Any directory with no `.ipkg` works as the working directory; this one has no symbolic
   // links or short names in its path on any runner, so process.cwd() in the child is exactly it.
   const cwd = path.join(repoRoot(), 'test', 'fake-tools');
@@ -208,7 +214,10 @@ suite('fake tools: idris2 probes', () => {
   });
 });
 
-suite('fake tools: faults', () => {
+suite('fake tools: faults', function () {
+  // Each test starts Node processes through sh (or .cmd) launchers, up to five for the pack
+  // wrapper; under load, and on CI's Windows runners, that exceeds mocha's default 2 s.
+  this.timeout(20_000);
   test('fail: a line on stderr, nothing on stdout, exit 1', () => {
     for (const [tool, prefix] of [['idris2', 'FAKE_IDRIS2'], ['idris2-lsp', 'FAKE_IDRIS2_LSP'], ['pack', 'FAKE_PACK']] as const) {
       const result = runTool(tool, ['--version'], { env: { [`${prefix}_MODE`]: 'fail' } });
@@ -249,7 +258,10 @@ suite('fake tools: faults', () => {
   });
 });
 
-suite('fake tools: idris2-lsp and pack', () => {
+suite('fake tools: idris2-lsp and pack', function () {
+  // Each test starts Node processes through sh (or .cmd) launchers, up to five for the pack
+  // wrapper; under load, and on CI's Windows runners, that exceeds mocha's default 2 s.
+  this.timeout(20_000);
   test('idris2-lsp --version prints the two lines of printVersion', () => {
     const result = runTool('idris2-lsp', ['--version']);
     assertExit(result, 0);
@@ -303,6 +315,9 @@ function layoutEnv(layout: PackLayout, extra: Record<string, string> = {}): Reco
 }
 
 suite('fake tools: simulated pack layout', function () {
+  // Each test starts Node processes through sh (or .cmd) launchers, up to five for the pack
+  // wrapper; under load, and on CI's Windows runners, that exceeds mocha's default 2 s.
+  this.timeout(20_000);
   let home: string;
 
   setup(function () {
