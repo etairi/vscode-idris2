@@ -1,0 +1,2630 @@
+{
+  "format": 1,
+  "tool": "scripts/measure-first-load.mjs",
+  "date": "2026-09-28",
+  "startedAt": "2026-09-29T00:01:44.602Z",
+  "argv": [
+    "--package",
+    "/tmp/vi2-pre3/bench/contrib",
+    "--work",
+    "/tmp/vi2-pre3/bench/work-A",
+    "--out",
+    "/tmp/vi2-pre3/bench/results/run-A.json"
+  ],
+  "machine": {
+    "cpu": "Apple M4",
+    "performanceCores": 4,
+    "efficiencyCores": 6,
+    "memoryBytes": 17179869184,
+    "macOS": "27.0 (26A428)",
+    "arch": "arm64",
+    "node": "v24.13.0"
+  },
+  "idris2": {
+    "path": "/opt/homebrew/bin/idris2",
+    "version": "Idris 2, version 0.8.0",
+    "installedPackages": [
+      "base 0.8.0",
+      "contrib 0.8.0",
+      "idris2 0.8.0",
+      "linear 0.8.0",
+      "network 0.8.0",
+      "prelude 0.8.0",
+      "test 0.8.0"
+    ]
+  },
+  "timeout": "/opt/homebrew/bin/timeout",
+  "package": {
+    "source": "/private/tmp/vi2-pre3/bench/contrib",
+    "root": "/private/tmp/vi2-pre3/bench/work-A/contrib",
+    "name": "contrib",
+    "depends": [],
+    "opts": "--ignore-missing-ipkg -Wno-shadowing",
+    "modules": 103,
+    "lines": 12780
+  },
+  "limits": {
+    "MIN_FREE_START": 25,
+    "MIN_FREE_RUNNING": 15,
+    "MAX_LOAD1": 15,
+    "WAIT_MS": 60000,
+    "MAX_WAITS": 10,
+    "RSS_SAMPLE_MS": 500,
+    "MEMORY_SAMPLE_MS": 5000,
+    "IDLE_MS": 10000,
+    "START_LIMIT_MS": 120000,
+    "QUERY_LIMIT_MS": 60000,
+    "options": {
+      "package": "/tmp/vi2-pre3/bench/contrib",
+      "work": "/tmp/vi2-pre3/bench/work-A",
+      "out": "/tmp/vi2-pre3/bench/results/run-A.json",
+      "closures": false,
+      "repeat": 3,
+      "depRepeat": 2,
+      "queries": 10,
+      "loadTimeoutMin": 30,
+      "sessionTimeoutMin": 60
+    }
+  },
+  "closures": [
+    {
+      "module": "Control.ANSI",
+      "lines": 36,
+      "closureModules": 3,
+      "closureLines": 214
+    },
+    {
+      "module": "Control.ANSI.CSI",
+      "lines": 105,
+      "closureModules": 1,
+      "closureLines": 105
+    },
+    {
+      "module": "Control.ANSI.SGR",
+      "lines": 73,
+      "closureModules": 1,
+      "closureLines": 73
+    },
+    {
+      "module": "Control.Arrow",
+      "lines": 128,
+      "closureModules": 2,
+      "closureLines": 156
+    },
+    {
+      "module": "Control.Category",
+      "lines": 28,
+      "closureModules": 1,
+      "closureLines": 28
+    },
+    {
+      "module": "Control.Delayed",
+      "lines": 14,
+      "closureModules": 1,
+      "closureLines": 14
+    },
+    {
+      "module": "Control.Validation",
+      "lines": 210,
+      "closureModules": 1,
+      "closureLines": 210
+    },
+    {
+      "module": "Data.Binary",
+      "lines": 41,
+      "closureModules": 3,
+      "closureLines": 91
+    },
+    {
+      "module": "Data.Binary.Digit",
+      "lines": 21,
+      "closureModules": 1,
+      "closureLines": 21
+    },
+    {
+      "module": "Data.Fin.Extra",
+      "lines": 125,
+      "closureModules": 6,
+      "closureLines": 730
+    },
+    {
+      "module": "Data.Fun.Extra",
+      "lines": 129,
+      "closureModules": 1,
+      "closureLines": 129
+    },
+    {
+      "module": "Data.Fun.Graph",
+      "lines": 16,
+      "closureModules": 1,
+      "closureLines": 16
+    },
+    {
+      "module": "Data.IMaybe",
+      "lines": 39,
+      "closureModules": 1,
+      "closureLines": 39
+    },
+    {
+      "module": "Data.IOMatrix",
+      "lines": 43,
+      "closureModules": 1,
+      "closureLines": 43
+    },
+    {
+      "module": "Data.Int.Order",
+      "lines": 354,
+      "closureModules": 2,
+      "closureLines": 370
+    },
+    {
+      "module": "Data.Late",
+      "lines": 82,
+      "closureModules": 1,
+      "closureLines": 82
+    },
+    {
+      "module": "Data.Linear.Array",
+      "lines": 76,
+      "closureModules": 1,
+      "closureLines": 76
+    },
+    {
+      "module": "Data.List.Alternating",
+      "lines": 256,
+      "closureModules": 1,
+      "closureLines": 256
+    },
+    {
+      "module": "Data.List.Elem.Extra",
+      "lines": 46,
+      "closureModules": 1,
+      "closureLines": 46
+    },
+    {
+      "module": "Data.List.Equalities",
+      "lines": 163,
+      "closureModules": 2,
+      "closureLines": 239
+    },
+    {
+      "module": "Data.List.Extra",
+      "lines": 40,
+      "closureModules": 1,
+      "closureLines": 40
+    },
+    {
+      "module": "Data.List.Palindrome",
+      "lines": 59,
+      "closureModules": 4,
+      "closureLines": 470
+    },
+    {
+      "module": "Data.List.Reverse",
+      "lines": 76,
+      "closureModules": 1,
+      "closureLines": 76
+    },
+    {
+      "module": "Data.List.Sufficient",
+      "lines": 23,
+      "closureModules": 1,
+      "closureLines": 23
+    },
+    {
+      "module": "Data.List.TailRec",
+      "lines": 375,
+      "closureModules": 1,
+      "closureLines": 375
+    },
+    {
+      "module": "Data.List.Views.Extra",
+      "lines": 172,
+      "closureModules": 3,
+      "closureLines": 411
+    },
+    {
+      "module": "Data.Logic.Propositional",
+      "lines": 160,
+      "closureModules": 1,
+      "closureLines": 160
+    },
+    {
+      "module": "Data.Monoid.Exponentiation",
+      "lines": 81,
+      "closureModules": 1,
+      "closureLines": 81
+    },
+    {
+      "module": "Data.Nat.Ack",
+      "lines": 58,
+      "closureModules": 1,
+      "closureLines": 58
+    },
+    {
+      "module": "Data.Nat.Division",
+      "lines": 376,
+      "closureModules": 5,
+      "closureLines": 605
+    },
+    {
+      "module": "Data.Nat.Equational",
+      "lines": 76,
+      "closureModules": 1,
+      "closureLines": 76
+    },
+    {
+      "module": "Data.Nat.Exponentiation",
+      "lines": 76,
+      "closureModules": 3,
+      "closureLines": 186
+    },
+    {
+      "module": "Data.Nat.Fact",
+      "lines": 56,
+      "closureModules": 1,
+      "closureLines": 56
+    },
+    {
+      "module": "Data.Nat.Factor",
+      "lines": 474,
+      "closureModules": 7,
+      "closureLines": 1204
+    },
+    {
+      "module": "Data.Nat.Fib",
+      "lines": 50,
+      "closureModules": 1,
+      "closureLines": 50
+    },
+    {
+      "module": "Data.Nat.Order.Relation",
+      "lines": 18,
+      "closureModules": 1,
+      "closureLines": 18
+    },
+    {
+      "module": "Data.Nat.Order.Strict",
+      "lines": 34,
+      "closureModules": 2,
+      "closureLines": 124
+    },
+    {
+      "module": "Data.Nat.Properties",
+      "lines": 29,
+      "closureModules": 1,
+      "closureLines": 29
+    },
+    {
+      "module": "Data.Order",
+      "lines": 16,
+      "closureModules": 1,
+      "closureLines": 16
+    },
+    {
+      "module": "Data.Path",
+      "lines": 47,
+      "closureModules": 1,
+      "closureLines": 47
+    },
+    {
+      "module": "Data.Rel.Complement",
+      "lines": 24,
+      "closureModules": 2,
+      "closureLines": 153
+    },
+    {
+      "module": "Data.Seq.Internal",
+      "lines": 682,
+      "closureModules": 1,
+      "closureLines": 682
+    },
+    {
+      "module": "Data.Seq.Sized",
+      "lines": 213,
+      "closureModules": 2,
+      "closureLines": 895
+    },
+    {
+      "module": "Data.Seq.Unsized",
+      "lines": 224,
+      "closureModules": 2,
+      "closureLines": 906
+    },
+    {
+      "module": "Data.Stream.Extra",
+      "lines": 10,
+      "closureModules": 1,
+      "closureLines": 10
+    },
+    {
+      "module": "Data.String.Extra",
+      "lines": 134,
+      "closureModules": 1,
+      "closureLines": 134
+    },
+    {
+      "module": "Data.String.Interpolation",
+      "lines": 31,
+      "closureModules": 1,
+      "closureLines": 31
+    },
+    {
+      "module": "Data.String.Iterator",
+      "lines": 94,
+      "closureModules": 1,
+      "closureLines": 94
+    },
+    {
+      "module": "Data.String.Parser",
+      "lines": 416,
+      "closureModules": 3,
+      "closureLines": 806
+    },
+    {
+      "module": "Data.String.Parser.Expression",
+      "lines": 122,
+      "closureModules": 4,
+      "closureLines": 928
+    },
+    {
+      "module": "Data.String.Position",
+      "lines": 115,
+      "closureModules": 1,
+      "closureLines": 115
+    },
+    {
+      "module": "Data.Telescope",
+      "lines": 21,
+      "closureModules": 6,
+      "closureLines": 624
+    },
+    {
+      "module": "Data.Telescope.Congruence",
+      "lines": 47,
+      "closureModules": 5,
+      "closureLines": 603
+    },
+    {
+      "module": "Data.Telescope.Fun",
+      "lines": 32,
+      "closureModules": 4,
+      "closureLines": 556
+    },
+    {
+      "module": "Data.Telescope.Segment",
+      "lines": 276,
+      "closureModules": 2,
+      "closureLines": 490
+    },
+    {
+      "module": "Data.Telescope.SimpleFun",
+      "lines": 34,
+      "closureModules": 3,
+      "closureLines": 524
+    },
+    {
+      "module": "Data.Telescope.Telescope",
+      "lines": 214,
+      "closureModules": 1,
+      "closureLines": 214
+    },
+    {
+      "module": "Data.Validated",
+      "lines": 200,
+      "closureModules": 1,
+      "closureLines": 200
+    },
+    {
+      "module": "Data.Vect.Extra",
+      "lines": 23,
+      "closureModules": 1,
+      "closureLines": 23
+    },
+    {
+      "module": "Data.Vect.Properties",
+      "lines": 8,
+      "closureModules": 7,
+      "closureLines": 377
+    },
+    {
+      "module": "Data.Vect.Properties.Fin",
+      "lines": 44,
+      "closureModules": 2,
+      "closureLines": 67
+    },
+    {
+      "module": "Data.Vect.Properties.Foldr",
+      "lines": 124,
+      "closureModules": 1,
+      "closureLines": 124
+    },
+    {
+      "module": "Data.Vect.Properties.Index",
+      "lines": 61,
+      "closureModules": 2,
+      "closureLines": 98
+    },
+    {
+      "module": "Data.Vect.Properties.Map",
+      "lines": 80,
+      "closureModules": 4,
+      "closureLines": 201
+    },
+    {
+      "module": "Data.Vect.Properties.Tabulate",
+      "lines": 37,
+      "closureModules": 1,
+      "closureLines": 37
+    },
+    {
+      "module": "Data.Vect.Sort",
+      "lines": 30,
+      "closureModules": 1,
+      "closureLines": 30
+    },
+    {
+      "module": "Debug.Buffer",
+      "lines": 45,
+      "closureModules": 1,
+      "closureLines": 45
+    },
+    {
+      "module": "Decidable.Decidable.Extra",
+      "lines": 98,
+      "closureModules": 3,
+      "closureLines": 251
+    },
+    {
+      "module": "Decidable.Finite.Fin",
+      "lines": 33,
+      "closureModules": 10,
+      "closureLines": 1014
+    },
+    {
+      "module": "Decidable.Order.Strict",
+      "lines": 90,
+      "closureModules": 1,
+      "closureLines": 90
+    },
+    {
+      "module": "Language.JSON",
+      "lines": 16,
+      "closureModules": 18,
+      "closureLines": 2108
+    },
+    {
+      "module": "Language.JSON.Data",
+      "lines": 203,
+      "closureModules": 2,
+      "closureLines": 337
+    },
+    {
+      "module": "Language.JSON.Lexer",
+      "lines": 40,
+      "closureModules": 15,
+      "closureLines": 1810
+    },
+    {
+      "module": "Language.JSON.Parser",
+      "lines": 79,
+      "closureModules": 16,
+      "closureLines": 2052
+    },
+    {
+      "module": "Language.JSON.String",
+      "lines": 17,
+      "closureModules": 13,
+      "closureLines": 1688
+    },
+    {
+      "module": "Language.JSON.String.Lexer",
+      "lines": 42,
+      "closureModules": 9,
+      "closureLines": 1036
+    },
+    {
+      "module": "Language.JSON.String.Parser",
+      "lines": 26,
+      "closureModules": 11,
+      "closureLines": 1629
+    },
+    {
+      "module": "Language.JSON.String.Tokens",
+      "lines": 72,
+      "closureModules": 3,
+      "closureLines": 246
+    },
+    {
+      "module": "Language.JSON.Tokens",
+      "lines": 82,
+      "closureModules": 14,
+      "closureLines": 1770
+    },
+    {
+      "module": "System.Console.GetOpt",
+      "lines": 304,
+      "closureModules": 1,
+      "closureLines": 304
+    },
+    {
+      "module": "System.Directory.Tree",
+      "lines": 229,
+      "closureModules": 11,
+      "closureLines": 2354
+    },
+    {
+      "module": "System.Future",
+      "lines": 44,
+      "closureModules": 1,
+      "closureLines": 44
+    },
+    {
+      "module": "System.Path",
+      "lines": 594,
+      "closureModules": 10,
+      "closureLines": 2125
+    },
+    {
+      "module": "System.Random",
+      "lines": 82,
+      "closureModules": 1,
+      "closureLines": 82
+    },
+    {
+      "module": "Text.Bounded",
+      "lines": 92,
+      "closureModules": 1,
+      "closureLines": 92
+    },
+    {
+      "module": "Text.Distance.Levenshtein",
+      "lines": 69,
+      "closureModules": 3,
+      "closureLines": 152
+    },
+    {
+      "module": "Text.Lexer",
+      "lines": 417,
+      "closureModules": 6,
+      "closureLines": 788
+    },
+    {
+      "module": "Text.Lexer.Core",
+      "lines": 181,
+      "closureModules": 3,
+      "closureLines": 287
+    },
+    {
+      "module": "Text.Lexer.Tokenizer",
+      "lines": 160,
+      "closureModules": 11,
+      "closureLines": 1965
+    },
+    {
+      "module": "Text.Literate",
+      "lines": 233,
+      "closureModules": 7,
+      "closureLines": 1021
+    },
+    {
+      "module": "Text.Parser",
+      "lines": 227,
+      "closureModules": 6,
+      "closureLines": 799
+    },
+    {
+      "module": "Text.Parser.Core",
+      "lines": 382,
+      "closureModules": 3,
+      "closureLines": 488
+    },
+    {
+      "module": "Text.Parser.Expression",
+      "lines": 89,
+      "closureModules": 7,
+      "closureLines": 888
+    },
+    {
+      "module": "Text.PrettyPrint.Prettyprinter",
+      "lines": 12,
+      "closureModules": 4,
+      "closureLines": 1017
+    },
+    {
+      "module": "Text.PrettyPrint.Prettyprinter.Doc",
+      "lines": 760,
+      "closureModules": 2,
+      "closureLines": 894
+    },
+    {
+      "module": "Text.PrettyPrint.Prettyprinter.Render.HTML",
+      "lines": 37,
+      "closureModules": 1,
+      "closureLines": 37
+    },
+    {
+      "module": "Text.PrettyPrint.Prettyprinter.Render.String",
+      "lines": 31,
+      "closureModules": 3,
+      "closureLines": 925
+    },
+    {
+      "module": "Text.PrettyPrint.Prettyprinter.Render.Terminal",
+      "lines": 98,
+      "closureModules": 6,
+      "closureLines": 1206
+    },
+    {
+      "module": "Text.PrettyPrint.Prettyprinter.SimpleDocTree",
+      "lines": 94,
+      "closureModules": 3,
+      "closureLines": 988
+    },
+    {
+      "module": "Text.PrettyPrint.Prettyprinter.Symbols",
+      "lines": 111,
+      "closureModules": 3,
+      "closureLines": 1005
+    },
+    {
+      "module": "Text.PrettyPrint.Prettyprinter.Util",
+      "lines": 30,
+      "closureModules": 4,
+      "closureLines": 955
+    },
+    {
+      "module": "Text.Quantity",
+      "lines": 44,
+      "closureModules": 1,
+      "closureLines": 44
+    },
+    {
+      "module": "Text.Token",
+      "lines": 40,
+      "closureModules": 1,
+      "closureLines": 40
+    }
+  ],
+  "runs": [
+    {
+      "role": "largest closure",
+      "module": "Language.JSON",
+      "lines": 16,
+      "closureModules": 18,
+      "closureLines": 2108,
+      "file": "Language/JSON.idr",
+      "dependency": {
+        "module": "Text.Lexer",
+        "file": "/private/tmp/vi2-pre3/bench/work-A/contrib/Text/Lexer.idr",
+        "lines": 417,
+        "invalidates": 8
+      },
+      "queryName": "parse",
+      "completionPrefix": "par",
+      "resourcesAtStart": {
+        "ok": true,
+        "free": 45,
+        "load1": 4.08,
+        "waits": 0
+      },
+      "session1": {
+        "command": [
+          "/opt/homebrew/bin/timeout",
+          "-k",
+          "10",
+          "3600",
+          "/usr/bin/time",
+          "-l",
+          "/opt/homebrew/bin/idris2",
+          "--ide-mode",
+          "--no-color",
+          "--build-dir",
+          "/private/tmp/vi2-pre3/bench/work-A/contrib/build/.vscode-idris2"
+        ],
+        "cwd": "/private/tmp/vi2-pre3/bench/work-A/contrib",
+        "steps": [
+          {
+            "step": "start",
+            "ms": 236.854375,
+            "protocol": "2.1",
+            "rssAfterKiB": 199136,
+            "footprintBytes": 200671808,
+            "footprintPeakBytes": 225329728,
+            "load1": 4.08
+          },
+          {
+            "step": "a cold",
+            "ms": 1325.926958,
+            "status": "ok",
+            "building": 18,
+            "builtModules": [
+              "Data.String.Extra",
+              "Text.Token",
+              "Language.JSON.String.Tokens",
+              "Control.Delayed",
+              "Text.Bounded",
+              "Text.Lexer.Core",
+              "Text.Quantity",
+              "Text.Lexer",
+              "Language.JSON.String.Lexer",
+              "Text.Parser.Core",
+              "Text.Parser",
+              "Language.JSON.String.Parser",
+              "Language.JSON.String",
+              "Language.JSON.Tokens",
+              "Language.JSON.Lexer",
+              "Language.JSON.Data",
+              "Language.JSON.Parser",
+              "Language.JSON"
+            ],
+            "warnings": 0,
+            "highlightFrames": 32,
+            "highlightBytes": 6271,
+            "frames": 51,
+            "bytes": 7859,
+            "rssMaxSampledKiB": 224096,
+            "rssAfterKiB": 224096,
+            "footprintBytes": 226198080,
+            "footprintPeakBytes": 243352128,
+            "load1": 3.92
+          },
+          {
+            "step": "b unchanged 1",
+            "ms": 124.8995,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 32,
+            "highlightBytes": 6271,
+            "frames": 33,
+            "bytes": 6298,
+            "rssMaxSampledKiB": 234640,
+            "rssAfterKiB": 234640,
+            "footprintBytes": 236995136,
+            "footprintPeakBytes": 243352128,
+            "load1": 3.92
+          },
+          {
+            "step": "b unchanged 2",
+            "ms": 124.047,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 32,
+            "highlightBytes": 6271,
+            "frames": 33,
+            "bytes": 6298,
+            "rssMaxSampledKiB": 251824,
+            "rssAfterKiB": 251824,
+            "footprintBytes": 254607960,
+            "footprintPeakBytes": 254607960,
+            "load1": 3.92
+          },
+          {
+            "step": "b unchanged 3",
+            "ms": 169.524791,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 32,
+            "highlightBytes": 6271,
+            "frames": 33,
+            "bytes": 6298,
+            "rssMaxSampledKiB": 225024,
+            "rssAfterKiB": 225024,
+            "footprintBytes": 227164760,
+            "footprintPeakBytes": 263979608,
+            "load1": 3.92
+          },
+          {
+            "step": "c module edited 1",
+            "ms": 145.714166,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Language.JSON"
+            ],
+            "warnings": 0,
+            "highlightFrames": 33,
+            "highlightBytes": 6443,
+            "frames": 35,
+            "bytes": 6589,
+            "rssMaxSampledKiB": 225024,
+            "rssAfterKiB": 225024,
+            "footprintBytes": 227164760,
+            "footprintPeakBytes": 263979608,
+            "load1": 3.92
+          },
+          {
+            "step": "c module edited 2",
+            "ms": 152.979667,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Language.JSON"
+            ],
+            "warnings": 0,
+            "highlightFrames": 34,
+            "highlightBytes": 6615,
+            "frames": 36,
+            "bytes": 6761,
+            "rssMaxSampledKiB": 225024,
+            "rssAfterKiB": 225024,
+            "footprintBytes": 227164760,
+            "footprintPeakBytes": 263979608,
+            "load1": 3.92
+          },
+          {
+            "step": "c module edited 3",
+            "ms": 146.640125,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Language.JSON"
+            ],
+            "warnings": 0,
+            "highlightFrames": 35,
+            "highlightBytes": 6787,
+            "frames": 37,
+            "bytes": 6933,
+            "rssMaxSampledKiB": 225024,
+            "rssAfterKiB": 225024,
+            "footprintBytes": 227164760,
+            "footprintPeakBytes": 263979608,
+            "load1": 3.92
+          },
+          {
+            "step": "d dependency edited 1",
+            "ms": 229.06125,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Text.Lexer"
+            ],
+            "warnings": 0,
+            "highlightFrames": 35,
+            "highlightBytes": 6787,
+            "frames": 37,
+            "bytes": 6884,
+            "rssMaxSampledKiB": 249312,
+            "rssAfterKiB": 249312,
+            "footprintBytes": 252035672,
+            "footprintPeakBytes": 263979608,
+            "load1": 3.92
+          },
+          {
+            "step": "d dependency edited 2",
+            "ms": 271.527917,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Text.Lexer"
+            ],
+            "warnings": 0,
+            "highlightFrames": 35,
+            "highlightBytes": 6787,
+            "frames": 37,
+            "bytes": 6884,
+            "rssMaxSampledKiB": 224848,
+            "rssAfterKiB": 224848,
+            "footprintBytes": 241664600,
+            "footprintPeakBytes": 263979608,
+            "load1": 3.92
+          },
+          {
+            "step": "d' dependency interface edited 1",
+            "ms": 360.257542,
+            "status": "ok",
+            "building": 5,
+            "builtModules": [
+              "Text.Lexer",
+              "Language.JSON.String.Lexer",
+              "Language.JSON.String.Parser",
+              "Language.JSON.String",
+              "Language.JSON.Lexer"
+            ],
+            "warnings": 0,
+            "highlightFrames": 35,
+            "highlightBytes": 6822,
+            "frames": 41,
+            "bytes": 7309,
+            "rssMaxSampledKiB": 225376,
+            "rssAfterKiB": 225376,
+            "footprintBytes": 242188888,
+            "footprintPeakBytes": 263979608,
+            "load1": 3.92
+          },
+          {
+            "step": "d' dependency interface edited 2",
+            "ms": 356.689208,
+            "status": "ok",
+            "building": 5,
+            "builtModules": [
+              "Text.Lexer",
+              "Language.JSON.String.Lexer",
+              "Language.JSON.String.Parser",
+              "Language.JSON.String",
+              "Language.JSON.Lexer"
+            ],
+            "warnings": 0,
+            "highlightFrames": 35,
+            "highlightBytes": 6822,
+            "frames": 41,
+            "bytes": 7309,
+            "rssMaxSampledKiB": 240048,
+            "rssAfterKiB": 240048,
+            "footprintBytes": 257213016,
+            "footprintPeakBytes": 263979608,
+            "load1": 3.92
+          },
+          {
+            "step": "e idle",
+            "afterMs": 10000,
+            "rssAfterKiB": 239232,
+            "footprintBytes": 257213016,
+            "footprintPeakBytes": 263979608,
+            "load1": 3.77
+          },
+          {
+            "step": "f after queries",
+            "rssAfterKiB": 235072,
+            "footprintBytes": 252953200,
+            "footprintPeakBytes": 289194608,
+            "load1": 3.77
+          },
+          {
+            "step": "f' reload 1",
+            "ms": 122.462667,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 35,
+            "highlightBytes": 6822,
+            "frames": 36,
+            "bytes": 6850,
+            "rssMaxSampledKiB": 235072,
+            "rssAfterKiB": 235072,
+            "footprintBytes": 252953200,
+            "footprintPeakBytes": 289194608,
+            "load1": 3.77
+          },
+          {
+            "step": "f' reload 2",
+            "ms": 132.244958,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 35,
+            "highlightBytes": 6822,
+            "frames": 36,
+            "bytes": 6850,
+            "rssMaxSampledKiB": 279904,
+            "rssAfterKiB": 279904,
+            "footprintBytes": 298025584,
+            "footprintPeakBytes": 298025584,
+            "load1": 3.77
+          },
+          {
+            "step": "f' reload 3",
+            "ms": 135.244334,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 35,
+            "highlightBytes": 6822,
+            "frames": 36,
+            "bytes": 6850,
+            "rssMaxSampledKiB": 307936,
+            "rssAfterKiB": 307936,
+            "footprintBytes": 326746760,
+            "footprintPeakBytes": 326746760,
+            "load1": 3.71
+          }
+        ],
+        "exit": {
+          "code": 1,
+          "signal": null
+        },
+        "peakRssBytes": 334872576,
+        "realSeconds": 15.93,
+        "userSeconds": 4.85,
+        "sysSeconds": 0.29,
+        "unframedLines": 1,
+        "memoryFreeMinPercent": 43
+      },
+      "buildDirAfterCold": {
+        "files": 36,
+        "bytes": 2265866,
+        "ttc": 18,
+        "ttm": 18
+      },
+      "queries": {
+        "type-of": {
+          "request": "(:type-of \"parse\")",
+          "n": 10,
+          "min": 0.41,
+          "median": 0.49,
+          "p90": 0.74,
+          "max": 1.37,
+          "first": 1.37,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 797
+        },
+        "docs-for": {
+          "request": "(:docs-for \"parse\")",
+          "n": 10,
+          "min": 0.64,
+          "median": 0.66,
+          "p90": 0.76,
+          "max": 0.79,
+          "first": 0.79,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 1330
+        },
+        "repl-completions": {
+          "request": "(:repl-completions \"par\")",
+          "n": 10,
+          "min": 1.41,
+          "median": 1.81,
+          "p90": 9.76,
+          "max": 282.74,
+          "first": 282.74,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 234,
+          "candidates": 12
+        },
+        "metavariables": {
+          "request": "(:metavariables 80)",
+          "n": 10,
+          "min": 0.07,
+          "median": 0.08,
+          "p90": 0.11,
+          "max": 0.15,
+          "first": 0.15,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 28
+        }
+      },
+      "queriesAfterReload": {
+        "type-of": {
+          "ms": [
+            0.77,
+            0.84,
+            0.97
+          ],
+          "n": 3,
+          "min": 0.77,
+          "median": 0.84,
+          "p90": 0.97,
+          "max": 0.97,
+          "first": 0.77
+        },
+        "docs-for": {
+          "ms": [
+            1.87,
+            0.96,
+            1.05
+          ],
+          "n": 3,
+          "min": 0.96,
+          "median": 1.05,
+          "p90": 1.87,
+          "max": 1.87,
+          "first": 1.87
+        },
+        "repl-completions": {
+          "ms": [
+            290.31,
+            242.69,
+            286.5
+          ],
+          "n": 3,
+          "min": 242.69,
+          "median": 286.5,
+          "p90": 290.31,
+          "max": 290.31,
+          "first": 290.31
+        },
+        "metavariables": {
+          "ms": [
+            0.17,
+            0.15,
+            0.16
+          ],
+          "n": 3,
+          "min": 0.15,
+          "median": 0.16,
+          "p90": 0.17,
+          "max": 0.17,
+          "first": 0.17
+        }
+      },
+      "buildDirAtEnd": {
+        "files": 36,
+        "bytes": 2267690,
+        "ttc": 18,
+        "ttm": 18
+      },
+      "session2": {
+        "resourcesAtStart": {
+          "ok": true,
+          "free": 44,
+          "load1": 3.71,
+          "waits": 0
+        },
+        "steps": [
+          {
+            "step": "start",
+            "ms": 227.36225,
+            "rssAfterKiB": 199136,
+            "footprintBytes": 200671808,
+            "footprintPeakBytes": 225329728,
+            "load1": 3.71
+          },
+          {
+            "step": "g load on the warm build directory",
+            "ms": 148.496417,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 35,
+            "highlightBytes": 6787,
+            "frames": 36,
+            "bytes": 6814,
+            "rssMaxSampledKiB": 205824,
+            "rssAfterKiB": 205824,
+            "footprintBytes": 207520320,
+            "footprintPeakBytes": 225329728,
+            "load1": 3.71
+          }
+        ],
+        "exit": {
+          "code": 1,
+          "signal": null
+        },
+        "peakRssBytes": 226115584,
+        "realSeconds": 0.45,
+        "userSeconds": 0.32,
+        "sysSeconds": 0.04,
+        "unframedLines": 1,
+        "memoryFreeMinPercent": 44
+      }
+    },
+    {
+      "role": "largest closure in lines",
+      "module": "System.Directory.Tree",
+      "lines": 229,
+      "closureModules": 11,
+      "closureLines": 2354,
+      "file": "System/Directory/Tree.idr",
+      "dependency": {
+        "module": "Text.Quantity",
+        "file": "/private/tmp/vi2-pre3/bench/work-A/contrib/Text/Quantity.idr",
+        "lines": 44,
+        "invalidates": 5
+      },
+      "queryName": "fileName",
+      "completionPrefix": "fil",
+      "resourcesAtStart": {
+        "ok": true,
+        "free": 44,
+        "load1": 3.71,
+        "waits": 0
+      },
+      "session1": {
+        "command": [
+          "/opt/homebrew/bin/timeout",
+          "-k",
+          "10",
+          "3600",
+          "/usr/bin/time",
+          "-l",
+          "/opt/homebrew/bin/idris2",
+          "--ide-mode",
+          "--no-color",
+          "--build-dir",
+          "/private/tmp/vi2-pre3/bench/work-A/contrib/build/.vscode-idris2"
+        ],
+        "cwd": "/private/tmp/vi2-pre3/bench/work-A/contrib",
+        "steps": [
+          {
+            "step": "start",
+            "ms": 231.342458,
+            "protocol": "2.1",
+            "rssAfterKiB": 199136,
+            "footprintBytes": 200671808,
+            "footprintPeakBytes": 225329728,
+            "load1": 3.71
+          },
+          {
+            "step": "a cold",
+            "ms": 1307.594458,
+            "status": "ok",
+            "building": 11,
+            "builtModules": [
+              "Data.String.Extra",
+              "Text.Token",
+              "Control.Delayed",
+              "Text.Bounded",
+              "Text.Lexer.Core",
+              "Text.Quantity",
+              "Text.Lexer",
+              "Text.Parser.Core",
+              "Text.Parser",
+              "System.Path",
+              "System.Directory.Tree"
+            ],
+            "warnings": 0,
+            "highlightFrames": 1249,
+            "highlightBytes": 293679,
+            "frames": 1261,
+            "bytes": 294601,
+            "rssMaxSampledKiB": 231152,
+            "rssAfterKiB": 231152,
+            "footprintBytes": 233423424,
+            "footprintPeakBytes": 237470272,
+            "load1": 3.71
+          },
+          {
+            "step": "b unchanged 1",
+            "ms": 190.972708,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 1249,
+            "highlightBytes": 293679,
+            "frames": 1250,
+            "bytes": 293706,
+            "rssMaxSampledKiB": 251728,
+            "rssAfterKiB": 251728,
+            "footprintBytes": 254509656,
+            "footprintPeakBytes": 254509656,
+            "load1": 3.71
+          },
+          {
+            "step": "b unchanged 2",
+            "ms": 167.278958,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 1249,
+            "highlightBytes": 293679,
+            "frames": 1250,
+            "bytes": 293706,
+            "rssMaxSampledKiB": 248464,
+            "rssAfterKiB": 248464,
+            "footprintBytes": 254526040,
+            "footprintPeakBytes": 254526040,
+            "load1": 3.71
+          },
+          {
+            "step": "b unchanged 3",
+            "ms": 157.199667,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 1249,
+            "highlightBytes": 293679,
+            "frames": 1250,
+            "bytes": 293706,
+            "rssMaxSampledKiB": 248848,
+            "rssAfterKiB": 248848,
+            "footprintBytes": 254902872,
+            "footprintPeakBytes": 254902872,
+            "load1": 3.71
+          },
+          {
+            "step": "c module edited 1",
+            "ms": 322.845792,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "System.Directory.Tree"
+            ],
+            "warnings": 0,
+            "highlightFrames": 1250,
+            "highlightBytes": 293861,
+            "frames": 1252,
+            "bytes": 294023,
+            "rssMaxSampledKiB": 271920,
+            "rssAfterKiB": 271920,
+            "footprintBytes": 278512216,
+            "footprintPeakBytes": 278512216,
+            "load1": 3.71
+          },
+          {
+            "step": "c module edited 2",
+            "ms": 353.952125,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "System.Directory.Tree"
+            ],
+            "warnings": 0,
+            "highlightFrames": 1251,
+            "highlightBytes": 294043,
+            "frames": 1253,
+            "bytes": 294205,
+            "rssMaxSampledKiB": 248752,
+            "rssAfterKiB": 248752,
+            "footprintBytes": 254313096,
+            "footprintPeakBytes": 318505608,
+            "load1": 3.71
+          },
+          {
+            "step": "c module edited 3",
+            "ms": 317.756833,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "System.Directory.Tree"
+            ],
+            "warnings": 0,
+            "highlightFrames": 1252,
+            "highlightBytes": 294225,
+            "frames": 1254,
+            "bytes": 294387,
+            "rssMaxSampledKiB": 249520,
+            "rssAfterKiB": 249520,
+            "footprintBytes": 255099528,
+            "footprintPeakBytes": 318505608,
+            "load1": 3.71
+          },
+          {
+            "step": "d dependency edited 1",
+            "ms": 193.230042,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Text.Quantity"
+            ],
+            "warnings": 0,
+            "highlightFrames": 1252,
+            "highlightBytes": 294225,
+            "frames": 1254,
+            "bytes": 294328,
+            "rssMaxSampledKiB": 249520,
+            "rssAfterKiB": 249520,
+            "footprintBytes": 255099528,
+            "footprintPeakBytes": 318505608,
+            "load1": 3.71
+          },
+          {
+            "step": "d dependency edited 2",
+            "ms": 209.6345,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Text.Quantity"
+            ],
+            "warnings": 0,
+            "highlightFrames": 1252,
+            "highlightBytes": 294225,
+            "frames": 1254,
+            "bytes": 294328,
+            "rssMaxSampledKiB": 258816,
+            "rssAfterKiB": 258816,
+            "footprintBytes": 264618632,
+            "footprintPeakBytes": 318505608,
+            "load1": 3.71
+          },
+          {
+            "step": "d' dependency interface edited 1",
+            "ms": 745.129833,
+            "status": "ok",
+            "building": 4,
+            "builtModules": [
+              "Text.Quantity",
+              "Text.Lexer",
+              "Text.Parser",
+              "System.Path"
+            ],
+            "warnings": 0,
+            "highlightFrames": 1252,
+            "highlightBytes": 295477,
+            "frames": 1257,
+            "bytes": 295799,
+            "rssMaxSampledKiB": 226928,
+            "rssAfterKiB": 226928,
+            "footprintBytes": 248660616,
+            "footprintPeakBytes": 318505608,
+            "load1": 3.81
+          },
+          {
+            "step": "d' dependency interface edited 2",
+            "ms": 610.622583,
+            "status": "ok",
+            "building": 4,
+            "builtModules": [
+              "Text.Quantity",
+              "Text.Lexer",
+              "Text.Parser",
+              "System.Path"
+            ],
+            "warnings": 0,
+            "highlightFrames": 1252,
+            "highlightBytes": 295477,
+            "frames": 1257,
+            "bytes": 295799,
+            "rssMaxSampledKiB": 247888,
+            "rssAfterKiB": 247888,
+            "footprintBytes": 270123656,
+            "footprintPeakBytes": 318505608,
+            "load1": 3.81
+          },
+          {
+            "step": "e idle",
+            "afterMs": 10000,
+            "rssAfterKiB": 238320,
+            "footprintBytes": 270123656,
+            "footprintPeakBytes": 318505608,
+            "load1": 3.77
+          },
+          {
+            "step": "f after queries",
+            "rssAfterKiB": 274288,
+            "footprintBytes": 297157256,
+            "footprintPeakBytes": 318505608,
+            "load1": 3.77
+          },
+          {
+            "step": "f' reload 1",
+            "ms": 232.2865,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 1252,
+            "highlightBytes": 295477,
+            "frames": 1253,
+            "bytes": 295505,
+            "rssMaxSampledKiB": 275152,
+            "rssAfterKiB": 275152,
+            "footprintBytes": 298025608,
+            "footprintPeakBytes": 318505608,
+            "load1": 3.77
+          },
+          {
+            "step": "f' reload 2",
+            "ms": 163.758709,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 1252,
+            "highlightBytes": 295477,
+            "frames": 1253,
+            "bytes": 295505,
+            "rssMaxSampledKiB": 348528,
+            "rssAfterKiB": 348528,
+            "footprintBytes": 373179040,
+            "footprintPeakBytes": 373179040,
+            "load1": 3.77
+          },
+          {
+            "step": "f' reload 3",
+            "ms": 164.495084,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 1252,
+            "highlightBytes": 295477,
+            "frames": 1253,
+            "bytes": 295505,
+            "rssMaxSampledKiB": 311808,
+            "rssAfterKiB": 311808,
+            "footprintBytes": 335610576,
+            "footprintPeakBytes": 445072080,
+            "load1": 3.77
+          }
+        ],
+        "exit": {
+          "code": 1,
+          "signal": null
+        },
+        "peakRssBytes": 427540480,
+        "realSeconds": 17.48,
+        "userSeconds": 6.28,
+        "sysSeconds": 0.32,
+        "unframedLines": 1,
+        "memoryFreeMinPercent": 44
+      },
+      "buildDirAfterCold": {
+        "files": 22,
+        "bytes": 2523658,
+        "ttc": 11,
+        "ttm": 11
+      },
+      "queries": {
+        "type-of": {
+          "request": "(:type-of \"fileName\")",
+          "n": 10,
+          "min": 0.17,
+          "median": 0.21,
+          "p90": 0.27,
+          "max": 0.53,
+          "first": 0.53,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 388
+        },
+        "docs-for": {
+          "request": "(:docs-for \"fileName\")",
+          "n": 10,
+          "min": 0.46,
+          "median": 0.5,
+          "p90": 0.54,
+          "max": 0.78,
+          "first": 0.78,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 931
+        },
+        "repl-completions": {
+          "request": "(:repl-completions \"fil\")",
+          "n": 10,
+          "min": 1.88,
+          "median": 2.24,
+          "p90": 8.77,
+          "max": 320.25,
+          "first": 320.25,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 244,
+          "candidates": 16
+        },
+        "metavariables": {
+          "request": "(:metavariables 80)",
+          "n": 10,
+          "min": 0.07,
+          "median": 0.08,
+          "p90": 0.1,
+          "max": 0.11,
+          "first": 0.11,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 28
+        }
+      },
+      "queriesAfterReload": {
+        "type-of": {
+          "ms": [
+            0.71,
+            0.47,
+            0.43
+          ],
+          "n": 3,
+          "min": 0.43,
+          "median": 0.47,
+          "p90": 0.71,
+          "max": 0.71,
+          "first": 0.71
+        },
+        "docs-for": {
+          "ms": [
+            0.67,
+            0.65,
+            0.61
+          ],
+          "n": 3,
+          "min": 0.61,
+          "median": 0.65,
+          "p90": 0.67,
+          "max": 0.67,
+          "first": 0.67
+        },
+        "repl-completions": {
+          "ms": [
+            310.78,
+            366.91,
+            319.05
+          ],
+          "n": 3,
+          "min": 310.78,
+          "median": 319.05,
+          "p90": 366.91,
+          "max": 366.91,
+          "first": 310.78
+        },
+        "metavariables": {
+          "ms": [
+            0.15,
+            0.15,
+            0.16
+          ],
+          "n": 3,
+          "min": 0.15,
+          "median": 0.15,
+          "p90": 0.16,
+          "max": 0.16,
+          "first": 0.15
+        }
+      },
+      "buildDirAtEnd": {
+        "files": 22,
+        "bytes": 2525232,
+        "ttc": 11,
+        "ttm": 11
+      },
+      "session2": {
+        "resourcesAtStart": {
+          "ok": true,
+          "free": 45,
+          "load1": 3.77,
+          "waits": 0
+        },
+        "steps": [
+          {
+            "step": "start",
+            "ms": 232.99825,
+            "rssAfterKiB": 199136,
+            "footprintBytes": 200671808,
+            "footprintPeakBytes": 225329728,
+            "load1": 3.77
+          },
+          {
+            "step": "g load on the warm build directory",
+            "ms": 182.095083,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 1252,
+            "highlightBytes": 294225,
+            "frames": 1253,
+            "bytes": 294252,
+            "rssMaxSampledKiB": 214192,
+            "rssAfterKiB": 214192,
+            "footprintBytes": 216089152,
+            "footprintPeakBytes": 225329728,
+            "load1": 3.77
+          }
+        ],
+        "exit": {
+          "code": 1,
+          "signal": null
+        },
+        "peakRssBytes": 226115584,
+        "realSeconds": 0.49,
+        "userSeconds": 0.35,
+        "sysSeconds": 0.05,
+        "unframedLines": 1,
+        "memoryFreeMinPercent": 45
+      }
+    },
+    {
+      "role": "median closure",
+      "module": "Data.Nat.Order.Strict",
+      "lines": 34,
+      "closureModules": 2,
+      "closureLines": 124,
+      "file": "Data/Nat/Order/Strict.idr",
+      "dependency": {
+        "module": "Decidable.Order.Strict",
+        "file": "/private/tmp/vi2-pre3/bench/work-A/contrib/Decidable/Order/Strict.idr",
+        "lines": 90,
+        "invalidates": 2
+      },
+      "queryName": "decLT",
+      "completionPrefix": "dec",
+      "resourcesAtStart": {
+        "ok": true,
+        "free": 45,
+        "load1": 3.77,
+        "waits": 0
+      },
+      "session1": {
+        "command": [
+          "/opt/homebrew/bin/timeout",
+          "-k",
+          "10",
+          "3600",
+          "/usr/bin/time",
+          "-l",
+          "/opt/homebrew/bin/idris2",
+          "--ide-mode",
+          "--no-color",
+          "--build-dir",
+          "/private/tmp/vi2-pre3/bench/work-A/contrib/build/.vscode-idris2"
+        ],
+        "cwd": "/private/tmp/vi2-pre3/bench/work-A/contrib",
+        "steps": [
+          {
+            "step": "start",
+            "ms": 231.24025,
+            "protocol": "2.1",
+            "rssAfterKiB": 199136,
+            "footprintBytes": 200671808,
+            "footprintPeakBytes": 225329728,
+            "load1": 3.77
+          },
+          {
+            "step": "a cold",
+            "ms": 214.555208,
+            "status": "ok",
+            "building": 2,
+            "builtModules": [
+              "Decidable.Order.Strict",
+              "Data.Nat.Order.Strict"
+            ],
+            "warnings": 0,
+            "highlightFrames": 171,
+            "highlightBytes": 39314,
+            "frames": 174,
+            "bytes": 39566,
+            "rssMaxSampledKiB": 214160,
+            "rssAfterKiB": 214160,
+            "footprintBytes": 216040000,
+            "footprintPeakBytes": 225329728,
+            "load1": 3.77
+          },
+          {
+            "step": "b unchanged 1",
+            "ms": 79.250167,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 171,
+            "highlightBytes": 39314,
+            "frames": 172,
+            "bytes": 39341,
+            "rssMaxSampledKiB": 214160,
+            "rssAfterKiB": 214160,
+            "footprintBytes": 216040000,
+            "footprintPeakBytes": 225329728,
+            "load1": 3.77
+          },
+          {
+            "step": "b unchanged 2",
+            "ms": 80.038083,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 171,
+            "highlightBytes": 39314,
+            "frames": 172,
+            "bytes": 39341,
+            "rssMaxSampledKiB": 214160,
+            "rssAfterKiB": 214160,
+            "footprintBytes": 216040000,
+            "footprintPeakBytes": 225329728,
+            "load1": 3.77
+          },
+          {
+            "step": "b unchanged 3",
+            "ms": 79.213083,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 171,
+            "highlightBytes": 39314,
+            "frames": 172,
+            "bytes": 39341,
+            "rssMaxSampledKiB": 224784,
+            "rssAfterKiB": 224784,
+            "footprintBytes": 226918976,
+            "footprintPeakBytes": 226918976,
+            "load1": 3.77
+          },
+          {
+            "step": "c module edited 1",
+            "ms": 115.327125,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Data.Nat.Order.Strict"
+            ],
+            "warnings": 0,
+            "highlightFrames": 172,
+            "highlightBytes": 39494,
+            "frames": 174,
+            "bytes": 39654,
+            "rssMaxSampledKiB": 236896,
+            "rssAfterKiB": 236896,
+            "footprintBytes": 239321664,
+            "footprintPeakBytes": 239321664,
+            "load1": 3.87
+          },
+          {
+            "step": "c module edited 2",
+            "ms": 148.876292,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Data.Nat.Order.Strict"
+            ],
+            "warnings": 0,
+            "highlightFrames": 173,
+            "highlightBytes": 39674,
+            "frames": 175,
+            "bytes": 39834,
+            "rssMaxSampledKiB": 220256,
+            "rssAfterKiB": 220256,
+            "footprintBytes": 222282328,
+            "footprintPeakBytes": 247890520,
+            "load1": 3.87
+          },
+          {
+            "step": "c module edited 3",
+            "ms": 110.569583,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Data.Nat.Order.Strict"
+            ],
+            "warnings": 0,
+            "highlightFrames": 174,
+            "highlightBytes": 39854,
+            "frames": 176,
+            "bytes": 40014,
+            "rssMaxSampledKiB": 220608,
+            "rssAfterKiB": 220608,
+            "footprintBytes": 222642776,
+            "footprintPeakBytes": 247890520,
+            "load1": 3.87
+          },
+          {
+            "step": "d dependency edited 1",
+            "ms": 153.172709,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Decidable.Order.Strict"
+            ],
+            "warnings": 0,
+            "highlightFrames": 174,
+            "highlightBytes": 39854,
+            "frames": 176,
+            "bytes": 39973,
+            "rssMaxSampledKiB": 220608,
+            "rssAfterKiB": 220608,
+            "footprintBytes": 222642776,
+            "footprintPeakBytes": 247890520,
+            "load1": 3.87
+          },
+          {
+            "step": "d dependency edited 2",
+            "ms": 155.640291,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Decidable.Order.Strict"
+            ],
+            "warnings": 0,
+            "highlightFrames": 174,
+            "highlightBytes": 39854,
+            "frames": 176,
+            "bytes": 39973,
+            "rssMaxSampledKiB": 230816,
+            "rssAfterKiB": 230816,
+            "footprintBytes": 233095768,
+            "footprintPeakBytes": 247890520,
+            "load1": 3.87
+          },
+          {
+            "step": "d' dependency interface edited 1",
+            "ms": 190.518375,
+            "status": "ok",
+            "building": 2,
+            "builtModules": [
+              "Decidable.Order.Strict",
+              "Data.Nat.Order.Strict"
+            ],
+            "warnings": 0,
+            "highlightFrames": 174,
+            "highlightBytes": 40028,
+            "frames": 177,
+            "bytes": 40283,
+            "rssMaxSampledKiB": 258336,
+            "rssAfterKiB": 258336,
+            "footprintBytes": 261276248,
+            "footprintPeakBytes": 261276248,
+            "load1": 3.87
+          },
+          {
+            "step": "d' dependency interface edited 2",
+            "ms": 223.748209,
+            "status": "ok",
+            "building": 2,
+            "builtModules": [
+              "Decidable.Order.Strict",
+              "Data.Nat.Order.Strict"
+            ],
+            "warnings": 0,
+            "highlightFrames": 174,
+            "highlightBytes": 40028,
+            "frames": 177,
+            "bytes": 40283,
+            "rssMaxSampledKiB": 229216,
+            "rssAfterKiB": 229216,
+            "footprintBytes": 231473776,
+            "footprintPeakBytes": 276333168,
+            "load1": 3.87
+          },
+          {
+            "step": "e idle",
+            "afterMs": 10000,
+            "rssAfterKiB": 229216,
+            "footprintBytes": 231473776,
+            "footprintPeakBytes": 276333168,
+            "load1": 3.81
+          },
+          {
+            "step": "f after queries",
+            "rssAfterKiB": 229216,
+            "footprintBytes": 231473776,
+            "footprintPeakBytes": 276333168,
+            "load1": 3.81
+          },
+          {
+            "step": "f' reload 1",
+            "ms": 83.300042,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 174,
+            "highlightBytes": 40028,
+            "frames": 175,
+            "bytes": 40056,
+            "rssMaxSampledKiB": 233520,
+            "rssAfterKiB": 233520,
+            "footprintBytes": 235881072,
+            "footprintPeakBytes": 276333168,
+            "load1": 3.81
+          },
+          {
+            "step": "f' reload 2",
+            "ms": 84.589917,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 174,
+            "highlightBytes": 40028,
+            "frames": 175,
+            "bytes": 40056,
+            "rssMaxSampledKiB": 260656,
+            "rssAfterKiB": 260656,
+            "footprintBytes": 263668336,
+            "footprintPeakBytes": 276333168,
+            "load1": 3.81
+          },
+          {
+            "step": "f' reload 3",
+            "ms": 81.170542,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 174,
+            "highlightBytes": 40028,
+            "frames": 175,
+            "bytes": 40056,
+            "rssMaxSampledKiB": 260656,
+            "rssAfterKiB": 260656,
+            "footprintBytes": 263668336,
+            "footprintPeakBytes": 276333168,
+            "load1": 3.81
+          }
+        ],
+        "exit": {
+          "code": 1,
+          "signal": null
+        },
+        "peakRssBytes": 303120384,
+        "realSeconds": 13.45,
+        "userSeconds": 2.56,
+        "sysSeconds": 0.17,
+        "unframedLines": 1,
+        "memoryFreeMinPercent": 45
+      },
+      "buildDirAfterCold": {
+        "files": 4,
+        "bytes": 220675,
+        "ttc": 2,
+        "ttm": 2
+      },
+      "queries": {
+        "type-of": {
+          "request": "(:type-of \"decLT\")",
+          "n": 10,
+          "min": 0.11,
+          "median": 0.13,
+          "p90": 0.21,
+          "max": 0.63,
+          "first": 0.63,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 356
+        },
+        "docs-for": {
+          "request": "(:docs-for \"decLT\")",
+          "n": 10,
+          "min": 0.15,
+          "median": 0.2,
+          "p90": 0.23,
+          "max": 0.24,
+          "first": 0.21,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 537
+        },
+        "repl-completions": {
+          "request": "(:repl-completions \"dec\")",
+          "n": 10,
+          "min": 0.92,
+          "median": 1.07,
+          "p90": 2.53,
+          "max": 153,
+          "first": 153,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 332,
+          "candidates": 33
+        },
+        "metavariables": {
+          "request": "(:metavariables 80)",
+          "n": 10,
+          "min": 0.07,
+          "median": 0.08,
+          "p90": 0.08,
+          "max": 0.1,
+          "first": 0.1,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 28
+        }
+      },
+      "queriesAfterReload": {
+        "type-of": {
+          "ms": [
+            0.46,
+            0.47,
+            0.46
+          ],
+          "n": 3,
+          "min": 0.46,
+          "median": 0.46,
+          "p90": 0.47,
+          "max": 0.47,
+          "first": 0.46
+        },
+        "docs-for": {
+          "ms": [
+            0.21,
+            0.24,
+            0.29
+          ],
+          "n": 3,
+          "min": 0.21,
+          "median": 0.24,
+          "p90": 0.29,
+          "max": 0.29,
+          "first": 0.21
+        },
+        "repl-completions": {
+          "ms": [
+            186.16,
+            152.57,
+            197.84
+          ],
+          "n": 3,
+          "min": 152.57,
+          "median": 186.16,
+          "p90": 197.84,
+          "max": 197.84,
+          "first": 186.16
+        },
+        "metavariables": {
+          "ms": [
+            0.13,
+            0.14,
+            0.16
+          ],
+          "n": 3,
+          "min": 0.13,
+          "median": 0.14,
+          "p90": 0.16,
+          "max": 0.16,
+          "first": 0.13
+        }
+      },
+      "buildDirAtEnd": {
+        "files": 4,
+        "bytes": 222579,
+        "ttc": 2,
+        "ttm": 2
+      },
+      "session2": {
+        "resourcesAtStart": {
+          "ok": true,
+          "free": 46,
+          "load1": 3.81,
+          "waits": 0
+        },
+        "steps": [
+          {
+            "step": "start",
+            "ms": 238.890084,
+            "rssAfterKiB": 199136,
+            "footprintBytes": 200671808,
+            "footprintPeakBytes": 225329728,
+            "load1": 3.81
+          },
+          {
+            "step": "g load on the warm build directory",
+            "ms": 109.351209,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 174,
+            "highlightBytes": 39854,
+            "frames": 175,
+            "bytes": 39881,
+            "rssMaxSampledKiB": 214192,
+            "rssAfterKiB": 214192,
+            "footprintBytes": 216089152,
+            "footprintPeakBytes": 225329728,
+            "load1": 3.81
+          }
+        ],
+        "exit": {
+          "code": 1,
+          "signal": null
+        },
+        "peakRssBytes": 226115584,
+        "realSeconds": 0.43,
+        "userSeconds": 0.29,
+        "sysSeconds": 0.05,
+        "unframedLines": 1,
+        "memoryFreeMinPercent": 46
+      }
+    },
+    {
+      "role": "leaf",
+      "module": "Data.Seq.Internal",
+      "lines": 682,
+      "closureModules": 1,
+      "closureLines": 682,
+      "file": "Data/Seq/Internal.idr",
+      "queryName": "err",
+      "completionPrefix": "err",
+      "resourcesAtStart": {
+        "ok": true,
+        "free": 45,
+        "load1": 3.81,
+        "waits": 0
+      },
+      "session1": {
+        "command": [
+          "/opt/homebrew/bin/timeout",
+          "-k",
+          "10",
+          "3600",
+          "/usr/bin/time",
+          "-l",
+          "/opt/homebrew/bin/idris2",
+          "--ide-mode",
+          "--no-color",
+          "--build-dir",
+          "/private/tmp/vi2-pre3/bench/work-A/contrib/build/.vscode-idris2"
+        ],
+        "cwd": "/private/tmp/vi2-pre3/bench/work-A/contrib",
+        "steps": [
+          {
+            "step": "start",
+            "ms": 245.557125,
+            "protocol": "2.1",
+            "rssAfterKiB": 199136,
+            "footprintBytes": 200671808,
+            "footprintPeakBytes": 225329728,
+            "load1": 3.81
+          },
+          {
+            "step": "a cold",
+            "ms": 845.517583,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Data.Seq.Internal"
+            ],
+            "warnings": 0,
+            "highlightFrames": 8658,
+            "highlightBytes": 2080626,
+            "frames": 8660,
+            "bytes": 2080778,
+            "rssMaxSampledKiB": 232560,
+            "rssAfterKiB": 232560,
+            "footprintBytes": 234881600,
+            "footprintPeakBytes": 234881600,
+            "load1": 3.81
+          },
+          {
+            "step": "b unchanged 1",
+            "ms": 228.068875,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 8658,
+            "highlightBytes": 2080626,
+            "frames": 8659,
+            "bytes": 2080653,
+            "rssMaxSampledKiB": 223168,
+            "rssAfterKiB": 223168,
+            "footprintBytes": 225264216,
+            "footprintPeakBytes": 242369112,
+            "load1": 3.81
+          },
+          {
+            "step": "b unchanged 2",
+            "ms": 183.2435,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 8658,
+            "highlightBytes": 2080626,
+            "frames": 8659,
+            "bytes": 2080653,
+            "rssMaxSampledKiB": 224752,
+            "rssAfterKiB": 224752,
+            "footprintBytes": 226886232,
+            "footprintPeakBytes": 242369112,
+            "load1": 3.81
+          },
+          {
+            "step": "b unchanged 3",
+            "ms": 185.585041,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 8658,
+            "highlightBytes": 2080626,
+            "frames": 8659,
+            "bytes": 2080653,
+            "rssMaxSampledKiB": 237024,
+            "rssAfterKiB": 237024,
+            "footprintBytes": 239452760,
+            "footprintPeakBytes": 242369112,
+            "load1": 3.81
+          },
+          {
+            "step": "c module edited 1",
+            "ms": 830.145083,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Data.Seq.Internal"
+            ],
+            "warnings": 0,
+            "highlightFrames": 8659,
+            "highlightBytes": 2080804,
+            "frames": 8661,
+            "bytes": 2080956,
+            "rssMaxSampledKiB": 270864,
+            "rssAfterKiB": 270864,
+            "footprintBytes": 274104920,
+            "footprintPeakBytes": 274104920,
+            "load1": 3.74
+          },
+          {
+            "step": "c module edited 2",
+            "ms": 790.07075,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Data.Seq.Internal"
+            ],
+            "warnings": 0,
+            "highlightFrames": 8660,
+            "highlightBytes": 2080982,
+            "frames": 8662,
+            "bytes": 2081134,
+            "rssMaxSampledKiB": 295264,
+            "rssAfterKiB": 295264,
+            "footprintBytes": 299106928,
+            "footprintPeakBytes": 299106928,
+            "load1": 3.74
+          },
+          {
+            "step": "c module edited 3",
+            "ms": 835.322666,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Data.Seq.Internal"
+            ],
+            "warnings": 0,
+            "highlightFrames": 8661,
+            "highlightBytes": 2081160,
+            "frames": 8663,
+            "bytes": 2081312,
+            "rssMaxSampledKiB": 323680,
+            "rssAfterKiB": 288048,
+            "footprintBytes": 291734152,
+            "footprintPeakBytes": 334398088,
+            "load1": 3.74
+          },
+          {
+            "step": "e idle",
+            "afterMs": 10000,
+            "rssAfterKiB": 274720,
+            "footprintBytes": 291734152,
+            "footprintPeakBytes": 334398088,
+            "load1": 3.55
+          },
+          {
+            "step": "f after queries",
+            "rssAfterKiB": 276672,
+            "footprintBytes": 293733000,
+            "footprintPeakBytes": 334398088,
+            "load1": 3.55
+          },
+          {
+            "step": "f' reload 1",
+            "ms": 186.54525,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 8661,
+            "highlightBytes": 2089821,
+            "frames": 8662,
+            "bytes": 2089849,
+            "rssMaxSampledKiB": 276704,
+            "rssAfterKiB": 276704,
+            "footprintBytes": 293733000,
+            "footprintPeakBytes": 334398088,
+            "load1": 3.55
+          },
+          {
+            "step": "f' reload 2",
+            "ms": 241.637917,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 8661,
+            "highlightBytes": 2089821,
+            "frames": 8662,
+            "bytes": 2089849,
+            "rssMaxSampledKiB": 281376,
+            "rssAfterKiB": 281376,
+            "footprintBytes": 297157256,
+            "footprintPeakBytes": 334398088,
+            "load1": 3.55
+          },
+          {
+            "step": "f' reload 3",
+            "ms": 191.198875,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 8661,
+            "highlightBytes": 2089821,
+            "frames": 8662,
+            "bytes": 2089849,
+            "rssMaxSampledKiB": 282240,
+            "rssAfterKiB": 282240,
+            "footprintBytes": 298041992,
+            "footprintPeakBytes": 334398088,
+            "load1": 3.55
+          }
+        ],
+        "exit": {
+          "code": 1,
+          "signal": null
+        },
+        "peakRssBytes": 335200256,
+        "realSeconds": 15.78,
+        "userSeconds": 4.99,
+        "sysSeconds": 0.22,
+        "unframedLines": 1,
+        "memoryFreeMinPercent": 44
+      },
+      "buildDirAfterCold": {
+        "files": 2,
+        "bytes": 2220572,
+        "ttc": 1,
+        "ttm": 1
+      },
+      "queries": {
+        "type-of": {
+          "request": "(:type-of \"err\")",
+          "n": 10,
+          "min": 0.1,
+          "median": 0.12,
+          "p90": 0.17,
+          "max": 0.3,
+          "first": 0.3,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 168
+        },
+        "docs-for": {
+          "request": "(:docs-for \"err\")",
+          "n": 10,
+          "min": 0.11,
+          "median": 0.12,
+          "p90": 0.18,
+          "max": 0.2,
+          "first": 0.2,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 342
+        },
+        "repl-completions": {
+          "request": "(:repl-completions \"err\")",
+          "n": 10,
+          "min": 0.73,
+          "median": 0.79,
+          "p90": 3.01,
+          "max": 115.22,
+          "first": 115.22,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 38,
+          "candidates": 1
+        },
+        "metavariables": {
+          "request": "(:metavariables 80)",
+          "n": 10,
+          "min": 0.07,
+          "median": 0.07,
+          "p90": 0.08,
+          "max": 0.1,
+          "first": 0.1,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 28
+        }
+      },
+      "queriesAfterReload": {
+        "type-of": {
+          "ms": [
+            0.28,
+            0.29,
+            0.24
+          ],
+          "n": 3,
+          "min": 0.24,
+          "median": 0.28,
+          "p90": 0.29,
+          "max": 0.29,
+          "first": 0.28
+        },
+        "docs-for": {
+          "ms": [
+            0.17,
+            0.21,
+            0.17
+          ],
+          "n": 3,
+          "min": 0.17,
+          "median": 0.17,
+          "p90": 0.21,
+          "max": 0.21,
+          "first": 0.17
+        },
+        "repl-completions": {
+          "ms": [
+            117.09,
+            112.83,
+            113.69
+          ],
+          "n": 3,
+          "min": 112.83,
+          "median": 113.69,
+          "p90": 117.09,
+          "max": 117.09,
+          "first": 117.09
+        },
+        "metavariables": {
+          "ms": [
+            0.15,
+            0.14,
+            0.15
+          ],
+          "n": 3,
+          "min": 0.14,
+          "median": 0.15,
+          "p90": 0.15,
+          "max": 0.15,
+          "first": 0.15
+        }
+      },
+      "buildDirAtEnd": {
+        "files": 2,
+        "bytes": 2220698,
+        "ttc": 1,
+        "ttm": 1
+      },
+      "session2": {
+        "resourcesAtStart": {
+          "ok": true,
+          "free": 45,
+          "load1": 3.55,
+          "waits": 0
+        },
+        "steps": [
+          {
+            "step": "start",
+            "ms": 258.530458,
+            "rssAfterKiB": 199136,
+            "footprintBytes": 200671808,
+            "footprintPeakBytes": 225329728,
+            "load1": 3.55
+          },
+          {
+            "step": "g load on the warm build directory",
+            "ms": 215.703625,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 8661,
+            "highlightBytes": 2081160,
+            "frames": 8662,
+            "bytes": 2081187,
+            "rssMaxSampledKiB": 218400,
+            "rssAfterKiB": 218400,
+            "footprintBytes": 220381760,
+            "footprintPeakBytes": 225329728,
+            "load1": 3.55
+          }
+        ],
+        "exit": {
+          "code": 1,
+          "signal": null
+        },
+        "peakRssBytes": 226115584,
+        "realSeconds": 0.55,
+        "userSeconds": 0.39,
+        "sysSeconds": 0.07,
+        "unframedLines": 1,
+        "memoryFreeMinPercent": 46
+      }
+    }
+  ],
+  "finishedAt": "2026-09-29T00:02:49.496Z"
+}

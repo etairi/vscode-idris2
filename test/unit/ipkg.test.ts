@@ -492,8 +492,9 @@ suite('project/ipkg', () => {
     }
 
     test("runs idris2 --dump-ipkg-json <absolute path> in the compiler's directory with the configured environment", async () => {
-      // Not in the package directory: starting a program there can load code from it (ROADMAP M1
-      // As built, *Processes*); the compiler changes into it itself, with the same output.
+      // Not in the package directory: starting a program there can load code from it
+      // (docs/as-built/M1.md, *Processes*); the compiler changes into it itself, with the same
+      // output.
       const runner = fakeRunner(() => Promise.resolve(processResult(recorded('test/fixtures/workspaces/simple-ipkg/simple.ipkg'))));
       const { log, warnings } = fakeLog();
       const state = await readIpkgModel(simple, { runner, executable: '/opt/idris2/bin/idris2', env: { IDRIS2_PREFIX: '/opt/p' } }, log);

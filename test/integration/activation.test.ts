@@ -20,7 +20,7 @@ const EXTENSION_ID = 'etairi.vscode-idris2';
  * CI bound is 1,000 ms, about 3× the slowest observed run; that the second run passed also
  * shows the Extension Host sees GitHub's `CI` variable. The measured number is printed on
  * every run, so the < 100 ms target is read from the log (and from Show Running Extensions,
- * ROADMAP M0 "As built"), not asserted.
+ * docs/as-built/M0.md, *Activation time*), not asserted.
  */
 const ACTIVATION_BOUND_MS = process.env.CI ? 1_000 : 250;
 

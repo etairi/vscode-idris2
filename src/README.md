@@ -184,7 +184,7 @@ entry for `backend/registry.ts` reads "M1: registration + status label only". Th
 `core/async.ts` (debounce, AsyncQueue, withTimeout, CancellationToken helpers); M2 did not
 create it, because the one queue, the time limits and the cancellation live in
 `backend/ide/session.ts` and the `afterDelay` debounce in `features/diagnostics/checks.ts`
-(ROADMAP M2 As built). `backend/ide/types.ts`, `backend/ide/pool.ts` and `features/consent/`
+(ARCHITECTURE §2, `core/async.ts`). `backend/ide/types.ts`, `backend/ide/pool.ts` and `features/consent/`
 are M2 files that §2 does not list. `features/help/`
 and `features/syntax/` hold M0's Help group and selection ranges (ROADMAP M0); ARCHITECTURE §2
 lists them since M0. Feature modules export a `register…` function that returns a Disposable

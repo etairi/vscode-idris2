@@ -169,8 +169,8 @@ export type EditResult =
   | { readonly type: 'exhausted' };
 
 /**
- * How `IdrisBackend.load` queues a load (ROADMAP §9 Q21, M2 As built *Resource limits*; an addition
- * to ARCHITECTURE §3.1, recorded there).
+ * How `IdrisBackend.load` queues a load (ROADMAP §9 Q21, docs/as-built/M2.md, *Resource limits*;
+ * an addition to ARCHITECTURE §3.1, recorded there).
  */
 export interface LoadOptions {
   /**

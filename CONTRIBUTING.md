@@ -8,7 +8,10 @@ fills in the setup information for you.
 ## Project documents
 
 - [docs/ROADMAP.md](docs/ROADMAP.md): milestones, verified facts about the compiler and
-  `idris2-lsp` (§0), open questions, and an "As built" record per milestone.
+  `idris2-lsp` (§0), open questions and the user's decisions (§9), and a short status per
+  finished milestone.
+- [docs/as-built/](docs/as-built/README.md): an "As built" record per finished milestone — how
+  the code departs from the milestone text and the design, measurements, reviews and test runs.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): source layout, the backend abstraction,
   coordinates, settings, test layers and design decisions.
 - [docs/landscape.md](docs/landscape.md): survey of existing Idris tooling for VS Code.
@@ -107,6 +110,23 @@ Idris 2 v0.8.0 libraries at pinned commits into the git-ignored `.corpus/`. Yaff
 licence: never copy its text into this repository. Short excerpts of MIT or BSD-3 code may be
 used as fixtures with an attribution header and an entry in
 [test/fixtures/grammar/NOTICE.md](test/fixtures/grammar/NOTICE.md).
+
+## Measuring the check session
+
+`scripts/measure-first-load.mjs` (macOS only) measures what the IDE-mode `check` session costs on
+a package: the first load, reloads and saves, memory, and the latency of the cheap requests. It
+starts the compiler as the extension does, one process at a time, and only in a copy of the
+package under `--work`:
+
+```sh
+node scripts/measure-first-load.mjs --package <dir> --closures   # import closures; no compiler
+node scripts/measure-first-load.mjs --package <dir> --work /tmp/<empty dir> --out /tmp/<file>.json
+```
+
+The script's header lists the steps, options and safety limits. Use a package of your own: the
+project does not run `idris2` on the Idris 2 libraries (`CLAUDE.md`). The measurements taken
+before M3, their method and their limits are in
+[docs/measurements/first-load.md](docs/measurements/first-load.md).
 
 ## Trying a packaged extension
 

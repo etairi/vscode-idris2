@@ -245,7 +245,7 @@ suite('M2 diagnostics (fake compiler replaying the 0.8.0 transcripts, socket tra
     // state from before it and the new state in a second event [src]; the checks took the first
     // keystroke after a check for a reload from disk, loaded the saved file again (restarting a
     // stopped compiler), and an undo back to the saved text read `stale`. This pins the order
-    // (ROADMAP M2 As built, *Documents and triggers*) and what the checks make of it.
+    // (docs/as-built/M2.md, *Documents and triggers*) and what the checks make of it.
     test('a keystroke loads nothing and reads "stale", an undo reads the result again, and after Stop Backend a keystroke starts nothing', async () => {
       const doc = await showFile('Bad.idr');
       await diagnosticsWhen(doc.uri, 'shown', (l) => l.length === 1);

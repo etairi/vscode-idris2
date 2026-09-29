@@ -624,7 +624,7 @@ suite('E2E: IDE-mode protocol facts (ROADMAP §0) against the real idris2', func
       const highlights = highlightFrames(load).length; // every frame decodes (messages() asserts it)
       assert.ok(highlights >= 400, `${highlights} :highlight-source frames for 400 definitions`);
       const bytes = load.items.reduce((n, i) => n + i.byteLength, 0);
-      // A measurement, not a bound: the number is recorded in ROADMAP M2 As built, *Measured*.
+      // A measurement, not a bound: the number is recorded in docs/as-built/M2.md, *Measured*.
       console.log(`      big file: ${lines.length} lines, ${highlights} :highlight-source frames, ${bytes} bytes, ${Date.now() - started} ms (start, load, exit)`);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });

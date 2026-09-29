@@ -115,7 +115,8 @@ export interface ProjectRoot {
   /**
    * Whether the `.ipkg` lies inside a workspace folder. Only such a file is read with the
    * compiler: `--dump-ipkg-json` runs in the `.ipkg`'s directory, and VS Code's workspace trust
-   * covers the workspace folders, not the directories above them (ROADMAP M1 As built). The
+   * covers the workspace folders, not the directories above them (docs/as-built/M1.md, *Roots
+   * outside the workspace folders*). The
    * UI says when a root lies outside.
    */
   readonly insideWorkspace: boolean;

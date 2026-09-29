@@ -8,11 +8,19 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   **Features are implemented in the milestone that owns them, with the scope written there.**
   Do not pull a later milestone's feature forward, and do not stub it with an empty module:
   placeholders for future parts are the README files in `src/` and `test/`. M0 is implemented
-  and accepted (2026-09-27, ROADMAP M0 "As built"); M1 is implemented (2026-09-27, ROADMAP M1
-  "As built", which lists its deviations from the M1 text); M2 is implemented (2026-09-27,
-  ROADMAP M2 "As built", likewise). The one planned stub is M0's
+  and accepted (2026-09-27, `docs/as-built/M0.md`); M1 is implemented (2026-09-27,
+  `docs/as-built/M1.md`, which lists its deviations from the M1 text); M2 is implemented
+  (2026-09-28, `docs/as-built/M2.md`, likewise). The one planned stub is M0's
   `src/webview/goalPanel.ts` (an empty second esbuild entry, ROADMAP M0 "Out"), which M7
   replaces.
+- `docs/as-built/` — what was built: one file per finished milestone (`M0.md`, `M1.md`,
+  `M2.md`) with its deviations from ROADMAP §5 and ARCHITECTURE, measurements, experiments,
+  review rounds and gate runs; `README.md` there explains the files and how to read their
+  references. Moved out of ROADMAP and ARCHITECTURE on 2026-09-28 so that those two stay
+  readable: **a finished milestone's record goes into a new `docs/as-built/Mn.md`**, and its
+  ROADMAP §5 entry gets only a short Status entry (done, date, commits, CI run, link);
+  ARCHITECTURE keeps the design, with a short "As built" pointer where the code refines a
+  section. References take the form `docs/as-built/M2.md`, *Processes* (the entry's heading).
 - `docs/ARCHITECTURE.md` — the technical design: repository layout (§2), the `IdrisBackend`
   interface (§3), sessions (§5), coordinates (§7), settings (§11), test layers (§12), build
   (§13), decisions D1–D22 (§14). New code goes where §2 puts it and follows its naming rules.
@@ -20,8 +28,8 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   documents carries an **epistemic tag**; each document's legend is at its top
   (`landscape.md`: `[live]`, `[src]`, `[mkt]`, `[doc]`, `[untested]`; `ROADMAP.md`: `[live]`,
   `[src]`, `[doc]`, `[gh]`, `[open]`; `ARCHITECTURE.md` legend: `[live]`, `[src]`, `[doc]`,
-  `[open]`, and it also uses `[gh]` inline). When editing or quoting
-  these documents, preserve the tags; when adding a fact, tag it the same way and say how it
+  `[open]`, and it also uses `[gh]` inline; `docs/as-built/*` use ROADMAP's). When editing or
+  quoting these documents, preserve the tags; when adding a fact, tag it the same way and say how it
   was verified. Never upgrade an `[open]`, `[untested]` or `[doc]` fact to `[live]` without
   actually running it.
 - Decisions taken by the user on 2026-09-26 (recorded in `docs/ROADMAP.md` §9): MIT licence
@@ -43,7 +51,13 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   default, the socket only as an explicit opt-in in user settings (the former `auto` reads as
   stdio); **Q21** no resource limits by default — `idris2.ideMode.maxSessions` and
   `idris2.ideMode.maxBackgroundChecks`, both `0` = unlimited; **Q22** the backoff/give-up reading
-  as built is confirmed.
+  as built is confirmed. Decided on 2026-09-28 before M3 (ROADMAP §9): **Evaluate evaluates
+  expressions only** — `(:interpret "<expr>")` on the separate `eval` session, which follows the
+  `check` session's transport rule; no `:exec`, so IO actions are shown, not run; text the REPL
+  parser reads as a command is refused; running programs belongs to the REPL terminal (M8) and
+  Run main (M9) —; **keybindings as planned** (Q5): `idris2.keybindings.scheme` = `chords`
+  (default on macOS) / `prefix` (default elsewhere) / `none`, each milestone binding only its own
+  commands, M3 the letters `t`, `d`, `e` (ARCHITECTURE §10).
 - Test corpora (`test/corpus/corpus.json`, fetched by `scripts/fetch-corpus.mjs` into the
   git-ignored `.corpus/`): `idris-compiler-tools` (MIT, Jan Serwatka) and the Idris 2 v0.8.0
   libraries (BSD-3, Edwin Brady) may be excerpted into fixtures, each excerpt with an attribution
@@ -174,10 +188,10 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
   after the group leader has ended); `deactivate()` disposes it. No other module in `src/`
   imports `child_process`. Terminals (the install commands) only ever get text without a line
   break or any other control character, and start in the home directory, never in a workspace
-  folder: pack reads the `pack.toml` of its working directory and of every parent (ROADMAP M1
-  As built, *Install commands*).
+  folder: pack reads the `pack.toml` of its working directory and of every parent
+  (`docs/as-built/M1.md`, *Install commands*).
 - **Starting the compiler in a directory can execute code from that directory** (the Homebrew
-  `idris2` loaded a planted `libc.dylib` from its working directory; ROADMAP M1 As built,
+  `idris2` loaded a planted `libc.dylib` from its working directory; `docs/as-built/M1.md`,
   *Processes*). M1's own runs (probes, `--dump-ipkg-json <absolute .ipkg path>`) therefore start
   in the tool's own directory, and the runner accepts only fully qualified executable and
   working-directory paths (`isFullyQualifiedPath`: on Windows a drive or UNC root, never `\x`
@@ -233,8 +247,8 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
   `show{Information,Warning,Error}Message`, the language status item's `detail`, an input box's
   or QuickPick's `prompt` (also `showQuickPick`'s option) and `validationMessage` (and what
   `validateInput` returns), and a notification progress's `title` and `message`. VS Code 1.139.1 turns `[label](command:…)` in all of these
-  into a link that runs the command, and the texts quote folder names and compiler output (ROADMAP
-  M2 As built, *Registry and status*). Call these APIs directly (`x.showWarningMessage(…)`,
+  into a link that runs the command, and the texts quote folder names and compiler output
+  (`docs/as-built/M2.md`, *Registry and status*). Call these APIs directly (`x.showWarningMessage(…)`,
   `progress.report(…)`, never through element access, destructuring, `.call` or a stored
   reference), give `showInputBox`, `showQuickPick`, `withProgress` and `report` an object literal,
   and set `detail`, `prompt` and `validationMessage` with `=` on the property (not `+=`, element
@@ -286,10 +300,14 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
 
 - Do not commit, tag, publish or install anything globally unless asked.
 - Claims in README/CHANGELOG must be true of the code as built; plans belong in
-  `docs/ROADMAP.md`.
+  `docs/ROADMAP.md`. `CHANGELOG.md` (shown on the Marketplace) says in a few user-facing lines
+  per milestone what a user gets, in Keep-a-Changelog sections; implementation detail, test
+  counts and review history go to `docs/as-built/Mn.md`.
 - Run at most one `idris2` process at a time, never in the background or in parallel, and
   never on the corpora or the Idris 2 libraries (the lexer oracle compiles only
-  `LexDump.idr` and runs the resulting lexer over them). This machine has 16 GB, and parallel
+  `LexDump.idr` and runs the resulting lexer over them). The one approved exception (user,
+  2026-09-28): `scripts/measure-first-load.mjs` on a copy of Idris 2's `contrib` under `/tmp`,
+  one process at a time (`docs/measurements/first-load.md`). This machine has 16 GB, and parallel
   compiler runs have taken it down (2026-09-27). `check:fixtures` and the lexer oracle spawn
   `idris2` one file at a time (`spawnSync`) and honour `IDRIS2=<path>`, so a wrapper running
   `timeout 120 idris2 "$@"` adds a time limit. Start only one VS Code test instance at a time.

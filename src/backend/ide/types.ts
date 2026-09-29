@@ -568,8 +568,8 @@ export interface SessionPoolChange {
  * would change — when `idris2.ideMode.*` changes, when a toolchain snapshot names another
  * `idris2` or environment, and when `sessionFor` is given a classification of the same root
  * whose launch differs (e.g. the `.ipkg` gained a `builddir`) — and returns `failed` sessions to
- * `stopped` on the first two (ARCHITECTURE §5.1 "Configuration changes", as built: see
- * `pool.ts`). Sessions stop themselves after `idris2.ideMode.idleTimeout`; the pool stops those
+ * `stopped` on the first two (ARCHITECTURE §5.1 "Configuration changes", as built:
+ * docs/as-built/M2.md, *Configuration changes*, and `pool.ts`). Sessions stop themselves after `idris2.ideMode.idleTimeout`; the pool stops those
  * whose directory `SessionGate.current` no longer allows, and, while more run than
  * `idris2.ideMode.maxSessions` (when it is not 0) allows, the least recently used idle ones that
  * are not the active root's (cause `evicted`; ROADMAP §9 Q21). `dispose` stops every process at

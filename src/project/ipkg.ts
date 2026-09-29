@@ -322,7 +322,7 @@ export const MAX_IPKG_BYTES = 256 * 1024;
  * --dump-ipkg-json <ipkgPath>` in the compiler's own directory (the runner's default), not in
  * the package's: the compiler changes into the package directory itself (module comment), but
  * only after it has started, and starting a program in a directory can load code from there
- * (ROADMAP M1 As built, *Processes*), and pack's wrapper would also merge the `pack.toml` of that
+ * (docs/as-built/M1.md, *Processes*), and pack's wrapper would also merge the `pack.toml` of that
  * directory and of every parent. The output is the same [live: stdout, stderr and exit code of
  * all 12 recorded fixtures, `test/unit/support/ipkgRecordings.ts`, errors included], and an
  * absolute path never starts with `-` (module comment). When `compilerReadsPathAsGiven` says

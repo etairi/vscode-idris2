@@ -123,7 +123,7 @@ suite('M2 consent for a session outside the workspace folders', () => {
     // This step failed once (2026-09-27, the integration run after the second review: the status
     // read `stopped`) and passed in the 10 runs after it. A stale read of the global state after
     // the revocation fits that run's log and can no longer decide a verdict (gate.ts), but the
-    // cause is not established (ROADMAP M2 As built, *Status*). Until the status reads
+    // cause is not established (docs/as-built/M2.md, *Status*). Until the status reads
     // `not allowed here`, no process may have started and the gate must say `denied` at every
     // poll, not only the status.
     await waitFor('the gate to record the answer', () => (api.consent.current(packageDir) !== undefined ? true : undefined));

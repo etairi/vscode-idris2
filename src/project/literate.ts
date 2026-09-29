@@ -9,7 +9,8 @@
  * document by adding rows to `IDRIS_DOCUMENT_TABLE` instead of retrofitting registrations.
  * M0 selected the two language ids `idris2` and `lidr`. M1 adds the file names that are Idris
  * without doubt whatever their language mode: the double extensions `.idr.<ext>` and
- * `.lidr.<ext>` of every literate extension (ROADMAP M1 "As built"). A bare `.md`, `.tex`,
+ * `.lidr.<ext>` of every literate extension (docs/as-built/M1.md, *Literate table and
+ * selector*). A bare `.md`, `.tex`,
  * `.org` or `.typ` file keeps its host language and is not selected: that needs content
  * detection and is M12's opt-in.
  *

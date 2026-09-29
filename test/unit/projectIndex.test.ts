@@ -182,7 +182,8 @@ suite('project/index (ProjectIndex)', () => {
 
     test('simple-ipkg opened at src/: the ipkg above the folder is the root, read without the compiler', async () => {
       // Workspace trust covers the folder, not the directory above it, where --dump-ipkg-json
-      // would run (ROADMAP M1 As built); the fallback reader gives the same model.
+      // would run (docs/as-built/M1.md, *Roots outside the workspace folders*); the fallback
+      // reader gives the same model.
       const h = track(harness({ folders: [path.join(SIMPLE, 'src')] }));
       const b = path.join(SIMPLE, 'src', 'Foo', 'B.idr');
       const root = asRoot(await h.index.classify(b));

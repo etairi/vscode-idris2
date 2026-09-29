@@ -142,7 +142,7 @@ The fake reproduces all three.
   pipeline requests on the socket and tests cannot catch it if it does.
 - Clients that connect after the first socket client: the real compiler calls `accept` once, and
   its listening socket stays open, so a later connection completes in the listen backlog and
-  receives nothing (0 bytes in 3 s after connecting second [live, 0.8.0, ROADMAP M2 As built
+  receives nothing (0 bytes in 3 s after connecting second [live, 0.8.0, `docs/as-built/M2.md`,
   *Transport*]). The fake completes such a connection too — Node accepts it — and never reads
   from it or writes to it (`serveSocket`), so the client sees the same: a connection and no
   bytes. Not modelled: the backlog's limit on how many such connections complete.

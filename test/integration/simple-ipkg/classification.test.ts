@@ -4,7 +4,8 @@
 // the .ipkg directory — the compiler's findIpkg walks up to the file-system root (F13), and the
 // workspace folder only limits which roots the UI lists. Because the .ipkg lies outside the
 // workspace folder, which is all that workspace trust covers, the index reads it with the
-// built-in reader and runs no --dump-ipkg-json there (ROADMAP M1 As built).
+// built-in reader and runs no --dump-ipkg-json there (docs/as-built/M1.md, *Roots outside the
+// workspace folders*).
 import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';

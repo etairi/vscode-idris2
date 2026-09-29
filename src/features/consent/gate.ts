@@ -4,7 +4,7 @@
  *
  * Starting the compiler in a directory can execute code found there (the Homebrew `idris2`
  * loads `libc.dylib` by its leaf name and macOS `dlopen` searches the working directory; pack's
- * wrappers merge the `pack.toml` of every parent directory: ROADMAP M1 As built, *Processes*,
+ * wrappers merge the `pack.toml` of every parent directory: docs/as-built/M1.md, *Processes*,
  * *Roots outside the workspace folders*), and workspace trust covers the workspace folders only.
  * So a session may start in a directory
  * - never in Restricted Mode (nobody is asked; the M1 rule);
@@ -64,7 +64,7 @@
  * in quick succession (**Always Allow**, then a revocation, within a few hundred milliseconds) reads
  * its first write again for a while after the second one has completed, until the second one's copy
  * arrives; a `permit` then would start the compiler without asking. (This may be what failed the
- * consent suite once, ROADMAP M2 As built, *Status* [open: not reproduced].) So the store keeps,
+ * consent suite once, docs/as-built/M2.md, *Status* [open: not reproduced].) So the store keeps,
  * beside the folders allowed for good, when each folder was last decided (`ConsentRecord.decided`), and this window keeps its own decisions
  * with their times: a stored value that is older than this window's decision about a folder (or
  * has no time) is outdated there, and this window's decision holds; a newer one — another window's

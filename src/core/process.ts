@@ -628,8 +628,8 @@ export interface LongRunningRequest {
   /**
    * Fully qualified, and required: a session runs in its root's directory (the `.ipkg`'s, or a
    * loose file's; D4, F13), which the caller has decided may run the compiler (the consent gate
-   * of `core/trust.ts`), since starting the compiler there can execute code found there (ROADMAP
-   * M1 As built, *Processes*).
+   * of `core/trust.ts`), since starting the compiler there can execute code found there
+   * (docs/as-built/M1.md, *Processes*).
    */
   readonly cwd: string;
   /** Variables that replace inherited ones of the same name, as `ProcessRequest.env`. */

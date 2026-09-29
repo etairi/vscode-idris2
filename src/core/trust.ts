@@ -1,5 +1,5 @@
 /**
- * Workspace trust as the M1 services see it (docs/ROADMAP.md M1 "As built": Restricted Mode),
+ * Workspace trust as the M1 services see it (docs/as-built/M1.md, *Restricted Mode*),
  * and, since M2, the gate every IDE-mode session passes before its process starts.
  *
  * `package.json` declares `capabilities.untrustedWorkspaces.supported = "limited"`: in an
@@ -69,7 +69,7 @@ export interface PermitReason {
  * by the user on 2026-09-27 (before M2)"). Starting the compiler in a directory can execute code
  * found there — the Homebrew `idris2` loads `libc.dylib` by its leaf name and macOS `dlopen`
  * searches the working directory, and pack's wrappers merge the `pack.toml` of every parent
- * directory (ROADMAP M1 As built, *Processes*, *Roots outside the workspace folders*) — and
+ * directory (docs/as-built/M1.md, *Processes*, *Roots outside the workspace folders*) — and
  * workspace trust covers only the workspace folders. A session's working directory is the
  * directory of its root's `.ipkg`, or a loose file's directory (`ProjectIndex.sessionCwd`), which
  * can lie outside every workspace folder.

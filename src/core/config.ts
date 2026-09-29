@@ -225,7 +225,7 @@ export interface CheckingSettings {
  * machine-overridable only, a remote machine's with those and machine and application-machine,
  * and drops a key of any other scope; and it hands every extension host, a remote one too, the
  * configuration its window read, the user's application settings included (`MainThreadConfiguration`
- * sends `getConfigurationData()`) — not run in a remote window; ROADMAP M2 As built, *Transport*].
+ * sends `getConfigurationData()`) — not run in a remote window; docs/as-built/M2.md, *Transport*].
  * (*M2 verification of the Q20–Q22 fixes*: it had `machine` scope, which a remote machine's
  * settings — those a dev container's configuration fills — may set, and which a remote window does
  * not read from the local user settings at all.)
@@ -235,8 +235,9 @@ export type TransportKind = 'socket' | 'stdio';
 /**
  * `idris2.ideMode.*` (ARCHITECTURE §5, §11). A change of the settings that shape a session
  * (`IDE_MODE_SESSION_KEYS`) restarts the sessions whose command line it changes; the time limits
- * apply from the next request (`backend/ide/pool.ts`, ARCHITECTURE §5.1 as built). A change of the
- * two limits (`IDE_MODE_LIMIT_KEYS`) restarts nothing (ROADMAP §9 Q21).
+ * apply from the next request (`backend/ide/pool.ts`; docs/as-built/M2.md, *ARCHITECTURE §5.1*,
+ * *Configuration changes*). A change of the two limits (`IDE_MODE_LIMIT_KEYS`) restarts nothing
+ * (ROADMAP §9 Q21).
  */
 export interface IdeModeSettings {
   /** `idris2.ideMode.transport` (`TransportKind`); a value this version does not offer reads as `stdio`. */

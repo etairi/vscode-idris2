@@ -296,8 +296,8 @@ export type PackState =
  * Whether `idris2` and `idris2-lsp` fit together (ROADMAP M1 technical approach, D20). A
  * heuristic: `compatible` iff the server's `Idris2 API` version text equals the compiler's
  * version text or differs only in how far one commit hash is abbreviated, `likelyMismatch`
- * otherwise (where the two were found only chooses the explanation, `verdict.ts`; ROADMAP M1
- * As built); `unknown` when the texts are not available
+ * otherwise (where the two were found only chooses the explanation, `verdict.ts`;
+ * docs/as-built/M1.md, *Pair verdict*); `unknown` when the texts are not available
  * (e.g. Restricted Mode, a failed probe). `reason` is one sentence for the UI.
  */
 export type VerdictKind = 'compatible' | 'likelyMismatch' | 'unknown';

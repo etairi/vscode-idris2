@@ -235,7 +235,7 @@ suite('package.json (M1 and M2 contributions)', () => {
       assert.strictEqual(transport.default, 'stdio');
       // `application`: VS Code reads it from the (local) user settings only — the 1.139.1 workbench
       // bundle loads workspace settings with the scopes 4–7 and a remote machine's with 2–7,
-      // `application` being 1 [src]; ROADMAP M2 As built, *Transport* —; the suite loose-stdio has a
+      // `application` being 1 [src]; docs/as-built/M2.md, *Transport* —; the suite loose-stdio has a
       // workspace value "socket" and asserts that it is ignored [integration].
       assert.strictEqual(transport.scope, 'application');
       // The description says what the socket exposes (ROADMAP §9 Q20: "described honestly").

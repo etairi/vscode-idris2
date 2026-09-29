@@ -106,7 +106,7 @@ No compiler runs in them; recorded compiler output comes from `fixtures/transcri
   round trips of `"`, `\`, newlines, `→` and `𝕟`; every character outside printable ASCII
   written as a decimal escape (with `\&` before a digit); the reader's escape and grammar rules
   (the port of the compiler's reader, which was compared with the real compiler on 45 requests,
-  see ROADMAP M2 As built); request prefixes in UTF-8 bytes, reply prefixes in code points,
+  see `docs/as-built/M2.md`, *Protocol*); request prefixes in UTF-8 bytes, reply prefixes in code points,
   headers of 6–8 lower-case digits followed by `(` and a reply head; noise (also `00000a(hello)`),
   the end-of-input tail, a tail cut inside a frame (`truncated`), a stream whose line ends were
   written as `\r\n` (E13, also inside strings), a reply glued to output without a newline, also
@@ -371,7 +371,8 @@ what the real compiler prints **in the same run** (shapes, not the literal 0.8.0
   suite's terminal recorder (`integration/terminalRecorder.ts`), which records the bytes the
   terminal sends instead of running a shell, so nothing can be executed even by a
   regression. `useTerminalRecorder` waits until a probe terminal with the default profile runs
-  the recorder, since VS Code applies a profile change up to 2 s late (ROADMAP M1 As built).
+  the recorder, since VS Code applies a profile change up to 2 s late (`docs/as-built/M1.md`,
+  *Acceptance as tested*).
 - `protocolFacts.test.ts` (M2) — every fact F1–F7, F10, F12–F14, F29–F33 of ROADMAP §0 (and the
   F12 addendum: a `--build-dir` in `opts`, where `checkBuildDir` says) against
   the real compiler, through `ideDriver.ts` (which starts `idris2 --ide-mode` or

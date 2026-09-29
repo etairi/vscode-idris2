@@ -27,7 +27,7 @@
  *   one first-in, first-out queue, with one exception: a request that is `urgent`
  *   (`RequestOptions.urgent`, asked each time the next request is chosen) goes before the others
  *   waiting, but never before the one in flight, nor before one whose `beforeSend` check runs or
- *   has passed for the process (that check and the write stay one step, *Consent* in ROADMAP M2).
+ *   has passed for the process (that check and the write stay one step, *Consent* in docs/as-built/M2.md).
  *   The checks mark the active document's load so while `idris2.ideMode.maxBackgroundChecks` is
  *   above 0 (ROADMAP §9 Q21); without it the queue is first-in, first-out. A cancellation token
  *   removes a waiting request from the queue (a `beforeSend` check of it that runs is abandoned,
@@ -1204,8 +1204,8 @@ class Session implements ManagedSession {
       this.retire(proc);
     }
     // Killed at once, also a process that is still ending: `deactivate()` is synchronous, and
-    // the Extension Host may exit before the grace period of a stop has passed (M1 As built,
-    // *Processes*).
+    // the Extension Host may exit before the grace period of a stop has passed
+    // (docs/as-built/M1.md, *Processes*).
     for (const ending of this.ending) {
       ending.subscriptions.forEach((s) => s.dispose());
       ending.transport.dispose();

@@ -1,0 +1,2703 @@
+{
+  "format": 1,
+  "tool": "scripts/measure-first-load.mjs",
+  "date": "2026-09-28",
+  "startedAt": "2026-09-29T02:18:24.125Z",
+  "argv": [
+    "--package",
+    "/tmp/vi2-pre3/bench/contrib",
+    "--work",
+    "/tmp/vi2-pre3/bench/work-D",
+    "--out",
+    "/tmp/vi2-pre3/bench/results/run-D.json"
+  ],
+  "machine": {
+    "cpu": "Apple M4",
+    "performanceCores": 4,
+    "efficiencyCores": 6,
+    "memoryBytes": 17179869184,
+    "macOS": "27.0 (26A428)",
+    "arch": "arm64",
+    "node": "v24.13.0"
+  },
+  "idris2": {
+    "path": "/opt/homebrew/bin/idris2",
+    "version": "Idris 2, version 0.8.0",
+    "installedPackages": [
+      "base 0.8.0",
+      "contrib 0.8.0",
+      "idris2 0.8.0",
+      "linear 0.8.0",
+      "network 0.8.0",
+      "prelude 0.8.0",
+      "test 0.8.0"
+    ]
+  },
+  "timeout": "/opt/homebrew/bin/timeout",
+  "package": {
+    "source": "/private/tmp/vi2-pre3/bench/contrib",
+    "root": "/private/tmp/vi2-pre3/bench/work-D/contrib",
+    "name": "contrib",
+    "depends": [],
+    "opts": "--ignore-missing-ipkg -Wno-shadowing",
+    "modules": 103,
+    "lines": 12780
+  },
+  "limits": {
+    "MIN_FREE_START": 25,
+    "MIN_FREE_RUNNING": 15,
+    "MAX_LOAD1": 15,
+    "WAIT_MS": 60000,
+    "MAX_WAITS": 10,
+    "RSS_SAMPLE_MS": 500,
+    "MEMORY_SAMPLE_MS": 5000,
+    "IDLE_MS": 10000,
+    "START_LIMIT_MS": 120000,
+    "QUERY_LIMIT_MS": 60000,
+    "options": {
+      "package": "/tmp/vi2-pre3/bench/contrib",
+      "work": "/tmp/vi2-pre3/bench/work-D",
+      "out": "/tmp/vi2-pre3/bench/results/run-D.json",
+      "closures": false,
+      "repeat": 3,
+      "depRepeat": 2,
+      "queries": 10,
+      "loadTimeoutMin": 30,
+      "sessionTimeoutMin": 60,
+      "saves": 0
+    }
+  },
+  "closures": [
+    {
+      "module": "Control.ANSI",
+      "lines": 36,
+      "closureModules": 3,
+      "closureLines": 214
+    },
+    {
+      "module": "Control.ANSI.CSI",
+      "lines": 105,
+      "closureModules": 1,
+      "closureLines": 105
+    },
+    {
+      "module": "Control.ANSI.SGR",
+      "lines": 73,
+      "closureModules": 1,
+      "closureLines": 73
+    },
+    {
+      "module": "Control.Arrow",
+      "lines": 128,
+      "closureModules": 2,
+      "closureLines": 156
+    },
+    {
+      "module": "Control.Category",
+      "lines": 28,
+      "closureModules": 1,
+      "closureLines": 28
+    },
+    {
+      "module": "Control.Delayed",
+      "lines": 14,
+      "closureModules": 1,
+      "closureLines": 14
+    },
+    {
+      "module": "Control.Validation",
+      "lines": 210,
+      "closureModules": 1,
+      "closureLines": 210
+    },
+    {
+      "module": "Data.Binary",
+      "lines": 41,
+      "closureModules": 3,
+      "closureLines": 91
+    },
+    {
+      "module": "Data.Binary.Digit",
+      "lines": 21,
+      "closureModules": 1,
+      "closureLines": 21
+    },
+    {
+      "module": "Data.Fin.Extra",
+      "lines": 125,
+      "closureModules": 6,
+      "closureLines": 730
+    },
+    {
+      "module": "Data.Fun.Extra",
+      "lines": 129,
+      "closureModules": 1,
+      "closureLines": 129
+    },
+    {
+      "module": "Data.Fun.Graph",
+      "lines": 16,
+      "closureModules": 1,
+      "closureLines": 16
+    },
+    {
+      "module": "Data.IMaybe",
+      "lines": 39,
+      "closureModules": 1,
+      "closureLines": 39
+    },
+    {
+      "module": "Data.IOMatrix",
+      "lines": 43,
+      "closureModules": 1,
+      "closureLines": 43
+    },
+    {
+      "module": "Data.Int.Order",
+      "lines": 354,
+      "closureModules": 2,
+      "closureLines": 370
+    },
+    {
+      "module": "Data.Late",
+      "lines": 82,
+      "closureModules": 1,
+      "closureLines": 82
+    },
+    {
+      "module": "Data.Linear.Array",
+      "lines": 76,
+      "closureModules": 1,
+      "closureLines": 76
+    },
+    {
+      "module": "Data.List.Alternating",
+      "lines": 256,
+      "closureModules": 1,
+      "closureLines": 256
+    },
+    {
+      "module": "Data.List.Elem.Extra",
+      "lines": 46,
+      "closureModules": 1,
+      "closureLines": 46
+    },
+    {
+      "module": "Data.List.Equalities",
+      "lines": 163,
+      "closureModules": 2,
+      "closureLines": 239
+    },
+    {
+      "module": "Data.List.Extra",
+      "lines": 40,
+      "closureModules": 1,
+      "closureLines": 40
+    },
+    {
+      "module": "Data.List.Palindrome",
+      "lines": 59,
+      "closureModules": 4,
+      "closureLines": 470
+    },
+    {
+      "module": "Data.List.Reverse",
+      "lines": 76,
+      "closureModules": 1,
+      "closureLines": 76
+    },
+    {
+      "module": "Data.List.Sufficient",
+      "lines": 23,
+      "closureModules": 1,
+      "closureLines": 23
+    },
+    {
+      "module": "Data.List.TailRec",
+      "lines": 375,
+      "closureModules": 1,
+      "closureLines": 375
+    },
+    {
+      "module": "Data.List.Views.Extra",
+      "lines": 172,
+      "closureModules": 3,
+      "closureLines": 411
+    },
+    {
+      "module": "Data.Logic.Propositional",
+      "lines": 160,
+      "closureModules": 1,
+      "closureLines": 160
+    },
+    {
+      "module": "Data.Monoid.Exponentiation",
+      "lines": 81,
+      "closureModules": 1,
+      "closureLines": 81
+    },
+    {
+      "module": "Data.Nat.Ack",
+      "lines": 58,
+      "closureModules": 1,
+      "closureLines": 58
+    },
+    {
+      "module": "Data.Nat.Division",
+      "lines": 376,
+      "closureModules": 5,
+      "closureLines": 605
+    },
+    {
+      "module": "Data.Nat.Equational",
+      "lines": 76,
+      "closureModules": 1,
+      "closureLines": 76
+    },
+    {
+      "module": "Data.Nat.Exponentiation",
+      "lines": 76,
+      "closureModules": 3,
+      "closureLines": 186
+    },
+    {
+      "module": "Data.Nat.Fact",
+      "lines": 56,
+      "closureModules": 1,
+      "closureLines": 56
+    },
+    {
+      "module": "Data.Nat.Factor",
+      "lines": 474,
+      "closureModules": 7,
+      "closureLines": 1204
+    },
+    {
+      "module": "Data.Nat.Fib",
+      "lines": 50,
+      "closureModules": 1,
+      "closureLines": 50
+    },
+    {
+      "module": "Data.Nat.Order.Relation",
+      "lines": 18,
+      "closureModules": 1,
+      "closureLines": 18
+    },
+    {
+      "module": "Data.Nat.Order.Strict",
+      "lines": 34,
+      "closureModules": 2,
+      "closureLines": 124
+    },
+    {
+      "module": "Data.Nat.Properties",
+      "lines": 29,
+      "closureModules": 1,
+      "closureLines": 29
+    },
+    {
+      "module": "Data.Order",
+      "lines": 16,
+      "closureModules": 1,
+      "closureLines": 16
+    },
+    {
+      "module": "Data.Path",
+      "lines": 47,
+      "closureModules": 1,
+      "closureLines": 47
+    },
+    {
+      "module": "Data.Rel.Complement",
+      "lines": 24,
+      "closureModules": 2,
+      "closureLines": 153
+    },
+    {
+      "module": "Data.Seq.Internal",
+      "lines": 682,
+      "closureModules": 1,
+      "closureLines": 682
+    },
+    {
+      "module": "Data.Seq.Sized",
+      "lines": 213,
+      "closureModules": 2,
+      "closureLines": 895
+    },
+    {
+      "module": "Data.Seq.Unsized",
+      "lines": 224,
+      "closureModules": 2,
+      "closureLines": 906
+    },
+    {
+      "module": "Data.Stream.Extra",
+      "lines": 10,
+      "closureModules": 1,
+      "closureLines": 10
+    },
+    {
+      "module": "Data.String.Extra",
+      "lines": 134,
+      "closureModules": 1,
+      "closureLines": 134
+    },
+    {
+      "module": "Data.String.Interpolation",
+      "lines": 31,
+      "closureModules": 1,
+      "closureLines": 31
+    },
+    {
+      "module": "Data.String.Iterator",
+      "lines": 94,
+      "closureModules": 1,
+      "closureLines": 94
+    },
+    {
+      "module": "Data.String.Parser",
+      "lines": 416,
+      "closureModules": 3,
+      "closureLines": 806
+    },
+    {
+      "module": "Data.String.Parser.Expression",
+      "lines": 122,
+      "closureModules": 4,
+      "closureLines": 928
+    },
+    {
+      "module": "Data.String.Position",
+      "lines": 115,
+      "closureModules": 1,
+      "closureLines": 115
+    },
+    {
+      "module": "Data.Telescope",
+      "lines": 21,
+      "closureModules": 6,
+      "closureLines": 624
+    },
+    {
+      "module": "Data.Telescope.Congruence",
+      "lines": 47,
+      "closureModules": 5,
+      "closureLines": 603
+    },
+    {
+      "module": "Data.Telescope.Fun",
+      "lines": 32,
+      "closureModules": 4,
+      "closureLines": 556
+    },
+    {
+      "module": "Data.Telescope.Segment",
+      "lines": 276,
+      "closureModules": 2,
+      "closureLines": 490
+    },
+    {
+      "module": "Data.Telescope.SimpleFun",
+      "lines": 34,
+      "closureModules": 3,
+      "closureLines": 524
+    },
+    {
+      "module": "Data.Telescope.Telescope",
+      "lines": 214,
+      "closureModules": 1,
+      "closureLines": 214
+    },
+    {
+      "module": "Data.Validated",
+      "lines": 200,
+      "closureModules": 1,
+      "closureLines": 200
+    },
+    {
+      "module": "Data.Vect.Extra",
+      "lines": 23,
+      "closureModules": 1,
+      "closureLines": 23
+    },
+    {
+      "module": "Data.Vect.Properties",
+      "lines": 8,
+      "closureModules": 7,
+      "closureLines": 377
+    },
+    {
+      "module": "Data.Vect.Properties.Fin",
+      "lines": 44,
+      "closureModules": 2,
+      "closureLines": 67
+    },
+    {
+      "module": "Data.Vect.Properties.Foldr",
+      "lines": 124,
+      "closureModules": 1,
+      "closureLines": 124
+    },
+    {
+      "module": "Data.Vect.Properties.Index",
+      "lines": 61,
+      "closureModules": 2,
+      "closureLines": 98
+    },
+    {
+      "module": "Data.Vect.Properties.Map",
+      "lines": 80,
+      "closureModules": 4,
+      "closureLines": 201
+    },
+    {
+      "module": "Data.Vect.Properties.Tabulate",
+      "lines": 37,
+      "closureModules": 1,
+      "closureLines": 37
+    },
+    {
+      "module": "Data.Vect.Sort",
+      "lines": 30,
+      "closureModules": 1,
+      "closureLines": 30
+    },
+    {
+      "module": "Debug.Buffer",
+      "lines": 45,
+      "closureModules": 1,
+      "closureLines": 45
+    },
+    {
+      "module": "Decidable.Decidable.Extra",
+      "lines": 98,
+      "closureModules": 3,
+      "closureLines": 251
+    },
+    {
+      "module": "Decidable.Finite.Fin",
+      "lines": 33,
+      "closureModules": 10,
+      "closureLines": 1014
+    },
+    {
+      "module": "Decidable.Order.Strict",
+      "lines": 90,
+      "closureModules": 1,
+      "closureLines": 90
+    },
+    {
+      "module": "Language.JSON",
+      "lines": 16,
+      "closureModules": 18,
+      "closureLines": 2108
+    },
+    {
+      "module": "Language.JSON.Data",
+      "lines": 203,
+      "closureModules": 2,
+      "closureLines": 337
+    },
+    {
+      "module": "Language.JSON.Lexer",
+      "lines": 40,
+      "closureModules": 15,
+      "closureLines": 1810
+    },
+    {
+      "module": "Language.JSON.Parser",
+      "lines": 79,
+      "closureModules": 16,
+      "closureLines": 2052
+    },
+    {
+      "module": "Language.JSON.String",
+      "lines": 17,
+      "closureModules": 13,
+      "closureLines": 1688
+    },
+    {
+      "module": "Language.JSON.String.Lexer",
+      "lines": 42,
+      "closureModules": 9,
+      "closureLines": 1036
+    },
+    {
+      "module": "Language.JSON.String.Parser",
+      "lines": 26,
+      "closureModules": 11,
+      "closureLines": 1629
+    },
+    {
+      "module": "Language.JSON.String.Tokens",
+      "lines": 72,
+      "closureModules": 3,
+      "closureLines": 246
+    },
+    {
+      "module": "Language.JSON.Tokens",
+      "lines": 82,
+      "closureModules": 14,
+      "closureLines": 1770
+    },
+    {
+      "module": "System.Console.GetOpt",
+      "lines": 304,
+      "closureModules": 1,
+      "closureLines": 304
+    },
+    {
+      "module": "System.Directory.Tree",
+      "lines": 229,
+      "closureModules": 11,
+      "closureLines": 2354
+    },
+    {
+      "module": "System.Future",
+      "lines": 44,
+      "closureModules": 1,
+      "closureLines": 44
+    },
+    {
+      "module": "System.Path",
+      "lines": 594,
+      "closureModules": 10,
+      "closureLines": 2125
+    },
+    {
+      "module": "System.Random",
+      "lines": 82,
+      "closureModules": 1,
+      "closureLines": 82
+    },
+    {
+      "module": "Text.Bounded",
+      "lines": 92,
+      "closureModules": 1,
+      "closureLines": 92
+    },
+    {
+      "module": "Text.Distance.Levenshtein",
+      "lines": 69,
+      "closureModules": 3,
+      "closureLines": 152
+    },
+    {
+      "module": "Text.Lexer",
+      "lines": 417,
+      "closureModules": 6,
+      "closureLines": 788
+    },
+    {
+      "module": "Text.Lexer.Core",
+      "lines": 181,
+      "closureModules": 3,
+      "closureLines": 287
+    },
+    {
+      "module": "Text.Lexer.Tokenizer",
+      "lines": 160,
+      "closureModules": 11,
+      "closureLines": 1965
+    },
+    {
+      "module": "Text.Literate",
+      "lines": 233,
+      "closureModules": 7,
+      "closureLines": 1021
+    },
+    {
+      "module": "Text.Parser",
+      "lines": 227,
+      "closureModules": 6,
+      "closureLines": 799
+    },
+    {
+      "module": "Text.Parser.Core",
+      "lines": 382,
+      "closureModules": 3,
+      "closureLines": 488
+    },
+    {
+      "module": "Text.Parser.Expression",
+      "lines": 89,
+      "closureModules": 7,
+      "closureLines": 888
+    },
+    {
+      "module": "Text.PrettyPrint.Prettyprinter",
+      "lines": 12,
+      "closureModules": 4,
+      "closureLines": 1017
+    },
+    {
+      "module": "Text.PrettyPrint.Prettyprinter.Doc",
+      "lines": 760,
+      "closureModules": 2,
+      "closureLines": 894
+    },
+    {
+      "module": "Text.PrettyPrint.Prettyprinter.Render.HTML",
+      "lines": 37,
+      "closureModules": 1,
+      "closureLines": 37
+    },
+    {
+      "module": "Text.PrettyPrint.Prettyprinter.Render.String",
+      "lines": 31,
+      "closureModules": 3,
+      "closureLines": 925
+    },
+    {
+      "module": "Text.PrettyPrint.Prettyprinter.Render.Terminal",
+      "lines": 98,
+      "closureModules": 6,
+      "closureLines": 1206
+    },
+    {
+      "module": "Text.PrettyPrint.Prettyprinter.SimpleDocTree",
+      "lines": 94,
+      "closureModules": 3,
+      "closureLines": 988
+    },
+    {
+      "module": "Text.PrettyPrint.Prettyprinter.Symbols",
+      "lines": 111,
+      "closureModules": 3,
+      "closureLines": 1005
+    },
+    {
+      "module": "Text.PrettyPrint.Prettyprinter.Util",
+      "lines": 30,
+      "closureModules": 4,
+      "closureLines": 955
+    },
+    {
+      "module": "Text.Quantity",
+      "lines": 44,
+      "closureModules": 1,
+      "closureLines": 44
+    },
+    {
+      "module": "Text.Token",
+      "lines": 40,
+      "closureModules": 1,
+      "closureLines": 40
+    }
+  ],
+  "runs": [
+    {
+      "role": "largest closure",
+      "module": "Language.JSON",
+      "lines": 16,
+      "closureModules": 18,
+      "closureLines": 2108,
+      "file": "Language/JSON.idr",
+      "dependency": {
+        "module": "Text.Lexer",
+        "file": "/private/tmp/vi2-pre3/bench/work-D/contrib/Text/Lexer.idr",
+        "lines": 417,
+        "invalidates": 8
+      },
+      "queryName": "parse",
+      "completionPrefix": "par",
+      "resourcesAtStart": {
+        "ok": true,
+        "free": 27,
+        "load1": 2.72,
+        "waits": 0
+      },
+      "session1": {
+        "command": [
+          "/opt/homebrew/bin/timeout",
+          "-k",
+          "10",
+          "3600",
+          "/usr/bin/time",
+          "-l",
+          "/opt/homebrew/bin/idris2",
+          "--ide-mode",
+          "--no-color",
+          "--build-dir",
+          "/private/tmp/vi2-pre3/bench/work-D/contrib/build/.vscode-idris2"
+        ],
+        "cwd": "/private/tmp/vi2-pre3/bench/work-D/contrib",
+        "steps": [
+          {
+            "step": "start",
+            "ms": 274.195833,
+            "protocol": "2.1",
+            "rssAfterKiB": 199136,
+            "footprintBytes": 200671808,
+            "footprintPeakBytes": 225329728,
+            "load1": 2.72
+          },
+          {
+            "step": "a cold",
+            "ms": 1459.977375,
+            "status": "ok",
+            "building": 18,
+            "builtModules": [
+              "Data.String.Extra",
+              "Text.Token",
+              "Language.JSON.String.Tokens",
+              "Control.Delayed",
+              "Text.Bounded",
+              "Text.Lexer.Core",
+              "Text.Quantity",
+              "Text.Lexer",
+              "Language.JSON.String.Lexer",
+              "Text.Parser.Core",
+              "Text.Parser",
+              "Language.JSON.String.Parser",
+              "Language.JSON.String",
+              "Language.JSON.Tokens",
+              "Language.JSON.Lexer",
+              "Language.JSON.Data",
+              "Language.JSON.Parser",
+              "Language.JSON"
+            ],
+            "warnings": 0,
+            "highlightFrames": 32,
+            "highlightBytes": 6271,
+            "frames": 51,
+            "bytes": 7859,
+            "rssMaxSampledKiB": 224096,
+            "rssAfterKiB": 224096,
+            "footprintBytes": 226198080,
+            "footprintPeakBytes": 243352128,
+            "load1": 2.82
+          },
+          {
+            "step": "b unchanged 1",
+            "ms": 136.342166,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 32,
+            "highlightBytes": 6271,
+            "frames": 33,
+            "bytes": 6298,
+            "rssMaxSampledKiB": 234624,
+            "rssAfterKiB": 234624,
+            "footprintBytes": 236978752,
+            "footprintPeakBytes": 243352128,
+            "load1": 2.82
+          },
+          {
+            "step": "b unchanged 2",
+            "ms": 150.625334,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 32,
+            "highlightBytes": 6271,
+            "frames": 33,
+            "bytes": 6298,
+            "rssMaxSampledKiB": 251808,
+            "rssAfterKiB": 251808,
+            "footprintBytes": 254591576,
+            "footprintPeakBytes": 254591576,
+            "load1": 2.82
+          },
+          {
+            "step": "b unchanged 3",
+            "ms": 180.520625,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 32,
+            "highlightBytes": 6271,
+            "frames": 33,
+            "bytes": 6298,
+            "rssMaxSampledKiB": 225008,
+            "rssAfterKiB": 225008,
+            "footprintBytes": 227148376,
+            "footprintPeakBytes": 263963224,
+            "load1": 2.82
+          },
+          {
+            "step": "c module edited 1",
+            "ms": 168.646833,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Language.JSON"
+            ],
+            "warnings": 0,
+            "highlightFrames": 33,
+            "highlightBytes": 6443,
+            "frames": 35,
+            "bytes": 6589,
+            "rssMaxSampledKiB": 225008,
+            "rssAfterKiB": 225008,
+            "footprintBytes": 227148376,
+            "footprintPeakBytes": 263963224,
+            "load1": 2.82
+          },
+          {
+            "step": "c module edited 2",
+            "ms": 164.291042,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Language.JSON"
+            ],
+            "warnings": 0,
+            "highlightFrames": 34,
+            "highlightBytes": 6615,
+            "frames": 36,
+            "bytes": 6761,
+            "rssMaxSampledKiB": 225008,
+            "rssAfterKiB": 225008,
+            "footprintBytes": 227148376,
+            "footprintPeakBytes": 263963224,
+            "load1": 2.82
+          },
+          {
+            "step": "c module edited 3",
+            "ms": 164.92775,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Language.JSON"
+            ],
+            "warnings": 0,
+            "highlightFrames": 35,
+            "highlightBytes": 6787,
+            "frames": 37,
+            "bytes": 6933,
+            "rssMaxSampledKiB": 225008,
+            "rssAfterKiB": 225008,
+            "footprintBytes": 227148376,
+            "footprintPeakBytes": 263963224,
+            "load1": 2.82
+          },
+          {
+            "step": "d dependency edited 1",
+            "ms": 245.802292,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Text.Lexer"
+            ],
+            "warnings": 0,
+            "highlightFrames": 35,
+            "highlightBytes": 6787,
+            "frames": 37,
+            "bytes": 6884,
+            "rssMaxSampledKiB": 249296,
+            "rssAfterKiB": 249296,
+            "footprintBytes": 252019288,
+            "footprintPeakBytes": 263963224,
+            "load1": 2.82
+          },
+          {
+            "step": "d dependency edited 2",
+            "ms": 297.796375,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Text.Lexer"
+            ],
+            "warnings": 0,
+            "highlightFrames": 35,
+            "highlightBytes": 6787,
+            "frames": 37,
+            "bytes": 6884,
+            "rssMaxSampledKiB": 239168,
+            "rssAfterKiB": 239168,
+            "footprintBytes": 241648216,
+            "footprintPeakBytes": 263963224,
+            "load1": 2.82
+          },
+          {
+            "step": "d' dependency interface edited 1",
+            "ms": 448.060292,
+            "status": "ok",
+            "building": 5,
+            "builtModules": [
+              "Text.Lexer",
+              "Language.JSON.String.Lexer",
+              "Language.JSON.String.Parser",
+              "Language.JSON.String",
+              "Language.JSON.Lexer"
+            ],
+            "warnings": 0,
+            "highlightFrames": 35,
+            "highlightBytes": 6822,
+            "frames": 41,
+            "bytes": 7309,
+            "rssMaxSampledKiB": 223808,
+            "rssAfterKiB": 223808,
+            "footprintBytes": 242172504,
+            "footprintPeakBytes": 263963224,
+            "load1": 2.82
+          },
+          {
+            "step": "d' dependency interface edited 2",
+            "ms": 403.710958,
+            "status": "ok",
+            "building": 5,
+            "builtModules": [
+              "Text.Lexer",
+              "Language.JSON.String.Lexer",
+              "Language.JSON.String.Parser",
+              "Language.JSON.String",
+              "Language.JSON.Lexer"
+            ],
+            "warnings": 0,
+            "highlightFrames": 35,
+            "highlightBytes": 6822,
+            "frames": 41,
+            "bytes": 7309,
+            "rssMaxSampledKiB": 244096,
+            "rssAfterKiB": 244096,
+            "footprintBytes": 257196632,
+            "footprintPeakBytes": 263963224,
+            "load1": 2.82
+          },
+          {
+            "step": "e idle",
+            "afterMs": 10000,
+            "rssAfterKiB": 203424,
+            "footprintBytes": 257196632,
+            "footprintPeakBytes": 263963224,
+            "load1": 3
+          },
+          {
+            "step": "f after queries",
+            "rssAfterKiB": 236672,
+            "footprintBytes": 252936816,
+            "footprintPeakBytes": 289178224,
+            "load1": 3
+          },
+          {
+            "step": "f' reload 1",
+            "ms": 169.939834,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 35,
+            "highlightBytes": 6822,
+            "frames": 36,
+            "bytes": 6850,
+            "rssMaxSampledKiB": 236672,
+            "rssAfterKiB": 236672,
+            "footprintBytes": 252936816,
+            "footprintPeakBytes": 289178224,
+            "load1": 3
+          },
+          {
+            "step": "f' reload 2",
+            "ms": 146.2115,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 35,
+            "highlightBytes": 6822,
+            "frames": 36,
+            "bytes": 6850,
+            "rssMaxSampledKiB": 282416,
+            "rssAfterKiB": 282416,
+            "footprintBytes": 298009200,
+            "footprintPeakBytes": 298009200,
+            "load1": 3
+          },
+          {
+            "step": "f' reload 3",
+            "ms": 151.962959,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 35,
+            "highlightBytes": 6822,
+            "frames": 36,
+            "bytes": 6850,
+            "rssMaxSampledKiB": 310448,
+            "rssAfterKiB": 310448,
+            "footprintBytes": 326730376,
+            "footprintPeakBytes": 326730376,
+            "load1": 2.84
+          }
+        ],
+        "exit": {
+          "code": 1,
+          "signal": null
+        },
+        "peakRssBytes": 337444864,
+        "realSeconds": 16.69,
+        "userSeconds": 5.41,
+        "sysSeconds": 0.39,
+        "unframedLines": 1,
+        "unframedSample": [
+          "Alas the file is done, aborting"
+        ],
+        "memoryFreeMinPercent": 27
+      },
+      "buildDirAfterCold": {
+        "files": 36,
+        "bytes": 2265866,
+        "ttc": 18,
+        "ttm": 18
+      },
+      "queries": {
+        "type-of": {
+          "request": "(:type-of \"parse\")",
+          "n": 10,
+          "min": 0.4,
+          "median": 0.44,
+          "p90": 0.68,
+          "max": 1.5,
+          "first": 1.5,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 797
+        },
+        "docs-for": {
+          "request": "(:docs-for \"parse\")",
+          "n": 10,
+          "min": 0.69,
+          "median": 0.76,
+          "p90": 0.81,
+          "max": 1.07,
+          "first": 1.07,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 1330
+        },
+        "repl-completions": {
+          "request": "(:repl-completions \"par\")",
+          "n": 10,
+          "min": 1.56,
+          "median": 2.36,
+          "p90": 10.49,
+          "max": 323.25,
+          "first": 323.25,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 234,
+          "candidates": 12
+        },
+        "metavariables": {
+          "request": "(:metavariables 80)",
+          "n": 10,
+          "min": 0.08,
+          "median": 0.09,
+          "p90": 0.12,
+          "max": 0.13,
+          "first": 0.13,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 28
+        }
+      },
+      "queriesAfterReload": {
+        "type-of": {
+          "ms": [
+            0.94,
+            1.1,
+            1.1
+          ],
+          "n": 3,
+          "min": 0.94,
+          "median": 1.1,
+          "p90": 1.1,
+          "max": 1.1,
+          "first": 0.94,
+          "statuses": [
+            "ok"
+          ]
+        },
+        "docs-for": {
+          "ms": [
+            1.86,
+            1.1,
+            1.11
+          ],
+          "n": 3,
+          "min": 1.1,
+          "median": 1.11,
+          "p90": 1.86,
+          "max": 1.86,
+          "first": 1.86,
+          "statuses": [
+            "ok"
+          ]
+        },
+        "repl-completions": {
+          "ms": [
+            337.86,
+            274.03,
+            326.71
+          ],
+          "n": 3,
+          "min": 274.03,
+          "median": 326.71,
+          "p90": 337.86,
+          "max": 337.86,
+          "first": 337.86,
+          "statuses": [
+            "ok"
+          ]
+        },
+        "metavariables": {
+          "ms": [
+            0.15,
+            0.16,
+            0.15
+          ],
+          "n": 3,
+          "min": 0.15,
+          "median": 0.15,
+          "p90": 0.16,
+          "max": 0.16,
+          "first": 0.15,
+          "statuses": [
+            "ok"
+          ]
+        }
+      },
+      "buildDirAtEnd": {
+        "files": 36,
+        "bytes": 2267690,
+        "ttc": 18,
+        "ttm": 18
+      },
+      "session2": {
+        "resourcesAtStart": {
+          "ok": true,
+          "free": 32,
+          "load1": 2.84,
+          "waits": 0
+        },
+        "steps": [
+          {
+            "step": "start",
+            "ms": 248.069458,
+            "rssAfterKiB": 199136,
+            "footprintBytes": 200671808,
+            "footprintPeakBytes": 225329728,
+            "load1": 2.84
+          },
+          {
+            "step": "g load on the warm build directory",
+            "ms": 168.772,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 35,
+            "highlightBytes": 6787,
+            "frames": 36,
+            "bytes": 6814,
+            "rssMaxSampledKiB": 205824,
+            "rssAfterKiB": 205824,
+            "footprintBytes": 207520320,
+            "footprintPeakBytes": 225329728,
+            "load1": 2.84
+          }
+        ],
+        "exit": {
+          "code": 1,
+          "signal": null
+        },
+        "peakRssBytes": 226115584,
+        "realSeconds": 0.5,
+        "userSeconds": 0.35,
+        "sysSeconds": 0.05,
+        "unframedLines": 1,
+        "unframedSample": [
+          "Alas the file is done, aborting"
+        ],
+        "memoryFreeMinPercent": 33
+      }
+    },
+    {
+      "role": "largest closure in lines",
+      "module": "System.Directory.Tree",
+      "lines": 229,
+      "closureModules": 11,
+      "closureLines": 2354,
+      "file": "System/Directory/Tree.idr",
+      "dependency": {
+        "module": "Text.Quantity",
+        "file": "/private/tmp/vi2-pre3/bench/work-D/contrib/Text/Quantity.idr",
+        "lines": 44,
+        "invalidates": 5
+      },
+      "queryName": "fileName",
+      "completionPrefix": "fil",
+      "resourcesAtStart": {
+        "ok": true,
+        "free": 32,
+        "load1": 2.84,
+        "waits": 0
+      },
+      "session1": {
+        "command": [
+          "/opt/homebrew/bin/timeout",
+          "-k",
+          "10",
+          "3600",
+          "/usr/bin/time",
+          "-l",
+          "/opt/homebrew/bin/idris2",
+          "--ide-mode",
+          "--no-color",
+          "--build-dir",
+          "/private/tmp/vi2-pre3/bench/work-D/contrib/build/.vscode-idris2"
+        ],
+        "cwd": "/private/tmp/vi2-pre3/bench/work-D/contrib",
+        "steps": [
+          {
+            "step": "start",
+            "ms": 256.111458,
+            "protocol": "2.1",
+            "rssAfterKiB": 199136,
+            "footprintBytes": 200671808,
+            "footprintPeakBytes": 225329728,
+            "load1": 2.84
+          },
+          {
+            "step": "a cold",
+            "ms": 1410.820416,
+            "status": "ok",
+            "building": 11,
+            "builtModules": [
+              "Data.String.Extra",
+              "Text.Token",
+              "Control.Delayed",
+              "Text.Bounded",
+              "Text.Lexer.Core",
+              "Text.Quantity",
+              "Text.Lexer",
+              "Text.Parser.Core",
+              "Text.Parser",
+              "System.Path",
+              "System.Directory.Tree"
+            ],
+            "warnings": 0,
+            "highlightFrames": 1249,
+            "highlightBytes": 293679,
+            "frames": 1261,
+            "bytes": 294601,
+            "rssMaxSampledKiB": 231152,
+            "rssAfterKiB": 231152,
+            "footprintBytes": 233423424,
+            "footprintPeakBytes": 237470272,
+            "load1": 2.84
+          },
+          {
+            "step": "b unchanged 1",
+            "ms": 217.5145,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 1249,
+            "highlightBytes": 293679,
+            "frames": 1250,
+            "bytes": 293706,
+            "rssMaxSampledKiB": 251728,
+            "rssAfterKiB": 251728,
+            "footprintBytes": 254509656,
+            "footprintPeakBytes": 254509656,
+            "load1": 2.84
+          },
+          {
+            "step": "b unchanged 2",
+            "ms": 176.350584,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 1249,
+            "highlightBytes": 293679,
+            "frames": 1250,
+            "bytes": 293706,
+            "rssMaxSampledKiB": 251728,
+            "rssAfterKiB": 251728,
+            "footprintBytes": 254509656,
+            "footprintPeakBytes": 254509656,
+            "load1": 2.84
+          },
+          {
+            "step": "b unchanged 3",
+            "ms": 184.966208,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 1249,
+            "highlightBytes": 293679,
+            "frames": 1250,
+            "bytes": 293706,
+            "rssMaxSampledKiB": 252096,
+            "rssAfterKiB": 252096,
+            "footprintBytes": 254886488,
+            "footprintPeakBytes": 254886488,
+            "load1": 2.84
+          },
+          {
+            "step": "c module edited 1",
+            "ms": 378.835708,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "System.Directory.Tree"
+            ],
+            "warnings": 0,
+            "highlightFrames": 1250,
+            "highlightBytes": 293861,
+            "frames": 1252,
+            "bytes": 294023,
+            "rssMaxSampledKiB": 275152,
+            "rssAfterKiB": 275152,
+            "footprintBytes": 278495832,
+            "footprintPeakBytes": 278495832,
+            "load1": 2.84
+          },
+          {
+            "step": "c module edited 2",
+            "ms": 443.147125,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "System.Directory.Tree"
+            ],
+            "warnings": 0,
+            "highlightFrames": 1251,
+            "highlightBytes": 294043,
+            "frames": 1253,
+            "bytes": 294205,
+            "rssMaxSampledKiB": 182128,
+            "rssAfterKiB": 182128,
+            "footprintBytes": 254296712,
+            "footprintPeakBytes": 318489224,
+            "load1": 2.84
+          },
+          {
+            "step": "c module edited 3",
+            "ms": 371.091667,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "System.Directory.Tree"
+            ],
+            "warnings": 0,
+            "highlightFrames": 1252,
+            "highlightBytes": 294225,
+            "frames": 1254,
+            "bytes": 294387,
+            "rssMaxSampledKiB": 222192,
+            "rssAfterKiB": 222192,
+            "footprintBytes": 255083144,
+            "footprintPeakBytes": 318489224,
+            "load1": 2.93
+          },
+          {
+            "step": "d dependency edited 1",
+            "ms": 217.672958,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Text.Quantity"
+            ],
+            "warnings": 0,
+            "highlightFrames": 1252,
+            "highlightBytes": 294225,
+            "frames": 1254,
+            "bytes": 294328,
+            "rssMaxSampledKiB": 231248,
+            "rssAfterKiB": 231248,
+            "footprintBytes": 255083144,
+            "footprintPeakBytes": 318489224,
+            "load1": 2.93
+          },
+          {
+            "step": "d dependency edited 2",
+            "ms": 226.3285,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Text.Quantity"
+            ],
+            "warnings": 0,
+            "highlightFrames": 1252,
+            "highlightBytes": 294225,
+            "frames": 1254,
+            "bytes": 294328,
+            "rssMaxSampledKiB": 241520,
+            "rssAfterKiB": 241520,
+            "footprintBytes": 264602248,
+            "footprintPeakBytes": 318489224,
+            "load1": 2.93
+          },
+          {
+            "step": "d' dependency interface edited 1",
+            "ms": 679.750584,
+            "status": "ok",
+            "building": 4,
+            "builtModules": [
+              "Text.Quantity",
+              "Text.Lexer",
+              "Text.Parser",
+              "System.Path"
+            ],
+            "warnings": 0,
+            "highlightFrames": 1252,
+            "highlightBytes": 295477,
+            "frames": 1257,
+            "bytes": 295799,
+            "rssMaxSampledKiB": 225936,
+            "rssAfterKiB": 225936,
+            "footprintBytes": 248644232,
+            "footprintPeakBytes": 318489224,
+            "load1": 2.93
+          },
+          {
+            "step": "d' dependency interface edited 2",
+            "ms": 679.598916,
+            "status": "ok",
+            "building": 4,
+            "builtModules": [
+              "Text.Quantity",
+              "Text.Lexer",
+              "Text.Parser",
+              "System.Path"
+            ],
+            "warnings": 0,
+            "highlightFrames": 1252,
+            "highlightBytes": 295477,
+            "frames": 1257,
+            "bytes": 295799,
+            "rssMaxSampledKiB": 247024,
+            "rssAfterKiB": 247024,
+            "footprintBytes": 270107272,
+            "footprintPeakBytes": 318489224,
+            "load1": 2.93
+          },
+          {
+            "step": "e idle",
+            "afterMs": 10000,
+            "rssAfterKiB": 210896,
+            "footprintBytes": 270107272,
+            "footprintPeakBytes": 318489224,
+            "load1": 3
+          },
+          {
+            "step": "f after queries",
+            "rssAfterKiB": 264512,
+            "footprintBytes": 297140872,
+            "footprintPeakBytes": 318489224,
+            "load1": 3
+          },
+          {
+            "step": "f' reload 1",
+            "ms": 265.29725,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 1252,
+            "highlightBytes": 295477,
+            "frames": 1253,
+            "bytes": 295505,
+            "rssMaxSampledKiB": 268192,
+            "rssAfterKiB": 268192,
+            "footprintBytes": 298009224,
+            "footprintPeakBytes": 318489224,
+            "load1": 3
+          },
+          {
+            "step": "f' reload 2",
+            "ms": 189.070875,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 1252,
+            "highlightBytes": 295477,
+            "frames": 1253,
+            "bytes": 295505,
+            "rssMaxSampledKiB": 346432,
+            "rssAfterKiB": 346432,
+            "footprintBytes": 373162656,
+            "footprintPeakBytes": 373162656,
+            "load1": 3
+          },
+          {
+            "step": "f' reload 3",
+            "ms": 185.00475,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 1252,
+            "highlightBytes": 295477,
+            "frames": 1253,
+            "bytes": 295505,
+            "rssMaxSampledKiB": 309728,
+            "rssAfterKiB": 309728,
+            "footprintBytes": 335594192,
+            "footprintPeakBytes": 445055696,
+            "load1": 3
+          }
+        ],
+        "exit": {
+          "code": 1,
+          "signal": null
+        },
+        "peakRssBytes": 425394176,
+        "realSeconds": 18.28,
+        "userSeconds": 6.96,
+        "sysSeconds": 0.45,
+        "unframedLines": 1,
+        "unframedSample": [
+          "Alas the file is done, aborting"
+        ],
+        "memoryFreeMinPercent": 28
+      },
+      "buildDirAfterCold": {
+        "files": 22,
+        "bytes": 2523658,
+        "ttc": 11,
+        "ttm": 11
+      },
+      "queries": {
+        "type-of": {
+          "request": "(:type-of \"fileName\")",
+          "n": 10,
+          "min": 0.18,
+          "median": 0.23,
+          "p90": 0.31,
+          "max": 0.61,
+          "first": 0.61,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 388
+        },
+        "docs-for": {
+          "request": "(:docs-for \"fileName\")",
+          "n": 10,
+          "min": 0.49,
+          "median": 0.54,
+          "p90": 0.72,
+          "max": 0.84,
+          "first": 0.84,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 931
+        },
+        "repl-completions": {
+          "request": "(:repl-completions \"fil\")",
+          "n": 10,
+          "min": 1.97,
+          "median": 3.12,
+          "p90": 10.74,
+          "max": 396.72,
+          "first": 396.72,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 244,
+          "candidates": 16
+        },
+        "metavariables": {
+          "request": "(:metavariables 80)",
+          "n": 10,
+          "min": 0.08,
+          "median": 0.09,
+          "p90": 0.11,
+          "max": 0.19,
+          "first": 0.19,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 28
+        }
+      },
+      "queriesAfterReload": {
+        "type-of": {
+          "ms": [
+            0.49,
+            0.78,
+            0.42
+          ],
+          "n": 3,
+          "min": 0.42,
+          "median": 0.49,
+          "p90": 0.78,
+          "max": 0.78,
+          "first": 0.49,
+          "statuses": [
+            "ok"
+          ]
+        },
+        "docs-for": {
+          "ms": [
+            0.67,
+            0.66,
+            0.59
+          ],
+          "n": 3,
+          "min": 0.59,
+          "median": 0.66,
+          "p90": 0.67,
+          "max": 0.67,
+          "first": 0.67,
+          "statuses": [
+            "ok"
+          ]
+        },
+        "repl-completions": {
+          "ms": [
+            387,
+            422.94,
+            357.65
+          ],
+          "n": 3,
+          "min": 357.65,
+          "median": 387,
+          "p90": 422.94,
+          "max": 422.94,
+          "first": 387,
+          "statuses": [
+            "ok"
+          ]
+        },
+        "metavariables": {
+          "ms": [
+            0.22,
+            0.15,
+            0.15
+          ],
+          "n": 3,
+          "min": 0.15,
+          "median": 0.15,
+          "p90": 0.22,
+          "max": 0.22,
+          "first": 0.22,
+          "statuses": [
+            "ok"
+          ]
+        }
+      },
+      "buildDirAtEnd": {
+        "files": 22,
+        "bytes": 2525232,
+        "ttc": 11,
+        "ttm": 11
+      },
+      "session2": {
+        "resourcesAtStart": {
+          "ok": true,
+          "free": 29,
+          "load1": 3,
+          "waits": 0
+        },
+        "steps": [
+          {
+            "step": "start",
+            "ms": 265.135958,
+            "rssAfterKiB": 199152,
+            "footprintBytes": 200688192,
+            "footprintPeakBytes": 225329728,
+            "load1": 3
+          },
+          {
+            "step": "g load on the warm build directory",
+            "ms": 201.515083,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 1252,
+            "highlightBytes": 294225,
+            "frames": 1253,
+            "bytes": 294252,
+            "rssMaxSampledKiB": 214224,
+            "rssAfterKiB": 214224,
+            "footprintBytes": 216121920,
+            "footprintPeakBytes": 225329728,
+            "load1": 2.92
+          }
+        ],
+        "exit": {
+          "code": 1,
+          "signal": null
+        },
+        "peakRssBytes": 226115584,
+        "realSeconds": 0.55,
+        "userSeconds": 0.39,
+        "sysSeconds": 0.06,
+        "unframedLines": 1,
+        "unframedSample": [
+          "Alas the file is done, aborting"
+        ],
+        "memoryFreeMinPercent": 29
+      }
+    },
+    {
+      "role": "median closure",
+      "module": "Data.Nat.Order.Strict",
+      "lines": 34,
+      "closureModules": 2,
+      "closureLines": 124,
+      "file": "Data/Nat/Order/Strict.idr",
+      "dependency": {
+        "module": "Decidable.Order.Strict",
+        "file": "/private/tmp/vi2-pre3/bench/work-D/contrib/Decidable/Order/Strict.idr",
+        "lines": 90,
+        "invalidates": 2
+      },
+      "queryName": "decLT",
+      "completionPrefix": "dec",
+      "resourcesAtStart": {
+        "ok": true,
+        "free": 30,
+        "load1": 2.92,
+        "waits": 0
+      },
+      "session1": {
+        "command": [
+          "/opt/homebrew/bin/timeout",
+          "-k",
+          "10",
+          "3600",
+          "/usr/bin/time",
+          "-l",
+          "/opt/homebrew/bin/idris2",
+          "--ide-mode",
+          "--no-color",
+          "--build-dir",
+          "/private/tmp/vi2-pre3/bench/work-D/contrib/build/.vscode-idris2"
+        ],
+        "cwd": "/private/tmp/vi2-pre3/bench/work-D/contrib",
+        "steps": [
+          {
+            "step": "start",
+            "ms": 260.282583,
+            "protocol": "2.1",
+            "rssAfterKiB": 199136,
+            "footprintBytes": 200671808,
+            "footprintPeakBytes": 225329728,
+            "load1": 2.92
+          },
+          {
+            "step": "a cold",
+            "ms": 297.105958,
+            "status": "ok",
+            "building": 2,
+            "builtModules": [
+              "Decidable.Order.Strict",
+              "Data.Nat.Order.Strict"
+            ],
+            "warnings": 0,
+            "highlightFrames": 171,
+            "highlightBytes": 39314,
+            "frames": 174,
+            "bytes": 39566,
+            "rssMaxSampledKiB": 214160,
+            "rssAfterKiB": 214160,
+            "footprintBytes": 216040000,
+            "footprintPeakBytes": 225329728,
+            "load1": 2.92
+          },
+          {
+            "step": "b unchanged 1",
+            "ms": 91.9315,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 171,
+            "highlightBytes": 39314,
+            "frames": 172,
+            "bytes": 39341,
+            "rssMaxSampledKiB": 214160,
+            "rssAfterKiB": 214160,
+            "footprintBytes": 216040000,
+            "footprintPeakBytes": 225329728,
+            "load1": 2.92
+          },
+          {
+            "step": "b unchanged 2",
+            "ms": 94.266042,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 171,
+            "highlightBytes": 39314,
+            "frames": 172,
+            "bytes": 39341,
+            "rssMaxSampledKiB": 214160,
+            "rssAfterKiB": 214160,
+            "footprintBytes": 216040000,
+            "footprintPeakBytes": 225329728,
+            "load1": 2.92
+          },
+          {
+            "step": "b unchanged 3",
+            "ms": 87.367625,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 171,
+            "highlightBytes": 39314,
+            "frames": 172,
+            "bytes": 39341,
+            "rssMaxSampledKiB": 224784,
+            "rssAfterKiB": 224784,
+            "footprintBytes": 226918976,
+            "footprintPeakBytes": 226918976,
+            "load1": 2.92
+          },
+          {
+            "step": "c module edited 1",
+            "ms": 127.268583,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Data.Nat.Order.Strict"
+            ],
+            "warnings": 0,
+            "highlightFrames": 172,
+            "highlightBytes": 39494,
+            "frames": 174,
+            "bytes": 39654,
+            "rssMaxSampledKiB": 236896,
+            "rssAfterKiB": 236896,
+            "footprintBytes": 239321664,
+            "footprintPeakBytes": 239321664,
+            "load1": 2.92
+          },
+          {
+            "step": "c module edited 2",
+            "ms": 170.261333,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Data.Nat.Order.Strict"
+            ],
+            "warnings": 0,
+            "highlightFrames": 173,
+            "highlightBytes": 39674,
+            "frames": 175,
+            "bytes": 39834,
+            "rssMaxSampledKiB": 220256,
+            "rssAfterKiB": 220256,
+            "footprintBytes": 222282328,
+            "footprintPeakBytes": 247890520,
+            "load1": 2.92
+          },
+          {
+            "step": "c module edited 3",
+            "ms": 123.460167,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Data.Nat.Order.Strict"
+            ],
+            "warnings": 0,
+            "highlightFrames": 174,
+            "highlightBytes": 39854,
+            "frames": 176,
+            "bytes": 40014,
+            "rssMaxSampledKiB": 220592,
+            "rssAfterKiB": 220592,
+            "footprintBytes": 222626392,
+            "footprintPeakBytes": 247890520,
+            "load1": 2.92
+          },
+          {
+            "step": "d dependency edited 1",
+            "ms": 176.186417,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Decidable.Order.Strict"
+            ],
+            "warnings": 0,
+            "highlightFrames": 174,
+            "highlightBytes": 39854,
+            "frames": 176,
+            "bytes": 39973,
+            "rssMaxSampledKiB": 220608,
+            "rssAfterKiB": 220608,
+            "footprintBytes": 222642776,
+            "footprintPeakBytes": 247890520,
+            "load1": 2.92
+          },
+          {
+            "step": "d dependency edited 2",
+            "ms": 172.113542,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Decidable.Order.Strict"
+            ],
+            "warnings": 0,
+            "highlightFrames": 174,
+            "highlightBytes": 39854,
+            "frames": 176,
+            "bytes": 39973,
+            "rssMaxSampledKiB": 230816,
+            "rssAfterKiB": 230816,
+            "footprintBytes": 233095768,
+            "footprintPeakBytes": 247890520,
+            "load1": 2.92
+          },
+          {
+            "step": "d' dependency interface edited 1",
+            "ms": 215.478208,
+            "status": "ok",
+            "building": 2,
+            "builtModules": [
+              "Decidable.Order.Strict",
+              "Data.Nat.Order.Strict"
+            ],
+            "warnings": 0,
+            "highlightFrames": 174,
+            "highlightBytes": 40028,
+            "frames": 177,
+            "bytes": 40283,
+            "rssMaxSampledKiB": 258336,
+            "rssAfterKiB": 258336,
+            "footprintBytes": 261276248,
+            "footprintPeakBytes": 261276248,
+            "load1": 2.92
+          },
+          {
+            "step": "d' dependency interface edited 2",
+            "ms": 266.3455,
+            "status": "ok",
+            "building": 2,
+            "builtModules": [
+              "Decidable.Order.Strict",
+              "Data.Nat.Order.Strict"
+            ],
+            "warnings": 0,
+            "highlightFrames": 174,
+            "highlightBytes": 40028,
+            "frames": 177,
+            "bytes": 40283,
+            "rssMaxSampledKiB": 229200,
+            "rssAfterKiB": 229200,
+            "footprintBytes": 231440984,
+            "footprintPeakBytes": 276300376,
+            "load1": 2.92
+          },
+          {
+            "step": "e idle",
+            "afterMs": 10000,
+            "rssAfterKiB": 186544,
+            "footprintBytes": 231440984,
+            "footprintPeakBytes": 276300376,
+            "load1": 3.09
+          },
+          {
+            "step": "f after queries",
+            "rssAfterKiB": 201136,
+            "footprintBytes": 231440984,
+            "footprintPeakBytes": 276300376,
+            "load1": 3.09
+          },
+          {
+            "step": "f' reload 1",
+            "ms": 91.993042,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 174,
+            "highlightBytes": 40028,
+            "frames": 175,
+            "bytes": 40056,
+            "rssMaxSampledKiB": 205920,
+            "rssAfterKiB": 205920,
+            "footprintBytes": 235848280,
+            "footprintPeakBytes": 276300376,
+            "load1": 3.09
+          },
+          {
+            "step": "f' reload 2",
+            "ms": 93.581875,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 174,
+            "highlightBytes": 40028,
+            "frames": 175,
+            "bytes": 40056,
+            "rssMaxSampledKiB": 240544,
+            "rssAfterKiB": 240544,
+            "footprintBytes": 263635544,
+            "footprintPeakBytes": 276300376,
+            "load1": 3.09
+          },
+          {
+            "step": "f' reload 3",
+            "ms": 91.362834,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 174,
+            "highlightBytes": 40028,
+            "frames": 175,
+            "bytes": 40056,
+            "rssMaxSampledKiB": 241664,
+            "rssAfterKiB": 241664,
+            "footprintBytes": 263635544,
+            "footprintPeakBytes": 276300376,
+            "load1": 3.09
+          }
+        ],
+        "exit": {
+          "code": 1,
+          "signal": null
+        },
+        "peakRssBytes": 284753920,
+        "realSeconds": 13.98,
+        "userSeconds": 2.93,
+        "sysSeconds": 0.23,
+        "unframedLines": 1,
+        "unframedSample": [
+          "Alas the file is done, aborting"
+        ],
+        "memoryFreeMinPercent": 30
+      },
+      "buildDirAfterCold": {
+        "files": 4,
+        "bytes": 220675,
+        "ttc": 2,
+        "ttm": 2
+      },
+      "queries": {
+        "type-of": {
+          "request": "(:type-of \"decLT\")",
+          "n": 10,
+          "min": 0.14,
+          "median": 0.19,
+          "p90": 0.33,
+          "max": 0.8,
+          "first": 0.8,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 356
+        },
+        "docs-for": {
+          "request": "(:docs-for \"decLT\")",
+          "n": 10,
+          "min": 0.17,
+          "median": 0.23,
+          "p90": 0.33,
+          "max": 0.41,
+          "first": 0.33,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 537
+        },
+        "repl-completions": {
+          "request": "(:repl-completions \"dec\")",
+          "n": 10,
+          "min": 1.19,
+          "median": 1.81,
+          "p90": 3.29,
+          "max": 171.48,
+          "first": 171.48,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 332,
+          "candidates": 33
+        },
+        "metavariables": {
+          "request": "(:metavariables 80)",
+          "n": 10,
+          "min": 0.08,
+          "median": 0.08,
+          "p90": 0.11,
+          "max": 0.15,
+          "first": 0.15,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 28
+        }
+      },
+      "queriesAfterReload": {
+        "type-of": {
+          "ms": [
+            0.52,
+            0.55,
+            0.58
+          ],
+          "n": 3,
+          "min": 0.52,
+          "median": 0.55,
+          "p90": 0.58,
+          "max": 0.58,
+          "first": 0.52,
+          "statuses": [
+            "ok"
+          ]
+        },
+        "docs-for": {
+          "ms": [
+            0.23,
+            0.27,
+            0.43
+          ],
+          "n": 3,
+          "min": 0.23,
+          "median": 0.27,
+          "p90": 0.43,
+          "max": 0.43,
+          "first": 0.23,
+          "statuses": [
+            "ok"
+          ]
+        },
+        "repl-completions": {
+          "ms": [
+            223.36,
+            172.92,
+            255.42
+          ],
+          "n": 3,
+          "min": 172.92,
+          "median": 223.36,
+          "p90": 255.42,
+          "max": 255.42,
+          "first": 223.36,
+          "statuses": [
+            "ok"
+          ]
+        },
+        "metavariables": {
+          "ms": [
+            0.16,
+            0.16,
+            0.16
+          ],
+          "n": 3,
+          "min": 0.16,
+          "median": 0.16,
+          "p90": 0.16,
+          "max": 0.16,
+          "first": 0.16,
+          "statuses": [
+            "ok"
+          ]
+        }
+      },
+      "buildDirAtEnd": {
+        "files": 4,
+        "bytes": 222579,
+        "ttc": 2,
+        "ttm": 2
+      },
+      "session2": {
+        "resourcesAtStart": {
+          "ok": true,
+          "free": 30,
+          "load1": 3.09,
+          "waits": 0
+        },
+        "steps": [
+          {
+            "step": "start",
+            "ms": 266.046,
+            "rssAfterKiB": 199136,
+            "footprintBytes": 200671808,
+            "footprintPeakBytes": 225329728,
+            "load1": 3.09
+          },
+          {
+            "step": "g load on the warm build directory",
+            "ms": 115.119792,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 174,
+            "highlightBytes": 39854,
+            "frames": 175,
+            "bytes": 39881,
+            "rssMaxSampledKiB": 214192,
+            "rssAfterKiB": 214192,
+            "footprintBytes": 216089152,
+            "footprintPeakBytes": 225329728,
+            "load1": 3.09
+          }
+        ],
+        "exit": {
+          "code": 1,
+          "signal": null
+        },
+        "peakRssBytes": 226115584,
+        "realSeconds": 0.46,
+        "userSeconds": 0.31,
+        "sysSeconds": 0.05,
+        "unframedLines": 1,
+        "unframedSample": [
+          "Alas the file is done, aborting"
+        ],
+        "memoryFreeMinPercent": 30
+      }
+    },
+    {
+      "role": "leaf",
+      "module": "Data.Seq.Internal",
+      "lines": 682,
+      "closureModules": 1,
+      "closureLines": 682,
+      "file": "Data/Seq/Internal.idr",
+      "queryName": "err",
+      "completionPrefix": "err",
+      "resourcesAtStart": {
+        "ok": true,
+        "free": 29,
+        "load1": 3.09,
+        "waits": 0
+      },
+      "session1": {
+        "command": [
+          "/opt/homebrew/bin/timeout",
+          "-k",
+          "10",
+          "3600",
+          "/usr/bin/time",
+          "-l",
+          "/opt/homebrew/bin/idris2",
+          "--ide-mode",
+          "--no-color",
+          "--build-dir",
+          "/private/tmp/vi2-pre3/bench/work-D/contrib/build/.vscode-idris2"
+        ],
+        "cwd": "/private/tmp/vi2-pre3/bench/work-D/contrib",
+        "steps": [
+          {
+            "step": "start",
+            "ms": 254.544042,
+            "protocol": "2.1",
+            "rssAfterKiB": 199136,
+            "footprintBytes": 200671808,
+            "footprintPeakBytes": 225329728,
+            "load1": 3
+          },
+          {
+            "step": "a cold",
+            "ms": 946.575959,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Data.Seq.Internal"
+            ],
+            "warnings": 0,
+            "highlightFrames": 8658,
+            "highlightBytes": 2080626,
+            "frames": 8660,
+            "bytes": 2080778,
+            "rssMaxSampledKiB": 232560,
+            "rssAfterKiB": 232560,
+            "footprintBytes": 234881600,
+            "footprintPeakBytes": 234881600,
+            "load1": 3
+          },
+          {
+            "step": "b unchanged 1",
+            "ms": 242.214834,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 8658,
+            "highlightBytes": 2080626,
+            "frames": 8659,
+            "bytes": 2080653,
+            "rssMaxSampledKiB": 223152,
+            "rssAfterKiB": 223152,
+            "footprintBytes": 225231424,
+            "footprintPeakBytes": 242336320,
+            "load1": 3
+          },
+          {
+            "step": "b unchanged 2",
+            "ms": 205.74075,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 8658,
+            "highlightBytes": 2080626,
+            "frames": 8659,
+            "bytes": 2080653,
+            "rssMaxSampledKiB": 224736,
+            "rssAfterKiB": 224736,
+            "footprintBytes": 226853440,
+            "footprintPeakBytes": 242336320,
+            "load1": 3
+          },
+          {
+            "step": "b unchanged 3",
+            "ms": 204.99925,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 8658,
+            "highlightBytes": 2080626,
+            "frames": 8659,
+            "bytes": 2080653,
+            "rssMaxSampledKiB": 237008,
+            "rssAfterKiB": 237008,
+            "footprintBytes": 239419968,
+            "footprintPeakBytes": 242336320,
+            "load1": 3
+          },
+          {
+            "step": "c module edited 1",
+            "ms": 956.65925,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Data.Seq.Internal"
+            ],
+            "warnings": 0,
+            "highlightFrames": 8659,
+            "highlightBytes": 2080804,
+            "frames": 8661,
+            "bytes": 2080956,
+            "rssMaxSampledKiB": 270864,
+            "rssAfterKiB": 270864,
+            "footprintBytes": 274104920,
+            "footprintPeakBytes": 274104920,
+            "load1": 3
+          },
+          {
+            "step": "c module edited 2",
+            "ms": 888.220583,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Data.Seq.Internal"
+            ],
+            "warnings": 0,
+            "highlightFrames": 8660,
+            "highlightBytes": 2080982,
+            "frames": 8662,
+            "bytes": 2081134,
+            "rssMaxSampledKiB": 295264,
+            "rssAfterKiB": 295264,
+            "footprintBytes": 299106928,
+            "footprintPeakBytes": 299106928,
+            "load1": 3
+          },
+          {
+            "step": "c module edited 3",
+            "ms": 946.187584,
+            "status": "ok",
+            "building": 1,
+            "builtModules": [
+              "Data.Seq.Internal"
+            ],
+            "warnings": 0,
+            "highlightFrames": 8661,
+            "highlightBytes": 2081160,
+            "frames": 8663,
+            "bytes": 2081312,
+            "rssMaxSampledKiB": 292864,
+            "rssAfterKiB": 274832,
+            "footprintBytes": 291734152,
+            "footprintPeakBytes": 334398088,
+            "load1": 3
+          },
+          {
+            "step": "e idle",
+            "afterMs": 10000,
+            "rssAfterKiB": 246032,
+            "footprintBytes": 291734152,
+            "footprintPeakBytes": 334398088,
+            "load1": 3.02
+          },
+          {
+            "step": "f after queries",
+            "rssAfterKiB": 259104,
+            "footprintBytes": 293733000,
+            "footprintPeakBytes": 334398088,
+            "load1": 3.02
+          },
+          {
+            "step": "f' reload 1",
+            "ms": 232.185792,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 8661,
+            "highlightBytes": 2089821,
+            "frames": 8662,
+            "bytes": 2089849,
+            "rssMaxSampledKiB": 261120,
+            "rssAfterKiB": 261120,
+            "footprintBytes": 293733000,
+            "footprintPeakBytes": 334398088,
+            "load1": 2.86
+          },
+          {
+            "step": "f' reload 2",
+            "ms": 306.979,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 8661,
+            "highlightBytes": 2089821,
+            "frames": 8662,
+            "bytes": 2089849,
+            "rssMaxSampledKiB": 274784,
+            "rssAfterKiB": 274784,
+            "footprintBytes": 297157256,
+            "footprintPeakBytes": 334398088,
+            "load1": 2.86
+          },
+          {
+            "step": "f' reload 3",
+            "ms": 215.5265,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 8661,
+            "highlightBytes": 2089821,
+            "frames": 8662,
+            "bytes": 2089849,
+            "rssMaxSampledKiB": 279136,
+            "rssAfterKiB": 279136,
+            "footprintBytes": 298041992,
+            "footprintPeakBytes": 334398088,
+            "load1": 2.86
+          }
+        ],
+        "exit": {
+          "code": 1,
+          "signal": null
+        },
+        "peakRssBytes": 311410688,
+        "realSeconds": 16.55,
+        "userSeconds": 5.58,
+        "sysSeconds": 0.3,
+        "unframedLines": 1,
+        "unframedSample": [
+          "Alas the file is done, aborting"
+        ],
+        "memoryFreeMinPercent": 29
+      },
+      "buildDirAfterCold": {
+        "files": 2,
+        "bytes": 2220572,
+        "ttc": 1,
+        "ttm": 1
+      },
+      "queries": {
+        "type-of": {
+          "request": "(:type-of \"err\")",
+          "n": 10,
+          "min": 0.09,
+          "median": 0.12,
+          "p90": 0.15,
+          "max": 0.45,
+          "first": 0.45,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 168
+        },
+        "docs-for": {
+          "request": "(:docs-for \"err\")",
+          "n": 10,
+          "min": 0.11,
+          "median": 0.15,
+          "p90": 0.18,
+          "max": 0.19,
+          "first": 0.19,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 342
+        },
+        "repl-completions": {
+          "request": "(:repl-completions \"err\")",
+          "n": 10,
+          "min": 0.81,
+          "median": 1.01,
+          "p90": 3.59,
+          "max": 129.38,
+          "first": 129.38,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 38,
+          "candidates": 1
+        },
+        "metavariables": {
+          "request": "(:metavariables 80)",
+          "n": 10,
+          "min": 0.07,
+          "median": 0.08,
+          "p90": 0.1,
+          "max": 0.14,
+          "first": 0.14,
+          "statuses": [
+            "ok"
+          ],
+          "replyBytes": 28
+        }
+      },
+      "queriesAfterReload": {
+        "type-of": {
+          "ms": [
+            0.37,
+            0.29,
+            0.28
+          ],
+          "n": 3,
+          "min": 0.28,
+          "median": 0.29,
+          "p90": 0.37,
+          "max": 0.37,
+          "first": 0.37,
+          "statuses": [
+            "ok"
+          ]
+        },
+        "docs-for": {
+          "ms": [
+            0.22,
+            0.19,
+            0.2
+          ],
+          "n": 3,
+          "min": 0.19,
+          "median": 0.2,
+          "p90": 0.22,
+          "max": 0.22,
+          "first": 0.22,
+          "statuses": [
+            "ok"
+          ]
+        },
+        "repl-completions": {
+          "ms": [
+            140.21,
+            128.86,
+            130.49
+          ],
+          "n": 3,
+          "min": 128.86,
+          "median": 130.49,
+          "p90": 140.21,
+          "max": 140.21,
+          "first": 140.21,
+          "statuses": [
+            "ok"
+          ]
+        },
+        "metavariables": {
+          "ms": [
+            0.18,
+            0.17,
+            0.21
+          ],
+          "n": 3,
+          "min": 0.17,
+          "median": 0.18,
+          "p90": 0.21,
+          "max": 0.21,
+          "first": 0.18,
+          "statuses": [
+            "ok"
+          ]
+        }
+      },
+      "buildDirAtEnd": {
+        "files": 2,
+        "bytes": 2220698,
+        "ttc": 1,
+        "ttm": 1
+      },
+      "session2": {
+        "resourcesAtStart": {
+          "ok": true,
+          "free": 30,
+          "load1": 2.86,
+          "waits": 0
+        },
+        "steps": [
+          {
+            "step": "start",
+            "ms": 249.322834,
+            "rssAfterKiB": 199136,
+            "footprintBytes": 200671808,
+            "footprintPeakBytes": 225329728,
+            "load1": 2.86
+          },
+          {
+            "step": "g load on the warm build directory",
+            "ms": 239.031,
+            "status": "ok",
+            "building": 0,
+            "builtModules": [],
+            "warnings": 0,
+            "highlightFrames": 8661,
+            "highlightBytes": 2081160,
+            "frames": 8662,
+            "bytes": 2081187,
+            "rssMaxSampledKiB": 218400,
+            "rssAfterKiB": 218400,
+            "footprintBytes": 220381760,
+            "footprintPeakBytes": 225329728,
+            "load1": 2.86
+          }
+        ],
+        "exit": {
+          "code": 1,
+          "signal": null
+        },
+        "peakRssBytes": 226115584,
+        "realSeconds": 0.57,
+        "userSeconds": 0.41,
+        "sysSeconds": 0.05,
+        "unframedLines": 1,
+        "unframedSample": [
+          "Alas the file is done, aborting"
+        ],
+        "memoryFreeMinPercent": 30
+      }
+    }
+  ],
+  "finishedAt": "2026-09-29T02:19:32.047Z"
+}
