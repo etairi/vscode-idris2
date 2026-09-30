@@ -149,7 +149,12 @@
  *   session for the limit (the root of a file just opened is not known yet, and may be the one
  *   whose idle session would be stopped). An active document that no check tracks (with the
  *   `manual` trigger, one never checked, or checked before it was closed and opened again) is
- *   classified by itself for this, `pending` meanwhile.
+ *   classified by itself for this, `pending` meanwhile. Where several visible documents are
+ *   checked at once (activation, trust granted, Restart Backend, a restart for a changed command
+ *   line, a consent answer, a package file saved, an import fixed), the active document's check is
+ *   started last (`visibleDocuments`), so that its load is queued last and its file is the one its
+ *   root's compiler loaded last — unless the other files take longer to classify, since each load is
+ *   queued once its file is classified (fourth review of M3).
  * - **Background checks** (`idris2.ideMode.maxBackgroundChecks`, ROADMAP §9 Q21; `0`, the default,
  *   is no limit and changes nothing above: no check waits, and the gate is not asked here).
  *   Otherwise a check of a document that is not the active one waits, after classifying the file
@@ -330,6 +335,8 @@ interface Tracked {
   settled: Settled;
   /** Incremented by each check; only the newest sets the state. */
   generation: number;
+  /** The newest check's promise (`check`) while it runs (`runningCheck`). */
+  newest: Promise<CheckRefusal | undefined> | undefined;
   root: Classification | undefined;
   packageError: { readonly ipkg: string; readonly message: string } | undefined;
   failure: string | undefined;
@@ -499,7 +506,7 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
         }
       }),
     );
-    this.store.add(api.window.onDidChangeVisibleTextEditors((editors) => editors.forEach((e) => this.shown(e.document))));
+    this.store.add(api.window.onDidChangeVisibleTextEditors(() => this.visibleDocuments().forEach((doc) => this.shown(doc))));
     this.store.add(
       api.workspace.onDidOpenTextDocument((doc) => {
         // A change of language mode is reported as close + open of the document, with no
@@ -517,11 +524,11 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
     this.store.add(files.onDidCreate((uri) => this.created(uri)));
     this.store.add(deps.registry.onDidChange(() => this.changed.fire()));
     // Documents shown in Restricted Mode were not checked; they are once trust is granted.
-    this.store.add(deps.trust.onDidGrant(() => api.window.visibleTextEditors.forEach((e) => this.shown(e.document))));
+    this.store.add(deps.trust.onDidGrant(() => this.visibleDocuments().forEach((doc) => this.shown(doc))));
     this.store.add(deps.consent.onDidChange(() => this.consentChanged()));
     this.store.add(deps.roots.onDidRestart(({ root, cause }) => this.restarted(root, cause)));
     this.activeChanged();
-    api.window.visibleTextEditors.forEach((e) => this.shown(e.document));
+    this.visibleDocuments().forEach((doc) => this.shown(doc));
   }
 
   private trigger(doc: vscode.TextDocument): 'onSave' | 'afterDelay' | 'manual' {
@@ -537,6 +544,7 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
         loadState: 'idle',
         settled: 'idle',
         generation: 0,
+        newest: undefined,
         root: undefined,
         packageError: undefined,
         failure: undefined,
@@ -603,8 +611,7 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
 
   /** A package file was saved: the visible documents of the root it governs are checked again. */
   private packageSaved(ipkg: string): void {
-    for (const editor of this.api.window.visibleTextEditors) {
-      const doc = editor.document;
+    for (const doc of this.visibleDocuments()) {
       const root = this.tracked.get(doc.uri.toString())?.root;
       if (root?.kind === 'project' && samePath(root.ipkgPath, ipkg) && isCheckable(doc) && this.trigger(doc) !== 'manual') {
         void this.check(doc);
@@ -854,8 +861,7 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
   /** A root's session serves again after an automatic restart (module comment). */
   private restarted(root: Classification, cause: 'reconfigure' | 'crash'): void {
     const key = rootKey(root);
-    for (const editor of this.api.window.visibleTextEditors) {
-      const doc = editor.document;
+    for (const doc of this.visibleDocuments()) {
       const t = this.tracked.get(doc.uri.toString());
       if (t?.root === undefined || rootKey(t.root) !== key || !isCheckable(doc) || this.trigger(doc) === 'manual') {
         continue;
@@ -877,8 +883,7 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
     // session rejects its queue then (module comment, *Background checks*).
     this.dropWaiting((w) => this.deps.consent.current(this.deps.projects.sessionCwd(w.root))?.allowed !== true, REFUSED);
     this.recount();
-    for (const editor of this.api.window.visibleTextEditors) {
-      const doc = editor.document;
+    for (const doc of this.visibleDocuments()) {
       const t = this.tracked.get(doc.uri.toString());
       if (t?.refused === true && t.root !== undefined && this.deps.consent.current(this.deps.projects.sessionCwd(t.root))?.allowed) {
         void this.check(doc);
@@ -893,7 +898,33 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
    * (or dropped), with the refusal when the consent gate refused the load; never rejects:
    * failures become the document's state and a log line.
    */
-  async check(doc: vscode.TextDocument): Promise<CheckRefusal | undefined> {
+  check(doc: vscode.TextDocument): Promise<CheckRefusal | undefined> {
+    const promise = this.checkNow(doc);
+    // `checkNow` has tracked the document (and counted its generation) before its first wait.
+    const t = this.tracked.get(doc.uri.toString());
+    if (t !== undefined) {
+      t.newest = promise;
+      void promise.then(() => {
+        if (t.newest === promise) {
+          t.newest = undefined;
+        }
+      });
+    }
+    return promise;
+  }
+
+  /**
+   * The newest check of `doc` while it runs (the promise `check` returned), or `undefined`. For a
+   * query that found the file not loaded (`features/intelligence/queries.ts`): it waits for this
+   * check instead of starting another, which would load the file a second time once this one is
+   * done (integration after the third review of M3: a hover right after a file was opened, while
+   * its check classified it, made two `:load-file` of it [live, the packaged-extension check]).
+   */
+  runningCheck(doc: vscode.TextDocument): Promise<CheckRefusal | undefined> | undefined {
+    return this.tracked.get(doc.uri.toString())?.newest;
+  }
+
+  private async checkNow(doc: vscode.TextDocument): Promise<CheckRefusal | undefined> {
     if (!this.deps.trust.isTrusted || !isCheckable(doc)) {
       return undefined;
     }
@@ -1053,6 +1084,21 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
   }
 
   // --- the active document and background checks (module comment) -----------------------------
+
+  /**
+   * The documents of the visible editors, the active document last (module comment, *The active
+   * document*): the checks that start several of them at once queue their loads in this order, and
+   * a root's compiler answers about the file it loaded last (F27), which a passive query loads only
+   * when it is the active document (`features/intelligence` `DocumentQueries`). Until the fourth
+   * review of M3 they were in the editors' order, so the active file, loaded before another file of
+   * its root, was loaded once more for its first hover or inlay hints, and the other file's queries
+   * were refused [unit-level].
+   */
+  private visibleDocuments(): vscode.TextDocument[] {
+    const docs = this.api.window.visibleTextEditors.map((e) => e.document);
+    const active = this.activeDocument()?.uri.toString();
+    return [...docs.filter((d) => d.uri.toString() !== active), ...docs.filter((d) => d.uri.toString() === active)];
+  }
 
   /** The active document (module comment, *The active document*); public for the test API. */
   activeDocument(): vscode.TextDocument | undefined {
@@ -1317,8 +1363,7 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
    */
   private unblock(root: Classification, determined: ReadonlyMap<string, vscode.Uri>, loaded: vscode.TextDocument): void {
     const key = rootKey(root);
-    for (const editor of this.api.window.visibleTextEditors) {
-      const doc = editor.document;
+    for (const doc of this.visibleDocuments()) {
       const t = this.tracked.get(doc.uri.toString());
       if (doc === loaded || t?.root === undefined || rootKey(t.root) !== key || t.loadState === 'loading') {
         continue;
@@ -1335,7 +1380,7 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
    * `manual` (after **Restart Backend** and a notice's **Restart**).
    */
   async recheckVisible(root?: Classification): Promise<void> {
-    const docs = this.api.window.visibleTextEditors.map((e) => e.document).filter((d) => isCheckable(d) && this.trigger(d) !== 'manual');
+    const docs = this.visibleDocuments().filter((d) => isCheckable(d) && this.trigger(d) !== 'manual');
     await Promise.all(
       docs.map(async (doc) => {
         if (root === undefined || rootKey(await this.deps.projects.classify(doc.fileName)) === rootKey(root)) {

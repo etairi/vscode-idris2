@@ -1,17 +1,17 @@
 # `test/` layout
 
 The testing layers of `docs/ARCHITECTURE.md` §12 and the `test/` tree of §2, annotated with the
-milestone (`docs/ROADMAP.md` §5) that adds each part. Parts marked **M0**, **M1**, **M2** or
-**skeleton** exist.
+milestone (`docs/ROADMAP.md` §5) that adds each part. Parts marked **M0**, **M1**, **M2**, **M3**
+or **skeleton** exist.
 
 | Layer | Runner | Needs | Exists | Added by |
 |---|---|---|---|---|
-| Unit | mocha on Node, `npm run test:unit` | nothing (Node spawns the fake tools and `/bin/sh`) | **M0**, **M1**, **M2** (lists below) | M9 (CLI parser), M11, M13 |
+| Unit | mocha on Node, `npm run test:unit` | nothing (Node spawns the fake tools and `/bin/sh`) | **M0**, **M1**, **M2**, **M3** (lists below) | M9 (CLI parser), M11, M13 |
 | Grammar | `vscode-textmate` + `vscode-oniguruma` snapshots, `npm run test:grammar` | nothing | **M0** (`grammar/`, harness `grammar/harness.ts`) | injections: M12 |
-| Integration | `@vscode/test-cli` (Electron), `npm test`, one suite per fixture workspace | VS Code download | **M0** (suite `integration` on `fixtures/workspaces/loose-file`), **M1** (the same suite with the fake tools; suites `simple-ipkg` and `toolchain-path`), **M2** (suites `diagnostics`, `loose-stdio`, `consent`; the fake compiler replays the transcripts) | fake LSP driven suites: M5; every UI milestone |
-| E2E | same runner, `npm run test:e2e` (suite `e2e`, only with `IDRIS2_E2E=1` or that script) | real `idris2` (+ `idris2-lsp`) | **M1** (`e2e/`, on `fixtures/workspaces/simple-ipkg`), **M2** (protocol facts, sessions, fake parity, E21) | every milestone adds at least one |
+| Integration | `@vscode/test-cli` (Electron), `npm test`, one suite per fixture workspace | VS Code download | **M0** (suite `integration` on `fixtures/workspaces/loose-file`), **M1** (the same suite with the fake tools; suites `simple-ipkg` and `toolchain-path`), **M2** (suites `diagnostics`, `loose-stdio`, `consent`; the fake compiler replays the transcripts), **M3** (suites `intelligence`, `intelligence-loose`; tests in `integration` and `diagnostics`) | fake LSP driven suites: M5; every UI milestone |
+| E2E | same runner, `npm run test:e2e` (suite `e2e`, only with `IDRIS2_E2E=1` or that script) | real `idris2` (+ `idris2-lsp`) | **M1** (`e2e/`, on `fixtures/workspaces/simple-ipkg`), **M2** (protocol facts, sessions, fake parity, E21), **M3** (the M3 acceptance, E14, the IO rendering, the REPL parser's commands) | every milestone adds at least one |
 | Contract | mocha suite parameterised over backends | as above | no | whichever of M4/M5 ships second |
-| Manual | `docs/checklists/Mn.md` | — | **M0**, **M1**, **M2** (`docs/checklists/M0.md`, `M1.md`, `M2.md`) | each milestone |
+| Manual | `docs/checklists/Mn.md` | — | **M0**, **M1**, **M2**, **M3** (`docs/checklists/M0.md` … `M3.md`) | each milestone |
 
 ```
 test/
@@ -21,21 +21,24 @@ test/
 │                                       idris2-scopes.md (scope inventory + limits, kept in sync by a test)
 ├─ corpus/                    M0        corpus.json (pinned repositories, fetched into .corpus/),
 │                                       lexer-oracle/LexDump.idr (the 0.8.0 lexer as reference)
-├─ integration/               M0–M2     @vscode/test-cli suites per fixture workspace: the top-level
+├─ integration/               M0–M3     @vscode/test-cli suites per fixture workspace: the top-level
 │                                       *.test.ts (suite integration), simple-ipkg/, path/
 │                                       (suite toolchain-path), diagnostics/, loose-stdio/,
-│                                       consent/ (M2); support.ts is their shared helper
-├─ e2e/                       M1, M2    real idris2 (IDRIS2_E2E=1); ideDriver.ts drives IDE-mode
+│                                       consent/ (M2), intelligence/, intelligence-loose/ (M3);
+│                                       support.ts is their shared helper
+├─ e2e/                       M1–M3     real idris2 (IDRIS2_E2E=1); ideDriver.ts drives IDE-mode
 │                                       sessions of it (M2)
 ├─ fake-idris2/               M0 (handshake + :version), M1 (recorded --ttc-version, --paths,
 │                                       --list-packages, --dump-ipkg-json), M2 (transcript replay
 │                                       over stdio + socket, injected faults, a command-line log;
-│                                       client.ts, the byte-level client its tests share)
+│                                       client.ts, the byte-level client its tests share), M3
+│                                       (replay by session role, told by the build directory; a
+│                                       log of the requests each process read)
 ├─ fake-tools/                M1        launchers (sh + .cmd) of the fake idris2, idris2-lsp
 │                                       (--version) and pack; fault modes; simulated pack layouts
 ├─ fake-lsp/                  M5        Node script (vscode-languageserver) replaying JSON-RPC
 └─ fixtures/
-   ├─ transcripts/<idris2-version>/*.jsonl   M2   recorded IDE-mode sessions (32 for 0.8.0), by
+   ├─ transcripts/<idris2-version>/*.jsonl   M2   recorded IDE-mode sessions (42 for 0.8.0), by
    │                                                scripts/record-transcripts.mjs; format and
    │                                                scenarios in transcripts/README.md
    ├─ cli/<idris2-version>/*.txt              M9   recorded --check/--build output
@@ -50,14 +53,19 @@ test/
    └─ workspaces/
       ├─ loose-file/          M0        no ipkg; checked with idris2 0.8.0 (`--check`, exit 0):
       │                                 Hello.idr (imports Data.Vect), Vlen.idr (the selection-range
-      │                                 example), Lit.lidr (bird tracks with prose); Notes.md (plain
+      │                                 example), Lit.lidr (bird tracks with prose; since the second
+      │                                 review of M3 also `> ` and `>   ` lines, each two lines of
+      │                                 the compiler's text, and `xs++ys`, `n+1`); Notes.md (plain
       │                                 Markdown, the non-Idris document); Doc.idr.md (M1: literate
       │                                 Markdown with a double extension, selected in the Markdown mode);
       │                                 .vscode/settings.json (M2: asks for the socket transport, which
       │                                 only user settings may choose, ROADMAP §9 Q20; checking.delay 777)
       ├─ simple-ipkg/         M1        sourcedir = "src", depends = contrib, modules Foo.A and Foo.B
       │                                 (B imports A; A does not import contrib, since check:fixtures
-      │                                 checks each file without package flags); M2 loads it in e2e
+      │                                 checks each file without package flags); M2 loads it in e2e;
+      │                                 M3 adds Foo.Shapes (data, records, an interface and its
+      │                                 implementation, an operator, docstrings: hover, tokens,
+      │                                 symbols, docs, Browse Namespace…)
       ├─ builddir-ipkg/       M2        an .ipkg with builddir = "out" (F12, E21)
       ├─ multi-module/        M9        one error in src/Sub.idr (build-task acceptance; no earlier suite needs it)
       ├─ broken/              M2        Bad.idr (type error), Warn.idr (unreachable clause),
@@ -65,9 +73,11 @@ test/
       │                                 Bad), Err.lidr, ErrMd.idr.md (literate), bad-ipkg/ (F10),
       │                                 Clean.idr, Plain.idr, Ambig.idr (the editing facts F2, F15,
       │                                 F29, F30; M4 edits them), warnings/ (one file per warning
-      │                                 kind, E5); the broken ones are in check:fixtures'
-      │                                 EXPECTED_PROBLEMS
-      ├─ literate/            M3 (Lit.lidr), M4 (Lit2.lidr), M12 (Lit3.lidr and the .md, .tex, .org, .typ hosts)
+      │                                 kind, E5), Unicode.idr (M3: E14, characters outside the
+      │                                 BMP, combining marks, comments); the broken ones are in
+      │                                 check:fixtures' EXPECTED_PROBLEMS
+      ├─ literate/            M4 (Lit2.lidr), M12 (Lit3.lidr and the .md, .tex, .org, .typ hosts); M3's
+      │                                 acceptance names literate/Lit.lidr, and uses loose-file/Lit.lidr
       └─ golden-tests/        M10       Test.Golden layout
 ```
 
@@ -114,8 +124,8 @@ No compiler runs in them; recorded compiler output comes from `fixtures/transcri
   single cut and pair of cuts, byte at a time, seeded property tests with mulberry32: sexp seed
   1, wire seeds 5, 7 and 11), a 7-digit prefix whose six-digit reading does not end a reply;
   every builder and decoder, and the handshake of another shape marked as such.
-- `protocolTranscripts.test.ts` — every frame of the 34 recordings cut and decoded under 20
-  random chunkings each (seeds 1–34; the socket recordings with the socket's decoder,
+- `protocolTranscripts.test.ts` — every frame of the recordings (34 in M2, 42 since M3) cut and
+  decoded under 20 random chunkings each (seeds 1–34 in M2; the socket recordings with the socket's decoder,
   `framesOnly`), and again with every `\n` of the stream written as `\r\n`
   (4 chunkings each, seeds 101–134), every request rebuilt byte for byte by a builder, every
   reply decoded by its command's decoder, and the facts each scenario pins (F1–F7, F10, F11,
@@ -189,7 +199,7 @@ No compiler runs in them; recorded compiler output comes from `fixtures/transcri
   answered request), the automatic restarts the checks follow (`onDidRestart`), the commands' and
   the checks' control surface.
 - `diagnosticsChecks.test.ts`, `diagnosticsCommands.test.ts` — `features/diagnostics/*` against
-  a fake of the VS Code API: triggers (`afterDelay` saves nothing in Restricted Mode, for a
+  a fake of the VS Code API: triggers, `runningCheck` (M3: the newest check while it runs) (`afterDelay` saves nothing in Restricted Mode, for a
   refused folder or a given-up session), document states, the collection (overlapping checks of
   one document: every result applied in the order the checks started; counts read from the
   collection; a closed document's diagnostics given back on reopening, only for the same text;
@@ -209,7 +219,8 @@ No compiler runs in them; recorded compiler output comes from `fixtures/transcri
   reads `stale`, and a check started between a text change and its dirty-state event reads the
   file; a file deleted and created again, one load per
   trigger for a document shown in two editor groups; the active document (the last active Idris
-  file while another editor is active) and its root told to the backend;
+  file while another editor is active) and its root told to the backend, and its check started
+  last where several visible documents are checked at once (M3);
   `idris2.ideMode.maxBackgroundChecks` (ROADMAP §9 Q21): all at once with the default 0, one at
   a time in order with 1 while the active document's check starts at once, a waiting document
   that becomes active promoted, a waiting check dropped when its document closes or a newer check
@@ -269,6 +280,133 @@ No compiler runs in them; recorded compiler output comes from `fixtures/transcri
   transports and compared item by item with the recording (prefixes, program output, end of
   input, exit code), the fixture hashes, the choice between recordings by history, a request
   without a recording, the injected faults and the command lines it accepts or refuses.
+
+## Unit tests of the M3 code (`unit/`)
+
+No compiler runs in them; recorded compiler output comes from `fixtures/transcripts/0.8.0` (M3
+added the recordings `clean-queries`, `shapes-lookups`, `simple-ipkg-lookups`, `lit-lookups`,
+`unicode-columns`, `eval-values`, `eval-command-forms` and `eval-socket`). The features are tested
+against fakes of the VS Code API (`support/intelligence.ts`, `support/interactiveFakes.ts`) and of
+the backend.
+
+- `replCommand.test.ts` — `backend/ide/replCommand.ts`, the refusal of Evaluate Selection: every
+  text the compiler ran as the command `:t id` in `eval-command-forms` is refused; the expressions
+  of `eval-values` are sent; the REPL commands that run programs or change the session, however
+  they are preceded (white space, control and format characters, comments); and a port of the
+  compiler's lexer rules as an oracle, checked against the recorded texts and then run on 20,000
+  generated texts (seed 20260929): every text it reads as a command is refused.
+- `positions.test.ts` (M3 part) — E14: `codePointsBefore` and `utf16Length`, and every
+  conversion of the §7 table on lines with characters outside the BMP (the recorded answers of
+  `unicode-columns`); `toCompilerColumn` and `codeLineSpans` (a range over lines, per code line);
+  `lineCorrespondence` (a line diff: its equal pairs checked against a longest common subsequence
+  on 400 random pairs of texts, seed 23; the bound `MAX_LINE_EDITS`), `toLoadedPosition` (a
+  position of the text shown in the text a load read, also between two separate edits) and
+  `toShownPosition` (the converse, for a definition's range).
+- `protocolTranscripts.test.ts` (M3 part) — the new recordings: every request rebuilt byte for
+  byte and every reply decoded; E14 (all 24 positional answers of `unicode-columns` land on the
+  named local and convert back to the recorded column), highlighting offsets inside a reply that
+  count code points, the completion and namespace-listing shapes, and an IO action shown, not run
+  (nothing unframed over stdio, nothing on the socket's stdout); `highlightSourceId` finds exactly
+  the `:highlight-source` frames of every recording.
+- `highlight.test.ts` — `backend/ide/highlight.ts`: the token index of eight recorded loads (every
+  named token holds its name in the fixture text at the converted range, except the recorded
+  sugar: tuple commas, list brackets), duplicates merged, E14, the `.lidr` offset, failed loads
+  (no index), frames of another file or shape, and the cost of 24,000 frames (asserted < 200 ms;
+  the numbers are in `docs/as-built/M3.md`, *Measured*).
+- `backendIde.test.ts` (M3 part) — the queries (`NotLoaded` at once and right before the write,
+  positional `:type-of` then by name, an answer about another local not taken, a variable not
+  asked by name, `perimeter`'s machine name answered by name, caches per load, a reload being
+  made waited for, a position of a document with unsaved changes asked where it lies in the file
+  as loaded, a local operator's answer), definition (a bound variable refused by the caller's
+  decoration, also with unsaved changes; qualified names; the token's namespace; unreadable and
+  non-absolute targets; the `:name-at` answer and the target files kept per load; a range moved
+  to the target's open document with unsaved changes, or left out on a changed line),
+  completions, namespace listings, the token index (its text only when the file read the same
+  before and after the load; at most 16 kept; a byte order mark dropped, as the compiler drops
+  it) and `onDidLoad` (`rebuilt`), the completion
+  warm-up (sent once the session has been idle for a while, given up after a limit), and evaluation (the refusal before the backend classifies or starts anything, a load
+  before every `:interpret`, the `:interpret` queued with the load under `idris2.eval.timeout`,
+  one evaluation at a time, the load lost before the `:interpret`, a time-out, a failed session,
+  a cancellation, a file that does not load, the directory check of the `eval` process); and an
+  evaluation with the real session pool at `maxSessions` 0, 1 and 2 (one `eval` process each).
+- `pool.test.ts` (M3 part) — the `eval` role: its command line (`build/.vscode-idris2-eval` unless
+  the package or `extraArgs` choose the build directory), counted towards `maxSessions` while idle
+  (starting an evaluation stops no other root's session) and evicted before any `check` session,
+  stopped — not restarted — by Restart Backend (one project or all) and by a change of its command
+  line, stopped by `cancelEvaluation`, its idle limit of at most 2 minutes. `session.test.ts` (M3 part): an `eval` session is not restarted after an
+  exit, a request time-out or a handshake time-out, and drops the `:highlight-source` outputs of
+  its request unread.
+- `hover.test.ts`, `hoverQueries.test.ts`, `hoverText.test.ts` —
+  `features/intelligence/{occurrence,hover,queries,text}.ts`: the name at a position (index, else
+  the lexer), the tokens that still apply to another text (and all of them again for the text the
+  load read), the hover model and the answers it drops, the occurrence's decoration passed on, no
+  type kept while the document is stale, `isStale`, the rendering (compiler text only
+  in fences no line can close — the overview too, whose named character references and autolinks
+  `appendText` let through —, invisible characters written out), `DocumentQueries` (Restricted
+  Mode, the load on `NotLoaded` for commands and for the active document only, one shared check,
+  the document's running check waited for instead of a second)
+  and `AnswerCache` (kept until a load of the root that built something, also of another file;
+  dropped when the document closes); the `:docs-for` blocks and their overview.
+- `semanticTokens.test.ts`, `symbols.test.ts`, `documentHighlights.test.ts`, `definition.test.ts`,
+  `docs.test.ts`, `browse.test.ts` — the legend and encoding (recorded tokens of `Shapes.idr` and
+  `Lit.lidr`; multi-line tokens per line, after the bird-track marker and not on prose lines; of
+  overlapping tokens the inner one; literals `:data`; 2,000 lines under the budget), document
+  symbols from the syntax model, highlights (bound names per clause, globals per file), Go to
+  Definition (nothing shown for locals; the decoration and namespace passed on; the backend's
+  reason logged), the `idris2-doc:` document (a `.txt` path, refreshed
+  after a load; a docstring with links, HTML, icons and fences shown as text), Show
+  Documentation… and Browse Namespace….
+- `completion.test.ts`, `inlayHints.test.ts` — where completion applies, the keywords and
+  directives (against the lexer and the grammar), the time limit (an incomplete list, answers
+  kept per file, a longer prefix answered from a pending shorter one), the pre-warming after a
+  load of the active file, a compiler name as a label (invisible characters written out, no theme
+  icon; inserted as it is); which bound tokens get a hint, the label, the tooltip, the range asked
+  about, the caches, nothing asked while the document has unsaved changes or shows another text
+  than the index (also after it was closed, changed and opened again), and then the kept hints at
+  the places their tokens were carried to (also between two separate edits), and the answers a
+  load made stale where nothing can be asked (a failed save, a refused query).
+- `eval.test.ts`, `untrustedText.test.ts` — `features/eval`: the selected expression (bird
+  tracks and Org's `#+IDRIS:` markers, prose, Org lines without a marker, a selection over lines
+  indented to its column: `let` and `case … of` blocks),
+  the label and the hover, the command's outcomes, notifications (one line, invisible characters
+  written out) and results drawn, the Cancel offered a second after the evaluation started (not
+  while it waits behind another of its root), and, with the real `IdeMode`
+  over recording fakes, every command form refused before any session is asked for;
+  `core/untrustedText.ts`: the fence (also for 200,000 runs of backticks), `visible`,
+  `quickPickText`, `editorLabel` (every format character, also those that are not
+  default-ignorable).
+- `fileSystem.test.ts` — `toolchain/fileSystem.ts` `readSourceFile`, how IDE mode reads the source
+  files its replies name: a FIFO and `/dev/zero` refused unopened, the 8 MiB limit.
+- `keybindings.test.ts` — every command a keybinding binds, and every command `package.json`
+  contributes, is registered by a `registerCommand` call with a literal id in `src/`.
+- M2 files extended in M3: `config.test.ts` and `manifest.test.ts` (the M3 settings, commands,
+  menus and keybindings; `idris2.keybindings.scheme` in the user settings only), `errors.test.ts`
+  (`NotLoaded`), `nullBackend.test.ts`, `statusItem.test.ts` (the item written only when what it
+  shows changed), `fakeIdris2Replay.test.ts` (each
+  recording replayed with its own command line, so in its session role).
+
+## Integration suites of M3 (`integration/`)
+
+The fake compiler replays the M3 recordings; `FAKE_IDRIS2_REQUEST_LOG` shows which process read
+which request.
+
+- `intelligence/` (suite `intelligence`, workspace `simple-ipkg`) — hover on `greeting`, F12 on
+  `shout` into `A.idr`, the semantic tokens of `Shapes.idr` in idris2-lsp's legend, a replay whose
+  highlighting has empty `:type`/`:doc-overview` fields (F33) with the hover answering from
+  `:type-of`, the bound variable `r`, highlights, symbols, and Docs at Cursor / Show
+  Documentation… (the input box accepted).
+- `intelligence-loose/` (suite `intelligence-loose`, workspace `broken`) — `queries.test.ts`: the
+  hover and the inlay hint on `xs` (moved with its line under an unsaved inserted line, again in
+  place after the revert, none with the setting off), completion of `vl`, E14 on `Unicode.idr`; `evaluation.test.ts`: REPL commands
+  refused with nothing sent and no `eval` process started, values and IO actions from a new `eval`
+  session (its own build directory, the `check` session's transport), the `check` session
+  untouched; `keybindings.test.ts`: the nine bindings VS Code accepted, per scheme, and E23 (the
+  default keymap's bindings that share a scheme's first key, printed, and pinned on macOS).
+- `intelligenceLit.test.ts` (suite `integration`) — `Lit.lidr`: tokens and hover in file columns;
+  below its `> `/`>   ` lines the compiler's lines are the file's plus one per such line, and the
+  hover on `++` right after `xs` asks one column further.
+- `diagnostics/evaluationSocket.test.ts` (suite `diagnostics`) — the `eval` session uses the
+  socket when the user chose it for the `check` session.
 
 ## Unit tests of the M1 code (`unit/`)
 
@@ -347,7 +485,7 @@ snapshots and project roots and a fake `ToolchainService` for them.
   pack; the fault modes; and the simulated pack layouts (skipped on Windows), including that
   running pack's `idris2` wrapper runs pack.
 
-## E2E suite (`e2e/`, M1, M2)
+## E2E suite (`e2e/`, M1–M3)
 
 Runs with `npm run test:e2e` (the `e2e` suite of `.vscode-test.mjs`, workspace
 `fixtures/workspaces/simple-ipkg`, no toolchain settings) against the `idris2` on `PATH`; the
@@ -397,6 +535,17 @@ what the real compiler prints **in the same run** (shapes, not the literal 0.8.0
 - `e21.test.ts` (M2) — ROADMAP §9 E21: one IDE-mode session and one `idris2 --build` at the same
   time on `builddir-ipkg` (the only test that runs two compiler processes); both succeed and the
   TTC files stay usable. It prints whether the two compiled at the same time.
+- `intelligence.test.ts` (M3) — the M3 acceptance with the real compiler: hover on `greeting`, F12
+  on `shout`, the tokens of `Circle` and `area`, the hover and inlay hint on `xs`, completion of
+  `vl`, E14 on `Unicode.idr`, Evaluate Selection (`:exec` refused with no process started; `[1, 2]`,
+  the IO action and the `HasIO` error from an `eval` process with its own build directory; the
+  hover answering afterwards), `Lit.lidr`'s `module` token at column 2, and the semantic tokens of
+  a generated 2,000-line module (asserted < 200 ms; it prints its numbers). One compiler at a
+  time: the evaluation runs while the root's `check` session is stopped.
+- `protocolFacts.test.ts` (M3 part) — E14 for `:type-of` and `:highlight-source`, an IO action
+  given to `:interpret` normalised and not run over both transports, and which spellings of `:t id`
+  the REPL parser reads as a command; `fakeParity.test.ts` adds `eval-values` over both
+  transports.
 
 ## Grammar tests (`grammar/`)
 
@@ -511,7 +660,9 @@ what the real compiler prints **in the same run** (shapes, not the literal 0.8.0
   function describes the state at the deadline, as `statusText`'s does), and setting a toolchain
   setting then waiting for the rescan it triggers; M2: showing a file, waiting for its
   diagnostics or a status text, the check session of a directory, saving without a change, and
-  the fake IDE-mode processes of a workspace (`/bin/ps`; not on Windows).
+  the fake IDE-mode processes of a workspace (`/bin/ps`; not on Windows); `settled` waits until a
+  session is `ready` with no state change for 1 s (after the completion warm-up, which follows a
+  load once the session has been idle for 150 ms).
 - `terminalRecorder.ts`, `terminalRecorder.mjs` (M1, shared with the e2e suite) — make a Node
   script that records every byte a terminal sends it, and runs nothing, the default terminal
   profile (`terminal.integrated.profiles.<osx|linux|windows>`), then run a command and return

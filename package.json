@@ -1,7 +1,7 @@
 {
   "name": "vscode-idris2",
   "displayName": "Idris 2",
-  "description": "Idris 2 language support: the compiler's errors and warnings, syntax highlighting, editing support, snippets and toolchain detection. Types, holes and interactive editing are in development.",
+  "description": "Idris 2 language support: the compiler's errors and warnings, types and documentation on hover, go to definition, completion, semantic highlighting, inlay hints, evaluation of expressions, syntax highlighting, editing support, snippets and toolchain detection. Holes and interactive editing are in development.",
   "version": "0.0.1",
   "publisher": "etairi",
   "license": "MIT",
@@ -205,7 +205,7 @@
           "default": true,
           "scope": "window",
           "order": 21,
-          "markdownDescription": "Keep the build files (TTC) the compiler writes for the editor in `build/.vscode-idris2` next to the package's `.ipkg` (for a file without a package, next to the file), apart from those of your own `idris2 --build` or `pack build`, by passing `--build-dir`. When the `.ipkg` sets `builddir`, or a `--build-dir` in `opts`, the compiler uses that directory whatever `--build-dir` says, so the editor and your builds share it (and no `--build-dir` is passed); **Idris 2: Stop Backend** stops the editor's compiler before a build. A `--build-dir` in `#idris2.ideMode.extraArgs#` is used instead of this one. Changing it restarts the running IDE-mode processes whose command line it changes."
+          "markdownDescription": "Keep the build files (TTC) the compiler writes for the editor in `build/.vscode-idris2` next to the package's `.ipkg` (for a file without a package, next to the file), apart from those of your own `idris2 --build` or `pack build`, by passing `--build-dir`. When the `.ipkg` sets `builddir`, or a `--build-dir` in `opts`, the compiler uses that directory whatever `--build-dir` says, so the editor and your builds share it (and no `--build-dir` is passed); **Idris 2: Stop Backend** stops the editor's compiler before a build. A `--build-dir` in `#idris2.ideMode.extraArgs#` is used instead of this one. The process of **Idris 2: Evaluate Selection** keeps its build files in `build/.vscode-idris2-eval`, whatever this setting says, unless the `.ipkg` or `extraArgs` choose the build directory as above. Changing it restarts the running IDE-mode processes whose command line it changes."
         },
         "idris2.ideMode.loosePackages": {
           "type": "array",
@@ -253,7 +253,7 @@
           "maximum": 2147483647,
           "scope": "window",
           "order": 26,
-          "markdownDescription": "Milliseconds after which an IDE-mode process that has had no request is stopped, to free its memory; it starts again when it is needed. `0`: never stopped for being idle. At most 2147483647 (about 24.8 days)."
+          "markdownDescription": "Milliseconds after which an IDE-mode process that has had no request is stopped, to free its memory; it starts again when it is needed. The process of **Idris 2: Evaluate Selection** stops after at most 2 minutes without an evaluation (never when this setting is `0`), and after an evaluation that took more than a second. `0`: never stopped for being idle. At most 2147483647 (about 24.8 days)."
         },
         "idris2.ideMode.maxSessions": {
           "type": "integer",
@@ -261,7 +261,7 @@
           "minimum": 0,
           "scope": "window",
           "order": 27,
-          "markdownDescription": "The most IDE-mode compiler processes that keep running at once in this VS Code window; `0` (the default): no limit. Each window counts its own, so with two windows open up to twice as many can run. Each project (each `.ipkg` folder, and each folder of files without one) has its own process. Above the limit, the process of the project used least recently that is idle is stopped — never one that is busy, and never the one of the active editor's file; it starts again at that project's next check, which then loads its modules again. On a machine with little memory, try `3`. Changing it restarts nothing."
+          "markdownDescription": "The most IDE-mode compiler processes that keep running at once in this VS Code window; `0` (the default): no limit. Each window counts its own, so with two windows open up to twice as many can run. Each project (each `.ipkg` folder, and each folder of files without one) has its own process, and a second one once you evaluate an expression there (**Idris 2: Evaluate Selection**); both count. Above the limit, idle processes are stopped — never one that is busy: first the evaluation processes, the one used least recently first, then the checking processes of projects other than the active editor's file's, likewise; a stopped process starts again when it is next needed, and then loads its modules again. On a machine with little memory, try `3`. Changing it restarts nothing."
         },
         "idris2.ideMode.maxBackgroundChecks": {
           "type": "integer",
@@ -277,6 +277,48 @@
           "scope": "window",
           "order": 30,
           "markdownDescription": "Keep the source excerpt the compiler prints under the location of an error or warning in the message shown in the editor and the Problems panel. Off by default, since the editor marks the location itself."
+        },
+        "idris2.inlayHints.variableTypes": {
+          "type": "boolean",
+          "default": true,
+          "scope": "window",
+          "order": 31,
+          "markdownDescription": "Show the type of each pattern variable after it, as the compiler infers it: `: Vect ?_ ?_` after `xs` in `vlen xs = ?vlen_rhs`. The types come from the compiler's last check of the saved file; while the file has unsaved changes the hints of that check stay with their variables. VS Code's `editor.inlayHints.enabled` also applies."
+        },
+        "idris2.eval.inlineResults": {
+          "type": "boolean",
+          "default": true,
+          "scope": "window",
+          "order": 32,
+          "markdownDescription": "Show the result of **Idris 2: Evaluate Selection** in the editor, after the last line of the evaluated text, and in a hover over that text; **Idris 2: Clear Evaluation Results** removes them. Off: the result is shown in a notification instead. Evaluate evaluates expressions only, in a second compiler process of the file's project that starts at the first evaluation: an `IO` action is shown as a value, not run, and REPL commands such as `:exec` are refused."
+        },
+        "idris2.eval.timeout": {
+          "type": "integer",
+          "default": 10000,
+          "minimum": 1000,
+          "maximum": 2147483647,
+          "scope": "window",
+          "order": 33,
+          "markdownDescription": "Milliseconds the compiler has to evaluate an expression for **Idris 2: Evaluate Selection**. IDE mode cannot cancel an evaluation, so one that takes longer stops the evaluation's compiler process, which starts again at the next evaluation; an evaluation that does not end can take more than a gigabyte of memory within seconds. An evaluation still running after a second can also be cancelled from its notification. From 1000 to 2147483647 (about 24.8 days)."
+        },
+        "idris2.keybindings.scheme": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "chords",
+            "prefix",
+            "none"
+          ],
+          "default": "auto",
+          "scope": "application",
+          "order": 35,
+          "markdownEnumDescriptions": [
+            "`chords` on macOS, `prefix` on Linux and Windows.",
+            "`Ctrl+C` followed by `Ctrl+<letter>`, in the style of Emacs and Agda (on macOS the Control key, not Command). On Linux and Windows, `Ctrl+C` then starts a shortcut in Idris editors and no longer copies there.",
+            "`Ctrl+Alt+I` followed by the letter. On Linux and Windows, `Ctrl+Alt+I` then starts a shortcut in Idris editors and no longer opens the Chat view there.",
+            "No keyboard shortcuts; the commands stay in the Command Palette."
+          ],
+          "markdownDescription": "Keyboard shortcuts of the Idris 2 commands in Idris editors: the letter `t` runs **Idris 2: Type at Cursor**, `d` **Docs at Cursor** and `e` **Evaluate Selection**. `auto` (the default): `chords` on macOS, `prefix` on Linux and Windows. `chords`: `Ctrl+C` followed by `Ctrl+<letter>`, e.g. `Ctrl+C Ctrl+T` (on macOS the Control key); on Linux and Windows `Ctrl+C` then no longer copies in Idris editors. `prefix`: `Ctrl+Alt+I` followed by the letter, e.g. `Ctrl+Alt+I T`; on Linux and Windows `Ctrl+Alt+I` then no longer opens the Chat view in Idris editors. `none`: no shortcuts. A keymap extension that binds `Ctrl+C` itself (VSCodeVim does in its default configuration) takes precedence over `chords`: choose `prefix` then. Read from your user settings only: a workspace cannot change your keyboard."
         },
         "idris2.trace.protocol": {
           "type": "boolean",
@@ -397,6 +439,36 @@
         "command": "idris2.manageAllowedFolders",
         "title": "Manage Allowed Folders…",
         "category": "Idris 2"
+      },
+      {
+        "command": "idris2.typeAtCursor",
+        "title": "Type at Cursor",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.docsAtCursor",
+        "title": "Docs at Cursor",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.showDocumentation",
+        "title": "Show Documentation…",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.browseNamespace",
+        "title": "Browse Namespace…",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.evaluateSelection",
+        "title": "Evaluate Selection",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.clearEvaluationResults",
+        "title": "Clear Evaluation Results",
+        "category": "Idris 2"
       }
     ],
     "submenus": [
@@ -431,6 +503,30 @@
         {
           "command": "idris2.sendRawRequest",
           "when": "config.idris2.trace.protocol && isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.typeAtCursor",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.docsAtCursor",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.showDocumentation",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.browseNamespace",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.evaluateSelection",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.clearEvaluationResults",
+          "when": "idris2.isIdrisDocument"
         }
       ],
       "editor/title": [
@@ -452,6 +548,30 @@
         {
           "command": "idris2.stopBackend",
           "group": "0_backend@3"
+        },
+        {
+          "command": "idris2.typeAtCursor",
+          "group": "0_intelligence@1"
+        },
+        {
+          "command": "idris2.docsAtCursor",
+          "group": "0_intelligence@2"
+        },
+        {
+          "command": "idris2.showDocumentation",
+          "group": "0_intelligence@3"
+        },
+        {
+          "command": "idris2.browseNamespace",
+          "group": "0_intelligence@4"
+        },
+        {
+          "command": "idris2.evaluateSelection",
+          "group": "0_intelligence@5"
+        },
+        {
+          "command": "idris2.clearEvaluationResults",
+          "group": "0_intelligence@6"
         },
         {
           "command": "idris2.showSetupInformation",
@@ -501,6 +621,56 @@
         }
       ]
     },
+    "keybindings": [
+      {
+        "command": "idris2.typeAtCursor",
+        "key": "ctrl+c ctrl+t",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'chords'"
+      },
+      {
+        "command": "idris2.typeAtCursor",
+        "key": "ctrl+alt+i t",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'prefix'"
+      },
+      {
+        "command": "idris2.typeAtCursor",
+        "key": "ctrl+alt+i t",
+        "mac": "ctrl+c ctrl+t",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'auto'"
+      },
+      {
+        "command": "idris2.docsAtCursor",
+        "key": "ctrl+c ctrl+d",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'chords'"
+      },
+      {
+        "command": "idris2.docsAtCursor",
+        "key": "ctrl+alt+i d",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'prefix'"
+      },
+      {
+        "command": "idris2.docsAtCursor",
+        "key": "ctrl+alt+i d",
+        "mac": "ctrl+c ctrl+d",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'auto'"
+      },
+      {
+        "command": "idris2.evaluateSelection",
+        "key": "ctrl+c ctrl+e",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'chords'"
+      },
+      {
+        "command": "idris2.evaluateSelection",
+        "key": "ctrl+alt+i e",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'prefix'"
+      },
+      {
+        "command": "idris2.evaluateSelection",
+        "key": "ctrl+alt+i e",
+        "mac": "ctrl+c ctrl+e",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'auto'"
+      }
+    ],
     "walkthroughs": [
       {
         "id": "gettingStarted",

@@ -1,0 +1,356 @@
+{"kind":"meta","format":1,"scenario":"shapes-lookups","description":"Foo/Shapes.idr in simple-ipkg (the semantic-tokens fixture): its highlighting; positional :type-of on globals (declarations, definitions, uses, operators) and on every :bound token (pattern variables, an interface parameter, let- and lambda-bound names), and by name; :docs-for with and without docs (a constructor, the type, an interface and its method, an operator); :name-at; :browse-namespace of its own namespace, of Data.Vect (not imported) and of an unknown one; :repl-completions","facts":["F2","F30","F31","F33"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-09-29","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build/.vscode-idris2"],"cwd":"test/fixtures/workspaces/simple-ipkg","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"simple.ipkg":"45fbe92a34ee08c37f6315bd74257f336e853136f9a81a017d4daac3fbd38ea0","src/Foo/Shapes.idr":"c758a754534fb341ec1ba96cc096e6ff1354ace45b7a96a9bc41b098514ac03b"}}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"0000a7","text":"((:load-file \"${ROOT}/src/Foo/Shapes.idr\") 1)\n"}
+{"kind":"recv","prefix":"0000c3","text":"(:write-string \"1/1: Building Foo.Shapes (${ROOT}/src/Foo/Shapes.idr)\" 1)\n"}
+{"kind":"recv","prefix":"0000fa","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 0 0) (:end 0 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fa","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 0 7) (:end 0 17)) ((:decor :module)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fb","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 2 0) (:end 2 19)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fa","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 3 0) (:end 3 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fb","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 3 7) (:end 3 13)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fa","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 4 0) (:end 4 4)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 4 5) (:end 4 10)) ((:name \"Shape\") (:namespace \"\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 4 11) (:end 4 12)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f9","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 4 13) (:end 4 17)) ((:decor :type)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 4 18) (:end 4 23)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fb","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 5 2) (:end 5 30)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 6 2) (:end 6 8)) ((:name \"Circle\") (:namespace \"\") (:decor :data) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fb","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 6 9) (:end 6 10)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f9","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 6 11) (:end 6 17)) ((:decor :type)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 6 18) (:end 6 20)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00015e","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 6 21) (:end 6 26)) ((:name \"Shape\") (:namespace \"Foo.Shapes\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000157","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 7 2) (:end 7 11)) ((:name \"Rectangle\") (:namespace \"\") (:decor :data) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 7 12) (:end 7 13)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f9","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 7 14) (:end 7 20)) ((:decor :type)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 7 21) (:end 7 23)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f9","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 7 24) (:end 7 30)) ((:decor :type)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 7 31) (:end 7 33)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00015e","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 7 34) (:end 7 39)) ((:name \"Shape\") (:namespace \"Foo.Shapes\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fb","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 9 0) (:end 9 24)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 10 0) (:end 10 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000157","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 11 0) (:end 11 4)) ((:name \"area\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 11 5) (:end 11 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00015f","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 11 7) (:end 11 12)) ((:name \"Shape\") (:namespace \"Foo.Shapes\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 11 13) (:end 11 15)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fb","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 11 16) (:end 11 22)) ((:decor :type)))))) 1)\n"}
+{"kind":"recv","prefix":"000161","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 12 0) (:end 12 4)) ((:name \"area\") (:namespace \"Foo.Shapes\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 12 5) (:end 12 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000160","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 12 6) (:end 12 12)) ((:name \"Circle\") (:namespace \"Foo.Shapes\") (:decor :data) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 12 13) (:end 12 14)) ((:name \"r\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 12 14) (:end 12 15)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 12 16) (:end 12 17)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000164","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 12 18) (:end 12 20)) ((:name \"pi\") (:namespace \"Prelude.Types\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000161","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 12 21) (:end 12 22)) ((:name \"*\") (:namespace \"Prelude.Num\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 12 23) (:end 12 24)) ((:name \"r\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000161","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 12 25) (:end 12 26)) ((:name \"*\") (:namespace \"Prelude.Num\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 12 27) (:end 12 28)) ((:name \"r\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000161","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 13 0) (:end 13 4)) ((:name \"area\") (:namespace \"Foo.Shapes\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 13 5) (:end 13 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000163","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 13 6) (:end 13 15)) ((:name \"Rectangle\") (:namespace \"Foo.Shapes\") (:decor :data) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 13 16) (:end 13 17)) ((:name \"w\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 13 18) (:end 13 19)) ((:name \"h\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 13 19) (:end 13 20)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 13 21) (:end 13 22)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 13 23) (:end 13 24)) ((:name \"w\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000161","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 13 25) (:end 13 26)) ((:name \"*\") (:namespace \"Prelude.Num\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 13 27) (:end 13 28)) ((:name \"h\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fd","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 15 0) (:end 15 39)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 16 0) (:end 16 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fd","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 16 7) (:end 16 13)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 17 0) (:end 17 9)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000159","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 17 10) (:end 17 18)) ((:name \"Measured\") (:namespace \"\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 17 19) (:end 17 20)) ((:name \"a\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 17 21) (:end 17 26)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fd","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 18 2) (:end 18 33)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"000167","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 19 2) (:end 19 11)) ((:name \"perimeter\") (:namespace \"Foo.Shapes\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00015d","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 19 2) (:end 19 11)) ((:name \"perimeter\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 19 12) (:end 19 13)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 19 14) (:end 19 15)) ((:name \"a\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 19 14) (:end 19 15)) ((:name \"a\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 19 16) (:end 19 18)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fb","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 19 19) (:end 19 25)) ((:decor :type)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 21 0) (:end 21 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000157","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 22 0) (:end 22 8)) ((:name \"Measured\") (:namespace \"\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00015f","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 22 9) (:end 22 14)) ((:name \"Shape\") (:namespace \"Foo.Shapes\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00015f","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 22 9) (:end 22 14)) ((:name \"Shape\") (:namespace \"Foo.Shapes\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 22 15) (:end 22 20)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000167","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 23 2) (:end 23 11)) ((:name \"perimeter\") (:namespace \"Foo.Shapes\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 23 12) (:end 23 13)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000161","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 23 13) (:end 23 19)) ((:name \"Circle\") (:namespace \"Foo.Shapes\") (:decor :data) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 23 20) (:end 23 21)) ((:name \"r\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 23 21) (:end 23 22)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 23 23) (:end 23 24)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fb","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 23 25) (:end 23 26)) ((:decor :data)))))) 1)\n"}
+{"kind":"recv","prefix":"000161","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 23 27) (:end 23 28)) ((:name \"*\") (:namespace \"Prelude.Num\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000164","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 23 29) (:end 23 31)) ((:name \"pi\") (:namespace \"Prelude.Types\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000161","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 23 32) (:end 23 33)) ((:name \"*\") (:namespace \"Prelude.Num\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 23 34) (:end 23 35)) ((:name \"r\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000167","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 24 2) (:end 24 11)) ((:name \"perimeter\") (:namespace \"Foo.Shapes\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 24 12) (:end 24 13)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000164","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 24 13) (:end 24 22)) ((:name \"Rectangle\") (:namespace \"Foo.Shapes\") (:decor :data) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 24 23) (:end 24 24)) ((:name \"w\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 24 25) (:end 24 26)) ((:name \"h\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 24 26) (:end 24 27)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 24 28) (:end 24 29)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fb","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 24 30) (:end 24 31)) ((:decor :data)))))) 1)\n"}
+{"kind":"recv","prefix":"000161","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 24 32) (:end 24 33)) ((:name \"*\") (:namespace \"Prelude.Num\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 24 34) (:end 24 35)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 24 35) (:end 24 36)) ((:name \"w\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000161","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 24 37) (:end 24 38)) ((:name \"+\") (:namespace \"Prelude.Num\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 24 39) (:end 24 40)) ((:name \"h\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 24 40) (:end 24 41)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 26 0) (:end 26 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000158","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 27 0) (:end 27 5)) ((:name \"scale\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 27 6) (:end 27 7)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fa","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 27 8) (:end 27 14)) ((:decor :type)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 27 15) (:end 27 17)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000160","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 27 18) (:end 27 23)) ((:name \"Shape\") (:namespace \"Foo.Shapes\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 27 24) (:end 27 26)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000160","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 27 27) (:end 27 32)) ((:name \"Shape\") (:namespace \"Foo.Shapes\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000162","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 28 0) (:end 28 5)) ((:name \"scale\") (:namespace \"Foo.Shapes\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000151","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 28 6) (:end 28 7)) ((:name \"k\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 28 8) (:end 28 9)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000160","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 28 9) (:end 28 15)) ((:name \"Circle\") (:namespace \"Foo.Shapes\") (:decor :data) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 28 16) (:end 28 17)) ((:name \"r\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 28 17) (:end 28 18)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 28 19) (:end 28 20)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 28 21) (:end 28 24)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000154","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 28 25) (:end 28 27)) ((:name \"r'\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 28 28) (:end 28 29)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 28 30) (:end 28 31)) ((:name \"k\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000161","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 28 32) (:end 28 33)) ((:name \"*\") (:namespace \"Prelude.Num\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 28 34) (:end 28 35)) ((:name \"r\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 28 36) (:end 28 38)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000161","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 28 39) (:end 28 45)) ((:name \"Circle\") (:namespace \"Foo.Shapes\") (:decor :data) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000154","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 28 46) (:end 28 48)) ((:name \"r'\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000162","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 29 0) (:end 29 5)) ((:name \"scale\") (:namespace \"Foo.Shapes\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000151","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 29 6) (:end 29 7)) ((:name \"k\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 29 8) (:end 29 9)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000163","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 29 9) (:end 29 18)) ((:name \"Rectangle\") (:namespace \"Foo.Shapes\") (:decor :data) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 29 19) (:end 29 20)) ((:name \"w\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 29 21) (:end 29 22)) ((:name \"h\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 29 22) (:end 29 23)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 29 24) (:end 29 25)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000164","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 29 26) (:end 29 35)) ((:name \"Rectangle\") (:namespace \"Foo.Shapes\") (:decor :data) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 29 36) (:end 29 37)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 29 37) (:end 29 38)) ((:name \"k\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000161","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 29 39) (:end 29 40)) ((:name \"*\") (:namespace \"Prelude.Num\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 29 41) (:end 29 42)) ((:name \"w\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 29 42) (:end 29 43)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 29 44) (:end 29 45)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 29 45) (:end 29 46)) ((:name \"k\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000161","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 29 47) (:end 29 48)) ((:name \"*\") (:namespace \"Prelude.Num\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 29 49) (:end 29 50)) ((:name \"h\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 29 50) (:end 29 51)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 31 0) (:end 31 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000158","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 32 0) (:end 32 5)) ((:name \"twice\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 32 6) (:end 32 7)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 32 8) (:end 32 9)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00015f","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 32 9) (:end 32 14)) ((:name \"Shape\") (:namespace \"Foo.Shapes\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 32 15) (:end 32 17)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000160","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 32 18) (:end 32 23)) ((:name \"Shape\") (:namespace \"Foo.Shapes\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 32 23) (:end 32 24)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 32 25) (:end 32 27)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000160","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 32 28) (:end 32 33)) ((:name \"Shape\") (:namespace \"Foo.Shapes\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 32 34) (:end 32 36)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000160","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 32 37) (:end 32 42)) ((:name \"Shape\") (:namespace \"Foo.Shapes\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000162","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 33 0) (:end 33 5)) ((:name \"twice\") (:namespace \"Foo.Shapes\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000151","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 33 6) (:end 33 7)) ((:name \"f\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 33 8) (:end 33 9)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 33 10) (:end 33 11)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 33 11) (:end 33 12)) ((:name \"s\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 33 13) (:end 33 15)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 33 16) (:end 33 17)) ((:name \"f\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 33 18) (:end 33 19)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 33 19) (:end 33 20)) ((:name \"f\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 33 21) (:end 33 22)) ((:name \"s\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 33 22) (:end 33 23)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 35 0) (:end 35 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fd","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 35 7) (:end 35 13)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 35 14) (:end 35 15)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fd","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 37 0) (:end 37 35)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 38 0) (:end 38 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000156","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 39 0) (:end 39 5)) ((:name \"|+|\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 39 6) (:end 39 7)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00015f","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 39 8) (:end 39 13)) ((:name \"Shape\") (:namespace \"Foo.Shapes\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 39 14) (:end 39 16)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000160","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 39 17) (:end 39 22)) ((:name \"Shape\") (:namespace \"Foo.Shapes\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 39 23) (:end 39 25)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fb","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 39 26) (:end 39 32)) ((:decor :type)))))) 1)\n"}
+{"kind":"recv","prefix":"000151","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 40 0) (:end 40 1)) ((:name \"a\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000160","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 40 2) (:end 40 5)) ((:name \"|+|\") (:namespace \"Foo.Shapes\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000151","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 40 6) (:end 40 7)) ((:name \"b\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 40 8) (:end 40 9)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000163","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 40 10) (:end 40 14)) ((:name \"area\") (:namespace \"Foo.Shapes\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 40 15) (:end 40 16)) ((:name \"a\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000161","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 40 17) (:end 40 18)) ((:name \"+\") (:namespace \"Prelude.Num\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000163","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 40 19) (:end 40 23)) ((:name \"area\") (:namespace \"Foo.Shapes\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 40 24) (:end 40 25)) ((:name \"b\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok ()) 1)\n"}
+{"kind":"send","prefix":"00001b","text":"((:type-of \"Shape\" 5 5) 2)\n"}
+{"kind":"recv","prefix":"00005e","text":"(:return (:ok \"Foo.Shapes.Shape : Type\" ((0 16 ((:decor :type))) (19 4 ((:decor :type))))) 2)\n"}
+{"kind":"send","prefix":"00001c","text":"((:type-of \"Circle\" 7 2) 3)\n"}
+{"kind":"recv","prefix":"00009d","text":"(:return (:ok \"Foo.Shapes.Circle : Double -> Shape\" ((0 17 ((:decor :data))) (20 6 ((:decor :type))) (27 2 ((:decor :keyword))) (30 5 ((:decor :type))))) 3)\n"}
+{"kind":"send","prefix":"00001f","text":"((:type-of \"Rectangle\" 8 2) 4)\n"}
+{"kind":"recv","prefix":"0000dd","text":"(:return (:ok \"Foo.Shapes.Rectangle : Double -> Double -> Shape\" ((0 20 ((:decor :data))) (23 6 ((:decor :type))) (30 2 ((:decor :keyword))) (33 6 ((:decor :type))) (40 2 ((:decor :keyword))) (43 5 ((:decor :type))))) 4)\n"}
+{"kind":"send","prefix":"00001b","text":"((:type-of \"area\" 12 0) 5)\n"}
+{"kind":"recv","prefix":"000083","text":"(:return (:ok \"Foo.Shapes.area : Shape -> Double\" ((18 5 ((:decor :type))) (24 2 ((:decor :keyword))) (27 6 ((:decor :type))))) 5)\n"}
+{"kind":"send","prefix":"00001b","text":"((:type-of \"area\" 13 0) 6)\n"}
+{"kind":"recv","prefix":"00009f","text":"(:return (:ok \"Foo.Shapes.area : Shape -> Double\" ((0 15 ((:decor :function))) (18 5 ((:decor :type))) (24 2 ((:decor :keyword))) (27 6 ((:decor :type))))) 6)\n"}
+{"kind":"send","prefix":"00001d","text":"((:type-of \"Circle\" 13 6) 7)\n"}
+{"kind":"recv","prefix":"00009d","text":"(:return (:ok \"Foo.Shapes.Circle : Double -> Shape\" ((0 17 ((:decor :data))) (20 6 ((:decor :type))) (27 2 ((:decor :keyword))) (30 5 ((:decor :type))))) 7)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"pi\" 13 18) 8)\n"}
+{"kind":"recv","prefix":"00005e","text":"(:return (:ok \"Prelude.pi : Double\" ((0 10 ((:decor :function))) (13 6 ((:decor :type))))) 8)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"*\" 13 21) 9)\n"}
+{"kind":"recv","prefix":"000126","text":"(:return (:ok \"Prelude.(*) : Num ty => ty -> ty -> ty\" ((0 11 ((:decor :function))) (14 3 ((:decor :type))) (18 2 ((:decor :bound))) (21 2 ((:decor :keyword))) (24 2 ((:decor :bound))) (27 2 ((:decor :keyword))) (30 2 ((:decor :bound))) (33 2 ((:decor :keyword))) (36 2 ((:decor :bound))))) 9)\n"}
+{"kind":"send","prefix":"000021","text":"((:type-of \"Measured\" 18 10) 10)\n"}
+{"kind":"recv","prefix":"00009d","text":"(:return (:ok \"Foo.Shapes.Measured : Type -> Type\" ((0 19 ((:decor :type))) (22 4 ((:decor :type))) (27 2 ((:decor :keyword))) (30 4 ((:decor :type))))) 10)\n"}
+{"kind":"send","prefix":"000021","text":"((:type-of \"perimeter\" 20 2) 11)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:ok \"Foo.Shapes.perimeter : Measured a => a -> Double\" ((23 8 ((:decor :type))) (32 1 ((:decor :bound))) (34 2 ((:decor :keyword))) (37 1 ((:decor :bound))) (39 2 ((:decor :keyword))) (42 6 ((:decor :type))))) 11)\n"}
+{"kind":"send","prefix":"000021","text":"((:type-of \"perimeter\" 24 2) 12)\n"}
+{"kind":"recv","prefix":"00008d","text":"(:return (:ok \"perimeter_Measured_Shape : Shape -> Double\" ((27 5 ((:decor :type))) (33 2 ((:decor :keyword))) (36 6 ((:decor :type))))) 12)\n"}
+{"kind":"send","prefix":"00001d","text":"((:type-of \"scale\" 28 0) 13)\n"}
+{"kind":"recv","prefix":"0000c1","text":"(:return (:ok \"Foo.Shapes.scale : Double -> Shape -> Shape\" ((19 6 ((:decor :type))) (26 2 ((:decor :keyword))) (29 5 ((:decor :type))) (35 2 ((:decor :keyword))) (38 5 ((:decor :type))))) 13)\n"}
+{"kind":"send","prefix":"00001d","text":"((:type-of \"twice\" 33 0) 14)\n"}
+{"kind":"recv","prefix":"0000fe","text":"(:return (:ok \"Foo.Shapes.twice : (Shape -> Shape) -> Shape -> Shape\" ((20 5 ((:decor :type))) (26 2 ((:decor :keyword))) (29 5 ((:decor :type))) (36 2 ((:decor :keyword))) (39 5 ((:decor :type))) (45 2 ((:decor :keyword))) (48 5 ((:decor :type))))) 14)\n"}
+{"kind":"send","prefix":"00001b","text":"((:type-of \"|+|\" 40 1) 15)\n"}
+{"kind":"recv","prefix":"0000c1","text":"(:return (:ok \"Foo.Shapes.(|+|) : Shape -> Shape -> Double\" ((19 5 ((:decor :type))) (25 2 ((:decor :keyword))) (28 5 ((:decor :type))) (34 2 ((:decor :keyword))) (37 6 ((:decor :type))))) 15)\n"}
+{"kind":"send","prefix":"00001b","text":"((:type-of \"|+|\" 41 2) 16)\n"}
+{"kind":"recv","prefix":"0000dd","text":"(:return (:ok \"Foo.Shapes.(|+|) : Shape -> Shape -> Double\" ((0 16 ((:decor :function))) (19 5 ((:decor :type))) (25 2 ((:decor :keyword))) (28 5 ((:decor :type))) (34 2 ((:decor :keyword))) (37 6 ((:decor :type))))) 16)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"+\" 41 17) 17)\n"}
+{"kind":"recv","prefix":"000127","text":"(:return (:ok \"Prelude.(+) : Num ty => ty -> ty -> ty\" ((0 11 ((:decor :function))) (14 3 ((:decor :type))) (18 2 ((:decor :bound))) (21 2 ((:decor :keyword))) (24 2 ((:decor :bound))) (27 2 ((:decor :keyword))) (30 2 ((:decor :bound))) (33 2 ((:decor :keyword))) (36 2 ((:decor :bound))))) 17)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"r\" 13 13) 18)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"r : Double\" ((4 6 ((:decor :type))))) 18)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"r\" 13 23) 19)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"r : Double\" ((4 6 ((:decor :type))))) 19)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"r\" 13 27) 20)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"r : Double\" ((4 6 ((:decor :type))))) 20)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"w\" 14 16) 21)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"w : Double\" ((4 6 ((:decor :type))))) 21)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"h\" 14 18) 22)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"h : Double\" ((4 6 ((:decor :type))))) 22)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"w\" 14 23) 23)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"w : Double\" ((4 6 ((:decor :type))))) 23)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"h\" 14 27) 24)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"h : Double\" ((4 6 ((:decor :type))))) 24)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"a\" 18 19) 25)\n"}
+{"kind":"recv","prefix":"0000e3","text":"(:return (:error \"Undefined name a. \n\n(Interactive):1:1--1:1\n 1 | module Foo.Shapes\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (71 0 ((:text-formatting :bold) (:decor :postulate))))) 25)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"a\" 20 14) 26)\n"}
+{"kind":"recv","prefix":"000037","text":"(:return (:ok \"a : Type\" ((4 4 ((:decor :type))))) 26)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"r\" 24 20) 27)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"r : Double\" ((4 6 ((:decor :type))))) 27)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"r\" 24 34) 28)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"r : Double\" ((4 6 ((:decor :type))))) 28)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"w\" 25 23) 29)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"w : Double\" ((4 6 ((:decor :type))))) 29)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"h\" 25 25) 30)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"h : Double\" ((4 6 ((:decor :type))))) 30)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"w\" 25 35) 31)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"w : Double\" ((4 6 ((:decor :type))))) 31)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"h\" 25 39) 32)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"h : Double\" ((4 6 ((:decor :type))))) 32)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"k\" 29 6) 33)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"k : Double\" ((4 6 ((:decor :type))))) 33)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"r\" 29 16) 34)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"r : Double\" ((4 6 ((:decor :type))))) 34)\n"}
+{"kind":"send","prefix":"00001b","text":"((:type-of \"r'\" 29 25) 35)\n"}
+{"kind":"recv","prefix":"00003a","text":"(:return (:ok \"r' : Double\" ((5 6 ((:decor :type))))) 35)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"k\" 29 30) 36)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"k : Double\" ((4 6 ((:decor :type))))) 36)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"r\" 29 34) 37)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"r : Double\" ((4 6 ((:decor :type))))) 37)\n"}
+{"kind":"send","prefix":"00001b","text":"((:type-of \"r'\" 29 46) 38)\n"}
+{"kind":"recv","prefix":"00003a","text":"(:return (:ok \"r' : Double\" ((5 6 ((:decor :type))))) 38)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"k\" 30 6) 39)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"k : Double\" ((4 6 ((:decor :type))))) 39)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"w\" 30 19) 40)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"w : Double\" ((4 6 ((:decor :type))))) 40)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"h\" 30 21) 41)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"h : Double\" ((4 6 ((:decor :type))))) 41)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"k\" 30 37) 42)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"k : Double\" ((4 6 ((:decor :type))))) 42)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"w\" 30 41) 43)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"w : Double\" ((4 6 ((:decor :type))))) 43)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"k\" 30 45) 44)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"k : Double\" ((4 6 ((:decor :type))))) 44)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"h\" 30 49) 45)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"h : Double\" ((4 6 ((:decor :type))))) 45)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"f\" 34 6) 46)\n"}
+{"kind":"recv","prefix":"000074","text":"(:return (:ok \"f : Shape -> Shape\" ((4 5 ((:decor :type))) (10 2 ((:decor :keyword))) (13 5 ((:decor :type))))) 46)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"s\" 34 11) 47)\n"}
+{"kind":"recv","prefix":"000038","text":"(:return (:ok \"s : Shape\" ((4 5 ((:decor :type))))) 47)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"f\" 34 16) 48)\n"}
+{"kind":"recv","prefix":"000074","text":"(:return (:ok \"f : Shape -> Shape\" ((4 5 ((:decor :type))) (10 2 ((:decor :keyword))) (13 5 ((:decor :type))))) 48)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"f\" 34 19) 49)\n"}
+{"kind":"recv","prefix":"000074","text":"(:return (:ok \"f : Shape -> Shape\" ((4 5 ((:decor :type))) (10 2 ((:decor :keyword))) (13 5 ((:decor :type))))) 49)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"s\" 34 21) 50)\n"}
+{"kind":"recv","prefix":"000038","text":"(:return (:ok \"s : Shape\" ((4 5 ((:decor :type))))) 50)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"a\" 41 0) 51)\n"}
+{"kind":"recv","prefix":"000038","text":"(:return (:ok \"a : Shape\" ((4 5 ((:decor :type))))) 51)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"b\" 41 6) 52)\n"}
+{"kind":"recv","prefix":"000038","text":"(:return (:ok \"b : Shape\" ((4 5 ((:decor :type))))) 52)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"a\" 41 15) 53)\n"}
+{"kind":"recv","prefix":"000038","text":"(:return (:ok \"a : Shape\" ((4 5 ((:decor :type))))) 53)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"b\" 41 24) 54)\n"}
+{"kind":"recv","prefix":"000038","text":"(:return (:ok \"b : Shape\" ((4 5 ((:decor :type))))) 54)\n"}
+{"kind":"send","prefix":"000017","text":"((:type-of \"area\") 55)\n"}
+{"kind":"recv","prefix":"0000a0","text":"(:return (:ok \"Foo.Shapes.area : Shape -> Double\" ((0 15 ((:decor :function))) (18 5 ((:decor :type))) (24 2 ((:decor :keyword))) (27 6 ((:decor :type))))) 55)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"Circle\") 56)\n"}
+{"kind":"recv","prefix":"00009e","text":"(:return (:ok \"Foo.Shapes.Circle : Double -> Shape\" ((0 17 ((:decor :data))) (20 6 ((:decor :type))) (27 2 ((:decor :keyword))) (30 5 ((:decor :type))))) 56)\n"}
+{"kind":"send","prefix":"000018","text":"((:type-of \"Shape\") 57)\n"}
+{"kind":"recv","prefix":"00005f","text":"(:return (:ok \"Foo.Shapes.Shape : Type\" ((0 16 ((:decor :type))) (19 4 ((:decor :type))))) 57)\n"}
+{"kind":"send","prefix":"00001c","text":"((:type-of \"perimeter\") 58)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:return (:ok \"Foo.Shapes.perimeter : Measured a => a -> Double\" ((0 20 ((:decor :function))) (23 8 ((:decor :type))) (32 1 ((:decor :bound))) (34 2 ((:decor :keyword))) (37 1 ((:decor :bound))) (39 2 ((:decor :keyword))) (42 6 ((:decor :type))))) 58)\n"}
+{"kind":"send","prefix":"000016","text":"((:type-of \"|+|\") 59)\n"}
+{"kind":"recv","prefix":"0000dd","text":"(:return (:ok \"Foo.Shapes.(|+|) : Shape -> Shape -> Double\" ((0 16 ((:decor :function))) (19 5 ((:decor :type))) (25 2 ((:decor :keyword))) (28 5 ((:decor :type))) (34 2 ((:decor :keyword))) (37 6 ((:decor :type))))) 59)\n"}
+{"kind":"send","prefix":"000014","text":"((:type-of \"+\") 60)\n"}
+{"kind":"recv","prefix":"000127","text":"(:return (:ok \"Prelude.(+) : Num ty => ty -> ty -> ty\" ((0 11 ((:decor :function))) (14 3 ((:decor :type))) (18 2 ((:decor :bound))) (21 2 ((:decor :keyword))) (24 2 ((:decor :bound))) (27 2 ((:decor :keyword))) (30 2 ((:decor :bound))) (33 2 ((:decor :keyword))) (36 2 ((:decor :bound))))) 60)\n"}
+{"kind":"send","prefix":"000014","text":"((:type-of \"r\") 61)\n"}
+{"kind":"recv","prefix":"0000e3","text":"(:return (:error \"Undefined name r. \n\n(Interactive):1:1--1:1\n 1 | module Foo.Shapes\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (71 0 ((:text-formatting :bold) (:decor :postulate))))) 61)\n"}
+{"kind":"send","prefix":"000018","text":"((:docs-for \"area\") 62)\n"}
+{"kind":"recv","prefix":"00010f","text":"(:return (:ok \"Foo.Shapes.area : Shape -> Double\n  The area of a shape.\n  Visibility: export\" ((0 15 ((:decor :function))) (18 5 ((:decor :type))) (24 2 ((:decor :keyword))) (27 6 ((:decor :type))) (59 10 ((:text-formatting :underline))) (71 6 ((:decor :keyword))))) 62)\n"}
+{"kind":"send","prefix":"000019","text":"((:docs-for \"scale\") 63)\n"}
+{"kind":"recv","prefix":"000135","text":"(:return (:ok \"Foo.Shapes.scale : Double -> Shape -> Shape\n  Visibility: export\" ((0 16 ((:decor :function))) (19 6 ((:decor :type))) (26 2 ((:decor :keyword))) (29 5 ((:decor :type))) (35 2 ((:decor :keyword))) (38 5 ((:decor :type))) (46 10 ((:text-formatting :underline))) (58 6 ((:decor :keyword))))) 63)\n"}
+{"kind":"send","prefix":"00001a","text":"((:docs-for \"Circle\") 64)\n"}
+{"kind":"recv","prefix":"0000b9","text":"(:return (:ok \"Foo.Shapes.Circle : Double -> Shape\n  A circle, by its radius.\" ((0 17 ((:decor :data))) (20 6 ((:decor :type))) (27 2 ((:decor :keyword))) (30 5 ((:decor :type))))) 64)\n"}
+{"kind":"send","prefix":"00001d","text":"((:docs-for \"Rectangle\") 65)\n"}
+{"kind":"recv","prefix":"0000de","text":"(:return (:ok \"Foo.Shapes.Rectangle : Double -> Double -> Shape\" ((0 20 ((:decor :data))) (23 6 ((:decor :type))) (30 2 ((:decor :keyword))) (33 6 ((:decor :type))) (40 2 ((:decor :keyword))) (43 5 ((:decor :type))))) 65)\n"}
+{"kind":"send","prefix":"000019","text":"((:docs-for \"Shape\") 66)\n"}
+{"kind":"recv","prefix":"000356","text":"(:return (:ok \"data Foo.Shapes.Shape : Type\n  A plane figure.\n  Totality: total\n  Visibility: public export\n  Constructors:\n    Circle : Double -> Shape\n      A circle, by its radius.\n    Rectangle : Double -> Double -> Shape\n  Hint: Measured Shape\" ((0 4 ((:decor :keyword))) (5 16 ((:decor :type))) (24 4 ((:decor :type))) (49 8 ((:text-formatting :underline))) (59 5 ((:decor :keyword))) (67 10 ((:text-formatting :underline))) (79 13 ((:decor :keyword))) (95 12 ((:text-formatting :underline))) (113 6 ((:decor :data))) (122 6 ((:decor :type))) (129 2 ((:decor :keyword))) (132 5 ((:decor :type))) (173 9 ((:decor :data))) (185 6 ((:decor :type))) (192 2 ((:decor :keyword))) (195 6 ((:decor :type))) (202 2 ((:decor :keyword))) (205 5 ((:decor :type))) (213 4 ((:text-formatting :underline))) (219 8 ((:decor :type))) (228 5 ((:decor :type))))) 66)\n"}
+{"kind":"send","prefix":"00001c","text":"((:docs-for \"Measured\") 67)\n"}
+{"kind":"recv","prefix":"000279","text":"(:return (:ok \"interface Foo.Shapes.Measured : Type -> Type\n  Things whose boundary has a length.\n  Parameters: a\n  Methods:\n    perimeter : a -> Double\n      The length of the boundary.\n  Implementation: Measured Shape\" ((0 9 ((:decor :keyword))) (10 19 ((:decor :type))) (32 4 ((:decor :type))) (37 2 ((:decor :keyword))) (40 4 ((:decor :type))) (85 10 ((:text-formatting :underline))) (101 7 ((:text-formatting :underline))) (114 9 ((:decor :function))) (126 1 ((:decor :bound))) (128 2 ((:decor :keyword))) (131 6 ((:decor :type))) (174 14 ((:text-formatting :underline))) (190 8 ((:decor :type))) (199 5 ((:decor :type))))) 67)\n"}
+{"kind":"send","prefix":"00001d","text":"((:docs-for \"perimeter\") 68)\n"}
+{"kind":"recv","prefix":"00017a","text":"(:return (:ok \"Foo.Shapes.perimeter : Measured a => a -> Double\n  The length of the boundary.\n  Visibility: public export\" ((0 20 ((:decor :function))) (23 8 ((:decor :type))) (32 1 ((:decor :bound))) (34 2 ((:decor :keyword))) (37 1 ((:decor :bound))) (39 2 ((:decor :keyword))) (42 6 ((:decor :type))) (81 10 ((:text-formatting :underline))) (93 13 ((:decor :keyword))))) 68)\n"}
+{"kind":"send","prefix":"000017","text":"((:docs-for \"|+|\") 69)\n"}
+{"kind":"recv","prefix":"0001af","text":"(:return (:ok \"Foo.Shapes.(|+|) : Shape -> Shape -> Double\n  The areas of two shapes, added.\n  Visibility: export\n  Fixity Declaration: infixl operator, level 6\" ((0 16 ((:decor :function))) (19 5 ((:decor :type))) (25 2 ((:decor :keyword))) (28 5 ((:decor :type))) (34 2 ((:decor :keyword))) (37 6 ((:decor :type))) (80 10 ((:text-formatting :underline))) (92 6 ((:decor :keyword))) (101 18 ((:text-formatting :underline))))) 69)\n"}
+{"kind":"send","prefix":"000016","text":"((:docs-for \"pi\") 70)\n"}
+{"kind":"recv","prefix":"000113","text":"(:return (:ok \"Prelude.pi : Double\n  Totality: total\n  Visibility: public export\" ((0 10 ((:decor :function))) (13 6 ((:decor :type))) (22 8 ((:text-formatting :underline))) (32 5 ((:decor :keyword))) (40 10 ((:text-formatting :underline))) (52 13 ((:decor :keyword))))) 70)\n"}
+{"kind":"send","prefix":"000018","text":"((:docs-for \"nope\") 71)\n"}
+{"kind":"recv","prefix":"00004a","text":"(:return (:error \"Undefined name nope. \n\" ((15 4 ((:decor :bound))))) 71)\n"}
+{"kind":"send","prefix":"000017","text":"((:name-at \"area\") 72)\n"}
+{"kind":"recv","prefix":"0000e5","text":"(:return (:ok ((\"Foo.Shapes.area\" (:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 9 0) (:end 11 22)))) 72)\n"}
+{"kind":"send","prefix":"000019","text":"((:name-at \"Circle\") 73)\n"}
+{"kind":"recv","prefix":"0000e6","text":"(:return (:ok ((\"Foo.Shapes.Circle\" (:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 5 2) (:end 6 26)))) 73)\n"}
+{"kind":"send","prefix":"00001c","text":"((:name-at \"perimeter\") 74)\n"}
+{"kind":"recv","prefix":"0000eb","text":"(:return (:ok ((\"Foo.Shapes.perimeter\" (:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 19 2) (:end 19 11)))) 74)\n"}
+{"kind":"send","prefix":"000016","text":"((:name-at \"|+|\") 75)\n"}
+{"kind":"recv","prefix":"0000e7","text":"(:return (:ok ((\"Foo.Shapes.(|+|)\" (:filename \"${ROOT}/src/Foo/Shapes.idr\") (:start 37 0) (:end 39 32)))) 75)\n"}
+{"kind":"send","prefix":"000014","text":"((:name-at \"r\") 76)\n"}
+{"kind":"recv","prefix":"000016","text":"(:return (:ok ()) 76)\n"}
+{"kind":"send","prefix":"000015","text":"((:name-at \"pi\") 77)\n"}
+{"kind":"recv","prefix":"0000ae","text":"(:return (:ok ((\"Prelude.Types.pi\" (:filename \"/opt/homebrew/Cellar/idris2/0.8.0_2/libexec/idris2-0.8.0/prelude-0.8.0/Prelude/Types.idr\") (:start 996 0) (:end 997 11)))) 77)\n"}
+{"kind":"send","prefix":"000026","text":"((:browse-namespace \"Foo.Shapes\") 78)\n"}
+{"kind":"recv","prefix":"0005ea","text":"(:return (:ok \"Circle : Double -> Shape\nMeasured : Type -> Type\nRectangle : Double -> Double -> Shape\nShape : Type\narea : Shape -> Double\nperimeter : Measured a => a -> Double\nscale : Double -> Shape -> Shape\ntwice : (Shape -> Shape) -> Shape -> Shape\n(|+|) : Shape -> Shape -> Double\" ((0 6 ((:decor :data))) (9 6 ((:decor :type))) (16 2 ((:decor :keyword))) (19 5 ((:decor :type))) (25 8 ((:decor :type))) (36 4 ((:decor :type))) (41 2 ((:decor :keyword))) (44 4 ((:decor :type))) (49 9 ((:decor :data))) (61 6 ((:decor :type))) (68 2 ((:decor :keyword))) (71 6 ((:decor :type))) (78 2 ((:decor :keyword))) (81 5 ((:decor :type))) (87 5 ((:decor :type))) (95 4 ((:decor :type))) (100 4 ((:decor :function))) (107 5 ((:decor :type))) (113 2 ((:decor :keyword))) (116 6 ((:decor :type))) (123 9 ((:decor :function))) (135 8 ((:decor :type))) (144 1 ((:decor :bound))) (146 2 ((:decor :keyword))) (149 1 ((:decor :bound))) (151 2 ((:decor :keyword))) (154 6 ((:decor :type))) (161 5 ((:decor :function))) (169 6 ((:decor :type))) (176 2 ((:decor :keyword))) (179 5 ((:decor :type))) (185 2 ((:decor :keyword))) (188 5 ((:decor :type))) (194 5 ((:decor :function))) (203 5 ((:decor :type))) (209 2 ((:decor :keyword))) (212 5 ((:decor :type))) (219 2 ((:decor :keyword))) (222 5 ((:decor :type))) (228 2 ((:decor :keyword))) (231 5 ((:decor :type))) (237 5 ((:decor :function))) (245 5 ((:decor :type))) (251 2 ((:decor :keyword))) (254 5 ((:decor :type))) (260 2 ((:decor :keyword))) (263 6 ((:decor :type))))) 78)\n"}
+{"kind":"send","prefix":"000025","text":"((:browse-namespace \"Data.Vect\") 79)\n"}
+{"kind":"recv","prefix":"000016","text":"(:return (:ok \"\") 79)\n"}
+{"kind":"send","prefix":"000028","text":"((:browse-namespace \"Nope.Nothing\") 80)\n"}
+{"kind":"recv","prefix":"000016","text":"(:return (:ok \"\") 80)\n"}
+{"kind":"send","prefix":"00001e","text":"((:repl-completions \"ar\") 81)\n"}
+{"kind":"recv","prefix":"000021","text":"(:return (:ok ((\"area\") \"\")) 81)\n"}
+{"kind":"send","prefix":"00001e","text":"((:repl-completions \"Ci\") 82)\n"}
+{"kind":"recv","prefix":"000023","text":"(:return (:ok ((\"Circle\") \"\")) 82)\n"}
+{"kind":"send","prefix":"00001e","text":"((:repl-completions \"|+\") 83)\n"}
+{"kind":"recv","prefix":"000046","text":"(:return (:error \"I can't make sense of the completion task:\n|+\") 83)\n"}
+{"kind":"close"}
+{"kind":"unframed","text":"Alas the file is done, aborting\n"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":["build/.vscode-idris2/ttc/2025081600/Foo/Shapes.ttc","build/.vscode-idris2/ttc/2025081600/Foo/Shapes.ttm"]}

@@ -11,8 +11,8 @@
  *
  * Each variant carries only its discriminant and a human-readable text for now. The milestone
  * that first throws a variant is expected to add the structured fields it needs (paths,
- * versions, ranges, …); the set of kinds itself is fixed by ARCHITECTURE §2 and pinned by
- * `test/unit/errors.test.ts`.
+ * versions, ranges, …); the set of kinds is the list of ARCHITECTURE §2 plus `NotLoaded` (M3,
+ * below), pinned by `test/unit/errors.test.ts`.
  */
 export type IdrisError =
   | { kind: 'ToolchainMissing'; message: string }
@@ -24,7 +24,18 @@ export type IdrisError =
   | { kind: 'IpkgParseError'; message: string }
   | { kind: 'DirtyDocument'; message: string }
   | { kind: 'LoadFailed'; message: string }
-  | { kind: 'Unsupported'; reason: string };
+  | { kind: 'Unsupported'; reason: string }
+  /**
+   * (M3, an addition to the list of ARCHITECTURE §2.) A question about a document — its types,
+   * docs, definitions, completions, a namespace — is answered in the context of the file its
+   * root's `check` session loaded last (the compiler keeps one loaded file, and a positional
+   * request refers to that file's text; `IdrisBackend`, *Queries*), and that file is another one,
+   * or none (the session has no process: not started yet, stopped, restarted). Nothing was sent
+   * and nothing was started: the caller loads the document the way the checks do — so that the
+   * diagnostics of that load are shown — and asks again (`features/intelligence/types.ts`
+   * `DocumentQueries`). `file`: the document's `fileName`.
+   */
+  | { kind: 'NotLoaded'; message: string; file: string };
 
 export type IdrisErrorKind = IdrisError['kind'];
 

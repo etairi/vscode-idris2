@@ -26,9 +26,10 @@ import type { IDisposable } from '../core/disposable';
 
 /**
  * A literate style of the compiler: `styleBird`, `styleOrg`, `styleCMark`, `styleTeX` and
- * `styleTypst` of `src/Parser/Unlit.idr`. Only `bird` has a column offset that
- * `core/positions.ts` applies (F11); fenced `.md` positions are exact (F11), and the others are
- * ROADMAP E19 (M12).
+ * `styleTypst` of `src/Parser/Unlit.idr`. The styles with line markers (`bird`, and Org's
+ * `#+IDRIS:` lines) have the column offset and the line map that `core/positions.ts` applies
+ * (`linePrefixWidth`, `isDoubledLine`; F11); fenced `.md` positions are exact (F11), and the
+ * positions inside the fences of the other styles are ROADMAP E19 (M12).
  */
 export type LiterateStyle = 'bird' | 'org' | 'cmark' | 'tex' | 'typst';
 
@@ -212,28 +213,81 @@ export function isIdrisSpace(c: string): boolean {
 }
 
 /**
- * Width of the bird-track marker the compiler strips from `lineText` (one line, without its
- * line break), or `undefined` when the line is not a code line.
+ * The line markers of each style (`line_markers` of its `MkLitStyle`, `src/Parser/Unlit.idr`):
+ * `>` and `<` for bird tracks, `#+IDRIS:` for Org; the other styles have fences only. In an Org
+ * file a `#+IDRIS:` line inside a `#+BEGIN_SRC idris` block is the block's (the block's lexer is
+ * tried first, `rawTokens`), which the functions below, which read one line, do not see; such a
+ * line is not valid Idris anyway (ROADMAP E19, M12, models the blocks).
+ */
+const LINE_MARKERS: Readonly<Record<LiterateStyle, readonly string[]>> = {
+  bird: ['>', '<'],
+  org: ['#+IDRIS:'],
+  cmark: [],
+  tex: [],
+  typst: [],
+};
+
+/** Whether `style` marks code lines with a line marker (`LINE_MARKERS`): `bird` and `org`. */
+export function hasLineMarkers(style: LiterateStyle | undefined): style is 'bird' | 'org' {
+  return style !== undefined && LINE_MARKERS[style].length > 0;
+}
+
+/** The marker of `style` that `lineText` starts with, if any (the markers of a style are not prefixes of each other). */
+function markerOf(style: LiterateStyle, lineText: string): string | undefined {
+  return LINE_MARKERS[style].find((m) => lineText.startsWith(m));
+}
+
+/**
+ * Width of the line marker of `style` the compiler strips from `lineText` (one line, without its
+ * line break), or `undefined` when the line is not a marked code line (for a style without line
+ * markers, always).
  *
  * Source (`src/Libraries/Text/Literate.idr`, identical on master and v0.8.0): a code line is
- * `exact m <+> (newline <|> space <+> untilEOL)` for a marker `m` in `[">", "<"]`, lexed from
- * the start of the line, where `space` is exactly one `isSpace` character; `reduce` then keeps
- * `substr (length m + 1) …`, i.e. drops the marker and that one character. So:
+ * `exact m <+> (newline <|> space <+> untilEOL)` for a marker `m` of the style, lexed from the
+ * start of the line, where `space` is exactly one `isSpace` character; `reduce` then keeps
+ * `substr (length m + 1) …`, i.e. drops the marker and that one character. So, for bird tracks:
  * - `"> x"`, `">\tx"`, `">   x"` → 2 (only one space is stripped; the rest is code indentation);
  * - `">"` alone → 1 (an empty code line);
  * - `">x"` → `undefined`: not a code line at all — the compiler treats it as prose.
  * Verified with idris2 0.8.0 `--check`: a name declared on a `>x : Nat` line is undefined, and
- * errors on `>\tg = "x"` and `>   g = "x"` are reported at file column − 2.
+ * errors on `>\tg = "x"` and `>   g = "x"` are reported at file column − 2. For Org,
+ * `#+IDRIS: f : Nat` → 9: `f` was reported at (4 0)–(4 1) on file column 9 [live, 0.8.0, second
+ * review of M3].
  */
-export function birdPrefixWidth(lineText: string): number | undefined {
-  const marker = lineText.charAt(0);
-  if (marker !== '>' && marker !== '<') {
+export function linePrefixWidth(style: LiterateStyle | undefined, lineText: string): number | undefined {
+  const marker = style === undefined ? undefined : markerOf(style, lineText);
+  if (marker === undefined) {
     return undefined;
   }
-  if (lineText.length === 1) {
-    return 1;
+  if (lineText.length === marker.length) {
+    return marker.length;
   }
-  return isIdrisSpace(lineText.charAt(1)) ? 2 : undefined;
+  return isIdrisSpace(lineText.charAt(marker.length)) ? marker.length + 1 : undefined;
+}
+
+/** `linePrefixWidth` of bird tracks (`>`, `<`). */
+export function birdPrefixWidth(lineText: string): number | undefined {
+  return linePrefixWidth('bird', lineText);
+}
+
+/**
+ * Whether the compiler's unlit text holds `lineText` (a line of a `style` document that a line
+ * break follows) as **two** lines: a marker followed by one or more `isSpace` characters and
+ * nothing else (`"> "`, `">   "`, `"<\t"`, `"#+IDRIS: "`). In `reduce` (`Literate.idr`, above) a
+ * code line whose `trim` is the marker gives `"\n"`, but `space <+> untilEOL` stopped before the
+ * line break, which is then a token of its own and gives a second `"\n"`; a marker alone (`">"`)
+ * consumed its line break (`exact m <+> newline`), so it is one line. So every such line moves the
+ * compiler's line numbers of the lines below it down by one [live, idris2 0.8.0, second review of
+ * M3: after `> ` and `>   ` lines `(:name-at "k")` answered line 15 for file line 13, and
+ * `idris2 --check` reported an error on file line 7 (1-based) after a `> ` line as `E:8:5--8:8`;
+ * after `#+IDRIS: ` in an Org file, `g` on file line 7 at line 8].
+ */
+export function isDoubledLine(style: LiterateStyle | undefined, lineText: string): boolean {
+  const marker = style === undefined ? undefined : markerOf(style, lineText);
+  if (marker === undefined || lineText.length === marker.length) {
+    return false;
+  }
+  return Array.from(lineText.slice(marker.length)).every(isIdrisSpace);
 }
 
 /**

@@ -8,12 +8,14 @@
  * |---|---|---|
  * | `sexp.ts` | the parser and serializer behind `IdeCodec` | `types.ts` |
  * | `wire.ts` | the framing behind `IdeCodec` (`FrameDecoder`, request frames) | `types.ts` |
- * | `protocol.ts` | `ideCodec: IdeCodec`; `loadFile(absolutePath): Sexp` and the other request builders and reply decoders (`:type-of`, `:docs-for`, `:name-at`, `:metavariables`, the editing commands; pinned by the F2, F29, F30 transcripts, first used in M3/M4); the F4/F5 predicates `answersWithPreviousId`, `isEndOfInputLine`; `decodeBuildingLine` | `types.ts`, `sexp.ts`, `wire.ts` |
+ * | `protocol.ts` | `ideCodec: IdeCodec`; `loadFile(absolutePath): Sexp` and the other request builders and reply decoders (`:type-of`, `:docs-for`, `:name-at`, `:metavariables`, the editing commands; pinned by the F2, F29, F30 transcripts, first used in M3/M4; M3 adds `replCompletions`, `browseNamespace`, `decodeCompletions`, `asDecor` and `toRichText`, which converts the reply's code-point highlighting offsets to string offsets, E14); the F4/F5 predicates `answersWithPreviousId`, `isEndOfInputLine`; `decodeBuildingLine` | `types.ts`, `sexp.ts`, `wire.ts`, `../../core/positions` |
  * | `transport.ts` | `Transport` implementations (socket, stdio) | `types.ts` |
  * | `session.ts` | the `IdeSession` state machine | `types.ts`, `transport.ts`, `protocol.ts` (the two F4/F5 predicates only) |
  * | `pool.ts` | `createSessionPool(deps: SessionPoolDeps): SessionPool` | `types.ts`, `session.ts`, `transport.ts` |
  * | `diagnostics.ts` | `Reply` of a `:load-file` → diagnostics (ARCHITECTURE §8) | `types.ts`, `protocol.ts` (`decodeBuildingLine`) |
- * | `backend.ts` | `IdeBackend implements IdrisBackend` over a `SessionPool`, and `IdeMode`, the registry's provider | `types.ts`, `protocol.ts`, `diagnostics.ts` (and `../registry` for `rootKey`, `BackendProvider`) |
+ * | `highlight.ts` (M3) | the `:highlight-source` frames of a load's `Reply` → `TokenIndex` (`backend/types.ts`), positions through `core/positions.ts` | `types.ts`, `protocol.ts` (`asDecor`, `decodeSourceHighlights`, `SourceHighlight`), `../types`, `../../core/errors`, `../../core/positions` |
+ * | `replCommand.ts` (M3) | whether the compiler's REPL parser would read a text as a command rather than an expression — the refusal of `IdrisBackend.evaluate` (ROADMAP §9, 2026-09-28) | none |
+ * | `backend.ts` | `IdeBackend implements IdrisBackend` over a `SessionPool`, and `IdeMode`, the registry's provider | `types.ts`, `protocol.ts`, `diagnostics.ts`, `highlight.ts`, `replCommand.ts` (and `../registry` for `rootKey`, `BackendProvider`) |
  *
  * The session layer (`transport.ts`, `session.ts`, `pool.ts`) never imports `sexp.ts` or
  * `wire.ts`: it gets the codec as `SessionPoolDeps.codec`, and the composition root passes
@@ -255,6 +257,12 @@ export interface IdeCodec {
   createFrameDecoder(options?: FrameDecoderOptions): FrameDecoder;
   /** Parses one frame's text (`IncomingFrame.text` of a `framed` item) and decodes it. */
   decodeMessage(text: string): DecodedMessage;
+  /**
+   * The id of a frame's text when it is a `:highlight-source` output of a load, found without
+   * parsing the frame; `undefined` for any other text. The `eval` session drops such frames of its
+   * request in flight unread (`session.ts`, *Unread highlighting*).
+   */
+  highlightSourceId(text: string): bigint | undefined;
 }
 
 // -------------------------------------------------------------------------------------------
@@ -346,15 +354,62 @@ export interface Transport extends IDisposable {
 // -------------------------------------------------------------------------------------------
 
 /**
- * The roles of ARCHITECTURE §4: `check` loads saved files and answers position requests (M2).
- * `eval` (M3) and `shadow` (M6) are added by the milestones that need them.
+ * The roles of ARCHITECTURE §4 (`shadow`, M6, is added by the milestone that needs it):
+ *
+ * - `check` (M2) loads saved files for the checks and answers the queries of M3 in the context of
+ *   the file it loaded last (`backend/types.ts` `IdrisBackend`, *Queries*). The only role the
+ *   status item, the crash notices and `IdeMode`'s restart and load events follow.
+ * - `eval` (M3) evaluates expressions for **Idris 2: Evaluate Selection** (`IdrisBackend.evaluate`)
+ *   and nothing else, so that nothing it does changes the `check` session's state (`:set`
+ *   persists across loads, F27; ARCHITECTURE D3). ROADMAP §9, 2026-09-28: `(:interpret "<expr>")`
+ *   of expressions only — the backend refuses, before sending anything, text the compiler's REPL
+ *   parser reads as a command (`backend/ide/replCommand.ts`), so no `:exec` and no `:set` reach it,
+ *   its evaluation mode stays the default (which normalises an IO action instead of running it
+ *   [src, ROADMAP §9]) and no program output reaches its stream (F5). Before every `:interpret`
+ *   it loads the document's file (`:load-file`, through the same package walk and checks right
+ *   before the write as a `check` load, `backend.ts`, *Evaluation*), so that it evaluates in the
+ *   file and imports as saved at that moment; evaluations run one at a time; that load's
+ *   diagnostics are not shown (the `check` session reports them). It is created and started lazily, at the first evaluation in
+ *   its root, through the same trust, toolchain and consent checks before every spawn as the
+ *   `check` session (`SessionGate.permit`, the M2 rule), in the same directory, with the same
+ *   transport rule (stdio unless the user chose the socket; ROADMAP §9 2026-09-28) and time limits.
+ *   **Its command line is the `check` session's with one difference, the build directory** (a
+ *   refinement of ARCHITECTURE §5.2, which says "same"): where the extension chooses the
+ *   directory — the `.ipkg` sets neither `builddir` nor a `--build-dir` in `opts`, and
+ *   `idris2.ideMode.extraArgs` has no `--build-dir` (`pool.ts` `checkBuildDir`) — the `eval`
+ *   session gets `--build-dir <session directory>/build/.vscode-idris2-eval`, whatever
+ *   `idris2.ideMode.isolateBuildDir` says; otherwise the compiler uses the chosen directory for
+ *   both sessions. Why: the compiler rebuilds a module only when its source is newer than its
+ *   build files, and a load that rebuilds nothing reports no warnings (F7), so a load in the
+ *   `eval` session that compiled a just-saved file into the `check` session's directory would
+ *   make the `check` session's next load of it report nothing, and the checks keep what a load
+ *   that reports nothing leaves shown (`features/diagnostics/checks.ts`) — errors fixed by that
+ *   save would stay shown, new warnings would be missed [reasoned from F7 and the checks' rule, not
+ *   run]; and two processes would write one directory at once (the open question of E21). Where
+ *   the compiler's choice makes the directory shared, that remains a documented limitation, as
+ *   for the user's own builds (D5). It counts towards `idris2.ideMode.maxSessions`: it loads the
+ *   same modules as the `check` session, whose process took 206–278 MiB on `contrib`
+ *   (docs/measurements/first-load.md [live]); on the e2e suite's 2,000-line module the `eval`
+ *   process took 191 MiB after its start, 206–210 MiB after the load and 247 MiB after six
+ *   evaluations, and 689–716 MiB after one evaluation of 4.6–6.3 s (`backend.ts`
+ *   `EVAL_RELEASE_AFTER_MS`; docs/as-built/M3.md, *Measured* [live, second review of M3]). It is
+ *   stopped after `idris2.ideMode.idleTimeout` without a request (at most 2 min, `pool.ts`
+ *   `EVAL_IDLE_TIMEOUT_MS`), by **Stop Backend** and with the root's other sessions
+ *   (`SessionPool.stop`, `release`, `packageChanged`, consent revoked, dispose), when its evaluation
+ *   is cancelled (`SessionPool.cancelEvaluation`), after an evaluation whose `:interpret` took more
+ *   than `EVAL_RELEASE_AFTER_MS` (`SessionPool.releaseEvaluation`: the memory it kept), and —
+ *   instead of being restarted — by **Restart Backend** and when its command line changes; its
+ *   `:interpret` has the time limit `idris2.eval.timeout`. **It never starts a process by itself**: after an unexpected end it is
+ *   `stopped`, not `restarting`, and the next evaluation starts it (`session.ts`, *Unexpected ends*).
  */
-export type SessionRole = 'check';
+export type SessionRole = 'check' | 'eval';
 
 /**
  * ARCHITECTURE §5.1:
  * - `stopped` — no process: not started yet, or stopped (Stop Backend, idle, the root's last
- *   document closed, `idris2.ideMode.maxSessions` exceeded, consent revoked, dispose). The next
+ *   document closed, `idris2.ideMode.maxSessions` exceeded, consent revoked, dispose; for an `eval`
+ *   session also an unexpected end, a cancelled evaluation, an evaluation that took more than
+ *   `EVAL_RELEASE_AFTER_MS`, Restart Backend and a changed command line, `SessionRole`). The next
  *   request starts one, after
  *   `SessionGate.permit` allows it; while the gate's question is open the session stays
  *   `stopped`.
@@ -386,11 +441,12 @@ export type SessionState = 'stopped' | 'starting' | 'ready' | 'busy' | 'restarti
  * frames), `backoff` (`restarting` → `starting`), `gaveUp`, `stop` (Stop
  * Backend; also announced when the session was already `stopped`, e.g. while its consent question
  * was open), `idle`, `closed` (the root's last open document was closed, `SessionPool.release`),
- * `evicted` (more sessions ran than `idris2.ideMode.maxSessions` allows, and this idle one was the
- * least recently used that is not the active document's, ROADMAP §9 Q21),
+ * `evicted` (more sessions ran than `idris2.ideMode.maxSessions` allows, and this idle one came
+ * first in the pool's order: an `eval` session, else a `check` session that is not the active
+ * document's, each the least recently used; ROADMAP §9 Q21, `SessionPool`),
  * `restart` (Restart Backend), `reconfigure` (the pool restarted a running session because its
- * command line changed — a setting, a toolchain scan, the package — or returned a `failed` one to
- * `stopped` for that reason), `consentRevoked`, `packageChanged` (the root's package file is not
+ * command line changed — a setting, a toolchain scan, the package —, stopped a running `eval`
+ * session for that reason, or returned a `failed` one to `stopped`), `consentRevoked`, `packageChanged` (the root's package file is not
  * the one the compiler would find from the session directory any more, `SessionPool.packageChanged`),
  * `dispose`.
  */
@@ -523,8 +579,8 @@ export interface Reply {
  *
  * `request` resolves with the `Reply` and rejects with an `IdrisException` (`core/errors.ts`)
  * when the request cannot be answered: `RequestTimeout` (the process was stopped and every
- * queued request rejected too; the session restarts, unless that was the fourth unexpected end
- * within five minutes), `BackendCrashed` (the process ended, the session was stopped or
+ * queued request rejected too; a `check` session restarts, unless that was the fourth unexpected
+ * end within five minutes, an `eval` session stops), `BackendCrashed` (the process ended, the session was stopped or
  * restarted, or it is `failed`), `ProtocolError`, `ToolchainMissing` (no `probed` idris2 in the
  * current snapshot), `Unsupported` (the gate refused: Restricted Mode, or the directory is not
  * allowed; the reason says which and how to allow it) — or with the `Cancelled` error above.
@@ -547,6 +603,13 @@ export interface IdeSession {
   readonly protocolVersion: { readonly major: number; readonly minor: number } | undefined;
   /** The file of the last `load` that returned in the current process; cleared when it ends. */
   readonly loadedFile: LoadedFile | undefined;
+  /**
+   * `ready` with no request in flight or waiting (none queued, so no `beforeSend` running whose
+   * result counts: a cancelled request's run is abandoned): stopping it abandons nothing, and a
+   * request sent now is sent at once. The pool evicts only such a session
+   * (`idris2.ideMode.maxSessions`); the completion warm-up waits for it (`backend.ts`).
+   */
+  readonly idle: boolean;
   request(command: IdeCommand, options: RequestOptions): Promise<Reply>;
 }
 
@@ -571,14 +634,18 @@ export interface SessionPoolChange {
  * `stopped` on the first two (ARCHITECTURE §5.1 "Configuration changes", as built:
  * docs/as-built/M2.md, *Configuration changes*, and `pool.ts`). Sessions stop themselves after `idris2.ideMode.idleTimeout`; the pool stops those
  * whose directory `SessionGate.current` no longer allows, and, while more run than
- * `idris2.ideMode.maxSessions` (when it is not 0) allows, the least recently used idle ones that
- * are not the active root's (cause `evicted`; ROADMAP §9 Q21). `dispose` stops every process at
- * once (deactivation).
+ * `idris2.ideMode.maxSessions` (when it is not 0) allows, idle ones (cause `evicted`; ROADMAP §9
+ * Q21): since M3 first the `eval` sessions, least recently used first, the active root's included
+ * (an `eval` session is the lesser role, and the active root's `check` and `eval` sessions
+ * together would otherwise exceed a limit of 1 for good), then the `check` sessions that are not
+ * the active root's, least recently used first. Every role counts towards the limit. `dispose`
+ * stops every process at once (deactivation).
  */
 export interface SessionPool extends IDisposable {
   /**
    * The session of `role` for `root`, created (in `stopped`) if there is none. No process starts
-   * here: the first request starts one, after the gate allows it.
+   * here: the first request starts one, after the gate allows it. The `eval` role's command line
+   * differs from the `check` role's in its build directory (`SessionRole`).
    */
   sessionFor(root: Classification, role: SessionRole): IdeSession;
   /** Every session the pool holds, in no particular order. */
@@ -608,10 +675,28 @@ export interface SessionPool extends IDisposable {
    * says what the walk found. The next request starts a process again, after the gate.
    */
   packageChanged(root: Classification, detail: string): void;
-  /** Stops the sessions of `root` and starts its `check` session again now (clears `failed`). */
+  /**
+   * Stops the sessions of `root` and starts its `check` session again now (clears `failed`); its
+   * `eval` session starts again at the next evaluation.
+   */
   restart(root: Classification): void;
-  /** Restarts every session that is not `stopped` (clears `failed`). */
+  /**
+   * Restarts every `check` session that is not `stopped` (clears `failed`) and stops every `eval`
+   * session, which starts again at the next evaluation.
+   */
   restartAll(): void;
+  /**
+   * Stops the `eval` session of `root` because its evaluation was cancelled (`IdrisBackend.evaluate`):
+   * the protocol has no cancel, so only stopping the process ends an evaluation that runs. Cause
+   * `stop`; the next evaluation starts it again.
+   */
+  cancelEvaluation(root: Classification): void;
+  /**
+   * Stops the `eval` session of `root`, if it has one, after an evaluation that ran long, to give
+   * back the memory the process kept (`backend.ts` `EVAL_RELEASE_AFTER_MS`); `detail` says why. Cause
+   * `stop`; the next evaluation starts it again.
+   */
+  releaseEvaluation(root: Classification, detail: string): void;
   /**
    * The root of the active document (`features/diagnostics/checks.ts` decides which that is), or
    * `undefined` for none: its sessions are never stopped to keep within

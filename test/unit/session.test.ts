@@ -98,7 +98,13 @@ function deferred<T>(): { promise: Promise<T>; resolve(value: T): void } {
 }
 
 function setup(
-  options: { timing?: Partial<SessionTiming>; limits?: Partial<SessionLimits>; behaviour?: FakeTransportBehaviour; launch?: SessionLaunch } = {},
+  options: {
+    timing?: Partial<SessionTiming>;
+    limits?: Partial<SessionLimits>;
+    behaviour?: FakeTransportBehaviour;
+    launch?: SessionLaunch;
+    role?: 'check' | 'eval';
+  } = {},
 ) {
   const clock = new FakeClock();
   const transports = new FakeTransports();
@@ -110,7 +116,7 @@ function setup(
   const launch = options.launch ?? LAUNCH;
   const control = { plan: (): Promise<SpawnPlan> => Promise.resolve({ launch }), prepares: 0, limits };
   const session: ManagedSession = createSession({
-    role: 'check',
+    role: options.role ?? 'check',
     root: LOOSE,
     cwd: LAUNCH.cwd,
     prepare: () => {
@@ -177,6 +183,23 @@ suite('backend/ide/session', () => {
       assert.strictEqual(h.session.state, 'ready');
       assert.deepStrictEqual(causes(h.changes), ['stopped→starting:start', 'starting→ready:handshake', 'ready→busy:dispatch', 'busy→ready:reply']);
       assert.ok(h.log.lines.some((l) => l.startsWith('info: ') && l.includes('starting /opt/homebrew/bin/idris2 --ide-mode-socket')));
+    });
+
+    test('an eval session drops the :highlight-source outputs of the request in flight unread; a check session keeps them (third review of M3)', async () => {
+      for (const role of ['eval', 'check'] as const) {
+        const h = setup({ role });
+        const request = h.lookup('xs');
+        await flush();
+        const t = h.transports.last();
+        const building = writeString(1n, '1/1: Building Main (Main.idr)');
+        const highlight = { kind: 'output', id: 1n, payload: { kind: 'highlight-source', highlights: list() } } as const;
+        t.message(building);
+        t.message(highlight);
+        t.message(ret(1n, ok()));
+        await flush();
+        assert.deepStrictEqual(request.value?.messages, role === 'eval' ? [building] : [building, highlight], role);
+        assert.strictEqual(h.session.state, 'ready', role);
+      }
     });
 
     test('requests are sent one at a time, in call order, with increasing ids', async () => {
@@ -1278,6 +1301,50 @@ suite('backend/ide/session', () => {
         assert.strictEqual(h.session.state, 'ready', `crash ${i + 1}`);
       }
       assert.strictEqual(h.transports.all.length, 7);
+    });
+
+    test('eval (M3): an unexpected end — exit, request time-out, handshake time-out — stops it, rejects what waits, and starts nothing', async () => {
+      // An exit during a request, with another one waiting.
+      const h = await readySession({ role: 'eval', launch: STDIO_LAUNCH });
+      const first = h.lookup('a');
+      const second = h.lookup('b');
+      await flush();
+      h.t.exit({ code: 3, signal: null });
+      await flush();
+      assert.strictEqual(kindOf(first), 'BackendCrashed');
+      assert.strictEqual(kindOf(second), 'BackendCrashed');
+      assert.match(messageOf(second), /^The Idris 2 evaluation process ended \(the Idris 2 process exited with code 3\); it starts again at the next evaluation\.$/);
+      assert.deepStrictEqual(causes(h.changes).slice(-1), ['busy→stopped:exit']);
+      h.clock.advance(60_000);
+      await flush();
+      assert.strictEqual(h.transports.all.length, 1, 'not restarted by itself');
+      // The next request starts a process again.
+      const next = h.lookup('c');
+      await flush();
+      assert.strictEqual(h.transports.all.length, 2);
+      h.transports.last().message(ret(h.transports.last().lastSent().id));
+      await flush();
+      assert.strictEqual(next.state, 'resolved');
+      // A request over its limit (a runaway evaluation): the process is stopped, not replaced.
+      const runaway = track(h.session.request(typeOf('loop'), { kind: 'longAction', timeoutMs: 10_000 }));
+      await flush();
+      h.clock.advance(10_000);
+      await flush();
+      assert.strictEqual(kindOf(runaway), 'RequestTimeout');
+      assert.strictEqual(h.session.state, 'stopped');
+      assert.strictEqual(h.transports.all.length, 2);
+      assert.deepStrictEqual(h.clock.pending(), [], 'no backoff timer');
+      // No handshake: stopped too, the waiting request rejected (no loop of new processes).
+      h.transports.behaviour = { handshake: null };
+      const waiting = h.lookup('d');
+      await flush();
+      h.clock.advance(DEFAULT_SESSION_TIMING.handshakeTimeoutMs);
+      await flush();
+      assert.strictEqual(kindOf(waiting), 'BackendCrashed');
+      assert.strictEqual(h.session.state, 'stopped');
+      h.clock.advance(60 * 60_000);
+      await flush();
+      assert.strictEqual(h.transports.all.length, 3);
     });
 
     test('never two processes: a restart waits until the old process has ended', async () => {

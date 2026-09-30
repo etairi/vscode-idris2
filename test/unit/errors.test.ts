@@ -4,7 +4,7 @@ import { IdrisException, cancelled, errorText, isCancelled, unsupported, type Id
 // The first test is checked by `tsc` when the tests are compiled: it fails to compile if the
 // union gains or loses a kind relative to the list from docs/ARCHITECTURE.md §2.
 suite('core/errors IdrisError', () => {
-  test('the union has exactly the ten kinds listed in ARCHITECTURE §2', () => {
+  test('the union has exactly the ten kinds listed in ARCHITECTURE §2 and M3\'s NotLoaded', () => {
     // Compile error if a listed kind is not a member of the union.
     const kinds = [
       'ToolchainMissing',
@@ -17,6 +17,8 @@ suite('core/errors IdrisError', () => {
       'DirtyDocument',
       'LoadFailed',
       'Unsupported',
+      // M3: a question about a document whose file is not the one its check session has loaded.
+      'NotLoaded',
     ] as const satisfies readonly IdrisErrorKind[];
 
     // Compile error if the union has a kind that is not listed above.
@@ -24,7 +26,13 @@ suite('core/errors IdrisError', () => {
     const everyKindListed: [NotListed] extends [never] ? true : false = true;
 
     assert.strictEqual(everyKindListed, true);
-    assert.strictEqual(new Set(kinds).size, 10);
+    assert.strictEqual(new Set(kinds).size, 11);
+  });
+
+  test('NotLoaded carries a message and the file the load would send', () => {
+    const error: IdrisError = { kind: 'NotLoaded', message: 'another file is loaded', file: '/w/src/Foo/B.idr' };
+    assert.strictEqual(errorText(error), 'another file is loaded');
+    assert.strictEqual(new IdrisException(error).message, 'another file is loaded');
   });
 
   test('Unsupported carries a reason, the other variants a message', () => {

@@ -5,14 +5,17 @@
  * and selection ranges; then M1's chain Config → workspace trust → process runner → toolchain
  * service → project index → backend registry; then M2's consent gate, protocol trace, session
  * pool and IDE-mode backend (the registry's provider for every root), the checks with their
- * diagnostic collection, and the backend and trace commands; then the toolchain UI (status item
- * and QuickPick, Setup Information, install commands, notifications). deactivate() disposes all
- * of it in reverse order, which kills every session process.
+ * diagnostic collection, and the backend and trace commands; then M3's providers and commands
+ * (hover, definition, documentation, namespaces, semantic tokens, symbols, highlights, completion,
+ * inlay hints — all asking through one `DocumentQueries` — and Evaluate Selection); then the
+ * toolchain UI (status item and QuickPick, Setup Information, install commands, notifications).
+ * deactivate() disposes all of it in reverse order, which kills every session process.
  *
  * Activation stays cheap: nothing here waits for a process or the file system. The toolchain
  * service starts its first scan when it is created and the UI follows its change events; no
  * session process starts before an Idris document is checked (the pool starts a session with its
- * first request). Every process goes through `core/process.ts`, which starts nothing in an
+ * first request). M3's providers ask only when VS Code calls them, and the `eval` session starts
+ * at the first evaluation. Every process goes through `core/process.ts`, which starts nothing in an
  * untrusted workspace (Restricted Mode, package.json `capabilities.untrustedWorkspaces`).
  */
 import * as fs from 'fs';
@@ -35,7 +38,13 @@ import { registerConsent } from './features/consent/register';
 import { DocumentChecks } from './features/diagnostics/checks';
 import { registerBackendCommands, type BackendNotice } from './features/diagnostics/commands';
 import { ProtocolTraceChannel, registerTraceCommands } from './features/diagnostics/trace';
+import { registerEvaluation, type EvaluationOutcome, type DrawnEvaluation } from './features/eval/register';
 import { registerHelpCommands } from './features/help/commands';
+import { registerCompletion } from './features/intelligence/completion';
+import { registerInlayHints } from './features/intelligence/inlayHints';
+import { createDocumentQueries } from './features/intelligence/queries';
+import { registerIntelligence } from './features/intelligence/register';
+import type { IntelligenceDeps } from './features/intelligence/types';
 import { registerSelectionRanges } from './features/syntax/selectionRanges';
 import { createProjectIndex } from './project/index';
 import { findIpkg } from './project/ipkg';
@@ -43,7 +52,7 @@ import { trackIsIdrisDocumentContext } from './project/literate';
 import type { ProjectIndex, ProjectWorkspace } from './project/types';
 import { registerInstallCommands } from './toolchain/install';
 import { registerToolchainNotifications, type Notice } from './toolchain/notifications';
-import { readRegularTextFile } from './toolchain/fileSystem';
+import { readRegularTextFile, readSourceFile } from './toolchain/fileSystem';
 import { createToolchainService } from './toolchain/service';
 import { registerSetupInformation } from './toolchain/setupInfo';
 import { registerToolchainStatus, type StatusMenuEntry } from './toolchain/status';
@@ -72,6 +81,12 @@ export interface TestApi {
   readonly consent: ConsentGate;
   /** M2: the crash and give-up notices shown in this window, in order. */
   readonly backendNotices: readonly BackendNotice[];
+  /** M3: the notifications of Type/Docs at Cursor, Show Documentation and Browse Namespace…, in order. */
+  readonly intelligenceNotices: readonly string[];
+  /** M3: every run of Evaluate Selection in this window, in order, with what it showed. */
+  readonly evaluations: readonly EvaluationOutcome[];
+  /** M3: the evaluation results drawn in the document of `uri` (VS Code's API cannot read decorations). */
+  evaluationResults(uri: vscode.Uri): readonly DrawnEvaluation[];
 }
 
 let store: DisposableStore | undefined;
@@ -205,7 +220,7 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
       clock: systemClock,
       gate: consent.gate,
       api: vscode,
-      readFile: (p) => fs.promises.readFile(p, 'utf8'),
+      readFile: readSourceFile,
       realpath: (p) => fs.promises.realpath(p),
       findPackage: async (dir) => (await findIpkg(dir))?.ipkgPath,
       directoryId: async (p) => {
@@ -213,6 +228,8 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
         return `${stat.dev}:${stat.ino}`;
       },
       platform: process.platform,
+      isOpen: (fileName) => vscode.workspace.textDocuments.some((d) => d.uri.scheme === 'file' && d.fileName === fileName),
+      openText: (fileName) => vscode.workspace.textDocuments.find((d) => d.uri.scheme === 'file' && d.fileName === fileName)?.getText(),
     }),
   );
   store.add(registry.setProvider(ideMode));
@@ -234,6 +251,31 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
   );
   const backendCommands = store.add(
     registerBackendCommands(vscode, { checks, control: ideMode, projects, toolchain, trust, log }),
+  );
+
+  // M3: read-only intelligence and evaluation. Registering starts nothing: the providers ask the
+  // backend when VS Code calls them, through one DocumentQueries (which loads a document the way
+  // Check File does when its file is not the one loaded); the loads they follow are IdeMode's.
+  const intelligenceDeps: IntelligenceDeps = {
+    queries: createDocumentQueries({ registry, projects, checks, config, trust, log }),
+    loads: ideMode,
+    registry,
+    projects,
+    checks,
+    config,
+    log,
+  };
+  const intelligence = store.add(
+    registerIntelligence(vscode, intelligenceDeps, { keepNotices: context.extensionMode === vscode.ExtensionMode.Test }),
+  );
+  store.add(registerCompletion(vscode, { ...intelligenceDeps, warmUp: ideMode }));
+  store.add(registerInlayHints(vscode, intelligenceDeps));
+  const evaluation = store.add(
+    registerEvaluation(
+      vscode,
+      { registry, projects, config, trust, log },
+      { keepOutcomes: context.extensionMode === vscode.ExtensionMode.Test },
+    ),
   );
   store.add(
     registerTraceCommands(vscode, {
@@ -282,6 +324,9 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
     checks,
     consent: consent.gate,
     backendNotices: backendCommands.notices,
+    intelligenceNotices: intelligence.notices,
+    evaluations: evaluation.outcomes,
+    evaluationResults: (uri) => evaluation.drawn(uri.toString()),
   };
 }
 

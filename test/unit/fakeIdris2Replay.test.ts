@@ -15,6 +15,7 @@ import {
   FrameReader,
   mapTrailingId,
   readTranscripts,
+  recordedArgs,
   requestFrame,
   substitute,
   tolerateReset,
@@ -169,7 +170,9 @@ suite('test/fake-idris2: the transcripts', () => {
  * Replays `transcript` against the fake over `transport` and compares every item of the protocol
  * stream, the program output and the exit code with the recording. The fake runs in the
  * scenario's fixture workspace in this checkout (through a symbolic link to it when the recording
- * did), and every request id is shifted by 1000 to show that ids are matched after normalisation;
+ * did), with the recording's own arguments after the mode flag (so in its session role: the
+ * `eval-*` scenarios were recorded with the `eval` session's build directory), and every request
+ * id is shifted by 1000 to show that ids are matched after normalisation;
  * the ids in the expected replies are shifted the same way (0, the id before the first
  * recognised request, stays 0: F4).
  */
@@ -186,8 +189,9 @@ async function replayTranscript(transcript: Transcript, transport: 'stdio' | 'so
     cwd = link;
   }
   const shift = (id: bigint): bigint => (id === 0n ? 0n : id + 1000n);
+  const args = recordedArgs(transcript, values);
   try {
-    const fake = await startFake(transport, cwd);
+    const fake = await startFake(transport, cwd, undefined, args);
     assert.deepStrictEqual(await fake.protocol.next(), HANDSHAKE);
     const recorded = exchanges(transcript);
     let expectedStdout = '';
@@ -352,6 +356,86 @@ suite('test/fake-idris2: replay rules', function () {
       const crashed = run(dir);
       assert.strictEqual(crashed.status, 2);
       assert.match(crashed.stderr, /crashed\.jsonl: cannot replay a "exit" event before the end of input/);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+suite('test/fake-idris2: session roles and the request log (M3)', function () {
+  this.timeout(20000);
+  const buildDir = (role: string): string[] => ['--no-color', '--build-dir', path.join(broken(), 'build', role)];
+  const interpret = (text: string, id: number): Buffer => requestFrame(`((:interpret "${text}") ${id})\n`);
+
+  test('an eval session (build/.vscode-idris2-eval) is answered from the eval recordings', async () => {
+    const fake = await startFake('stdio', broken(), undefined, buildDir('.vscode-idris2-eval'));
+    await fake.protocol.next();
+    fake.send(loadFile(broken('Clean.idr'), 1));
+    const load = await readToReturn(fake);
+    assert.match(load[0].text, /^\(:write-string "1\/1: Building Clean /); // its own build directory: built
+    assert.strictEqual(load.at(-1)?.text, '(:return (:ok ()) 1)\n');
+    fake.send(interpret('the (Vect 2 Nat) [1, 2]', 2));
+    assert.deepStrictEqual(
+      await fake.protocol.next(),
+      frame('(:return (:ok "[1, 2]" ((1 1 ((:decor :data))) (4 1 ((:decor :data))))) 2)\n'),
+    );
+    assert.strictEqual(fake.stderr(), '');
+  });
+
+  test('a check session (build/.vscode-idris2) gets no reply recorded in the eval role', async () => {
+    const fake = await startFake('stdio', broken(), undefined, buildDir('.vscode-idris2'));
+    await fake.protocol.next();
+    fake.send(loadFile(broken('Clean.idr'), 1));
+    await readToReturn(fake);
+    fake.send(interpret('the (Vect 2 Nat) [1, 2]', 2));
+    assert.deepStrictEqual(
+      await fake.protocol.next(),
+      frame('(:return (:error "fake-idris2: no recorded reply for (:interpret \\"the (Vect 2 Nat) [1, 2]\\")") 2)\n'),
+    );
+  });
+
+  test('without a build directory the role is unknown, and the recordings of both roles are eligible', async () => {
+    for (const args of [['--no-color'], buildDir('elsewhere')]) {
+      const fake = await startFake('stdio', broken(), undefined, args);
+      await fake.protocol.next();
+      fake.send(interpret('the (Vect 2 Nat) [1, 2]', 1));
+      assert.match((await fake.protocol.next()).text, /^\(:return \(:ok "\[1, 2\]" /, args.join(' '));
+    }
+  });
+
+  test('FAKE_IDRIS2_REQUEST_LOG: every request read, with the pid, as UTF-8 text, answered or not', async () => {
+    const dir = tempDir();
+    try {
+      const log = path.join(dir, 'requests.jsonl');
+      const fake = await startFake('stdio', broken(), { FAKE_IDRIS2_TRANSCRIPTS: DIR, FAKE_IDRIS2_REQUEST_LOG: log });
+      await fake.protocol.next();
+      const requests = ['(:version 1)\n', '((:interpret "\\"→\\"") 2)\n', '((:frobnicate) 3)\n'];
+      for (const request of requests) {
+        fake.send(requestFrame(request));
+        await readToReturn(fake);
+      }
+      fake.end();
+      await fake.exit;
+      const entries = fs.readFileSync(log, 'utf8').split('\n').filter((l) => l !== '').map((l) => JSON.parse(l) as unknown);
+      assert.deepStrictEqual(entries, requests.map((request) => ({ pid: fake.child.pid, request })));
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test('FAKE_IDRIS2_REQUEST_LOG: a request that hangs the compiler is logged, nothing after it', async () => {
+    const dir = tempDir();
+    try {
+      const log = path.join(dir, 'requests.jsonl');
+      const fake = await startFake('stdio', broken(), { FAKE_IDRIS2_REQUEST_LOG: log, FAKE_IDRIS2_IDE_FAULT: 'hang@1', FAKE_TOOL_HANG_LIMIT_MS: '300' });
+      await fake.protocol.next();
+      fake.send(requestFrame('(:version 1)\n'));
+      fake.send(requestFrame('(:version 2)\n'));
+      assert.strictEqual(await fake.exit, 1);
+      assert.deepStrictEqual(
+        fs.readFileSync(log, 'utf8').split('\n').filter((l) => l !== '').map((l) => JSON.parse(l) as unknown),
+        [{ pid: fake.child.pid, request: '(:version 1)\n' }],
+      );
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }

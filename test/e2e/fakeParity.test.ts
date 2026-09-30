@@ -1,4 +1,4 @@
-// E2E (ROADMAP M2): the fake compiler's transcript replay against the real idris2. For four
+// E2E (ROADMAP M2): the fake compiler's transcript replay against the real idris2. For five
 // recorded scenarios, over both transports (one of them over stdio only), the real compiler and
 // test/fake-idris2 (replaying test/fixtures/transcripts/<version>) get the same bytes in the
 // same workspace copy, and every item of their protocol streams — frame texts and the bytes each
@@ -19,13 +19,16 @@ import { extensionApi, probedIdris2, probedVersion, quiesce } from './helpers';
  * - plain: non-ASCII in both directions and a reply with the previous id (F1, F4);
  * - load-logging, over stdio only: the compiler's log lines unframed between the frames (F5). Over
  *   the socket the real compiler's stdout is a pipe, block-buffered, so the lines come at its
- *   exit, while the fake writes them with the reply (test/fake-idris2/README.md).
+ *   exit, while the fake writes them with the reply (test/fake-idris2/README.md);
+ * - eval-values (M3): an `eval` session (its own build directory, which is how the fake picks the
+ *   recordings of that role), `:interpret` of values, an IO action, errors and a REPL command.
  */
 const SCENARIOS: readonly (readonly [string, readonly ('stdio' | 'socket')[]])[] = [
   ['load-bad', ['stdio', 'socket']],
   ['load-simple-ipkg', ['stdio', 'socket']],
   ['plain', ['stdio', 'socket']],
   ['load-logging', ['stdio']],
+  ['eval-values', ['stdio', 'socket']],
 ];
 
 /** Everything of a run that the two processes must agree on. */

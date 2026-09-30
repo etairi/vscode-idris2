@@ -120,6 +120,13 @@ export const jsonCodec: IdeCodec = {
     }
     return { kind: 'message', message: value as IdeMessage };
   },
+  /** The id of a frame holding an `:output` message whose payload is `highlight-source` (parsed: a fake need not be fast). */
+  highlightSourceId(text: string): bigint | undefined {
+    const decoded = jsonCodec.decodeMessage(text);
+    return decoded.kind === 'message' && decoded.message.kind === 'output' && decoded.message.payload.kind === 'highlight-source'
+      ? decoded.message.id
+      : undefined;
+  },
 };
 
 /** The text of a frame carrying `message` for `jsonCodec`. */

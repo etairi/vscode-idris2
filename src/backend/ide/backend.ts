@@ -6,8 +6,58 @@
  * root's session serving again after an automatic restart, `onDidRestart`; the active document's
  * root, which `idris2.ideMode.maxSessions` never stops).
  *
- * M2 implements `load` only (`caps.diagnostics`); the other methods reject with `Unsupported`
- * until the milestones that own them (hover, types and documentation M3, holes and editing M4).
+ * M2 implements `load` (`caps.diagnostics`); M3 the queries, the token index and evaluation
+ * (below); `holes` and `edit` reject with `Unsupported` until M4, which owns them.
+ *
+ * **Queries** (M3; `IdrisBackend`, *Queries*, in `backend/types.ts`). `typeAt`, `docsFor`,
+ * `definition`, `completions` and `browseNamespace` ask the root's `check` session, in the context
+ * of the file it loaded last: the backend notes, for every `:load-file` it sends, which document it
+ * is for (`LoadRecord`, keyed by the session's `LoadedFile`), and a query whose document is not the
+ * one the session's `loadedFile` records — another file, a raw request, no process — rejects with
+ * `NotLoaded` at once, sending and starting nothing; one that is sends its request with a
+ * `beforeSend` check that it still is (a load queued before it may change it). A query never
+ * loads. `typeAt` and `docsFor` answers, and `definition`'s `:name-at` answers and target files,
+ * are cached per load (a new `LoadRecord`) and request, and the three wait for a reload of the
+ * document's file that is being made (`loadedCheckSession`).
+ * The first `:repl-completions` after every load took 113–423 ms on `contrib`, the later ones
+ * about 1–3 ms (docs/measurements/first-load.md, which sent one prefix per module). On
+ * `broken/Clean.idr` the first after each load took 171–209 ms whatever its prefix — one that
+ * matches no name (`zq`: 183 ms) included —, every later one 1.3–3.4 ms whatever prefix it had,
+ * and a `:type-of` in between warmed nothing [live, 2026-09-29, one `timeout 120 idris2
+ * --ide-mode` session on a copy of `broken/Clean.idr`, five loads, six prefixes]; so
+ * `IdeMode.warmUpCompletions` sends one such request after a load, for a completion provider to
+ * call before the user needs it — once the session has had nothing to do for `WARM_UP_QUIET_MS`,
+ * so that it is not put before a query that waits for the load (third review of M3: sent at once,
+ * it went before the hover, Type at Cursor, Go to Definition or first inlay hint whose load had
+ * just been answered, and before a hover waiting for the check after a save, delaying each by the
+ * slow first completion, 0.1–0.4 s [unit-level, the reviewer's probes]).
+ *
+ * **Token index** (M3, `highlight.ts`): built from the frames of each answered `check` load of a
+ * document, kept per document — while the document is open, and for at most `MAX_INDEXES` others,
+ * those used last; until its root is released — and announced by `IdeMode.onDidLoad` (once per reply, also for merged loads, with
+ * whether the load may have changed the root's answers, `LoadedDocument.rebuilt`). The loaded file
+ * and the files its diagnostics name are read from disk when the reply arrives, for the bird-track
+ * offset (F11) and the code-point columns (E14) of `core/positions.ts`; the loaded file is read
+ * right before the load is written too, and the index keeps its text only when both reads agree
+ * (`TokenIndex.text`).
+ *
+ * **Evaluation** (M3, ROADMAP §9 2026-09-28): `evaluate` refuses, before anything else, text the
+ * REPL parser could read as a command (`replCommand.ts`); then, one evaluation at a time per
+ * `eval` session, it loads the document's file there (the same package walk and checks right
+ * before the write as a `check` load; its diagnostics are not shown) and sends `(:interpret
+ * "EXPR")`, queued right behind the load (`interpretIn`), with a `beforeSend` check that that load
+ * answered and is still the session's. **The file is loaded before every evaluation**, also when
+ * the session loaded it last: the compiler keeps what a load read — the file and the modules it
+ * imports — in memory, and an imported module saved since (in another editor, by a `git checkout`)
+ * would otherwise be evaluated as it was, while `:load-file` rebuilds whatever changed on disk. A
+ * load of an unchanged file took 0.08–0.24 s on `contrib` modules, up to 0.40 s
+ * (docs/measurements/first-load.md [live]). The `:interpret` has its own time limit,
+ * `idris2.eval.timeout`, and a cancellation stops the `eval` session: an evaluation that does not
+ * end grows the compiler's memory fast [live, *review of M3*: `loop 0` of `loop n = loop (S n)`
+ * went from 265 to 1,576 MiB in 7.0 s]; the session does not start again by itself (`session.ts`).
+ * One that ends keeps the memory it made the process take, so after an evaluation whose
+ * `:interpret` took longer than `EVAL_RELEASE_AFTER_MS` the `eval` session is stopped
+ * (`SessionPool.releaseEvaluation`) and starts again at the next evaluation (second review of M3).
  *
  * **The path in `:load-file`.** The compiler accepts an absolute path only when it lies,
  * as text, below its working directory and source directory (`corePathToNS`, `mbPathToNS`,
@@ -72,35 +122,78 @@
 import * as path from 'path';
 import type * as vscode from 'vscode';
 import { DisposableStore, type IDisposable } from '../../core/disposable';
-import { errorText, IdrisException, unsupported } from '../../core/errors';
+import { cancelled, errorText, IdrisException, unsupported } from '../../core/errors';
 import { Emitter, type Event } from '../../core/event';
 import type { Config } from '../../core/config';
-import type { EditorRange, PositionDocument } from '../../core/positions';
+import {
+  fromIdeReplySpan,
+  toIdeTypeOfRequest,
+  toIdeTypeOfRequestPastStart,
+  lineCorrespondence,
+  toLoadedPosition,
+  toShownPosition,
+  type EditorPosition,
+  type EditorRange,
+  type IdeRequestPoint,
+  type LineCorrespondence,
+  type PositionDocument,
+} from '../../core/positions';
 import type { SessionGate } from '../../core/trust';
+import { editorLabel } from '../../core/untrustedText';
 import { compilerReading, compilerReadsPathAsGiven, packageOptionWords } from '../../project/ipkg';
-import { literateStyleOfFileName } from '../../project/literate';
 import type { Classification, ProjectIndex } from '../../project/types';
 import { NO_CAPABILITIES } from '../null';
 import { rootKey, type BackendProvider, type BackendState } from '../registry';
 import type {
   BackendKind,
   Capabilities,
+  Decor,
   EditResult,
+  Evaluation,
   Hole,
   IdrisBackend,
   LoadOptions,
   LoadResult,
   NamespaceEntry,
   RichText,
+  TokenIndex,
   TypeInfo,
 } from '../types';
 import { loadDiagnostics, type DiagnosticRecord, type LoadDiagnostics } from './diagnostics';
-import { loadFile } from './protocol';
+import { tokenIndexOf } from './highlight';
+import {
+  browseNamespace,
+  decodeBuildingLine,
+  decodeCompletions,
+  decodeNameAt,
+  decodeText,
+  docsFor,
+  interpret,
+  loadFile,
+  nameAt,
+  replCompletions,
+  toRichText,
+  typeOf,
+  type NameLocation,
+} from './protocol';
+import { replCommandRefusal } from './replCommand';
 import { duration, type Clock } from './session';
-import type { IdeSession, Reply, SessionLaunch, SessionPool, SessionStateChange } from './types';
+import type { IdeCommand, IdeSession, LoadedFile, Reply, SessionLaunch, SessionPool, SessionStateChange } from './types';
 
-/** IDE mode in M2: diagnostics only. */
-export const IDE_MODE_CAPABILITIES: Readonly<Capabilities> = Object.freeze({ ...NO_CAPABILITIES, diagnostics: true });
+/** IDE mode since M3: diagnostics (M2) and the read-only intelligence of ROADMAP M3. */
+export const IDE_MODE_CAPABILITIES: Readonly<Capabilities> = Object.freeze({
+  ...NO_CAPABILITIES,
+  diagnostics: true,
+  hover: true,
+  definition: true,
+  completion: true,
+  semanticTokens: true,
+  documentSymbols: true,
+  documentHighlights: true,
+  docs: true,
+  evaluate: true,
+  browseNamespace: true,
+});
 
 /** The `vscode` constructors the backend needs to build diagnostics. */
 export type DiagnosticsApi = Pick<
@@ -111,13 +204,22 @@ export type DiagnosticsApi = Pick<
 export interface IdeModeDeps {
   readonly pool: SessionPool;
   readonly projects: Pick<ProjectIndex, 'classify' | 'sessionCwd'>;
-  /** `diagnostics`; `ideMode().longActionTimeoutMs`, the limit of the walk made when a load is queued. */
-  readonly config: Pick<Config, 'diagnostics' | 'ideMode'>;
-  /** The timers of that limit (`systemClock` in the extension). */
-  readonly clock: Pick<Clock, 'setTimeout' | 'clearTimeout'>;
+  /**
+   * `diagnostics`; `ideMode().longActionTimeoutMs`, the limit of the walk made when a load is queued;
+   * `evaluation().timeoutMs`, the limit of an `:interpret` (`idris2.eval.timeout`).
+   */
+  readonly config: Pick<Config, 'diagnostics' | 'ideMode' | 'evaluation'>;
+  /** The timers of that limit, and the time an evaluation took (`systemClock` in the extension). */
+  readonly clock: Pick<Clock, 'setTimeout' | 'clearTimeout' | 'now'>;
   readonly gate: Pick<SessionGate, 'current' | 'onDidChange'>;
   readonly api: DiagnosticsApi;
-  /** Reads a file as UTF-8 (`fs.promises.readFile`), for the literate offset of bird-track files. */
+  /**
+   * Reads a source file as UTF-8 (`toolchain/fileSystem.ts` `readSourceFile`: a regular file of at
+   * most `MAX_SOURCE_FILE_BYTES`, anything else rejected unopened — a path in a reply may name a
+   * FIFO or a device): the text the compiler read, for the bird-track offset (F11) and the
+   * code-point columns (E14) of the ranges in its replies. Callers treat a rejection as a file that
+   * cannot be read.
+   */
   readFile(p: string): Promise<string>;
   /** `fs.promises.realpath`. */
   realpath(p: string): Promise<string>;
@@ -134,17 +236,60 @@ export interface IdeModeDeps {
   directoryId(p: string): Promise<string>;
   /** `process.platform`. */
   readonly platform: NodeJS.Platform;
+  /**
+   * Whether a document of the file `fileName` is open in this window (`vscode.workspace.textDocuments`):
+   * such a file's token index is never evicted (`MAX_INDEXES`).
+   */
+  isOpen(fileName: string): boolean;
+  /**
+   * The text of the document of the file `fileName` open in this window (`file` scheme), or
+   * `undefined` when none is: Go to Definition moves a target range read from the file on disk to
+   * the text its editor shows (`IdeBackend.definition`), since VS Code applies a location to the open
+   * document.
+   */
+  openText(fileName: string): string | undefined;
 }
 
-/** The text the compiler read, as `core/positions.ts` reads a document. */
+/** A line break as VS Code's text model reads one (`occurrence.ts` splits the same way). */
+const LINE_BREAK = /\r\n|\r|\n/;
+
+/**
+ * The text the compiler read, as `core/positions.ts` reads a document: without a byte order mark
+ * at its start, which the compiler drops before it unlits and lexes the file — in a `.lidr` whose
+ * line 0 is `> ` behind a byte order mark, `module` on line 1 was highlighted on compiler line 2, so
+ * line 0 was read as a line of a marker and white space only (F11) [live, idris2 0.8.0, fourth
+ * review of M3] — and VS Code does not show (`occurrence.ts` `indexDescribes`). Until that review
+ * it was kept, so a bird-track line 0 read as prose and every reply position below it was shifted.
+ */
 function textDocument(fileName: string, text: string | undefined): PositionDocument {
-  const lines = text === undefined ? [] : text.split('\n');
+  const lines = text === undefined ? [] : text.replace(/^\uFEFF/, '').split('\n');
   return {
     languageId: '',
     fileName,
     isUntitled: false,
     lineCount: lines.length,
     lineAt: (line: number) => ({ text: lines[line] ?? '' }),
+  };
+}
+
+/**
+ * How a range of a file, converted with `disk` (the file as read from disk), is moved to `shown`, the
+ * text of the file's open document (`IdeBackend.definition`): `undefined` when no document is open or
+ * it shows that text (the range stays); otherwise a function giving the range in `shown`
+ * (`core/positions.ts` `toShownPosition` over the lines' correspondence), with its end at its start
+ * when the end is on a line changed since, or `undefined` when its start is.
+ */
+function shownRange(disk: string, shown: string | undefined): ((range: EditorRange) => EditorRange | undefined) | undefined {
+  const saved = disk.replace(/^\uFEFF/, '');
+  if (shown === undefined || shown === saved) {
+    return undefined;
+  }
+  const before = saved.split(LINE_BREAK);
+  const after = shown.split(LINE_BREAK);
+  const correspondence = lineCorrespondence(before, after);
+  return (range) => {
+    const start = toShownPosition(before, after, range.start, correspondence);
+    return start === undefined ? undefined : { start, end: toShownPosition(before, after, range.end, correspondence) ?? start };
   };
 }
 
@@ -186,6 +331,21 @@ export interface BackendRestart {
   readonly cause: 'reconfigure' | 'crash';
 }
 
+/** An answered `:load-file` of a `check` session (`IdeMode.onDidLoad`). */
+export interface LoadedDocument {
+  readonly root: Classification;
+  /** The loaded document's `fileName`. */
+  readonly file: string;
+  /**
+   * The load may have changed what the compiler answers about any file of the root: it built a
+   * module (a `Building` line: the file or a module it imports changed on disk), it failed, or it
+   * is the first load answered by this process (a load cut off earlier, by a time-out or a stop,
+   * may have built modules without an answer). A load that built nothing reloaded the same build
+   * files, so what was answered before it still holds (F7; *review of M3*).
+   */
+  readonly rebuilt: boolean;
+}
+
 /** The causes of a crash (the session restarts) as `SessionStateChange` reports them. */
 const CRASH_CAUSES = new Set(['exit', 'timeout', 'protocolError']);
 
@@ -201,6 +361,7 @@ export class IdeMode implements BackendProvider, IDisposable {
   private readonly stateChanged = this.store.add(new Emitter<void>());
   private readonly failed = this.store.add(new Emitter<BackendFailure>());
   private readonly restarted = this.store.add(new Emitter<BackendRestart>());
+  private readonly loaded = this.store.add(new Emitter<LoadedDocument>());
   /** The last state change of each root's `check` session, by `rootKey`. */
   private readonly lastChange = new Map<string, SessionStateChange>();
   /** Why a root's `check` session is being restarted, until its next handshake (`onDidRestart`). */
@@ -218,17 +379,26 @@ export class IdeMode implements BackendProvider, IDisposable {
    * command checks the visible documents itself.
    */
   readonly onDidRestart: Event<BackendRestart> = this.restarted.event;
+  /**
+   * A `:load-file` of a `check` session was answered, whatever its outcome, and the token index of
+   * `file` (the loaded document's `fileName`) was updated, or kept when the load sent no
+   * highlighting (`features/intelligence/types.ts` `LoadNotifications`). Once per reply: callers
+   * whose loads were merged share it. Loads of the `eval` session are not reported.
+   */
+  readonly onDidLoad: Event<LoadedDocument> = this.loaded.event;
 
   constructor(private readonly deps: IdeModeDeps) {
-    this.backend = new IdeBackend(deps);
+    this.backend = new IdeBackend(deps, (loaded) => this.loaded.fire(loaded));
     this.store.add(
       deps.pool.onDidChange(({ session, change }) => {
-        if (session.role !== 'check') {
-          return;
-        }
+        // Every role's process: the loads of both check the directory it was started in.
         if (change.state === 'starting' && session.launch !== undefined) {
           this.backend.started(session.launch);
         }
+        if (session.role !== 'check') {
+          return;
+        }
+        this.backend.sessionChanged(session);
         const key = rootKey(session.root);
         this.lastChange.set(key, change);
         this.noteRestart(session.root, change);
@@ -314,12 +484,18 @@ export class IdeMode implements BackendProvider, IDisposable {
     }
   }
 
-  /** The roots whose `check` session has a process or is starting one (for Stop and Restart). */
+  /**
+   * The roots with a session of either role that has a process or is starting one (for Stop and
+   * Restart), each once: a root whose only process is its `eval` session's counts too.
+   */
   activeRoots(): readonly Classification[] {
-    return this.deps.pool
-      .sessions()
-      .filter((s) => s.role === 'check' && s.state !== 'stopped' && s.state !== 'failed')
-      .map((s) => s.root);
+    const roots = new Map<string, Classification>();
+    for (const s of this.deps.pool.sessions()) {
+      if (s.state !== 'stopped' && s.state !== 'failed' && !roots.has(rootKey(s.root))) {
+        roots.set(rootKey(s.root), s.root);
+      }
+    }
+    return [...roots.values()];
   }
 
   /** Stops the sessions of `root`, or of every root. */
@@ -327,9 +503,27 @@ export class IdeMode implements BackendProvider, IDisposable {
     this.deps.pool.stop(root);
   }
 
-  /** Stops the sessions of `root` because its last open document was closed (`SessionPool.release`). */
+  /**
+   * Stops the sessions of `root` because its last open document was closed (`SessionPool.release`),
+   * and forgets the token indexes of its files.
+   */
   release(root: Classification): void {
     this.deps.pool.release(root);
+    this.backend.forget(root);
+  }
+
+  /**
+   * Sends one `:repl-completions` to the `check` session of `doc`'s root when that session's last
+   * answered load is of `doc`'s file and nothing has completed since (module comment: the first
+   * completion after every load is the slow one), as soon as the session has been idle — nothing in
+   * flight or queued — for `WARM_UP_QUIET_MS`; nothing when that has not happened within
+   * `WARM_UP_MAX_WAIT_MS`, or the session loaded another file or ended meanwhile. For a completion
+   * provider to call before the user completes, e.g. when a load of the active document is
+   * announced (`onDidLoad`). Loads and starts nothing; resolves when the answer has arrived or
+   * nothing was sent, and never rejects.
+   */
+  warmUpCompletions(doc: vscode.TextDocument): Promise<void> {
+    return this.backend.warmUpCompletions(doc);
   }
 
   /**
@@ -375,6 +569,7 @@ export class IdeMode implements BackendProvider, IDisposable {
 
   dispose(): void {
     this.store.dispose();
+    this.backend.dispose();
   }
 }
 
@@ -385,18 +580,239 @@ function describeReturn(reply: Reply): string {
   return payload.kind === 'error' ? `id ${id}: error: ${payload.message.split('\n', 1)[0]}` : `id ${id}: ${payload.kind}`;
 }
 
-/** Not in M2: each names the milestone's feature, not the milestone. */
+/** Not in M3: each names the milestone's feature, not the milestone. */
 function notYet(what: string): Promise<never> {
   return Promise.reject(unsupported(`${what} is not available with the IDE-mode backend in this version.`));
 }
+
+/**
+ * What the backend knows about one `:load-file` it sent (module comment, *Queries*), keyed by the
+ * `LoadedFile` object the session records as its `loadedFile` once the load has returned.
+ */
+interface LoadRecord {
+  /** The loaded document's `fileName`. */
+  readonly fileName: string;
+  /** The load returned `(:ok …)`; `undefined` until it has returned. */
+  ok: boolean | undefined;
+  /**
+   * A `check` load: the file's text as read right before the load was written (`queueLoad`'s
+   * `readBefore`). `TokenIndex.text` is the text read when the reply has arrived only when it is
+   * this one, so that it is the text the compiler read in between (*review of M3*: read after the
+   * reply alone, a save during the load made the index describe the newer text).
+   */
+  textBefore: string | undefined;
+  /** `typeAt` answers of this load, by request (`at L C NAME` positional, `name NAME` by name). */
+  readonly types: Map<string, Promise<TypeInfo | undefined>>;
+  /** `definition`'s `:name-at` answers of this load, by the name asked (`undefined`: an error). */
+  readonly names: Map<string, Promise<readonly NameLocation[] | undefined>>;
+  /** The target files `definition` read during this load, by path (`undefined`: cannot be read). */
+  readonly sources: Map<string, Promise<string | undefined>>;
+  /** `docsFor` answers of this load, by name. */
+  readonly docs: Map<string, Promise<RichText | undefined>>;
+  /** A `:repl-completions` has been sent after this load (`warmUpCompletions`). */
+  warm: boolean;
+}
+
+/** A load sent by `queueLoad`: its reply, the path sent, the session directory and the record of the load the session answered. */
+interface SentLoad {
+  readonly reply: Reply;
+  readonly sent: string;
+  readonly cwd: string;
+  readonly record: LoadRecord;
+}
+
+/** A load in a session's queue (`queueLoad`); `done` settles with its reply. */
+interface QueuedLoad {
+  readonly done: Promise<SentLoad>;
+}
+
+/**
+ * Above this many token indexes, those of files without an open document are dropped, the least
+ * recently used first (*review of M3*: an index of the 2,000-line module took 3.1 MiB of heap, its
+ * tokens and text, and the indexes of every file ever loaded were kept while any file of their root
+ * was open). The index of a file with an open document is never dropped (`IdeModeDeps.isOpen`;
+ * second review of M3): when a tab is shown again VS Code asks for its semantic tokens, and with no
+ * index the provider has none, so VS Code clears them (`setSemanticTokens(null, …)` [src, the
+ * 1.139.1 workbench bundle]), its inlay hints are gone too, and nothing loads the file again until a
+ * hover, a completion, Check File or a save. So the indexes kept are those of the open documents
+ * that were loaded, and at most this many others.
+ */
+const MAX_INDEXES = 16;
+
+/**
+ * The rejection of a query whose document is not the file the root's `check` session loaded last
+ * (`core/errors.ts` `NotLoaded`).
+ */
+function notLoaded(doc: vscode.TextDocument): IdrisException {
+  return new IdrisException({
+    kind: 'NotLoaded',
+    message:
+      `${path.basename(doc.fileName)} is not the file the compiler of its project has loaded last, ` +
+      'so it cannot answer questions about it until the file is checked again.',
+    file: doc.fileName,
+  });
+}
+
+/**
+ * An `eval` session whose `:interpret` took longer than this is stopped once it has answered
+ * (`SessionPool.releaseEvaluation`; module comment, *Evaluation*). The compiler keeps the memory an
+ * evaluation made it take: on the e2e suite's 2,000-line module the `eval` process took 191 MiB after
+ * its start, 206–210 MiB after the load and 247 MiB after six evaluations of 27–34 ms each; an
+ * evaluation of `the (List Nat) [1..2000]` took 6.3 s in one run and 4.6 s in another and left the
+ * process at 689 and 716 MiB, where it stayed for 30 s idle and after a small evaluation [live,
+ * second review of M3: macOS `footprint` of the Chez process]. A second is far above those ordinary
+ * evaluations; how much an evaluation of about a second leaves behind was not measured (the bound is
+ * a choice). The next evaluation pays a new process's start and first load.
+ */
+export const EVAL_RELEASE_AFTER_MS = 1_000;
+
+/** The prefix a completion warm-up sends: any prefix warms the next completion [live, module comment]. */
+const WARM_UP_PREFIX = 'zq';
+
+/**
+ * How long a `check` session must have been idle before a completion warm-up is sent to it
+ * (`IdeBackend.warmUpCompletions`): long enough that the requests which follow a load one after
+ * another — a query that waited for it, a round of inlay hints, each sent within microtasks of the
+ * previous answer — are not interrupted by it, short against the time before a user types after
+ * a load. A choice, not measured; also the interval at which it looks again.
+ */
+export const WARM_UP_QUIET_MS = 150;
+
+/** After this long without `WARM_UP_QUIET_MS` of quiet, a warm-up is not sent: the session is busy anyway. A choice. */
+export const WARM_UP_MAX_WAIT_MS = 10_000;
+
+/**
+ * The part of `name` after its namespace, when `name` is qualified (`Data.Vect.index` → `index`):
+ * the namespace segments are capitalised identifiers followed by a dot.
+ */
+function unqualified(name: string): string {
+  return name.replace(/^(?:\p{Lu}[\p{L}\p{N}_']*\.)+(?=.)/u, '');
+}
+
+/**
+ * The leading run of `root` that the compiler completes as a whole: letters and digits of ASCII and
+ * every character above U+00A0 (`parseTask`, `src/TTImp/Interactive/Completion.idr` 38–42 on v0.8.0
+ * [src]); `_`, `'` and operator characters end it.
+ */
+function completable(root: string): string {
+  let run = '';
+  for (const ch of root) {
+    if (!/^[0-9A-Za-z]$/.test(ch) && (ch.codePointAt(0) ?? 0) <= 0xa0) {
+      break;
+    }
+    run += ch;
+  }
+  return run;
+}
+
+/**
+ * Whether a positional `:type-of` answer describes a local other than `name`: the compiler answers
+ * for the local at the position whatever name is asked (transcript `unicode-columns`: `(:type-of
+ * "y" 12 3)` → `x₁ : ℕ` [live]), which happens when the editor's position and the loaded text
+ * disagree. The name is what the answer's last line has before ` : ` (a hole's goal ends with it);
+ * a global's is qualified, an operator's too (`Foo.Shapes.area`, `Foo.Shapes.(|+|)`,
+ * `Prelude.List.(++)` [live, `shapes-lookups`, `lit-lookups`]), so only an unqualified name
+ * different from `name` (a leading `?` of a hole ignored) counts. An operator bound by `where` or
+ * `let` is a local, answered unqualified and without parentheses, as it is asked (`<%> : Nat -> Nat
+ * -> Nat` for `(:type-of "<%>" 6 8)` [live, third review of M3, one `timeout 60 idris2 --ide-mode`
+ * on a small file]; until that review an unqualified parenthesised name was also passed over, a
+ * shape no `:type-of` answer had). A method implementation's machine name
+ * (`perimeter_Measured_Shape` for `perimeter` [live, `shapes-lookups`]) counts too, and then the
+ * name lookup answers with the method's declared type.
+ */
+function describesAnotherLocal(answer: string, name: string): boolean {
+  const lastLine = answer.slice(answer.lastIndexOf('\n') + 1);
+  const separator = lastLine.indexOf(' : ');
+  const shown = separator < 0 ? lastLine : lastLine.slice(0, separator);
+  return !shown.includes('.') && shown !== name.replace(/^\?/, '');
+}
+
+/**
+ * One entry per line of a `:browse-namespace` answer, `[MULTIPLICITY ]NAME : TYPE` [live,
+ * `clean-queries`: a hole is listed as `1 vlen_rhs : …`], with the answer's highlighting cut to
+ * each entry; `name` is `NAME` without the multiplicity. A line that starts with white space would
+ * continue the previous entry's type: none did, also at 196 characters [live, `clean-queries`,
+ * `Data.Vect`], but the listing is laid out by the pretty-printer (`hang 0 ty`,
+ * `src/Idris/Doc/String.idr` 681 on v0.8.0 [src]).
+ */
+function namespaceEntries(listing: RichText): NamespaceEntry[] {
+  const entries: { start: number; end: number }[] = [];
+  let at = 0;
+  for (const line of listing.text.split('\n')) {
+    const end = at + line.length;
+    if (/^\s/.test(line) && entries.length > 0) {
+      entries[entries.length - 1].end = end;
+    } else if (line.trim() !== '') {
+      entries.push({ start: at, end });
+    }
+    at = end + 1;
+  }
+  return entries.map(({ start, end }) => {
+    const text = listing.text.slice(start, end);
+    const separator = text.indexOf(' : ');
+    const shown = separator < 0 ? text : text.slice(0, separator);
+    const spans = listing.spans
+      .filter((span) => span.start >= start && span.start + span.length <= end)
+      .map((span) => ({ ...span, start: span.start - start }));
+    return { name: shown.replace(/^[01] /, ''), signature: { text, spans } };
+  });
+}
+
+/**
+ * Where a position of the text a document shows lies in the text the compiler's last load of its
+ * file read (`IdeBackend.loadedPlace`): the document to convert it with (`core/positions.ts`: the
+ * literate line map and the code-point columns of that text) and the position in it; `undefined`
+ * when it is on a line changed since that cannot be matched (`toLoadedPosition`).
+ */
+type LoadedPlace = { readonly document: PositionDocument; readonly pos: EditorPosition } | undefined;
 
 export class IdeBackend implements IdrisBackend {
   readonly kind: BackendKind = 'ideMode';
   readonly caps: Readonly<Capabilities> = IDE_MODE_CAPABILITIES;
   /** The directory each process was started in (`directoryId`, `undefined`: none), by its launch (module comment). */
   private readonly startedIn = new WeakMap<SessionLaunch, Promise<string | undefined>>();
+  /** The loads this backend sent, by the `LoadedFile` each was requested with (module comment, *Queries*). */
+  private readonly records = new WeakMap<LoadedFile, LoadRecord>();
+  /** The replies whose token index was built and whose load was announced (merged loads share one). */
+  private readonly answered = new WeakSet<Reply>();
+  /**
+   * The token index of each document, by `fileName`, with the key of its root (`forget`); in the
+   * order of their last use, the oldest first (`MAX_INDEXES`).
+   */
+  private readonly indexes = new Map<string, { readonly root: string; readonly index: TokenIndex }>();
+  /** The evaluation running or last run in each `eval` session: one at a time (module comment). */
+  private readonly evaluations = new WeakMap<IdeSession, Promise<unknown>>();
+  /** Per root (`rootKey`), the process whose load was announced last (`LoadedDocument.rebuilt`). */
+  private readonly announcedLaunch = new Map<string, SessionLaunch | undefined>();
+  /** Per `check` session, when its state last changed (`sessionChanged`; `warmUpCompletions` waits for quiet). */
+  private readonly lastChange = new WeakMap<IdeSession, number>();
+  /** Per `check` session and file, the load of it that is being made (`typeAt` and `docsFor` wait for it). */
+  private readonly pendingLoads = new WeakMap<IdeSession, Map<string, Promise<unknown>>>();
+  /**
+   * Per load, the last document version compared with the text it read (`loadedPlace`): `lines`
+   * when they differ.
+   */
+  private readonly comparisons = new WeakMap<
+    LoadRecord,
+    {
+      readonly doc: vscode.TextDocument;
+      readonly version: number;
+      readonly lines:
+        | {
+            readonly before: readonly string[];
+            readonly after: readonly string[];
+            readonly correspondence: LineCorrespondence;
+            readonly document: PositionDocument;
+          }
+        | undefined;
+    }
+  >();
 
-  constructor(private readonly deps: IdeModeDeps) {}
+  constructor(
+    private readonly deps: IdeModeDeps,
+    /** `IdeMode.onDidLoad`'s emitter. */
+    private readonly announce: (loaded: LoadedDocument) => void,
+  ) {}
 
   /** A process was just started with `launch` (`IdeMode`, on the change to `starting`): notes the directory it was started in. */
   started(launch: SessionLaunch): void {
@@ -516,24 +932,35 @@ export class IdeBackend implements IdrisBackend {
   }
 
   /**
-   * The documents `loadDiagnostics` converts ranges with: bird-track files named in the reply's
-   * frames, read from disk (the text the compiler read); every other file needs no text.
+   * The documents the ranges of a load's reply are converted with (`loadDiagnostics`, the token
+   * index): the loaded file, the files its `:warning` frames name and, after a failed load, the
+   * root's `.ipkg` (whose parse error has a range, F10), read from disk when the reply has arrived —
+   * the text the compiler read, unless the file changed again since — for the bird-track offset
+   * (F11) and the code-point columns (E14) of `core/positions.ts`. A file that cannot be read is
+   * taken as having neither (`textDocument` without text).
    */
-  private async documents(reply: Reply, cwd: string, loadedPath: string): Promise<(p: string) => PositionDocument> {
+  private async documents(
+    reply: Reply,
+    cwd: string,
+    loadedPath: string,
+    ipkgPath: string | undefined,
+  ): Promise<{ readonly documentFor: (p: string) => PositionDocument; readonly textOf: (p: string) => string | undefined }> {
     const files = [loadedPath];
     for (const message of reply.messages) {
       if (message.kind === 'warning') {
         files.push(path.resolve(cwd, message.warning.file));
       }
     }
-    const bird = [...new Set(files)].filter((file) => literateStyleOfFileName(file) === 'bird');
+    if (reply.payload.kind === 'error' && ipkgPath !== undefined) {
+      files.push(ipkgPath);
+    }
     const texts = new Map<string, string | undefined>();
     await Promise.all(
-      bird.map(async (file) => {
+      [...new Set(files)].map(async (file) => {
         texts.set(file, await this.deps.readFile(file).catch(() => undefined));
       }),
     );
-    return (p) => textDocument(p, texts.get(p));
+    return { documentFor: (p) => textDocument(p, texts.get(p)), textOf: (p) => texts.get(p) };
   }
 
   /**
@@ -591,12 +1018,26 @@ export class IdeBackend implements IdrisBackend {
     return problem === undefined ? undefined : errorText(problem.error);
   }
 
-  async load(doc: vscode.TextDocument, options?: LoadOptions): Promise<LoadResult> {
+  /** Rejects with `Unsupported` (`reason`) unless `doc` is a file on disk, which is all the compiler reads. */
+  private requireFile(doc: vscode.TextDocument, reason: string): void {
     if (doc.uri.scheme !== 'file' || doc.isUntitled) {
-      throw unsupported('Only a file saved on disk can be checked: the compiler reads the file, not the editor.');
+      throw unsupported(reason);
     }
-    const root = await this.deps.projects.classify(doc.fileName);
-    const session = this.deps.pool.sessionFor(root, 'check');
+  }
+
+  /**
+   * Queues a `:load-file` of `doc` in `session` of `root` (a `check` or an `eval` session) after the
+   * package walk and the checks of the module comment, and notes the load (`LoadRecord`); resolves
+   * once the request is in the session's queue, `done` when it is answered. `readBefore` (a `check`
+   * load): reads the file right before the load is written (`LoadRecord.textBefore`), before the
+   * walk, so that only microtasks still separate the walk from the write.
+   */
+  private async queueLoad(
+    root: Classification,
+    session: IdeSession,
+    doc: vscode.TextDocument,
+    options: { readonly load?: LoadOptions; readonly readBefore?: boolean } = {},
+  ): Promise<QueuedLoad> {
     const cwd = session.cwd;
     // Checked once now, so that nothing is started (or asked) for a load that would be refused …
     const early = await this.withinLimit(this.loadRefusal(root, session, doc.fileName));
@@ -606,42 +1047,107 @@ export class IdeBackend implements IdrisBackend {
     }
     const realCwd = early;
     const sent = this.loadPath(cwd, realCwd, doc.fileName);
+    const file: LoadedFile = doc.isDirty ? { path: sent } : { path: sent, version: doc.version };
+    const own: LoadRecord = { fileName: doc.fileName, ok: undefined, textBefore: undefined, types: new Map(), names: new Map(), sources: new Map(), docs: new Map(), warm: false };
     // … and again when the load is the next to be sent, to a process that has started and answered
     // (module comment): until then a first load waits for the toolchain scan, the consent question
     // and the start, and any load for the requests before it.
     let refused: LoadRefusal | undefined;
     const beforeSend = async (): Promise<void> => {
+      const text = options.readBefore === true ? await this.deps.readFile(doc.fileName).catch(() => undefined) : undefined;
       const now = await this.loadRefusal(root, session, doc.fileName, realCwd);
       if (typeof now !== 'string') {
         refused = now;
         throw now.error;
       }
+      own.textBefore = text;
     };
-    let reply: Reply;
-    try {
-      reply = await session.request(loadFile(sent), {
-        kind: 'load',
-        file: doc.isDirty ? { path: sent } : { path: sent, version: doc.version },
-        beforeSend,
-        ...(options?.urgent === undefined ? {} : { urgent: options.urgent }),
-      });
-    } catch (error) {
-      if (refused !== undefined && error === refused.error) {
-        // The load is out of the queue: the stop cancels only what waited behind it.
-        this.deps.pool.packageChanged(root, refused.detail);
+    this.records.set(file, own);
+    const urgent = options.load?.urgent;
+    const request = session.request(loadFile(sent), { kind: 'load', file, beforeSend, ...(urgent === undefined ? {} : { urgent }) });
+    const done = request.then(
+      (reply): SentLoad => {
+        // Merged loads send the newest caller's `LoadedFile`, which the session has just recorded.
+        const recorded = session.loadedFile;
+        const record = (recorded?.path === sent ? this.records.get(recorded) : undefined) ?? own;
+        record.ok = reply.payload.kind !== 'error';
+        return { reply, sent, cwd, record };
+      },
+      (error: unknown) => {
+        if (refused !== undefined && error === refused.error) {
+          // The load is out of the queue: the stop cancels only what waited behind it.
+          this.deps.pool.packageChanged(root, refused.detail);
+        }
+        throw error;
+      },
+    );
+    return { done };
+  }
+
+  /** Notes `loading`, a load of `file` in the `check` session `session`, until it settles (`loadedCheckSession` waits for it). */
+  private notePending(session: IdeSession, file: string, loading: Promise<unknown>): void {
+    let pending = this.pendingLoads.get(session);
+    if (pending === undefined) {
+      pending = new Map();
+      this.pendingLoads.set(session, pending);
+    }
+    const loads = pending;
+    loads.set(file, loading);
+    const clear = (): void => {
+      if (loads.get(file) === loading) {
+        loads.delete(file);
       }
-      throw error;
+    };
+    loading.then(clear, clear);
+  }
+
+  async load(doc: vscode.TextDocument, options?: LoadOptions): Promise<LoadResult> {
+    this.requireFile(doc, 'Only a file saved on disk can be checked: the compiler reads the file, not the editor.');
+    const root = await this.deps.projects.classify(doc.fileName);
+    const session = this.deps.pool.sessionFor(root, 'check');
+    const result = this.loadIn(root, session, doc, options);
+    this.notePending(session, doc.fileName, result);
+    return result;
+  }
+
+  /** `load` in `session`, the `check` session of `root`. */
+  private async loadIn(root: Classification, session: IdeSession, doc: vscode.TextDocument, options?: LoadOptions): Promise<LoadResult> {
+    const { reply, sent, cwd, record } = await (await this.queueLoad(root, session, doc, { load: options, readBefore: true })).done;
+    const ipkgPath = root.kind === 'project' ? root.ipkgPath : undefined;
+    const { documentFor, textOf } = await this.documents(reply, cwd, doc.fileName, ipkgPath);
+    if (!this.answered.has(reply)) {
+      this.answered.add(reply);
+      const text = textOf(doc.fileName);
+      const index = tokenIndexOf(reply.messages, {
+        file: doc.fileName,
+        isLoadedFile: (name) => name === sent || path.resolve(cwd, name) === doc.fileName,
+        document: documentFor(doc.fileName),
+        text: text !== undefined && text === record.textBefore ? text : undefined,
+        ok: record.ok === true,
+      });
+      if (index !== undefined) {
+        this.keepIndex(doc.fileName, rootKey(root), index);
+      }
+      const key = rootKey(root);
+      const launch = session.launch;
+      const rebuilt =
+        reply.payload.kind === 'error' ||
+        launch === undefined ||
+        this.announcedLaunch.get(key) !== launch ||
+        reply.messages.some((m) => m.kind === 'write-string' && decodeBuildingLine(m.text) !== undefined);
+      this.announcedLaunch.set(key, launch);
+      this.announce({ root, file: doc.fileName, rebuilt });
     }
     const result = loadDiagnostics(reply, {
       loadedPath: doc.fileName,
       sentPath: sent,
       cwd,
-      ipkgPath: root.kind === 'project' ? root.ipkgPath : undefined,
+      ipkgPath,
       includeSourceExcerpt: this.deps.config.diagnostics().includeSourceExcerpt,
       warningsAsErrors:
         session.launch?.args.includes('-Werror') === true ||
         (root.kind === 'project' && root.model.status === 'ok' && packageOptionWords(root.model.model.opts).includes('-Werror')),
-      documentFor: await this.documents(reply, cwd, doc.fileName),
+      documentFor,
     });
     return this.toLoadResult(result);
   }
@@ -679,16 +1185,263 @@ export class IdeBackend implements IdrisBackend {
     };
   }
 
-  typeAt(): Promise<TypeInfo | undefined> {
-    return notYet('Showing a type');
+  // -----------------------------------------------------------------------------------------
+  // Queries (module comment, *Queries*)
+  // -----------------------------------------------------------------------------------------
+
+  /** The record of the load `session` answered last when it is `doc`'s file; else `undefined`. */
+  private recordOf(session: IdeSession, doc: vscode.TextDocument): LoadRecord | undefined {
+    const file = session.loadedFile;
+    const record = file === undefined ? undefined : this.records.get(file);
+    return record?.fileName === doc.fileName ? record : undefined;
   }
 
-  docsFor(): Promise<RichText | undefined> {
-    return notYet('Showing documentation');
+  /**
+   * The `check` session of `doc`'s root and the record of its load of `doc`'s file; rejects with
+   * `NotLoaded` when that session's last answered load is not of `doc`'s file (or it has no process).
+   * `afterReload`: while a load of `doc`'s file is being made in that session and `doc`'s file is the
+   * one loaded (a check after a save), waits for that load first, so that an answer kept per load
+   * (`typeAt`, `docsFor`, `definition`) is not the previous load's (*review of M3*: a hover during
+   * the check after a save showed the type before it, with no stale note). A query sent meanwhile needs no wait: it
+   * queues behind the load, and its check before the write sees the new load.
+   */
+  private async loadedCheckSession(
+    doc: vscode.TextDocument,
+    afterReload = false,
+  ): Promise<{ readonly session: IdeSession; readonly record: LoadRecord }> {
+    this.requireFile(doc, 'Only a file saved on disk can be asked about: the compiler reads the file, not the editor.');
+    const root = await this.deps.projects.classify(doc.fileName);
+    const session = this.deps.pool.sessionFor(root, 'check');
+    for (
+      let pending = afterReload ? this.pendingLoads.get(session)?.get(doc.fileName) : undefined;
+      pending !== undefined && this.recordOf(session, doc) !== undefined;
+      pending = this.pendingLoads.get(session)?.get(doc.fileName)
+    ) {
+      await pending.then(
+        () => undefined,
+        () => undefined,
+      );
+    }
+    const record = this.recordOf(session, doc);
+    if (record === undefined) {
+      throw notLoaded(doc);
+    }
+    return { session, record };
   }
 
-  definition(): Promise<vscode.Location[]> {
-    return notYet('Go to Definition');
+  /** Sends a query about `doc` to its `check` session, checking right before the write that `doc`'s file is still the one loaded. */
+  private ask(session: IdeSession, doc: vscode.TextDocument, command: IdeCommand): Promise<Reply> {
+    return session.request(command, {
+      kind: 'lookup',
+      beforeSend: () => (this.recordOf(session, doc) === undefined ? Promise.reject(notLoaded(doc)) : Promise.resolve()),
+    });
+  }
+
+  /** `compute()` once per `key` in `cache` while it has not failed. */
+  private cached<T>(cache: Map<string, Promise<T>>, key: string, compute: () => Promise<T>): Promise<T> {
+    const known = cache.get(key);
+    if (known !== undefined) {
+      return known;
+    }
+    const answer = compute();
+    cache.set(key, answer);
+    answer.catch(() => {
+      if (cache.get(key) === answer) {
+        cache.delete(key);
+      }
+    });
+    return answer;
+  }
+
+  /**
+   * The positional `(:type-of "NAME" L C)` (F2; `L C` from `core/positions.ts`, code points, E14).
+   * When it describes another local (`describesAnotherLocal`) and a name may end right at `pos`, it
+   * is asked once more one code point further (`toIdeTypeOfRequestPastStart`: the compiler answers
+   * for a local whose span holds the position, end included, so at the start of `++` in `xs++ys` it
+   * answered for `xs` [live, second review of M3]). When no positional answer describes `NAME` —
+   * both describe another local, or the request fails — `(:type-of "NAME")`, except for a variable
+   * (`decor` `bound`, the caller's token index): by name the compiler would describe a global the
+   * local shadows, which every caller drops (the hover, inlay hints), so the answer is `undefined`
+   * without that request (*review of M3*). Each request's answer is kept per load, by the point
+   * sent. Waits for a reload of the file being made (`loadedCheckSession`).
+   *
+   * **Unsaved changes** (third review of M3). The compiler answers about the text its last load of
+   * the file read, and `pos` is a position of the text `doc` shows; while they differ, `pos` is
+   * asked about where it lies in the loaded text (`loadedPlace`), converted with that text (its
+   * literate line map, F11, and code-point columns, E14). Asked at `pos` as it is, a line inserted
+   * above moved the question to another line — below it a local got no type, and one of another
+   * clause with the same name answered with that clause's type (`n : Nat` for `g n = n` of `g :
+   * String -> String` once `f`'s clause above was deleted) [unit-level, the reviewer's probe]. The
+   * lines are matched by a line diff since the fourth review of M3 (`core/positions.ts`
+   * `lineCorrespondence`): before, a line between two separate edits was matched with the loaded
+   * line of the same number, and the hover over `x` of `let x = the Nat 1` asked about the next
+   * line's `x` (`x : String`) [live answers, the reviewer's probe]. A position the loaded text
+   * cannot be matched at (on a line of a hunk that inserted or deleted lines, or on a line edited in
+   * place with other text before it) gets no positional request, only the lookup by name (not for a
+   * variable).
+   */
+  async typeAt(doc: vscode.TextDocument, pos: vscode.Position, name: string, decor?: Decor): Promise<TypeInfo | undefined> {
+    this.requireFile(doc, 'Only a file saved on disk can be asked about: the compiler reads the file, not the editor.');
+    if (toIdeTypeOfRequest(doc, pos) === undefined) {
+      return undefined;
+    }
+    const { session, record } = await this.loadedCheckSession(doc, true);
+    const place = this.loadedPlace(doc, record, pos);
+    const ask = (point: IdeRequestPoint | undefined): Promise<TypeInfo | undefined> =>
+      this.cached(record.types, point === undefined ? `name ${name}` : `at ${point.line} ${point.column} ${name}`, async () => {
+        const answer = decodeText((await this.ask(session, doc, typeOf(name, point))).payload);
+        return answer.kind === 'ok' ? { ...toRichText(answer.value), lookup: point === undefined ? 'name' : 'position' } : undefined;
+      });
+    const at = place === undefined ? undefined : toIdeTypeOfRequest(place.document, place.pos);
+    const first = at === undefined ? undefined : await ask(at);
+    if (first !== undefined && !describesAnotherLocal(first.text, name)) {
+      return first;
+    }
+    const past = first === undefined || place === undefined ? undefined : toIdeTypeOfRequestPastStart(place.document, place.pos);
+    if (past !== undefined) {
+      const second = await ask(past);
+      if (second !== undefined && !describesAnotherLocal(second.text, name)) {
+        return second;
+      }
+    }
+    return decor === 'bound' ? undefined : ask(undefined);
+  }
+
+  /**
+   * `LoadedPlace` of `pos`, a position of the text `doc` shows, for the load `record` (`typeAt`,
+   * *Unsaved changes*): `doc` itself while it shows the text that load read
+   * (`LoadRecord.textBefore`, a byte order mark ignored) or that text is not known; otherwise the
+   * position `core/positions.ts` `toLoadedPosition` finds in it, with that text as the document.
+   * The comparison is made once per document version and load.
+   */
+  private loadedPlace(doc: vscode.TextDocument, record: LoadRecord, pos: EditorPosition): LoadedPlace {
+    const loaded = record.textBefore?.replace(/^\uFEFF/, '');
+    if (loaded === undefined) {
+      return { document: doc, pos };
+    }
+    let compared = this.comparisons.get(record);
+    if (compared?.doc !== doc || compared.version !== doc.version) {
+      const shown = doc.getText();
+      compared = { doc, version: doc.version, lines: shown === loaded ? undefined : this.compareLines(doc.fileName, loaded, shown) };
+      this.comparisons.set(record, compared);
+    }
+    if (compared.lines === undefined) {
+      return { document: doc, pos };
+    }
+    const moved = toLoadedPosition(compared.lines.before, compared.lines.after, pos, compared.lines.correspondence);
+    return moved === undefined ? undefined : { document: compared.lines.document, pos: moved };
+  }
+
+  /** The lines of `loaded` (the text of `fileName` a load read) and of `shown` (a document's), and how they correspond. */
+  private compareLines(fileName: string, loaded: string, shown: string) {
+    const before = loaded.split(LINE_BREAK);
+    const after = shown.split(LINE_BREAK);
+    return { before, after, correspondence: lineCorrespondence(before, after), document: textDocument(fileName, loaded) };
+  }
+
+  /**
+   * `(:docs-for "NAME")`: the whole text, whatever `mode` asks, since the compiler ignores it (F31)
+   * and the caller takes the overview (`IdrisBackend.docsFor`); `undefined` when the compiler answers
+   * an error (`Undefined name` [live]). Waits for a reload of the file being made (`loadedCheckSession`).
+   */
+  async docsFor(doc: vscode.TextDocument, name: string): Promise<RichText | undefined> {
+    const { session, record } = await this.loadedCheckSession(doc, true);
+    return this.cached(record.docs, name, async () => {
+      const answer = decodeText((await this.ask(session, doc, docsFor(name))).payload);
+      return answer.kind === 'ok' ? toRichText(answer.value) : undefined;
+    });
+  }
+
+  /**
+   * `(:name-at "NAME")` with `name` unqualified (the qualified form answers `()`, F2; a qualified
+   * `name` keeps the answers whose name ends with it). Refused with `Unsupported` when `decor` is
+   * `bound` (a local variable, by the caller's token index: the positional `:name-at` is a stub, F3,
+   * so a local has no definition to find by name, and one found would be a global it shadows). Until
+   * the third review of M3 the backend looked the occurrence up in its own index at `pos`, which
+   * describes the saved file: with a line inserted above and not saved, `Vect` of `vlen : Vect n a
+   * -> Nat` was refused as the local `xs` that the index had at that position [unit-level].
+   *
+   * `namespace`: the namespace the caller's token index gives the occurrence (`Token.namespace`: on
+   * a reference, the namespace of the name it refers to, F33 — `Prelude.Types.List` on a use of
+   * `length` of lists [live, fourth review of M3]). When some entries are that name (`NS.name`, or
+   * `NS.(op)` for an operator), only those are kept; otherwise, and without a namespace (`""` on
+   * bound and declaring occurrences), every entry is: `:name-at` answers every definition of the
+   * name in the compiler's context, also of modules the file does not import (`length` of
+   * `Data.List1`, `Prelude.Types.List`, `…SnocList`, `…String` and `Data.Vect` in a file importing
+   * only `Data.Vect` [live, the same review]).
+   *
+   * Entries whose file is not an absolute path (`(Interactive)`, `(File-Not-Found)`) are left out,
+   * and so are those whose file cannot be read (`IdeModeDeps.readFile`: not a regular file of at
+   * most `MAX_SOURCE_FILE_BYTES` either): a name of an installed package points into its sources
+   * (`/opt/homebrew/Cellar/idris2/0.8.0_2/libexec/idris2-0.8.0/…` [live, `clean-queries`]), which an
+   * installation may lack. A file inside the session directory's real path is given as the editor
+   * spells it; each target file is read for its ranges (bird-track offset, F11 — `:name-at` answers
+   * unlit columns [live, `lit-lookups`] — and E14). VS Code applies a location to the target's open
+   * document, so when that document shows other text than the file read (unsaved changes), the range
+   * is moved to it (`shownRange`); a range that starts on a line changed since is left out. When no
+   * entry is left, `Unsupported` says why. The `:name-at` answer and the target files' texts are kept
+   * per load (`LoadRecord`), the moving is done at each call: VS Code asks at every Go to Definition
+   * and every Cmd-hover, for each occurrence of a name, and until the fourth review of M3 each asked
+   * the compiler again and read every target file again (three installed sources, 67,267 bytes, for
+   * `::` [unit-level, the reviewer's probe]). Like `typeAt`, waits for a reload of the file being made.
+   */
+  async definition(doc: vscode.TextDocument, _pos: vscode.Position, name: string, decor?: Decor, namespace?: string): Promise<vscode.Location[]> {
+    this.requireFile(doc, 'Only a file saved on disk can be asked about: the compiler reads the file, not the editor.');
+    if (decor === 'bound') {
+      throw unsupported(
+        `${name} is a local variable. Go to Definition finds global names only: the compiler looks definitions up by name, ` +
+          'and its lookup by position is not implemented.',
+      );
+    }
+    const { session, record } = await this.loadedCheckSession(doc, true);
+    const root = unqualified(name);
+    const entries = await this.cached(record.names, root, async () => {
+      const answer = decodeNameAt((await this.ask(session, doc, nameAt(root))).payload);
+      return answer.kind === 'ok' ? answer.value : undefined;
+    });
+    if (entries === undefined) {
+      return [];
+    }
+    const named = entries.filter(
+      (entry) => path.isAbsolute(entry.file) && (root === name || entry.name === name || entry.name.endsWith(`.${name}`)),
+    );
+    const inNamespace = namespace === undefined || namespace === '' ? [] : named.filter((entry) => entry.name === `${namespace}.${root}` || entry.name === `${namespace}.(${root})`);
+    const found = inNamespace.length > 0 ? inNamespace : named;
+    const realCwd = session.launch?.realCwd;
+    const spelled = (file: string): string => {
+      const inside = realCwd === undefined ? undefined : path.relative(realCwd, file);
+      return inside === undefined || inside.startsWith('..') || path.isAbsolute(inside) ? file : path.join(session.cwd, inside);
+    };
+    const textOf = (file: string): Promise<string | undefined> => this.cached(record.sources, file, () => this.deps.readFile(file).catch(() => undefined));
+    const shown = new Map<string, ((range: EditorRange) => EditorRange | undefined) | undefined>();
+    const { api } = this.deps;
+    const located = await Promise.all(
+      found.map(async (entry) => {
+        const text = await textOf(entry.file);
+        if (text === undefined) {
+          return 'unreadable';
+        }
+        const file = spelled(entry.file);
+        if (!shown.has(file)) {
+          shown.set(file, shownRange(text, this.deps.openText(file)));
+        }
+        const range = fromIdeReplySpan(textDocument(entry.file, text), entry.span);
+        const toShown = shown.get(file);
+        const moved = toShown === undefined ? range : toShown(range);
+        return moved === undefined ? 'changed' : new api.Location(api.Uri.file(file), this.range(moved));
+      }),
+    );
+    const readable = located.filter((location): location is vscode.Location => typeof location !== 'string');
+    if (readable.length === 0 && found.length > 0) {
+      const changed = found.find((_, i) => located[i] === 'changed');
+      throw unsupported(
+        changed !== undefined
+          ? `The definition of ${name} is in ${spelled(changed.file)}, on lines changed since it was saved: save that file to find it.`
+          : `The definition of ${name} is in ${found[0].file}, which cannot be read on this computer ` +
+              '(an installed package whose sources were not installed, or a file that was moved).',
+      );
+    }
+    return readable;
   }
 
   holes(): Promise<Hole[]> {
@@ -699,14 +1452,264 @@ export class IdeBackend implements IdrisBackend {
     return notYet('Editing with the compiler');
   }
 
-  evaluate(): Promise<RichText> {
-    return notYet('Evaluation');
+  /**
+   * `(:repl-completions "RUN")`, where `RUN` is the leading run of `prefix`'s name root that the
+   * compiler completes as a whole (`completable`; the namespace of a qualified prefix is dropped, as
+   * the compiler ignores it); the answer is filtered by that root and repeated names are dropped,
+   * which also drops machine names such as `{a:129}` [live]. `[]` without asking when the root
+   * starts with a character the compiler cannot complete (`_`, an operator), or when the compiler
+   * answers an error.
+   */
+  async completions(doc: vscode.TextDocument, prefix: string): Promise<readonly string[]> {
+    const root = unqualified(prefix);
+    const run = completable(root);
+    if (run === '') {
+      return [];
+    }
+    const { session, record } = await this.loadedCheckSession(doc);
+    const answer = decodeCompletions((await this.ask(session, doc, replCompletions(run))).payload);
+    record.warm = true;
+    return answer.kind === 'ok' ? [...new Set(answer.value.names.filter((n) => n.startsWith(root)))] : [];
   }
 
-  browseNamespace(): Promise<NamespaceEntry[]> {
-    return notYet('Browsing a namespace');
+  /** `IdeMode.warmUpCompletions`. */
+  async warmUpCompletions(doc: vscode.TextDocument): Promise<void> {
+    try {
+      const { session, record } = await this.loadedCheckSession(doc);
+      for (let waited = 0; ; ) {
+        if (record.warm || this.recordOf(session, doc) !== record) {
+          return;
+        }
+        const quiet = this.deps.clock.now() - (this.lastChange.get(session) ?? Number.NEGATIVE_INFINITY);
+        if (session.idle && quiet >= WARM_UP_QUIET_MS) {
+          break;
+        }
+        if (waited >= WARM_UP_MAX_WAIT_MS) {
+          return;
+        }
+        const wait = session.idle ? WARM_UP_QUIET_MS - quiet : WARM_UP_QUIET_MS;
+        await new Promise<void>((resolve) => this.deps.clock.setTimeout(resolve, wait));
+        waited += wait;
+      }
+      record.warm = true;
+      await this.ask(session, doc, replCompletions(WARM_UP_PREFIX));
+    } catch {
+      // Nothing to warm (another file loaded, no process), or the request failed: a completion
+      // after it is only slower.
+    }
   }
 
-  /** Holds no resources: the pool owns the sessions. */
-  dispose(): void {}
+  /** A state change of the `check` session `session` (`IdeMode`): its time, for the warm-up's quiet. */
+  sessionChanged(session: IdeSession): void {
+    this.lastChange.set(session, this.deps.clock.now());
+  }
+
+  /** `(:browse-namespace "NS")`, one entry per name (`namespaceEntries`); `[]` for an empty answer or an error. */
+  async browseNamespace(doc: vscode.TextDocument, ns: string): Promise<NamespaceEntry[]> {
+    const { session } = await this.loadedCheckSession(doc);
+    const answer = decodeText((await this.ask(session, doc, browseNamespace(ns))).payload);
+    return answer.kind === 'ok' ? namespaceEntries(toRichText(answer.value)) : [];
+  }
+
+  tokens(doc: vscode.TextDocument): TokenIndex | undefined {
+    const entry = this.indexes.get(doc.fileName);
+    if (entry === undefined) {
+      return undefined;
+    }
+    // Used now: the last to go (`MAX_INDEXES`).
+    this.indexes.delete(doc.fileName);
+    this.indexes.set(doc.fileName, entry);
+    return entry.index;
+  }
+
+  /**
+   * Keeps `index` as `file`'s; above `MAX_INDEXES` indexes, drops those of files without an open
+   * document, the least recently used first, until there are `MAX_INDEXES` or none of them is left.
+   */
+  private keepIndex(file: string, root: string, index: TokenIndex): void {
+    this.indexes.delete(file);
+    this.indexes.set(file, { root, index });
+    for (const oldest of [...this.indexes.keys()]) {
+      if (this.indexes.size <= MAX_INDEXES) {
+        break;
+      }
+      if (!this.deps.isOpen(oldest)) {
+        this.indexes.delete(oldest);
+      }
+    }
+  }
+
+  /** Forgets the token indexes of the files of `root`, and its last announced process (its last document was closed). */
+  forget(root: Classification): void {
+    const key = rootKey(root);
+    for (const [file, entry] of this.indexes) {
+      if (entry.root === key) {
+        this.indexes.delete(file);
+      }
+    }
+    this.announcedLaunch.delete(key);
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // Evaluation (module comment, *Evaluation*)
+  // -----------------------------------------------------------------------------------------
+
+  async evaluate(doc: vscode.TextDocument, expr: string, token?: vscode.CancellationToken): Promise<Evaluation> {
+    const refusedCommand = replCommandRefusal(expr);
+    if (refusedCommand !== undefined) {
+      throw unsupported(refusedCommand);
+    }
+    if (expr.includes('\u0000')) {
+      throw unsupported('Not evaluated: the text contains a NUL character, which cannot be sent to the compiler.');
+    }
+    this.requireFile(doc, 'Only an expression in a file saved on disk can be evaluated: the compiler reads the file, not the editor.');
+    const root = await this.deps.projects.classify(doc.fileName);
+    const session = this.deps.pool.sessionFor(root, 'eval');
+    const previous = this.evaluations.get(session) ?? Promise.resolve();
+    const evaluation = previous.then(() => this.evaluateIn(root, session, doc, expr, token));
+    this.evaluations.set(session, evaluation.catch(() => undefined));
+    return evaluation;
+  }
+
+  /**
+   * One evaluation in the `eval` session (module comment): a load, then `:interpret`. A cancellation
+   * of `token` stops the session (`SessionPool.cancelEvaluation`: IDE mode has no cancel, and only
+   * stopping the process ends an evaluation that runs); one that came while an earlier evaluation
+   * ran starts nothing. A failed session's error says how to start it again: Restart Backend returns
+   * it to `stopped` (`SessionPool.restart`), and the next evaluation starts a process.
+   */
+  private async evaluateIn(
+    root: Classification,
+    session: IdeSession,
+    doc: vscode.TextDocument,
+    expr: string,
+    token: vscode.CancellationToken | undefined,
+  ): Promise<Evaluation> {
+    if (token?.isCancellationRequested === true) {
+      throw cancelled('Evaluate Selection was cancelled before the evaluation started.');
+    }
+    const subscription = token?.onCancellationRequested(() => this.deps.pool.cancelEvaluation(root));
+    try {
+      return await this.interpretIn(root, session, doc, expr, token);
+    } catch (error) {
+      if (error instanceof IdrisException && error.error.kind === 'BackendCrashed' && session.state === 'failed') {
+        throw new IdrisException({
+          kind: 'BackendCrashed',
+          message: `${error.error.message} After Idris 2: Restart Backend, the next evaluation starts the evaluation session again.`,
+        });
+      }
+      throw error;
+    } finally {
+      subscription?.dispose();
+    }
+  }
+
+  /**
+   * The load and the `:interpret` of one evaluation. The `:interpret` is queued right after the load,
+   * before its reply, so that the session is never idle between the two: with
+   * `idris2.ideMode.maxSessions` it would be the first to be stopped then (`pool.ts`), and every
+   * evaluation under a limit of 1 failed that way (*review of M3* [unit-level, the real pool]). Its
+   * check before the write waits for the load's reply: nothing is sent when the load failed (the
+   * load's error is the answer) or when the session no longer has that load (defensive: only an
+   * evaluation sends to the session, one at a time, and a stop or crash rejects both requests).
+   * The `:interpret` has its own time limit, `idris2.eval.timeout`.
+   */
+  private async interpretIn(
+    root: Classification,
+    session: IdeSession,
+    doc: vscode.TextDocument,
+    expr: string,
+    token: vscode.CancellationToken | undefined,
+  ): Promise<Evaluation> {
+    const { done } = await this.queueLoad(root, session, doc);
+    const failedLoad = new Error('the load before the evaluation failed');
+    const lost = new Error('the evaluation session lost the loaded file');
+    const timeoutMs = this.deps.config.evaluation().timeoutMs;
+    const interpreting = session.request(interpret(expr), {
+      kind: 'longAction',
+      timeoutMs,
+      beforeSend: async () => {
+        const loaded = await done;
+        if (loaded.record.ok !== true) {
+          throw failedLoad;
+        }
+        if (this.recordOf(session, doc) !== loaded.record) {
+          throw lost;
+        }
+      },
+    });
+    // Rejected too when the load is: its check awaits the load, and a stop rejects both.
+    interpreting.catch(() => undefined);
+    if (token?.isCancellationRequested === true) {
+      // Cancelled while the load was being queued (the package walk), when there was nothing to stop.
+      this.deps.pool.cancelEvaluation(root);
+    }
+    const loaded = await done;
+    if (loaded.record.ok !== true) {
+      throw new IdrisException({ kind: 'LoadFailed', message: this.evaluationLoadError(root, doc, loaded) });
+    }
+    // Sent right after the load's reply (its check before the write waits only for it).
+    const started = this.deps.clock.now();
+    let reply: Reply;
+    try {
+      reply = await interpreting;
+    } catch (error) {
+      if (error === lost) {
+        throw new IdrisException({
+          kind: 'BackendCrashed',
+          message: 'Not evaluated: the evaluation session no longer had the file loaded when the expression was to be sent; nothing was evaluated.',
+        });
+      }
+      if (error instanceof RangeError) {
+        // What the codec cannot send (a request above 16 MiB): the user's text, not a fault.
+        throw unsupported(`Not evaluated: ${error.message}`);
+      }
+      if (error instanceof IdrisException && error.error.kind === 'RequestTimeout') {
+        throw new IdrisException({
+          kind: 'RequestTimeout',
+          message:
+            `Not evaluated: the evaluation did not finish within ${duration(timeoutMs)} (idris2.eval.timeout), so its compiler ` +
+            'process was stopped; it starts again at the next evaluation.',
+        });
+      }
+      throw error;
+    }
+    const took = this.deps.clock.now() - started;
+    if (took > EVAL_RELEASE_AFTER_MS) {
+      this.deps.pool.releaseEvaluation(
+        root,
+        `the evaluation took ${duration(took)}, so the evaluation session is stopped to give back the memory it kept; it starts again at the next evaluation`,
+      );
+    }
+    const answer = decodeText(reply.payload);
+    return answer.kind === 'ok'
+      ? { kind: 'value', value: toRichText(answer.value) }
+      : { kind: 'error', message: toRichText({ text: answer.message, highlighting: answer.highlighting }) };
+  }
+
+  /** The message of an evaluation whose file does not load: the file and its first error, from the load's diagnostics. */
+  private evaluationLoadError(root: Classification, doc: vscode.TextDocument, loaded: SentLoad): string {
+    const diagnostics = loadDiagnostics(loaded.reply, {
+      loadedPath: doc.fileName,
+      sentPath: loaded.sent,
+      cwd: loaded.cwd,
+      ipkgPath: root.kind === 'project' ? root.ipkgPath : undefined,
+      includeSourceExcerpt: false,
+      warningsAsErrors: false,
+      documentFor: (p) => textDocument(p, undefined),
+    });
+    const first = [...diagnostics.files].flatMap(([file, records]) => records.map((r) => ({ file, r }))).find(({ r }) => r.severity === 'error');
+    // Compiler text, which quotes the source: one line, its control and format characters written out.
+    const what =
+      first === undefined
+        ? loaded.reply.payload.kind === 'error' ? editorLabel(loaded.reply.payload.message.split('\n', 1)[0], 200) : ''
+        : `${path.basename(first.file)}: ${editorLabel(first.r.message.split('\n', 1)[0], 200)}`;
+    return `Not evaluated: ${path.basename(doc.fileName)} does not compile (${what}). Evaluation needs the file to load.`;
+  }
+
+  /** Forgets the token indexes and the processes of the announced loads; the pool owns the sessions. */
+  dispose(): void {
+    this.indexes.clear();
+    this.announcedLaunch.clear();
+  }
 }

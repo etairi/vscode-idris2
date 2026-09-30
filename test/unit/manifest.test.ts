@@ -9,15 +9,17 @@ import {
   MIN_REQUEST_TIMEOUT_MS,
   readCheckingSettings,
   readDiagnosticsSettings,
+  readEvaluationSettings,
   readIdeModeSettings,
+  readInlayHintSettings,
   readToolchainSettings,
   readTraceSettings,
   type ConfigurationReader,
 } from '../../src/core/config';
 
-// Consistency of package.json's M1 and M2 contributions: settings (with core/config.ts, which
-// reads them), Restricted Mode, commands, menus and the walkthrough. Whether each command is
-// also *registered* at run time is an integration question (test/integration/).
+// Consistency of package.json's M1, M2 and M3 contributions: settings (with core/config.ts, which
+// reads them), Restricted Mode, commands, menus, keybindings and the walkthrough. Whether each
+// command is also *registered* at run time is an integration question (test/integration/).
 
 const PACKAGE_NAME = 'vscode-idris2';
 
@@ -51,6 +53,15 @@ interface MenuEntry {
   group?: string;
 }
 
+interface Keybinding {
+  command: string;
+  key: string;
+  mac?: string;
+  linux?: string;
+  win?: string;
+  when?: string;
+}
+
 interface WalkthroughStep {
   id: string;
   description: string;
@@ -67,6 +78,7 @@ interface Manifest {
     commands: { command: string; title: string; category?: string; enablement?: string }[];
     submenus: { id: string; label: string; icon?: string }[];
     menus: Record<string, MenuEntry[]>;
+    keybindings: Keybinding[];
     walkthroughs: { id: string; steps: WalkthroughStep[] }[];
   };
 }
@@ -82,6 +94,26 @@ const commandIds = manifest.contributes.commands.map((c) => c.command);
  */
 const CONTEXT_KEYS = ['idris2.isIdrisDocument', 'idris2.packFound'];
 
+/** The commands M3 contributes (ROADMAP §5 M3). */
+const M3_COMMANDS = [
+  'idris2.typeAtCursor',
+  'idris2.docsAtCursor',
+  'idris2.showDocumentation',
+  'idris2.browseNamespace',
+  'idris2.evaluateSelection',
+  'idris2.clearEvaluationResults',
+];
+
+/**
+ * The keybinding letters M3 owns and their commands (ARCHITECTURE §10's reservation table: `t`,
+ * `d`, `e`); each milestone binds only the commands it registers.
+ */
+const M3_LETTERS: Record<string, string> = {
+  t: 'idris2.typeAtCursor',
+  d: 'idris2.docsAtCursor',
+  e: 'idris2.evaluateSelection',
+};
+
 /** The command that opens the status QuickPick; every other command but the developer ones is a menu entry. */
 const STATUS_MENU_COMMAND = 'idris2.showStatusMenu';
 const SUBMENU = 'idris2.editorTitle';
@@ -89,6 +121,12 @@ const SUBMENU = 'idris2.editorTitle';
 /** Commands for diagnosing the protocol (ROADMAP M2): category "Idris 2 (Developer)", only with the trace on. */
 const DEVELOPER_COMMANDS = ['idris2.sendRawRequest'];
 const DEVELOPER_WHEN = 'config.idris2.trace.protocol && isWorkspaceTrusted';
+
+/**
+ * Settings the extension never reads: VS Code reads them in the `when` clauses of the contributed
+ * keybindings (`config.<key>`), so core/config.ts has no accessor for them (M3).
+ */
+const WHEN_CLAUSE_SETTINGS = ['idris2.keybindings.scheme'];
 
 /** Reads every setting through core/config.ts with each key answering `value(key)`; returns the keys read. */
 function readAllSettings(value: (key: string) => unknown): { keys: string[]; settings: unknown[] } {
@@ -105,11 +143,13 @@ function readAllSettings(value: (key: string) => unknown): { keys: string[]; set
     readIdeModeSettings(reader),
     readDiagnosticsSettings(reader),
     readTraceSettings(reader),
+    readInlayHintSettings(reader),
+    readEvaluationSettings(reader),
   ];
   return { keys, settings };
 }
 
-suite('package.json (M1 and M2 contributions)', () => {
+suite('package.json (M1, M2 and M3 contributions)', () => {
   suite('settings', () => {
     test('every idris2.* setting has a type, a default, a scope and a markdownDescription', () => {
       for (const [key, schema] of Object.entries(properties)) {
@@ -129,9 +169,17 @@ suite('package.json (M1 and M2 contributions)', () => {
       }
     });
 
-    test('core/config.ts reads exactly the contributed keys, and the contributed defaults read as its defaults', () => {
+    test('core/config.ts reads exactly the contributed keys but those only the keybindings read, and the contributed defaults read as its defaults', () => {
       const { keys, settings } = readAllSettings((key) => properties[key]?.default);
-      assert.deepStrictEqual([...keys].sort(), Object.keys(properties).sort());
+      assert.deepStrictEqual(
+        [...keys].sort(),
+        Object.keys(properties).filter((key) => !WHEN_CLAUSE_SETTINGS.includes(key)).sort(),
+      );
+      // Each of those is contributed and read by a keybinding's when clause.
+      for (const key of WHEN_CLAUSE_SETTINGS) {
+        assert.ok(key in properties, key);
+        assert.ok(manifest.contributes.keybindings.some((k) => (k.when ?? '').includes(`config.${key} `)), key);
+      }
       assert.deepStrictEqual(settings, [
         { idris2Path: '', lspPath: '', packPath: '', preferPack: false, env: {}, ignoredEnvEntries: [] },
         { trigger: 'onSave', delayMs: 700 },
@@ -148,6 +196,8 @@ suite('package.json (M1 and M2 contributions)', () => {
         },
         { includeSourceExcerpt: false },
         { protocol: false },
+        { variableTypes: true },
+        { inlineResults: true, timeoutMs: 10000 },
       ]);
       // Every value absent (a setting VS Code does not know) reads as the same defaults.
       assert.deepStrictEqual(readAllSettings(() => undefined).settings, settings);
@@ -178,6 +228,28 @@ suite('package.json (M1 and M2 contributions)', () => {
       });
     });
 
+    test('the M3 defaults: inlay hints for pattern-variable types and inline evaluation results on, 10 s for an evaluation, the platform\'s keybinding scheme', () => {
+      const defaults = Object.fromEntries(
+        Object.entries(properties)
+          .filter(([key]) => /^idris2\.(inlayHints|eval|keybindings)\./.test(key))
+          .map(([key, schema]) => [key, schema.default]),
+      );
+      assert.deepStrictEqual(defaults, {
+        // On by default (ROADMAP §9, decided 2026-09-28 before M3).
+        'idris2.inlayHints.variableTypes': true,
+        'idris2.eval.inlineResults': true,
+        // Shorter than ideMode.longActionTimeout: an evaluation that does not end grows the
+        // compiler's memory fast (review of M3 [live]: 265 → 1,576 MiB in 7.0 s).
+        'idris2.eval.timeout': 10000,
+        // chords on macOS, prefix elsewhere (ROADMAP §9 Q5, 2026-09-28): a manifest default cannot
+        // differ by platform, so `auto` stands for that choice (the keybindings suite below).
+        'idris2.keybindings.scheme': 'auto',
+      });
+      // Multiplicity hints are out of M3's scope ([open], ROADMAP M3 *Scope*): no setting for them.
+      assert.ok(!('idris2.inlayHints.multiplicities' in properties));
+      assert.deepStrictEqual(properties['idris2.keybindings.scheme'].enum, ['auto', 'chords', 'prefix', 'none']);
+    });
+
     test('enums list a description per value and contain their default; bounds match core/config.ts', () => {
       for (const [key, schema] of Object.entries(properties)) {
         if (schema.enum !== undefined) {
@@ -191,6 +263,7 @@ suite('package.json (M1 and M2 contributions)', () => {
       assert.strictEqual(properties['idris2.checking.delay'].minimum, MIN_CHECKING_DELAY_MS);
       assert.strictEqual(properties['idris2.ideMode.requestTimeout'].minimum, MIN_REQUEST_TIMEOUT_MS);
       assert.strictEqual(properties['idris2.ideMode.longActionTimeout'].minimum, MIN_REQUEST_TIMEOUT_MS);
+      assert.strictEqual(properties['idris2.eval.timeout'].minimum, MIN_REQUEST_TIMEOUT_MS);
       assert.strictEqual(properties['idris2.ideMode.idleTimeout'].minimum, 0);
       assert.strictEqual(properties['idris2.ideMode.maxSessions'].minimum, 0);
       assert.strictEqual(properties['idris2.ideMode.maxBackgroundChecks'].minimum, 0);
@@ -199,7 +272,7 @@ suite('package.json (M1 and M2 contributions)', () => {
       assert.match(properties['idris2.ideMode.maxSessions'].markdownDescription ?? '', /at once in this VS Code window; .* Each window counts its own/);
       assert.match(properties['idris2.ideMode.maxBackgroundChecks'].markdownDescription ?? '', /at once in this VS Code window \(each window counts its own\)/);
       // Every delay is bounded by what Node's setTimeout can wait (core/config.ts MAX_DELAY_MS).
-      const delays = ['idris2.checking.delay', 'idris2.ideMode.requestTimeout', 'idris2.ideMode.longActionTimeout', 'idris2.ideMode.idleTimeout'];
+      const delays = ['idris2.checking.delay', 'idris2.ideMode.requestTimeout', 'idris2.ideMode.longActionTimeout', 'idris2.ideMode.idleTimeout', 'idris2.eval.timeout'];
       for (const key of delays) {
         assert.strictEqual(properties[key].maximum, MAX_DELAY_MS, key);
         assert.ok((properties[key].default as number) <= MAX_DELAY_MS, key);
@@ -210,7 +283,7 @@ suite('package.json (M1 and M2 contributions)', () => {
       );
     });
 
-    test('scopes: checking.* per resource (a folder may choose its trigger), ideMode/diagnostics per window, the transport and the trace in user settings only (application)', () => {
+    test('scopes: checking.* per resource (a folder may choose its trigger), ideMode/diagnostics/inlayHints/eval per window, the transport, the trace and the keybinding scheme in user settings only (application)', () => {
       for (const [key, schema] of Object.entries(properties)) {
         if (key.startsWith('idris2.checking.')) {
           assert.strictEqual(schema.scope, 'resource', key);
@@ -223,7 +296,11 @@ suite('package.json (M1 and M2 contributions)', () => {
           // User settings only: it offers Send Raw Protocol Request and writes source text and paths
           // (also of consented folders outside the workspace) to the log (M2 verification of the third review).
           assert.strictEqual(schema.scope, 'application', key);
-        } else if (/^idris2\.(ideMode|diagnostics|trace)\./.test(key)) {
+        } else if (key === 'idris2.keybindings.scheme') {
+          // User settings only: VS Code has no workspace keybindings either, and a workspace that
+          // chose `chords` would take Ctrl+C (copy) in Idris editors on Linux (M3).
+          assert.strictEqual(schema.scope, 'application', key);
+        } else if (/^idris2\.(ideMode|diagnostics|trace|inlayHints|eval)\./.test(key)) {
           assert.strictEqual(schema.scope, 'window', key);
         }
       }
@@ -321,6 +398,24 @@ suite('package.json (M1 and M2 contributions)', () => {
       assert.strictEqual(when('idris2.manageAllowedFolders'), undefined);
     });
 
+    test('the M3 commands: in the Command Palette on Idris documents, where they ask the compiler only in a trusted workspace', () => {
+      const when = (command: string): string | undefined =>
+        manifest.contributes.menus.commandPalette.find((entry) => entry.command === command)?.when;
+      const titles = Object.fromEntries(manifest.contributes.commands.map((c) => [c.command, c.title]));
+      assert.deepStrictEqual(
+        M3_COMMANDS.map((id) => titles[id]),
+        ['Type at Cursor', 'Docs at Cursor', 'Show Documentation…', 'Browse Namespace…', 'Evaluate Selection', 'Clear Evaluation Results'],
+      );
+      for (const id of M3_COMMANDS) {
+        // Clearing the results shown runs nothing; the others need a session (none in Restricted Mode).
+        assert.strictEqual(
+          when(id),
+          id === 'idris2.clearEvaluationResults' ? 'idris2.isIdrisDocument' : 'idris2.isIdrisDocument && isWorkspaceTrusted',
+          id,
+        );
+      }
+    });
+
     test('every menu entry names a contributed command or submenu', () => {
       const submenuIds = manifest.contributes.submenus.map((s) => s.id);
       for (const [menu, entries] of Object.entries(manifest.contributes.menus)) {
@@ -340,6 +435,7 @@ suite('package.json (M1 and M2 contributions)', () => {
           entries.map((entry) => [menu, entry.when ?? ''] as const),
         ),
         ...manifest.contributes.commands.map((c) => [`enablement of ${c.command}`, c.enablement ?? ''] as const),
+        ...manifest.contributes.keybindings.map((k) => [`keybinding ${k.key} of ${k.command}`, k.when ?? ''] as const),
       ];
       for (const [where, clause] of clauses) {
         for (const match of clause.matchAll(/(config\.)?(idris2\.[A-Za-z0-9_.]+)/g)) {
@@ -375,6 +471,75 @@ suite('package.json (M1 and M2 contributions)', () => {
         assert.strictEqual(whenOf(menu, 'idris2.installPack'), '!idris2.packFound', menu);
         assert.strictEqual(whenOf(menu, 'idris2.installIdris2Lsp'), 'idris2.packFound', menu);
       }
+    });
+  });
+
+  suite('keybindings (M3; ROADMAP §9 Q5, ARCHITECTURE §10)', () => {
+    const bindings = manifest.contributes.keybindings;
+    const whenFor = (scheme: string): string =>
+      `editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == '${scheme}'`;
+
+    /** The key sequence VS Code uses on `platform` (the `mac`/`linux` field if present, else `key`). */
+    const keyOn = (binding: Keybinding, platform: 'mac' | 'linux'): string => binding[platform] ?? binding.key;
+
+    test('exactly the letters t, d and e are bound, each to its M3 command, under each scheme but none', () => {
+      const schemes = properties['idris2.keybindings.scheme'].enum ?? [];
+      const bound = schemes.filter((scheme) => scheme !== 'none');
+      assert.deepStrictEqual(bound, ['auto', 'chords', 'prefix']);
+      const expected: Keybinding[] = [];
+      for (const [letter, command] of Object.entries(M3_LETTERS)) {
+        expected.push({ command, key: `ctrl+c ctrl+${letter}`, when: whenFor('chords') });
+        expected.push({ command, key: `ctrl+alt+i ${letter}`, when: whenFor('prefix') });
+        // auto: chords on macOS, prefix elsewhere — a manifest default cannot differ by platform,
+        // but a keybinding's `mac` key can.
+        expected.push({ command, key: `ctrl+alt+i ${letter}`, mac: `ctrl+c ctrl+${letter}`, when: whenFor('auto') });
+      }
+      assert.deepStrictEqual(bindings, expected);
+    });
+
+    test('with the scheme none nothing is bound: every binding requires one of the other schemes', () => {
+      for (const binding of bindings) {
+        const scheme = /config\.idris2\.keybindings\.scheme == '([a-z]+)'$/.exec(binding.when ?? '')?.[1];
+        assert.ok(scheme !== undefined && scheme !== 'none', `${binding.key}: ${binding.when}`);
+        // Only in an Idris editor with the text focus (ARCHITECTURE §10), never through `||`.
+        assert.ok((binding.when ?? '').startsWith('editorTextFocus && idris2.isIdrisDocument && '), binding.key);
+        assert.ok(!(binding.when ?? '').includes('||'), binding.key);
+      }
+    });
+
+    test('auto resolves to the chords on macOS and to the prefix on Linux, as chords and prefix do on every platform', () => {
+      const keys = (scheme: string, platform: 'mac' | 'linux'): string[] =>
+        bindings.filter((b) => b.when === whenFor(scheme)).map((b) => keyOn(b, platform));
+      assert.deepStrictEqual(keys('auto', 'mac'), keys('chords', 'mac'));
+      assert.deepStrictEqual(keys('auto', 'linux'), keys('prefix', 'linux'));
+      assert.deepStrictEqual(keys('chords', 'linux'), ['ctrl+c ctrl+t', 'ctrl+c ctrl+d', 'ctrl+c ctrl+e']);
+      assert.deepStrictEqual(keys('prefix', 'mac'), ['ctrl+alt+i t', 'ctrl+alt+i d', 'ctrl+alt+i e']);
+    });
+
+    test('every bound command is a contributed M3 command, offered on Idris documents', () => {
+      for (const binding of bindings) {
+        assert.ok(commandIds.includes(binding.command), binding.command);
+        assert.ok(M3_COMMANDS.includes(binding.command), binding.command);
+      }
+    });
+
+    test('the setting\'s descriptions name the collisions with VS Code\'s default keys (Ctrl+C copy, Ctrl+Alt+I chat)', () => {
+      // VS Code 1.139.1's default keymap [src: `workbench.desktop.main.js` of 1.139.1, whose
+      // keybindings are numbers (KeyMod CtrlCmd 2048, Alt 512, WinCtrl 256; KeyC 33, KeyI 39), read
+      // for every `primary`/`secondary` whose first chord is one of these keys, and the
+      // `contributes.keybindings` of its 97 built-in extensions, 2026-09-29]: ctrl+c (2081) is copy
+      // on Linux and Windows (`editor.action.clipboardCopyAction` and others); ctrl+alt+i (2599) is
+      // Open Chat there (`workbench.action.chat.open`, weight 200, no when clause; ctrl+cmd+i on
+      // macOS); on macOS Control+C (289) is bound only in the terminal, Control+Option+I (807) not at
+      // all, and no default chord starts with any of the four. The resolver takes the last binding
+      // of a first chord whose when clause holds and waits for a second key if that is a chord
+      // (`resolve`/`_findCommand`, same bundle), bindings being sorted by weight (`cDo`), and an
+      // extension's binding weighs 400 plus its index (`_asCommandRule`) against 100 for the editor's
+      // copy and 200 for Open Chat, so each scheme takes its first key in Idris editors with the text focus.
+      const schema = properties['idris2.keybindings.scheme'];
+      assert.match(schema.markdownEnumDescriptions?.[1] ?? '', /On Linux and Windows, `Ctrl\+C` then starts a shortcut in Idris editors and no longer copies there\./);
+      assert.match(schema.markdownEnumDescriptions?.[2] ?? '', /On Linux and Windows, `Ctrl\+Alt\+I` then starts a shortcut in Idris editors and no longer opens the Chat view there\./);
+      assert.match(schema.markdownDescription ?? '', /Read from your user settings only/);
     });
   });
 

@@ -85,8 +85,11 @@ export interface LexResult {
   readonly groups: readonly Group[];
 }
 
-/** `keywords` and `fixityKeywords` in `src/Parser/Lexer/Source.idr`. */
-const KEYWORDS: ReadonlySet<string> = new Set([
+/**
+ * `keywords` and `fixityKeywords` in `src/Parser/Lexer/Source.idr`, in its order (M3's completion
+ * offers them, `features/intelligence/completion.ts`).
+ */
+export const KEYWORDS: ReadonlySet<string> = new Set([
   'data', 'module', 'where', 'let', 'in', 'do', 'record', 'auto', 'default', 'implicit',
   'failing', 'mutual', 'namespace', 'parameters', 'with', 'proof', 'impossible', 'case', 'of',
   'if', 'then', 'else', 'forall', 'rewrite', 'typebind', 'autobind', 'using', 'interface',

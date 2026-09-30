@@ -276,6 +276,12 @@ suite('toolchain/status', () => {
           'idris2.checkFile',
           'idris2.restartBackend',
           'idris2.stopBackend',
+          'idris2.typeAtCursor',
+          'idris2.docsAtCursor',
+          'idris2.showDocumentation',
+          'idris2.browseNamespace',
+          'idris2.evaluateSelection',
+          'idris2.clearEvaluationResults',
           'idris2.showSetupInformation',
           'idris2.rescanToolchain',
           'idris2.manageAllowedFolders',
@@ -547,6 +553,44 @@ suite('toolchain/status', () => {
       assert.deepStrictEqual(t.logged.slice(-1), ['Status: Idris 2 0.8.0 · IDE mode · not allowed here (warning)']);
     });
 
+    test('the item is written only when what it shows changed: a request\'s two state changes write nothing (third review of M3)', async () => {
+      const t = setup();
+      const stateChanged = new Emitter<void>();
+      t.registry.setProvider({
+        kind: 'ideMode' as BackendKind,
+        backendFor: () => ({ kind: 'ideMode' as BackendKind }) as unknown as IdrisBackend,
+        stateFor: (): BackendState => ({ kind: 'active' }),
+        onDidChangeState: stateChanged.event,
+      });
+      t.state.activeDocument = fileDocument('idris2', '/w/loose-file/Hello.idr');
+      t.activeEditorChanged.fire();
+      await settle();
+      t.checkState.status = { kind: 'checked', errors: 1, warnings: 0, stale: false, known: true };
+      t.checksChanged.fire();
+      // Every write of a property from now on (VS Code sends the item to the window at each one).
+      const writes: string[] = [];
+      for (const key of ['text', 'detail', 'busy', 'severity', 'command'] as const) {
+        let value: unknown = t.item[key];
+        Object.defineProperty(t.item, key, {
+          get: () => value,
+          set: (v: unknown) => {
+            writes.push(key);
+            value = v;
+          },
+        });
+      }
+      // A request of the check session: ready → busy → ready, each re-fired by the checks.
+      for (let i = 0; i < 2; i++) {
+        stateChanged.fire();
+        t.checksChanged.fire();
+      }
+      assert.deepStrictEqual(writes, []);
+      t.checkState.status = { kind: 'checked', errors: 2, warnings: 0, stale: false, known: true };
+      t.checksChanged.fire();
+      assert.strictEqual(t.item.text, 'Idris 2 0.8.0 · IDE mode · 2 errors');
+      assert.deepStrictEqual(writes, ['text', 'detail', 'busy', 'severity', 'command']);
+    });
+
     test('M2: while a file is classified its label is the provider\'s, so the item never flashes "syntax only"', async () => {
       const t = setup();
       t.registry.setProvider({
@@ -684,6 +728,13 @@ suite('toolchain/status', () => {
           'idris2.checkFile',
           'idris2.restartBackend',
           'idris2.stopBackend',
+          '---',
+          'idris2.typeAtCursor',
+          'idris2.docsAtCursor',
+          'idris2.showDocumentation',
+          'idris2.browseNamespace',
+          'idris2.evaluateSelection',
+          'idris2.clearEvaluationResults',
           '---',
           'idris2.showSetupInformation',
           'idris2.rescanToolchain',

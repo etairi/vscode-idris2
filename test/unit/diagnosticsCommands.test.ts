@@ -258,6 +258,12 @@ suite('features/diagnostics/commands', () => {
     assert.deepStrictEqual(t.executed, [['idris2.showOutput']]);
     assert.deepStrictEqual(t.control.calls, ['restart /w/a']);
     assert.deepStrictEqual(t.rechecked, ['/w/a']);
+    // A detail quoting what the process sent (a protocol error's excerpt) is one line with its
+    // invisible characters written out (fourth review of M3).
+    t.state.answer = undefined;
+    t.control.failed.fire({ root, gaveUp: false, detail: 'a frame that is not an s-expression: "(:ok \u202Eevil\nnext"', repeated: false });
+    await settle();
+    assert.strictEqual(t.messages.at(-1)?.text, 'Idris 2: the compiler for /w/a stopped unexpectedly (a frame that is not an s-expression: "(:ok \\u{202E}evil next"); it is being restarted.');
   });
 
   test('no notice while the toolchain has no working idris2 (its own notice reports that)', async () => {

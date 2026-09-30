@@ -21,8 +21,17 @@
 //                   package, so the session directory (the .ipkg's) lies outside every
 //                   workspace folder and needs the user's consent; out/test/integration/consent/*;
 //                   fake tools, the default transport (stdio)
-//   e2e             test/fixtures/workspaces/simple-ipkg; out/test/e2e/** (M1 and M2 files); the
-//                   real toolchain (no toolchain settings, the runner's PATH). Only part of the
+//   intelligence    (M3) test/fixtures/workspaces/simple-ipkg: the package's own folder, so its
+//                   session directory is a workspace folder and needs no consent;
+//                   out/test/integration/intelligence/*; fake tools, the default transport
+//                   (stdio): hover, definition across files, docs, namespaces, semantic tokens,
+//                   symbols and highlights through recorded transcripts
+//   intelligence-loose (M3) test/fixtures/workspaces/broken (loose files: Clean.idr, the F30
+//                   fixture); out/test/integration/intelligence-loose/*; fake tools, stdio: types
+//                   of pattern variables, inlay hints, completion, evaluation (the eval session,
+//                   the refusal of REPL commands) and the keybinding schemes
+//   e2e             test/fixtures/workspaces/simple-ipkg; out/test/e2e/** (M1, M2 and M3 files);
+//                   the real toolchain (no toolchain settings, the runner's PATH). Only part of the
 //                   configuration when IDRIS2_E2E=1 or when run as `npm run test:e2e`, so
 //                   `npm test` needs no compiler; the suite's own environment has IDRIS2_E2E=1.
 //
@@ -188,6 +197,22 @@ export default defineConfig([
     workspaceFolder: 'test/fixtures/workspaces/simple-ipkg/src',
     env: FAKE_ENV,
     launchArgs: launchArgs(profile('user-data-consent', { ...BASE_SETTINGS, ...FAKE_TOOL_SETTINGS })),
+    mocha,
+  },
+  {
+    label: 'intelligence',
+    files: 'out/test/integration/intelligence/*.test.js',
+    workspaceFolder: 'test/fixtures/workspaces/simple-ipkg',
+    env: FAKE_ENV,
+    launchArgs: launchArgs(profile('user-data-intel', { ...BASE_SETTINGS, ...FAKE_TOOL_SETTINGS })),
+    mocha,
+  },
+  {
+    label: 'intelligence-loose',
+    files: 'out/test/integration/intelligence-loose/*.test.js',
+    workspaceFolder: 'test/fixtures/workspaces/broken',
+    env: FAKE_ENV,
+    launchArgs: launchArgs(profile('user-data-intel-loose', { ...BASE_SETTINGS, ...FAKE_TOOL_SETTINGS })),
     mocha,
   },
   ...(e2eEnabled

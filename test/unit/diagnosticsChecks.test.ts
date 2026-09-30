@@ -481,6 +481,27 @@ suite('features/diagnostics/checks', () => {
       assert.deepStrictEqual(t.collection.messages(uri('/w/a/Bad.idr')), ['While processing …']);
     });
 
+    test('runningCheck: the newest check of the document while it runs, then none (integration after the third review of M3)', async () => {
+      const a = new FakeDocument('/w/a/A.idr');
+      const b = new FakeDocument('/w/a/B.idr');
+      const t = setup();
+      assert.strictEqual(t.checks.runningCheck(t.asDoc(a)), undefined);
+      const first = t.checks.check(t.asDoc(a));
+      assert.strictEqual(t.checks.runningCheck(t.asDoc(a)), first, 'running from its start, before it has classified the file');
+      assert.strictEqual(t.checks.runningCheck(t.asDoc(b)), undefined, 'another document has none');
+      const second = t.checks.check(t.asDoc(a));
+      assert.strictEqual(t.checks.runningCheck(t.asDoc(a)), second, 'the newest one');
+      // The older check, no longer the newest after its classification, ends without a load.
+      await first;
+      await settle();
+      assert.strictEqual(t.checks.runningCheck(t.asDoc(a)), second, 'the older one ending leaves the newest');
+      assert.strictEqual(t.backend.loads.length, 1);
+      t.backend.loads[0].resolve(result([]));
+      await second;
+      await settle();
+      assert.strictEqual(t.checks.runningCheck(t.asDoc(a)), undefined);
+    });
+
     test('warnings only, then clean; a reload that determined nothing keeps what is shown (F7)', async () => {
       const a = new FakeDocument('/w/a/Warn.idr');
       const t = setup();
@@ -1752,6 +1773,46 @@ suite('features/diagnostics/checks', () => {
       t.backend.loads[index].resolve(clean(doc));
     };
 
+    test('several visible documents checked at once: the active one\'s load is queued last, so that its file is the one loaded (fourth review of M3)', async () => {
+      // A root's compiler answers about the file it loaded last (F27), and a passive query loads
+      // only the active document: loaded first, the active file was loaded a second time for its
+      // hints, and the other file's queries were refused.
+      const [a, b] = ['/w/p/A.idr', '/w/p/B.idr'].map((f) => new FakeDocument(f));
+      const t = setup({ visible: [a, b], active: a });
+      await settle();
+      assert.deepStrictEqual(loaded(t), [b, a], 'at activation');
+      const answerAll = async () => {
+        t.backend.loads.forEach((l) => l.resolve(clean(l.doc)));
+        await settle();
+      };
+      await answerAll();
+      const rechecked = t.checks.recheckVisible();
+      await settle();
+      assert.deepStrictEqual(loaded(t).slice(2), [b, a], 'Restart Backend (recheckVisible)');
+      await answerAll();
+      await rechecked;
+      t.restarted.fire({ root: { kind: 'loose', dir: '/w/p' }, cause: 'reconfigure' });
+      await settle();
+      assert.deepStrictEqual(loaded(t).slice(4), [b, a], 'a restart for a changed command line');
+      await answerAll();
+      // Trust granted: the visible documents are checked as if just shown.
+      const u = setup({ visible: [a, b], active: a, trusted: false });
+      await settle();
+      u.trust.isTrusted = true;
+      u.trustGranted.fire();
+      await settle();
+      assert.deepStrictEqual(loaded(u), [b, a], 'trust granted');
+      // Refused, then allowed: both are checked again, the active one last.
+      const r = setup({ visible: [a, b], active: a });
+      await settle();
+      r.backend.loads.forEach((l) => l.reject(unsupported('not allowed')));
+      await settle();
+      r.state.verdicts.set('/w/p', { allowed: true, basis: 'window' });
+      r.consentChanged.fire();
+      await settle();
+      assert.deepStrictEqual(loaded(r).slice(2), [b, a], 'a consent answer');
+    });
+
     test('0 (the default): three background documents are loaded at once, as before', async () => {
       const [a, b, c] = ['/w/a/A.idr', '/w/b/B.idr', '/w/c/C.idr'].map((f) => new FakeDocument(f));
       const t = setup({ visible: [a, b, c] });
@@ -2009,21 +2070,21 @@ suite('features/diagnostics/checks', () => {
       t.state.verdicts.set('/o/x', { allowed: true, basis: 'always' });
       t.state.verdicts.set('/o/y', { allowed: true, basis: 'always' });
       await settle();
-      assert.deepStrictEqual(loaded(t), [a, x], 'y waits for x\'s slot');
+      assert.deepStrictEqual(loaded(t), [x, a], 'y waits for x\'s slot (the active a is queued last)');
       // Manage Allowed Folders…: both revoked (unknown again; the next start would ask).
       t.state.verdicts.delete('/o/x');
       t.state.verdicts.delete('/o/y');
       t.holdQuestion('/o/x');
       t.holdQuestion('/o/y');
       t.consentChanged.fire();
-      t.backend.loads[1].reject(unsupported('running Idris 2 in "/o/x" is no longer allowed')); // the pool stopped x's session
+      t.backend.loads[0].reject(unsupported('running Idris 2 in "/o/x" is no longer allowed')); // the pool stopped x's session
       await settle();
-      assert.deepStrictEqual(loaded(t), [a, x], 'y is not loaded');
+      assert.deepStrictEqual(loaded(t), [x, a], 'y is not loaded');
       assert.deepStrictEqual(t.state.permits, [], 'nobody is asked');
       assert.deepStrictEqual(t.status(y), { kind: 'notChecked' });
       t.answer('/o/y', { allowed: true, basis: 'window' }); // Allow… in the status item
       await settle();
-      assert.deepStrictEqual(loaded(t), [a, x, y], 'refused, visible and allowed now: checked');
+      assert.deepStrictEqual(loaded(t), [x, a, y], 'refused, visible and allowed now: checked');
     });
 
     test('the active document\'s load is urgent while a limit is set: before its root\'s loads that wait; not with 0', async () => {
@@ -2049,7 +2110,7 @@ suite('features/diagnostics/checks', () => {
       ['/w/a', '/w/b', '/w/c'].forEach((dir) => t.state.verdicts.set(dir, { allowed: true, basis: 'workspaceFolder' }));
       const answered = new Set<number>();
       await settle();
-      assert.deepStrictEqual(loaded(t), [a, a2]);
+      assert.deepStrictEqual(loaded(t), [a2, a], 'the active a is queued last');
       finish(t, a2, answered); // a (active) still runs
       await settle();
       t.activate(notes);
@@ -2058,10 +2119,10 @@ suite('features/diagnostics/checks', () => {
       t.closed.fire(a); // VS Code disposes A.idr later
       t.show(a2, notes, b, c);
       await settle();
-      assert.deepStrictEqual(loaded(t), [a, a2], 'a\'s running check counts now: b and c wait');
+      assert.deepStrictEqual(loaded(t), [a2, a], 'a\'s running check counts now: b and c wait');
       finish(t, a, answered);
       await settle();
-      assert.deepStrictEqual(loaded(t), [a, a2, b]);
+      assert.deepStrictEqual(loaded(t), [a2, a, b]);
     });
 
     test('manual trigger: an active document no check tracks is classified for its root (pending meanwhile), so maxSessions keeps its project', async () => {
@@ -2097,14 +2158,14 @@ suite('features/diagnostics/checks', () => {
       const t = setup({ visible: [a, c], active: a, maxBackgroundChecks: 1 });
       t.state.verdicts.set('/w/c', { allowed: true, basis: 'workspaceFolder' });
       await settle();
-      assert.deepStrictEqual(loaded(t), [a, c], 'c holds the slot');
+      assert.deepStrictEqual(loaded(t), [c, a], 'c holds the slot (the active a is queued last)');
       t.holdQuestion('/o');
       t.state.refusals.set('/o', 'No Idris 2 compiler to start: not found');
       t.show(a, c, x);
       await settle();
       assert.deepStrictEqual(t.state.preflights, ['/o'], 'the backend is asked first');
       assert.deepStrictEqual(t.state.permits, [], 'no question');
-      assert.deepStrictEqual(loaded(t), [a, c, x], 'x does not wait for c\'s slot: its load is refused at once');
+      assert.deepStrictEqual(loaded(t), [c, a, x], 'x does not wait for c\'s slot: its load is refused at once');
       // Nothing would refuse it: asked, as before.
       t.state.refusals.delete('/o');
       t.backend.loads[2].reject(new IdrisException({ kind: 'ToolchainMissing', message: 'No Idris 2 compiler to start: not found' }));

@@ -45,17 +45,23 @@ suite('backend/null NullBackend', () => {
     const reasons = [
       await rejectsUnsupported(backend.load(anyDoc)),
       await rejectsUnsupported(backend.typeAt(anyDoc, anyPos, 'xs')),
-      await rejectsUnsupported(backend.docsFor('id', 'overview')),
+      await rejectsUnsupported(backend.docsFor(anyDoc, 'id', 'overview')),
       await rejectsUnsupported(backend.definition(anyDoc, anyPos, 'id')),
       await rejectsUnsupported(backend.holes(anyDoc)),
       await rejectsUnsupported(backend.edit(edit)),
-      await rejectsUnsupported(backend.evaluate('1 + 1')),
-      await rejectsUnsupported(backend.browseNamespace('Data.Vect')),
+      await rejectsUnsupported(backend.evaluate(anyDoc, '1 + 1')),
+      await rejectsUnsupported(backend.browseNamespace(anyDoc, 'Data.Vect')),
+      await rejectsUnsupported(backend.completions(anyDoc, 'vl')),
     ];
     for (const reason of reasons) {
       assert.match(reason, /needs an Idris 2 backend, and none is running \(syntax only\)\.$/);
     }
     assert.ok(reasons[5].includes('caseSplit'), 'the edit reason names the edit kind');
+  });
+
+  test('tokens() has none to give (the one synchronous accessor, M3)', () => {
+    const backend: IdrisBackend = new NullBackend();
+    assert.strictEqual(backend.tokens(anyDoc), undefined);
   });
 
   test('dispose() does not throw, twice, and the backend still answers Unsupported afterwards', async () => {

@@ -11,7 +11,7 @@ import type { IDisposable } from '../../src/core/disposable';
 import { IdrisException } from '../../src/core/errors';
 import { Emitter } from '../../src/core/event';
 import type { GateVerdict, PermitReason, SessionGate } from '../../src/core/trust';
-import { checkBuildDir, createTunedSessionPool, extraArgsProblem, launchDifferences, sessionLaunch } from '../../src/backend/ide/pool';
+import { checkBuildDir, createTunedSessionPool, EVAL_IDLE_TIMEOUT_MS, evalBuildDir, extraArgsProblem, launchDifferences, sessionLaunch } from '../../src/backend/ide/pool';
 import { DEFAULT_SESSION_TIMING } from '../../src/backend/ide/session';
 import type { IdeSession, Reply, SessionLaunch, SessionPool, SessionPoolChange } from '../../src/backend/ide/types';
 import type { Classification, IpkgModel, ProjectRoot } from '../../src/project/types';
@@ -871,6 +871,33 @@ suite('backend/ide/pool', () => {
       assert.deepStrictEqual(evictions(h), [A.dir]);
     });
 
+    test('an eval session counts only while idle: starting an evaluation stops no other root\'s check session; once it answered it is the one stopped (fourth review of M3)', async () => {
+      // Before the fix, with a limit of 2, Evaluate in A stopped B's idle check session, whose next
+      // check then started a process again (and stopped the evaluation session in turn).
+      const h = setup();
+      h.config.set({ maxSessions: 2 });
+      h.pool.setActiveRoot(A);
+      const other = h.pool.sessionFor(B, 'check');
+      await answered(h, other);
+      const check = h.pool.sessionFor(A, 'check');
+      await answered(h, check);
+      await flush();
+      const evaluation = h.pool.sessionFor(A, 'eval');
+      const inFlight = await busy(h, evaluation);
+      await flush();
+      assert.deepStrictEqual([other.state, check.state, evaluation.state], ['ready', 'ready', 'busy'], 'B keeps its process while A evaluates');
+      assert.strictEqual(h.transports.alive().length, 3, 'above the limit while the evaluation runs');
+      inFlight.answer();
+      await inFlight.reply;
+      await flush();
+      assert.deepStrictEqual([other.state, check.state, evaluation.state], ['ready', 'ready', 'stopped']);
+      assert.deepStrictEqual(
+        h.changes.filter((c) => c.change.cause === 'evicted').map((c) => c.session),
+        [evaluation],
+      );
+      assert.strictEqual(h.transports.alive().length, 2);
+    });
+
     test('a busy session is never stopped for the limit, even when it is the least recently used', async () => {
       const h = setup();
       h.config.set({ maxSessions: 2 });
@@ -1016,6 +1043,262 @@ suite('backend/ide/pool', () => {
       // A setting that shapes sessions still returns failed sessions to stopped (as before).
       h.config.set({ requestTimeoutMs: 7_000 });
       assert.strictEqual(failing.state, 'stopped');
+    });
+  });
+
+  // M3: the eval session of a root (types.ts SessionRole; ROADMAP §9, 2026-09-28).
+  suite('the eval role (M3)', () => {
+    const base = { cwd: '/w/simple-ipkg', idris2: IDRIS2_PATH, env: {}, platform: 'darwin' as const };
+    const buildDirArgs = (launch: SessionLaunch) => launch.args.filter((_, i, a) => a[i - 1] === '--build-dir');
+
+    test('its own build directory wherever the extension chooses one, isolation on or off; none where the package or extraArgs set it', () => {
+      const evalOf = (root: Classification, settings: IdeModeSettings) => sessionLaunch({ ...base, role: 'eval', root, settings });
+      assert.deepStrictEqual(buildDirArgs(evalOf(projectRoot(), DEFAULTS)), ['/w/simple-ipkg/build/.vscode-idris2-eval']);
+      assert.deepStrictEqual(buildDirArgs(evalOf(projectRoot(), { ...DEFAULTS, isolateBuildDir: false })), ['/w/simple-ipkg/build/.vscode-idris2-eval']);
+      assert.deepStrictEqual(buildDirArgs(sessionLaunch({ ...base, cwd: LOOSE.dir, role: 'eval', root: LOOSE, settings: DEFAULTS })), [`${LOOSE.dir}/build/.vscode-idris2-eval`]);
+      // The compiler takes the package's directory for both sessions (F12): nothing the extension could change.
+      assert.deepStrictEqual(buildDirArgs(evalOf(withBuilddir('out'), DEFAULTS)), []);
+      assert.deepStrictEqual(buildDirArgs(evalOf(withModel({ opts: '--build-dir tmp' }), DEFAULTS)), []);
+      assert.deepStrictEqual(evalOf(projectRoot(), { ...DEFAULTS, extraArgs: ['--build-dir', 'mine'] }).args.slice(2), ['--build-dir', 'mine']);
+      assert.strictEqual(evalBuildDir(withBuilddir('out'), '/w/simple-ipkg', DEFAULTS, 'darwin'), undefined);
+      // Otherwise the check session's command line: transport, -p for loose files, extraArgs last.
+      const loose = sessionLaunch({ ...base, cwd: LOOSE.dir, role: 'eval', root: LOOSE, settings: { ...DEFAULTS, transport: 'socket', loosePackages: ['contrib'], extraArgs: ['--log', '1'] } });
+      assert.deepStrictEqual(loose.args, ['--ide-mode-socket', '--no-color', '-p', 'contrib', '--build-dir', `${LOOSE.dir}/build/.vscode-idris2-eval`, '--log', '1']);
+      // The build directory is placed in the real path the process starts in.
+      assert.deepStrictEqual(buildDirArgs(sessionLaunch({ ...base, role: 'eval', root: projectRoot(), buildBase: '/private/w/simple-ipkg', settings: DEFAULTS })), ['/private/w/simple-ipkg/build/.vscode-idris2-eval']);
+    });
+
+    test('a separate session, started by its first request through the same gate, in the same directory, with its own build directory', async () => {
+      const h = setup();
+      const check = h.pool.sessionFor(LOOSE, 'check');
+      const evaluation = h.pool.sessionFor(LOOSE, 'eval');
+      assert.notStrictEqual(check, evaluation);
+      assert.strictEqual(evaluation.role, 'eval');
+      assert.strictEqual(h.pool.sessionFor(LOOSE, 'eval'), evaluation);
+      assert.strictEqual(h.transports.all.length, 0, 'nothing started by sessionFor');
+      await answered(h, evaluation);
+      assert.strictEqual(check.state, 'stopped');
+      assert.deepStrictEqual(h.gate.asked, [LOOSE.dir]);
+      const launch = h.transports.last().launch;
+      assert.strictEqual(launch.cwd, LOOSE.dir);
+      assert.deepStrictEqual(buildDirArgs(launch), [`${LOOSE.dir}/build/.vscode-idris2-eval`]);
+      // The gate refuses the directory: the eval session is not started either.
+      const refused = setup();
+      refused.gate.verdicts.set(LOOSE.dir, { allowed: false, reason: 'denied' });
+      await assert.rejects(refused.pool.sessionFor(LOOSE, 'eval').request(typeOf('x'), { kind: 'lookup' }), (e: unknown) => e instanceof IdrisException && e.error.kind === 'Unsupported');
+      assert.strictEqual(refused.transports.all.length, 0);
+      // Restricted Mode: nothing.
+      const untrusted = setup({ trusted: false });
+      await assert.rejects(untrusted.pool.sessionFor(LOOSE, 'eval').request(typeOf('x'), { kind: 'lookup' }), /Restricted Mode/);
+      assert.deepStrictEqual(untrusted.gate.asked, []);
+    });
+
+    test('consent revoked: a running eval session is stopped like a check session (refused, then unknown), with cause consentRevoked', async () => {
+      // Second review of M3: the gate's onDidChange loop did not look at the role, and no test ran it with an eval session.
+      for (const verdict of [{ allowed: false, reason: 'denied' } as GateVerdict, undefined]) {
+        const h = setup();
+        const check = h.pool.sessionFor(LOOSE, 'check');
+        const evaluation = h.pool.sessionFor(LOOSE, 'eval');
+        await answered(h, check);
+        await answered(h, evaluation);
+        assert.strictEqual(evaluation.state, 'ready');
+        h.gate.verdicts.set(LOOSE.dir, verdict);
+        h.gate.fire();
+        assert.strictEqual(evaluation.state, 'stopped', String(verdict?.allowed));
+        assert.strictEqual(check.state, 'stopped');
+        const causes = h.changes.filter((ch) => ch.change.cause === 'consentRevoked');
+        assert.ok(causes.some((ch) => ch.session === evaluation), 'the eval session\'s stop is a revocation');
+        assert.strictEqual(h.transports.all.length, 2);
+      }
+    });
+
+    test('the eval session\'s start judges the directory again right before the spawn: revoked or re-pointed while it waits for a scan', async () => {
+      // Second review of M3: the eval variants of the check session's tests above (the recheck after
+      // the last wait, and the real path it judged).
+      const h = setup();
+      h.gate.manual = true;
+      const evaluation = h.pool.sessionFor(LOOSE, 'eval');
+      const outcome = evaluation.request(typeOf('x'), { kind: 'lookup' }).then(
+        () => 'resolved',
+        (e: unknown) => (e instanceof IdrisException ? `${e.error.kind}: ${e.message}` : 'other'),
+      );
+      await flush();
+      h.toolchain.setScanning(true);
+      h.gate.answer({ allowed: true, basis: 'always' });
+      await flush();
+      assert.strictEqual(h.transports.all.length, 0, 'the start waits for the scan');
+      h.gate.verdicts.set(LOOSE.dir, undefined);
+      h.gate.fire();
+      h.toolchain.publish({});
+      assert.strictEqual(await outcome, 'Unsupported: running Idris 2 in “/w/loose-file” is no longer allowed');
+      await flush();
+      assert.strictEqual(h.transports.all.length, 0, 'no eval process in the revoked folder');
+      assert.deepStrictEqual(h.gate.rechecks, [LOOSE.dir]);
+      // Re-pointed: started in the real path the recheck found, its build directory there too.
+      const r = setup();
+      r.gate.rechecked.set(LOOSE.dir, { allowed: true, basis: 'workspaceFolder', realDir: '/private/w/loose-file' });
+      await answered(r, r.pool.sessionFor(LOOSE, 'eval'));
+      const launch = r.transports.last().launch;
+      assert.strictEqual(launch.realCwd, '/private/w/loose-file');
+      assert.deepStrictEqual(buildDirArgs(launch), ['/private/w/loose-file/build/.vscode-idris2-eval']);
+      // Unresolvable at the recheck: nothing started.
+      const u = setup();
+      u.gate.rechecked.set(LOOSE.dir, { allowed: false, reason: 'unresolved' });
+      await assert.rejects(u.pool.sessionFor(LOOSE, 'eval').request(typeOf('x'), { kind: 'lookup' }), /its real path could not be read/);
+      assert.strictEqual(u.transports.all.length, 0);
+    });
+
+    test('a settings change stops it (it starts at the next evaluation) only when its own command line changes (isolation does not change it)', async () => {
+      const h = setup();
+      const check = h.pool.sessionFor(LOOSE, 'check');
+      await answered(h, check);
+      const evaluation = h.pool.sessionFor(LOOSE, 'eval');
+      await answered(h, evaluation);
+      h.config.set({ isolateBuildDir: false });
+      await flush();
+      const restarted = h.changes.filter((c) => c.change.cause === 'reconfigure').map((c) => c.session.role);
+      assert.deepStrictEqual([...new Set(restarted)], ['check']);
+      assert.strictEqual(evaluation.state, 'ready');
+      const before = h.transports.all.length;
+      h.config.set({ loosePackages: ['contrib'] });
+      await flush();
+      const stopped = h.changes.filter((c) => c.session === evaluation && c.change.cause === 'reconfigure').map((c) => c.change.state);
+      assert.deepStrictEqual(stopped, ['stopped'], 'stopped, not restarted');
+      assert.strictEqual(evaluation.state, 'stopped');
+      assert.strictEqual(h.transports.all.length, before + 1, 'only the check session got a new process');
+      await answered(h, evaluation);
+      assert.ok(h.transports.last().launch.args.includes('contrib'), 'the next evaluation starts it with the new command line');
+    });
+
+    test('Stop Backend and the root\'s release stop it too; Restart Backend stops it (it starts at the next evaluation) and restarts the check session', async () => {
+      const h = setup();
+      const check = h.pool.sessionFor(LOOSE, 'check');
+      const evaluation = h.pool.sessionFor(LOOSE, 'eval');
+      await answered(h, check);
+      await answered(h, evaluation);
+      h.pool.restart(LOOSE);
+      await flush();
+      assert.deepStrictEqual([check.state, evaluation.state], ['ready', 'stopped']);
+      assert.strictEqual(h.changes.find((c) => c.session === evaluation && c.change.state === 'stopped')?.change.cause, 'stop');
+      await answered(h, evaluation);
+      h.pool.stop(LOOSE);
+      assert.deepStrictEqual([check.state, evaluation.state], ['stopped', 'stopped']);
+      await answered(h, evaluation);
+      h.pool.release(LOOSE);
+      assert.strictEqual(evaluation.state, 'stopped');
+    });
+
+    test('Restart Backend for all projects restarts the check sessions and stops the eval sessions; nothing starts an eval process by itself', async () => {
+      const h = setup();
+      const check = h.pool.sessionFor(LOOSE, 'check');
+      const evaluation = h.pool.sessionFor(LOOSE, 'eval');
+      const otherEval = h.pool.sessionFor(projectRoot(), 'eval');
+      await answered(h, check);
+      await answered(h, evaluation);
+      await answered(h, otherEval);
+      const before = h.transports.all.length;
+      h.pool.restartAll();
+      await flush();
+      assert.deepStrictEqual([check.state, evaluation.state, otherEval.state], ['ready', 'stopped', 'stopped']);
+      assert.strictEqual(h.transports.all.length, before + 1, 'one new process: the check session\'s');
+      assert.deepStrictEqual(
+        h.changes.filter((c) => c.session.role === 'eval' && c.change.state === 'stopped').map((c) => c.change.cause),
+        ['stop', 'stop'],
+      );
+    });
+
+    test('releaseEvaluation stops the root\'s eval session only, with the detail given; the next evaluation starts it again', async () => {
+      const h = setup();
+      const check = h.pool.sessionFor(LOOSE, 'check');
+      const evaluation = h.pool.sessionFor(LOOSE, 'eval');
+      await answered(h, check);
+      await answered(h, evaluation);
+      h.pool.releaseEvaluation(LOOSE, 'the evaluation took 5 s');
+      assert.strictEqual(evaluation.state, 'stopped');
+      assert.strictEqual(check.state, 'ready');
+      const last = h.changes.filter((ch) => ch.session === evaluation).at(-1)?.change;
+      assert.deepStrictEqual([last?.cause, last?.detail], ['stop', 'the evaluation took 5 s']);
+      h.pool.releaseEvaluation(projectRoot(), 'x'); // no eval session there: nothing
+      await answered(h, evaluation);
+      assert.strictEqual(h.transports.all.length, 3, 'started again by its next request');
+    });
+
+    test('cancelEvaluation stops the root\'s eval session only (its evaluation was cancelled); the next evaluation starts it again', async () => {
+      const h = setup();
+      const check = h.pool.sessionFor(LOOSE, 'check');
+      const evaluation = h.pool.sessionFor(LOOSE, 'eval');
+      await answered(h, check);
+      await answered(h, evaluation);
+      const running = evaluation.request(typeOf('loop'), { kind: 'longAction' });
+      await flush();
+      h.pool.cancelEvaluation(LOOSE);
+      await assert.rejects(running, (e: unknown) => e instanceof Error && e.name === 'Cancelled' && /Evaluate Selection was cancelled/.test(e.message));
+      assert.deepStrictEqual([check.state, evaluation.state], ['ready', 'stopped']);
+      h.pool.cancelEvaluation(projectRoot()); // no eval session there: nothing
+      await answered(h, evaluation);
+      assert.strictEqual(evaluation.state, 'ready');
+    });
+
+    test('its idle limit is idris2.ideMode.idleTimeout, at most 2 min (EVAL_IDLE_TIMEOUT_MS); 0 still means never', async () => {
+      const h = setup();
+      const check = h.pool.sessionFor(LOOSE, 'check');
+      const evaluation = h.pool.sessionFor(LOOSE, 'eval');
+      await answered(h, check);
+      await answered(h, evaluation);
+      assert.strictEqual(EVAL_IDLE_TIMEOUT_MS, 120_000);
+      h.clock.advance(EVAL_IDLE_TIMEOUT_MS);
+      await flush();
+      assert.deepStrictEqual([check.state, evaluation.state], ['ready', 'stopped']);
+      assert.strictEqual(h.changes.find((c) => c.session === evaluation && c.change.state === 'stopped')?.change.cause, 'idle');
+      // A shorter setting applies to both.
+      h.config.set({ idleTimeoutMs: 30_000 });
+      await answered(h, evaluation);
+      h.clock.advance(30_000);
+      await flush();
+      assert.deepStrictEqual([check.state, evaluation.state], ['ready', 'stopped']);
+      // 0: never, the eval session included.
+      h.config.set({ idleTimeoutMs: 0 });
+      await answered(h, evaluation);
+      h.clock.advance(24 * 60 * 60_000);
+      await flush();
+      assert.strictEqual(evaluation.state, 'ready');
+    });
+
+    test('maxSessions counts it; idle eval sessions go first, the active root\'s included, before any check session', async () => {
+      const B = projectRoot();
+      const h = setup();
+      h.config.set({ maxSessions: 1 });
+      h.pool.setActiveRoot(LOOSE);
+      const check = h.pool.sessionFor(LOOSE, 'check');
+      await answered(h, check);
+      const evaluation = h.pool.sessionFor(LOOSE, 'eval');
+      await answered(h, evaluation);
+      await flush();
+      // Two run for a limit of 1: the active root's eval session goes once idle, its check session
+      // stays. (An evaluation keeps its session busy from its load to its answer, the :interpret
+      // queued behind the load: backendIde.test.ts, "evaluation with the real session pool".)
+      assert.deepStrictEqual([check.state, evaluation.state], ['ready', 'stopped']);
+      const evicted = h.changes.find((c) => c.change.cause === 'evicted');
+      assert.strictEqual(evicted?.session, evaluation);
+      assert.match(evicted.change.detail ?? '', /this was an idle evaluation session, which starts again at the next evaluation$/);
+
+      // Three idle sessions, then a limit of 2: the eval session goes, although another root's check
+      // session is the least recently used.
+      const h2 = setup();
+      h2.pool.setActiveRoot(LOOSE);
+      const other = h2.pool.sessionFor(B, 'check');
+      await answered(h2, other);
+      const check2 = h2.pool.sessionFor(LOOSE, 'check');
+      await answered(h2, check2);
+      const evaluation2 = h2.pool.sessionFor(LOOSE, 'eval');
+      await answered(h2, evaluation2);
+      h2.config.set({ maxSessions: 2 });
+      await flush();
+      assert.deepStrictEqual([other.state, check2.state, evaluation2.state], ['ready', 'ready', 'stopped']);
+      // Limit 1: then the other root's check session, never the active root's.
+      h2.config.set({ maxSessions: 1 });
+      await flush();
+      assert.deepStrictEqual([other.state, check2.state], ['stopped', 'ready']);
     });
   });
 });

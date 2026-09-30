@@ -18,8 +18,8 @@
  * another shape throws an `IdrisException` of kind `ProtocolError`.
  */
 import { IdrisException } from '../../core/errors';
-import type { IdeReplyPoint, IdeReplySpan, IdeRequestPoint } from '../../core/positions';
-import type { Multiplicity } from '../types';
+import { utf16Length, type IdeReplyPoint, type IdeReplySpan, type IdeRequestPoint } from '../../core/positions';
+import type { Decor, Multiplicity, RichText, RichTextSpan } from '../types';
 import { int, list, parseSexp, serializeSexp, SexpSyntaxError, str, sym } from './sexp';
 import type {
   DecodedMessage,
@@ -81,7 +81,23 @@ function unreadableReturnId(sexp: Sexp): bigint | undefined {
     : undefined;
 }
 
-export const ideCodec: IdeCodec = { encodeRequest, createFrameDecoder, decodeMessage };
+/**
+ * `IdeCodec.highlightSourceId`: the id of a frame `(:output (:ok (:highlight-source …)) ID)`, read
+ * from its start and its end without parsing it — the compiler writes it with exactly that prefix
+ * and ends it with ` ID)` and a line feed [live, every recorded load, e.g. transcript
+ * `clean-queries`] —; `undefined` for any other text.
+ */
+function highlightSourceId(text: string): bigint | undefined {
+  if (!text.startsWith(HIGHLIGHT_SOURCE_PREFIX)) {
+    return undefined;
+  }
+  const id = /\s(\d+)\)\s*$/.exec(text)?.[1];
+  return id === undefined ? undefined : BigInt(id);
+}
+
+const HIGHLIGHT_SOURCE_PREFIX = '(:output (:ok (:highlight-source ';
+
+export const ideCodec: IdeCodec = { encodeRequest, createFrameDecoder, decodeMessage, highlightSourceId };
 
 /**
  * `Reply` (`src/Protocol/IDE.idr`): `(:protocol-version MAJOR MINOR)`, `(:return PAYLOAD ID)`,
@@ -322,9 +338,33 @@ export function refine(line: number, hole: string, expression: string): Sexp {
   return list(sym('refine'), int(line), str(hole), str(expression));
 }
 
-/** `(:interpret "INPUT")`: one REPL input. Answer: `decodeText`. */
+/**
+ * `(:interpret "INPUT")`: one REPL input. Answer: `decodeText`. The compiler hands `INPUT` to the
+ * REPL's parser, which reads REPL commands (`:exec`, `:set …`) as well as expressions (ROADMAP §9,
+ * 2026-09-28); `IdeBackend.evaluate` refuses the former first (`replCommand.ts`).
+ */
 export function interpret(input: string): Sexp {
   return list(sym('interpret'), str(input));
+}
+
+/**
+ * `(:repl-completions "LINE")`: the compiler completes the trailing run of letters, digits and
+ * characters above U+00A0 of `LINE` against the roots of the names in scope, ignoring their
+ * namespaces (`parseTask`, `nameCompletion`, `src/TTImp/Interactive/Completion.idr` 25–64 on v0.8.0
+ * [src]; transcript `clean-queries`: `Data.V` → `Vect`, `Void`, `View`). Answer:
+ * `decodeCompletions`.
+ */
+export function replCompletions(line: string): Sexp {
+  return list(sym('repl-completions'), str(line));
+}
+
+/**
+ * `(:browse-namespace "NS")`: the visible names of `NS` and of the namespaces below it, one per
+ * line (`getContents`, `src/Idris/Doc/String.idr` 685–707 on v0.8.0 [src]). Answer: `decodeText`
+ * (the text is `""` for a namespace that is unknown or not imported [live, `shapes-lookups`]).
+ */
+export function browseNamespace(ns: string): Sexp {
+  return list(sym('browse-namespace'), str(ns));
 }
 
 /** `(:interpret ":missing NAME")` (F15). Answer: `decodeMissingCases`. */
@@ -361,6 +401,74 @@ export function decodeText(payload: ReplyPayload): CommandResult<HighlightedText
   return decodeResult(payload, '"TEXT"', (result, highlighting) => {
     const text = string(result);
     return text === undefined ? undefined : { text, highlighting };
+  });
+}
+
+/**
+ * The decoration of a highlighting span, e.g. `type` of `((:decor :type))`; `undefined` for a span
+ * without one (`((:text-formatting :underline))` in `:docs-for` answers [live]) or with a
+ * decoration `Decor` does not list (`Protocol/IDE/Decoration.idr` [src] has the nine it lists).
+ * A span may carry a text format and a decoration (`((:text-formatting :bold) (:decor
+ * :postulate))` in error messages [live]).
+ */
+function decorOf(properties: Sexp): Decor | undefined {
+  for (const property of listItems(properties) ?? []) {
+    const pair = listItems(property);
+    const value = pair?.length === 2 && symbolName(pair[0]) === 'decor' ? symbolName(pair[1]) : undefined;
+    if (value !== undefined) {
+      return asDecor(value);
+    }
+  }
+  return undefined;
+}
+
+/** The nine decorations of `Protocol/IDE/Decoration.idr` (v0.8.0, identical on master 1c630e6 [src]). */
+const DECORS: ReadonlySet<string> = new Set<Decor>(['comment', 'type', 'function', 'data', 'keyword', 'bound', 'namespace', 'postulate', 'module']);
+
+/** `name` (of `(:decor :NAME)`) as a `Decor`, or `undefined` for one this version does not know. */
+export function asDecor(name: string): Decor | undefined {
+  return DECORS.has(name) ? (name as Decor) : undefined;
+}
+
+/**
+ * A reply's text with its highlighting as `RichText` (`backend/types.ts`): the offsets, which
+ * count code points [live, transcript `plain`], converted to offsets into the JavaScript string
+ * (UTF-16 units) with `core/positions.ts`; spans outside the text are cut to it (and dropped when
+ * nothing is left), and a span's decoration is kept when it has one (`decorOf`).
+ */
+export function toRichText(reply: HighlightedText): RichText {
+  const spans: RichTextSpan[] = [];
+  for (const span of reply.highlighting) {
+    const start = Math.min(utf16Length(reply.text, span.start), reply.text.length);
+    const end = Math.min(utf16Length(reply.text, span.start + span.length), reply.text.length);
+    if (end <= start) {
+      continue;
+    }
+    const decor = decorOf(span.properties);
+    spans.push(decor === undefined ? { start, length: end - start } : { start, length: end - start, decor });
+  }
+  return { text: reply.text, spans };
+}
+
+/** What `:repl-completions` answers. */
+export interface Completions {
+  /** As the compiler sends them: repeated when several namespaces define a name (`show` 24 times [live]). */
+  readonly names: readonly string[];
+  /** The part of the request the compiler did not complete, e.g. `Data.` of `Data.V` [live]. */
+  readonly context: string;
+}
+
+/**
+ * `(:ok ((NAME …) "CONTEXT"))`; a request whose last character cannot be completed (`_`, an
+ * operator, the empty string) is an error, `I can't make sense of the completion task:` and the
+ * request [live, `clean-queries`].
+ */
+export function decodeCompletions(payload: ReplyPayload): CommandResult<Completions> {
+  return decodeResult(payload, '(("NAME" …) "CONTEXT")', (result) => {
+    const items = listItems(result);
+    const names = items?.length === 2 ? strings(items[0]) : undefined;
+    const context = items?.length === 2 ? string(items[1]) : undefined;
+    return names === undefined || context === undefined ? undefined : { names, context };
   });
 }
 

@@ -11,6 +11,22 @@ supports macOS and Linux; on Windows, use VS Code with WSL, where the extension 
 
 ### Added
 
+- **Answers from the compiler** (milestone M3). Hovers show the type of the name under the
+  cursor — local pattern variables included — and the first paragraph of its documentation; **Go
+  to Definition** jumps to global names, also across files; **Show Documentation…** and **Docs at
+  Cursor** open a name's documentation, **Browse Namespace…** lists a namespace; semantic
+  highlighting, the Outline, highlights of the name under the cursor, completion of names,
+  keywords and `%` directives, and inlay hints with the types of pattern variables
+  (`idris2.inlayHints.variableTypes`). New commands: **Type at Cursor**, **Docs at Cursor**, **Show
+  Documentation…**, **Browse Namespace…**.
+- **Evaluate Selection** (M3): the selected expression's value after the line and in a hover
+  (`idris2.eval.inlineResults`), from a second compiler process of the project that starts at the
+  first evaluation; expressions only — `IO` actions are shown, not run, and REPL commands such as
+  `:exec` are refused. An evaluation is stopped after `idris2.eval.timeout` (10 s) and can be
+  cancelled once it has run for a second. **Clear Evaluation Results** removes the results.
+- **Keyboard shortcuts** (M3) for Type at Cursor, Docs at Cursor and Evaluate Selection:
+  `Ctrl+C Ctrl+T` / `D` / `E` on macOS, `Ctrl+Alt+I T` / `D` / `E` on Linux, or none
+  (`idris2.keybindings.scheme`).
 - **The compiler's errors and warnings in the editor** (milestone M2). Idris 2 files — in a
   package or on their own, literate files included — are checked with the compiler's IDE mode
   when they are first shown and whenever they are saved (`idris2.checking.trigger`: `onSave`,

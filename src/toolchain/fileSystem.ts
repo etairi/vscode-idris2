@@ -5,7 +5,9 @@
  * `nodeFileSystem`. None of these calls throws; an unreadable path is treated as absent.
  *
  * `readRegularTextFile` is the one way the extension reads a text file it did not write: the
- * search reads pack's `pack.toml` with it, and `project/ipkg.ts` every `.ipkg`.
+ * search reads pack's `pack.toml` with it, `project/ipkg.ts` every `.ipkg`, the checks the files
+ * of documents (`features/diagnostics/checks.ts`), and IDE mode the source files its replies name
+ * (`readSourceFile`).
  */
 import * as fs from 'fs';
 
@@ -110,6 +112,33 @@ export async function readRegularTextFile(path: string, maxBytes = MAX_TEXT_FILE
   } finally {
     await handle.close().catch(() => undefined);
   }
+}
+
+/**
+ * The largest source file `readSourceFile` reads: 8 MiB. Idris sources can exceed the 1 MiB of
+ * `MAX_TEXT_FILE_BYTES` (a generated module); the largest of the compiler's own is 108,758 bytes
+ * (`src/Idris/Parser.idr` on v0.8.0 [src]). A choice, not measured against a real limit.
+ */
+export const MAX_SOURCE_FILE_BYTES = 8 * 1024 * 1024;
+
+/**
+ * The text of the Idris source file at `path` for IDE mode (`backend/ide/backend.ts`
+ * `IdeModeDeps.readFile`: the loaded file, the files a load's warnings name, the targets of Go to
+ * Definition): `readRegularTextFile` with `MAX_SOURCE_FILE_BYTES`, rejecting with an `Error` that
+ * says why when it refuses. The paths come from the compiler's replies, and a `:name-at` answer can
+ * name any path — an elaborator script sets a name's file context freely (`PhysicalPkgSrc`,
+ * printed as given, `src/Idris/IDEMode/REPL.idr` 433 on v0.8.0 [src]; `/dev/zero` answered [live,
+ * third review of M3]) —, so a FIFO or a device is refused unopened here, as for every other file
+ * the extension did not write (third review of M3: this read was `fs.promises.readFile`, which
+ * waits on a FIFO without a writer, holding a thread of the pool every extension shares, and read
+ * `/dev/zero` until the string was too long).
+ */
+export async function readSourceFile(path: string): Promise<string> {
+  const read = await readRegularTextFile(path, MAX_SOURCE_FILE_BYTES);
+  if (!read.ok) {
+    throw new Error(`${path} ${read.problem}`);
+  }
+  return read.text;
 }
 
 /** The real file system, for `process.platform`. */

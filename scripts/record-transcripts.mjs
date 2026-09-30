@@ -8,11 +8,12 @@
 // (so that no build/ directory lands in the repository), starts one `idris2 --ide-mode` (or
 // `--ide-mode-socket`) process in the session's working directory with the arguments the
 // extension uses (docs/ARCHITECTURE.md §5.2: `--no-color --build-dir <root>/build/.vscode-idris2`,
-// never `--find-ipkg`), sends the scenario's requests one at a time — each only after the
-// `:return` of the previous one — and writes every frame in both directions, the unframed bytes
-// of the protocol stream, the process's stdout and stderr lines, the end of input, the exit
-// status and the files the session wrote, in the order they arrived, with the temporary paths
-// replaced by placeholders, to test/fixtures/transcripts/<version>/<scenario>.jsonl.
+// `…/.vscode-idris2-eval` for the M3 `eval` session, never `--find-ipkg`), sends the scenario's
+// requests one at a time — each only after the `:return` of the previous one — and writes every
+// frame in both directions, the unframed bytes of the protocol stream, the process's stdout and
+// stderr lines, the end of input, the exit status and the files the session wrote, in the order
+// they arrived, with the temporary paths replaced by placeholders, to
+// test/fixtures/transcripts/<version>/<scenario>.jsonl.
 //
 // Processes run strictly one after another (CLAUDE.md: one idris2 at a time on this machine),
 // each in its own process group, which is killed when the process outlives PROCESS_LIMIT_MS or
@@ -53,9 +54,51 @@ const PORT = '${PORT}';
 // `(<command> <id>)` with ids 1, 2, 3, … `{ raw }` is sent verbatim, with `${ID}` replaced by the
 // id, for requests that are not well-formed. `${ROOT}` stands for the session directory (its real
 // path); with `link: true` the process is started in `${LINK}`, a symbolic link to it.
+// `buildDir` is the last component of the `--build-dir` (default `.vscode-idris2`, the `check`
+// session's; `.vscode-idris2-eval` for the `eval` session of M3, `backend/ide/types.ts`
+// `SessionRole`).
 // ---------------------------------------------------------------------------------------------
 
 const load = (file) => `(:load-file "${ROOT}/${file}")`;
+
+/**
+ * `value` as a string of a request, written as the extension writes it (`serializeString`,
+ * src/backend/ide/sexp.ts): `\` and `"` escaped, printable ASCII as it is, every other character
+ * as its decimal escape (`\8469` for ℕ), followed by `\&` when a digit comes next (F1 addendum).
+ * No scenario sends NUL or a lone surrogate, which sexp.ts refuses or replaces.
+ */
+function quote(value) {
+  let out = '"';
+  let pendingEscape = false;
+  for (const ch of value) {
+    const code = ch.codePointAt(0);
+    if (pendingEscape && code >= 0x30 && code <= 0x39) {
+      out += '\\&';
+    }
+    pendingEscape = false;
+    if (ch === '"' || ch === '\\') {
+      out += `\\${ch}`;
+    } else if (code >= 0x20 && code <= 0x7e) {
+      out += ch;
+    } else {
+      out += `\\${code}`;
+      pendingEscape = true;
+    }
+  }
+  return `${out}"`;
+}
+
+/** `(:type-of "<name>" <line> <column>)` (F2: 1-based line, 0-based column), or by name. */
+const typeOf = (name, line, column) =>
+  (line === undefined ? `(:type-of ${quote(name)})` : `(:type-of ${quote(name)} ${line} ${column})`);
+/** The same positional `:type-of` at every column from `from` to `to`, both included. */
+const typeOfSweep = (name, line, from, to) =>
+  Array.from({ length: to - from + 1 }, (_, i) => typeOf(name, line, from + i));
+const docsFor = (name) => `(:docs-for ${quote(name)})`;
+const nameAt = (name) => `(:name-at ${quote(name)})`;
+const completions = (prefix) => `(:repl-completions ${quote(prefix)})`;
+const browse = (ns) => `(:browse-namespace ${quote(ns)})`;
+const interpret = (text) => `(:interpret ${quote(text)})`;
 
 const SCENARIOS = [
   {
@@ -416,6 +459,264 @@ const SCENARIOS = [
     fixtures: ['old.ipkg', 'Main.idr'],
     requests: [load('Main.idr'), load('Main.idr')],
   },
+  // M3 (ROADMAP §5 M3): the queries of the read-only features, each after a load of the file as
+  // the `check` session makes it, and the evaluations of the `eval` session.
+  {
+    name: 'shapes-lookups',
+    description: 'Foo/Shapes.idr in simple-ipkg (the semantic-tokens fixture): its highlighting; positional :type-of on globals (declarations, definitions, uses, operators) and on every :bound token (pattern variables, an interface parameter, let- and lambda-bound names), and by name; :docs-for with and without docs (a constructor, the type, an interface and its method, an operator); :name-at; :browse-namespace of its own namespace, of Data.Vect (not imported) and of an unknown one; :repl-completions',
+    facts: ['F2', 'F30', 'F31', 'F33'],
+    workspace: 'simple-ipkg',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['simple.ipkg', 'src/Foo/Shapes.idr'],
+    requests: [
+      load('src/Foo/Shapes.idr'),
+      // Globals at the start of their token, on declarations, definitions and uses.
+      typeOf('Shape', 5, 5),
+      typeOf('Circle', 7, 2),
+      typeOf('Rectangle', 8, 2),
+      typeOf('area', 12, 0),
+      typeOf('area', 13, 0),
+      typeOf('Circle', 13, 6),
+      typeOf('pi', 13, 18),
+      typeOf('*', 13, 21),
+      typeOf('Measured', 18, 10),
+      typeOf('perimeter', 20, 2),
+      typeOf('perimeter', 24, 2),
+      typeOf('scale', 28, 0),
+      typeOf('twice', 33, 0),
+      typeOf('|+|', 40, 1),
+      typeOf('|+|', 41, 2),
+      typeOf('+', 41, 17),
+      // Every :bound token of the load's highlighting, at its start (what the inlay hints ask):
+      // pattern variables, the interface parameter, let- and lambda-bound names.
+      ...[
+        ['r', 13, 13], ['r', 13, 23], ['r', 13, 27],
+        ['w', 14, 16], ['h', 14, 18], ['w', 14, 23], ['h', 14, 27],
+        ['a', 18, 19], ['a', 20, 14], ['r', 24, 20], ['r', 24, 34],
+        ['w', 25, 23], ['h', 25, 25], ['w', 25, 35], ['h', 25, 39],
+        ['k', 29, 6], ['r', 29, 16], ['r\'', 29, 25], ['k', 29, 30], ['r', 29, 34], ['r\'', 29, 46],
+        ['k', 30, 6], ['w', 30, 19], ['h', 30, 21], ['k', 30, 37],
+        ['w', 30, 41], ['k', 30, 45], ['h', 30, 49],
+        ['f', 34, 6], ['s', 34, 11], ['f', 34, 16], ['f', 34, 19], ['s', 34, 21],
+        ['a', 41, 0], ['b', 41, 6], ['a', 41, 15], ['b', 41, 24],
+      ].map(([name, line, column]) => typeOf(name, line, column)),
+      typeOf('area'),
+      typeOf('Circle'),
+      typeOf('Shape'),
+      typeOf('perimeter'),
+      typeOf('|+|'),
+      typeOf('+'),
+      typeOf('r'),
+      docsFor('area'),
+      docsFor('scale'),
+      docsFor('Circle'),
+      docsFor('Rectangle'),
+      docsFor('Shape'),
+      docsFor('Measured'),
+      docsFor('perimeter'),
+      docsFor('|+|'),
+      docsFor('pi'),
+      docsFor('nope'),
+      nameAt('area'),
+      nameAt('Circle'),
+      nameAt('perimeter'),
+      nameAt('|+|'),
+      nameAt('r'),
+      nameAt('pi'),
+      browse('Foo.Shapes'),
+      browse('Data.Vect'),
+      browse('Nope.Nothing'),
+      completions('ar'),
+      completions('Ci'),
+      completions('|+'),
+    ],
+  },
+  {
+    name: 'simple-ipkg-lookups',
+    description: 'Foo/B.idr in simple-ipkg: positional :type-of of greeting and of shout (imported from Foo.A), :name-at of a name of another module and of this one, :docs-for without docs, :browse-namespace of the imported module, :repl-completions; then Foo/A.idr loaded in the same session (its TTC is fresh) and positional :type-of there',
+    facts: ['F2', 'F13'],
+    workspace: 'simple-ipkg',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['simple.ipkg', 'src/Foo/A.idr', 'src/Foo/B.idr'],
+    requests: [
+      load('src/Foo/B.idr'),
+      typeOf('greeting', 6, 0),
+      typeOf('greeting', 7, 0),
+      typeOf('shout', 7, 11),
+      nameAt('shout'),
+      nameAt('greeting'),
+      docsFor('shout'),
+      docsFor('greeting'),
+      browse('Foo.A'),
+      completions('sh'),
+      completions('gr'),
+      // Definition opens Foo/A.idr, which the checks then load in the same session (its TTC is
+      // fresh: no Building line, F7).
+      load('src/Foo/A.idr'),
+      typeOf('shout', 4, 0),
+      typeOf('s', 5, 6),
+      typeOf('s', 5, 10),
+    ],
+  },
+  {
+    name: 'clean-queries',
+    description: 'Clean.idr (imports Data.Vect): positional :type-of of every :bound token; :repl-completions of vl, vlen, Data.V, ?, vlen_ and the empty prefix; :name-at of a name of this file and of the installed packages (Data.Vect.index, Prelude.id, Vect, ::); :browse-namespace of Data.Vect, of the file\'s own namespace and of an unknown one; :docs-for a type, a constructor, a name without docs; :type-of by name of a local and of an overloaded name; positional :type-of of a type and of a hole',
+    facts: ['F2', 'F3', 'F31'],
+    workspace: 'broken',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['Clean.idr'],
+    requests: [
+      load('Clean.idr'),
+      // Every :bound token of the load's highlighting, at its start (what the inlay hints ask).
+      ...[
+        ['n', 5, 14], ['a', 5, 16], ['m', 5, 26], ['a', 5, 28], ['n', 5, 39], ['m', 5, 43], ['a', 5, 46],
+        ['n', 7, 12], ['a', 7, 14], ['xs', 8, 5],
+      ].map(([name, line, column]) => typeOf(name, line, column)),
+      completions('vl'),
+      completions('vlen'),
+      completions('Data.V'),
+      completions('?'),
+      completions('vlen_'),
+      completions(''),
+      nameAt('vlen'),
+      nameAt('index'),
+      nameAt('id'),
+      nameAt('Vect'),
+      nameAt('::'),
+      browse('Data.Vect'),
+      browse('Clean'),
+      browse('Nope.Nothing'),
+      docsFor('Vect'),
+      docsFor('::'),
+      docsFor('vlen'),
+      typeOf('xs'),
+      typeOf('index'),
+      typeOf('Vect', 7, 7),
+      typeOf('vlen_rhs', 8, 11),
+    ],
+  },
+  {
+    name: 'unicode-columns',
+    description: 'E14: Unicode.idr, whose lines 12, 15, 18 and 21 have characters of 2, 3 and 4 UTF-8 bytes (4 bytes are 2 UTF-16 units) and a combining mark before a pattern variable: its highlighting, and a positional :type-of at every column from 0 to one past the line\'s UTF-8 length; non-ASCII names in requests (decimal escapes) and replies',
+    facts: ['F1', 'F2'],
+    workspace: 'broken',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['Unicode.idr'],
+    requests: [
+      load('Unicode.idr'),
+      ...typeOfSweep('y', 12, 0, 21),
+      ...typeOfSweep('s', 15, 0, 27),
+      ...typeOfSweep('t', 18, 0, 25),
+      ...typeOfSweep('m', 21, 0, 30),
+      typeOf('x₁', 12, 2),
+      typeOf('x₁', 12, 9),
+      typeOf('ℕ', 9, 0),
+      typeOf('α'),
+      nameAt('α'),
+      nameAt('commented'),
+      docsFor('ℕ'),
+      completions('α'),
+    ],
+  },
+  {
+    name: 'lit-lookups',
+    description: 'Lit.lidr (bird tracks): positional :type-of of the global double, of an operator and of every :bound token at unlit columns, :name-at (the columns of its reply), :docs-for, :browse-namespace; below the lines `> ` (file line 6, 0-based) and `>   ` (file line 9), each two lines of the unlit text, the compiler\'s lines are the file lines plus 1 and 2 (F11 addendum): :type-of and :name-at of glue and bump there, and of an operator directly after a local (`xs++ys`, `n+1`) at its start, where the local answers, and one column further',
+    facts: ['F11'],
+    workspace: 'loose-file',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['Lit.lidr'],
+    requests: [
+      load('Lit.lidr'),
+      typeOf('double', 5, 0),
+      typeOf('double', 6, 0),
+      typeOf('+', 6, 13),
+      typeOf('n', 6, 7),
+      typeOf('n', 6, 11),
+      typeOf('n', 6, 15),
+      nameAt('double'),
+      docsFor('double'),
+      browse('Lit'),
+      typeOf('glue', 9, 0),
+      docsFor('glue'),
+      typeOf('xs', 10, 5),
+      typeOf('ys', 10, 8),
+      typeOf('++', 10, 15),
+      typeOf('++', 10, 16),
+      typeOf('++'),
+      docsFor('++'),
+      typeOf('bump', 13, 0),
+      typeOf('n', 14, 5),
+      typeOf('+', 14, 10),
+      typeOf('+', 14, 11),
+      nameAt('glue'),
+      nameAt('bump'),
+    ],
+  },
+  {
+    name: 'eval-values',
+    description: 'The eval session (--build-dir …/.vscode-idris2-eval) after it loaded Clean.idr: :interpret of a Vect, a String, function values, putStrLn "hi" (no HasIO implementation is chosen: an error) and the same action at type IO () (normalised, not run: nothing is printed), an expression stuck on a hole, an ill-typed expression, an undefined name, and the REPL command :t id (the REPL parser reads commands in :interpret)',
+    facts: ['F5', 'F15', 'F27'],
+    workspace: 'broken',
+    cwd: '.',
+    buildDir: '.vscode-idris2-eval',
+    transport: 'stdio',
+    fixtures: ['Clean.idr'],
+    requests: [
+      load('Clean.idr'),
+      interpret('the (Vect 2 Nat) [1, 2]'),
+      interpret('the (Vect 2 Nat) [1,2]'),
+      interpret('"hi" ++ "!"'),
+      interpret('vlen'),
+      interpret('the (Nat -> Nat) (\\x => x + 1)'),
+      interpret('putStrLn "hi"'),
+      interpret('the (IO ()) (putStrLn "hi")'),
+      interpret('vlen [1, 2]'),
+      interpret('the Nat "x"'),
+      interpret('nope'),
+      interpret(':t id'),
+    ],
+  },
+  {
+    name: 'eval-command-forms',
+    description: 'The eval session after it loaded Clean.idr: :interpret of the harmless command :t id behind whitespace (space, tab, CR, LF, VT, FF, NBSP, U+3000, U+200B, U+FEFF), comments and a doc comment, with a space after the colon, with a fullwidth colon and in upper case; the empty and blank input and a lone comment',
+    facts: ['F1'],
+    workspace: 'broken',
+    cwd: '.',
+    buildDir: '.vscode-idris2-eval',
+    transport: 'stdio',
+    fixtures: ['Clean.idr'],
+    requests: [
+      load('Clean.idr'),
+      // Space, tab, CR, LF, VT, FF, then NBSP, the ideographic space, the zero-width space and the BOM.
+      ...[' ', '\t', '\r', '\n', '\v', '\f', '\u00a0', '\u3000', '\u200b', '\ufeff']
+        .map((space) => interpret(`${space}:t id`)),
+      interpret('{- c -} :t id'),
+      interpret('-- c\n:t id'),
+      interpret('||| d\n:t id'),
+      interpret(': t id'),
+      interpret('\uff1at id'),
+      interpret(':T id'),
+      interpret(''),
+      interpret('   '),
+      interpret('-- c'),
+    ],
+  },
+  {
+    name: 'eval-socket',
+    description: 'The eval session over --ide-mode-socket (the user\'s opt-in, ROADMAP §9 Q20): :interpret of an IO () action prints nothing, neither in the socket stream nor on the process stdout',
+    facts: ['F5'],
+    workspace: 'broken',
+    cwd: '.',
+    buildDir: '.vscode-idris2-eval',
+    transport: 'socket',
+    fixtures: ['Clean.idr'],
+    requests: [load('Clean.idr'), interpret('the (IO ()) (putStrLn "hi")')],
+  },
 ];
 
 // ---------------------------------------------------------------------------------------------
@@ -658,9 +959,9 @@ async function record(scenario, compiler, tmpBase) {
   }
   const modeFlag = scenario.transport === 'socket' ? '--ide-mode-socket' : '--ide-mode';
   // The working directory as the extension passes it (ProjectIndex.sessionCwd), and its
-  // --build-dir <sessionCwd>/build/.vscode-idris2 (D5, F12).
+  // --build-dir <sessionCwd>/build/.vscode-idris2 (D5, F12), or the eval session's.
   const processCwd = scenario.link ? LINK : ROOT;
-  const args = [modeFlag, '--no-color', '--build-dir', `${processCwd}/build/.vscode-idris2`];
+  const args = [modeFlag, '--no-color', '--build-dir', `${processCwd}/build/${scenario.buildDir ?? '.vscode-idris2'}`];
 
   const events = [];
   const waiters = [];

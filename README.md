@@ -8,9 +8,10 @@ Language support for [Idris 2](https://www.idris-lang.org/), a purely functional
 language with first-class dependent types.
 
 > **Preview.** The extension is in early development and not yet on the Marketplace. It
-> currently provides highlighting, editing support, toolchain detection and the compiler's
-> errors and warnings; types, holes, case splitting and proof search are being built next —
-> see the [roadmap](docs/ROADMAP.md).
+> currently provides highlighting, editing support, toolchain detection, the compiler's errors
+> and warnings, and answers from the compiler — types on hover, go to definition, documentation,
+> completion, semantic highlighting, inlay hints and evaluation of expressions; holes, case
+> splitting and proof search are being built next — see the [roadmap](docs/ROADMAP.md).
 
 ## Features
 
@@ -22,6 +23,31 @@ language with first-class dependent types.
   are checked again once they are fixed and saved, and a file changed on disk outside the editor
   (a checkout) is checked again. The language status item says `checking…`, `✓`, `2 errors`,
   `stale` (unsaved changes, or a file changed on disk and not checked yet) or `stopped`.
+- **Types, definitions and documentation from the compiler**: hovering over a name shows its
+  type, local pattern variables included, and the first paragraph of its documentation;
+  **Type at Cursor** and **Docs at Cursor** do the same from the keyboard. **Go to Definition**
+  (F12) jumps to the definition of a global name, also in another file or in an installed
+  package whose sources are installed. **Show Documentation…** opens the compiler's
+  documentation of a name in a read-only document, and **Browse Namespace…** lists the names of
+  a namespace with their types. The answers come from the compiler's last check of the saved
+  file.
+- **Semantic highlighting, outline and completion**: the compiler's view colours functions,
+  types, data constructors, bound variables, modules and keywords (in the token types of
+  idris2-lsp, so themes colour both alike); the Outline and breadcrumbs list the declarations;
+  the occurrences of the name under the cursor are highlighted; **Ctrl+Space** completes names in
+  scope, keywords and `%` directives.
+- **Inlay hints** after pattern variables with their types (`vlen xs = …` shows `: Vect ?_ ?_`
+  after `xs`; `idris2.inlayHints.variableTypes`). While a file has unsaved changes they show the
+  types of its last check, staying with their variables.
+- **Evaluate Selection** evaluates the selected expression in the context of the saved file and
+  shows the result after the line and in a hover (**Clear Evaluation Results** removes them). It
+  evaluates expressions only: an `IO` action is shown as a value, not run, and REPL commands
+  such as `:exec` are refused.
+- **Keyboard shortcuts** for Type at Cursor, Docs at Cursor and Evaluate Selection in Idris
+  editors: `Ctrl+C Ctrl+T` / `D` / `E` on macOS (the Control key), `Ctrl+Alt+I T` / `D` / `E`
+  on Linux; `idris2.keybindings.scheme` chooses the other form, or none. A keymap extension that
+  binds `Ctrl+C` itself, such as VSCodeVim, takes precedence over the `Ctrl+C` shortcuts: choose
+  `prefix` then.
 - **Syntax highlighting** for Idris 2 (`.idr`), literate Idris (`.lidr`, bird style) and package
   files (`.ipkg`). The grammar follows the Idris 2 compiler's own lexer: holes (`?goal`),
   pragmas (`%default total`), string interpolation, multi-line and raw strings, nested and
@@ -89,6 +115,12 @@ editor title bar for Idris files.
 |---|---|
 | Show Commands… | Lists the commands below (also opened by clicking the language status) |
 | Check File | Check the current file now (the saved file on disk) |
+| Type at Cursor | Show the type of the name at the cursor (as the hover does) |
+| Docs at Cursor | Open the documentation of the name at the cursor |
+| Show Documentation… | Open the documentation of a name you type |
+| Browse Namespace… | List a namespace's names and types; pick one to open its documentation |
+| Evaluate Selection | Evaluate the selected expression (expressions only; `IO` actions are shown, not run) |
+| Clear Evaluation Results | Remove the results shown in the editor |
 | Restart Backend | Restart the compiler of this project, or of all projects |
 | Stop Backend | Stop the compiler of this project, or of all projects, for example before `pack build`; the next check starts it again |
 | Show Setup Information | Report of the tools found, their versions and the current file's package |
@@ -127,9 +159,13 @@ file's package, so it can move the compiler to another package's folder as well.
 | `idris2.ideMode.loosePackages` | `[]` | Packages for files without an `.ipkg`, e.g. `["contrib"]` |
 | `idris2.ideMode.extraArgs` | `[]` | Extra arguments for the compiler (not `--ide-mode` or `--ide-mode-socket`: with either, the compiler is not started) |
 | `idris2.ideMode.requestTimeout`, `longActionTimeout`, `idleTimeout` | `5000`, `60000`, `600000` | Time limits in milliseconds: a quick request, checking a file, and how long an unused compiler keeps running |
-| `idris2.ideMode.maxSessions` | `0` | The most compiler processes kept running at once in this VS Code window (`0`: no limit; each window counts its own). Above it, the idle one used least recently is stopped (never a busy one, never the active file's); it starts again at its project's next check |
+| `idris2.ideMode.maxSessions` | `0` | The most compiler processes kept running at once in this VS Code window (`0`: no limit; each window counts its own; a project's evaluation process counts too, once it has answered: starting an evaluation stops no other process). Above it, idle ones are stopped, never a busy one: first evaluation processes, then the checking processes of projects other than the active file's, the one used least recently first; a stopped one starts again when it is next needed |
 | `idris2.ideMode.maxBackgroundChecks` | `0` | The most files other than the active one checked at once in this VS Code window (`0`: no limit; each window counts its own); the others wait their turn, and **Stop Backend** drops those still waiting. The active file never waits for them: within one project, where the compiler answers one check at a time, its check goes before the others waiting, after the one being compiled. A file whose folder waits for your permission takes no turn meanwhile |
 | `idris2.diagnostics.includeSourceExcerpt` | `false` | Keep the compiler's source excerpt in the messages |
+| `idris2.inlayHints.variableTypes` | `true` | Show the types of pattern variables as inlay hints |
+| `idris2.eval.inlineResults` | `true` | Show Evaluate Selection's result in the editor; off: in a notification |
+| `idris2.eval.timeout` | `10000` | Milliseconds an evaluation may take; a longer one stops the evaluation's compiler process |
+| `idris2.keybindings.scheme` | `"auto"` | Keyboard shortcuts: `chords` (`Ctrl+C Ctrl+<letter>`), `prefix` (`Ctrl+Alt+I <letter>`), `none`; `auto` is `chords` on macOS and `prefix` elsewhere. On Linux, `chords` makes `Ctrl+C` start a shortcut in Idris editors instead of copying, and `prefix` does the same to `Ctrl+Alt+I`, which then no longer opens the Chat view there. A keymap extension that binds `Ctrl+C` itself (VSCodeVim) takes precedence over `chords` (User settings only) |
 | `idris2.trace.protocol` | `false` | Record the messages exchanged with the compiler in an output channel (user settings only) |
 
 The extension also sets a few editor defaults for Idris files (two-space indentation with
@@ -184,6 +220,37 @@ can override them in your settings under `[idris2]` and `[lidr]`.
   shared with other users.
 - pack's `idris2` and `idris2-lsp` wrappers start pack, which may contact the network to update
   its package database.
+- **Evaluate Selection** runs a second compiler process for the project, in the same folder, with
+  the same permission and the same transport as the one that checks files; it starts only when
+  you evaluate an expression there — never by itself, also not after it ended or was stopped —,
+  stops after 2 minutes without an evaluation (or after `idris2.ideMode.idleTimeout`, if that is
+  shorter; never for being idle when that setting is `0`) and after an evaluation that took more
+  than a second, and keeps its build files in `build/.vscode-idris2-eval`. The extension refuses, before anything is
+  sent, any text the compiler's REPL would read as a command (`:exec`, `:sh`, `:set …`, also
+  behind white space, comments or invisible characters), and never changes how that process
+  evaluates, so an `IO` action is shown as a value and not run. Evaluating an expression can
+  still run elaborator scripts, which can read and write files in the project's folders (by
+  relative paths, which `..` cannot leave, but a symbolic link in them can): the script of any
+  `%macro` function the
+  expression uses — defined in the project or in an installed package, with no `%language
+  ElabReflection` needed —, and a `%runElab` in the expression when that extension is on in the
+  compiler (a module that turns it on, built by the same process, is enough). Checking a file runs
+  the scripts the file uses; evaluating runs those the expression uses.
+- Types, documentation, values and error messages from the compiler quote your source and that of
+  installed packages. The extension shows them as text: its hovers never run commands or render
+  HTML, a docstring's markup, `command:` links and icons stay literal, and in its hovers, inlay
+  hints, evaluation results, the notifications of its type, documentation and evaluation
+  commands and of a compiler that stopped, the labels of the completion list (the name inserted
+  is the compiler's), lists to pick from and the title of a documentation tab, invisible
+  characters that could reorder or hide text (bidirectional controls, zero-width and other
+  invisible characters) are written out as `\u{…}`. The errors and warnings of a check (the
+  Problems panel, the editor's hover over a problem) are handed to VS Code as the compiler wrote
+  them, without that. The documentation document itself
+  (**Docs at Cursor**, **Show Documentation…**) shows the compiler's text as it is, as plain text,
+  where VS Code's own marking of such characters applies. That document is a `.txt` document: if
+  you associated `*.txt` with another language, or another extension claims some `.txt` names (the
+  Python extension takes names containing `requirements` or `constraints`), it opens in that
+  language.
 - The protocol trace (off by default) contains your source text and paths. It is written to an
   output channel, which VS Code also keeps as a file in its logs folder (**Developer: Open
   Extension Logs Folder**) for several sessions; it is not sent anywhere.
@@ -191,8 +258,35 @@ can override them in your settings under `[idris2]` and `[lidr]`.
 
 ## Known limitations
 
-- The compiler checks the file as saved on disk; checking while you type, hover types, holes
-  and interactive editing arrive with the next milestones.
+- The compiler checks the file as saved on disk, and its answers (types, definitions,
+  completions, inlay hints, evaluation) refer to the saved file: while a file has unsaved changes
+  the hover says so, and the inlay hints keep the types of the last check, also where an edit
+  changed a type (a signature being edited) until the file is saved. Checking while you type,
+  holes and interactive editing arrive with the next milestones.
+- Literate files (`.lidr`, `.idr.md`, `.idr.org`, …) need LF line ends: the compiler drops a CRLF
+  line break outside the code, so a `.lidr` with CRLF does not compile, and a Markdown file with
+  CRLF compiles with its line numbers shifted, which puts its errors, hovers and highlighting on
+  the wrong lines. The status bar shows `CRLF` or `LF` for the file; clicking it switches it.
+- The compiler answers about one file of a project at a time, the one it checked last. Hovers,
+  inlay hints, completion and Go to Definition in another editor of the same project, even one
+  shown side by side, may not answer until you click into it, which checks that file again; its
+  inlay hints meanwhile are those found before, if any.
+- Go to Definition finds global names only: the compiler looks definitions up by name, so a local
+  variable has none to go to. Inlay hints show each variable's type once per clause or signature,
+  where it first appears. Completion offers the names the compiler knows from the file's last
+  check, without saying what kind of name each is; after a qualifier (`Data.Vect.fil`) it offers
+  every name that starts with what was typed, whatever its namespace, because the compiler's
+  completion ignores namespaces.
+- Evaluate Selection checks the file again in its own process before every evaluation, so that it
+  sees the saved files as they are (about 0.1–0.4 s for an unchanged file in our measurements); the first
+  evaluation in a project compiles its modules into `build/.vscode-idris2-eval`. An evaluation
+  that does not end (a function that loops) makes the compiler's memory grow fast — by more than
+  a gigabyte within seconds in one measurement —, so it is stopped after `idris2.eval.timeout`
+  (10 seconds), together with the evaluation's compiler process, which starts again at the next
+  evaluation; an evaluation still running after a second can be cancelled from its notification.
+- The language status and the crash notices are about the compiler that checks files, not the
+  evaluation's: the status can read `stopped` while an evaluation's compiler runs. **Stop
+  Backend** and **Restart Backend** stop both (Restart starts only the checking one again).
 - On macOS and Linux a file is not checked when its path contains `\`, `:` or `?`, or a folder
   name of only white space: the compiler reads such a path differently (`\` as a folder separator),
   so it would look for its package elsewhere and could check another file. The status says so.
@@ -206,7 +300,13 @@ can override them in your settings under `[idris2]` and `[lidr]`.
   at the same time. A project's first check compiles the project's modules that the file imports
   (into `build/.vscode-idris2`, unless the `.ipkg` names its own build directory), which takes
   time and memory; one idle process took about 75–210 MB of memory after checking a small file
-  on macOS. Nothing limits this by default, so files open from many folders at once add up. On a
+  on macOS. Evaluating an expression starts a second process for the project, which loads the
+  same modules — about 190–250 MiB in one measurement on a 2,000-line file —, and stops after 2
+  minutes without an evaluation (never for being idle when `idris2.ideMode.idleTimeout` is `0`).
+  An evaluation that computes much leaves that process larger (about 700 MiB after one that took
+  4.6–6.3 seconds), so the process is also stopped after any evaluation that took more than a second;
+  the next evaluation starts it again, which takes a little longer.
+  Nothing limits this by default, so files open from many folders at once add up. On a
   machine with little memory, set for example `idris2.ideMode.maxSessions` to `3` and
   `idris2.ideMode.maxBackgroundChecks` to `1`: fewer compilers run and fewer files are checked
   at once, and a project whose compiler was stopped to stay within the limit starts a new one,
@@ -231,9 +331,9 @@ can override them in your settings under `[idris2]` and `[lidr]`.
 
 ## Roadmap
 
-The planned features — hover, go to definition, holes and interactive editing, a goal panel,
-check-as-you-type, REPL and build integration, literate Markdown and LaTeX, Unicode input — are
-described in [docs/ROADMAP.md](docs/ROADMAP.md).
+The planned features — holes and interactive editing, a goal panel, check-as-you-type, REPL and
+build integration, literate Markdown and LaTeX, Unicode input — are described in
+[docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Contributing
 

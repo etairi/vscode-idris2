@@ -1,0 +1,44 @@
+{"kind":"meta","format":1,"scenario":"eval-socket","description":"The eval session over --ide-mode-socket (the user's opt-in, ROADMAP §9 Q20): :interpret of an IO () action prints nothing, neither in the socket stream nor on the process stdout","facts":["F5"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-09-29","transport":"socket","args":["--ide-mode-socket","--no-color","--build-dir","${ROOT}/build/.vscode-idris2-eval"],"cwd":"test/fixtures/workspaces/broken","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"Clean.idr":"4f802b8f59f48e473ab27910d428c50c4eff75c7e103766c1de6c0ae80ffea19"}}
+{"kind":"stdout","text":"${PORT}\n"}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"00009e","text":"((:load-file \"${ROOT}/Clean.idr\") 1)\n"}
+{"kind":"recv","prefix":"0000b5","text":"(:write-string \"1/1: Building Clean (${ROOT}/Clean.idr)\" 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 0 0) (:end 0 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 0 7) (:end 0 12)) ((:decor :module)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 2 0) (:end 2 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 2 7) (:end 2 16)) ((:decor :module)))))) 1)\n"}
+{"kind":"recv","prefix":"00014e","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 4 0) (:end 4 6)) ((:name \"append\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 4 7) (:end 4 8)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000152","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 4 9) (:end 4 13)) ((:name \"Vect\") (:namespace \"Data.Vect\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000148","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 4 14) (:end 4 15)) ((:name \"n\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000148","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 4 16) (:end 4 17)) ((:name \"a\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 4 18) (:end 4 20)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 4 21) (:end 4 25)) ((:name \"Vect\") (:namespace \"Data.Vect\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000148","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 4 26) (:end 4 27)) ((:name \"m\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000148","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 4 28) (:end 4 29)) ((:name \"a\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 4 30) (:end 4 32)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 4 33) (:end 4 37)) ((:name \"Vect\") (:namespace \"Data.Vect\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 4 38) (:end 4 39)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000148","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 4 39) (:end 4 40)) ((:name \"n\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000156","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 4 41) (:end 4 42)) ((:name \"+\") (:namespace \"Prelude.Num\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000148","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 4 43) (:end 4 44)) ((:name \"m\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 4 44) (:end 4 45)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000148","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 4 46) (:end 4 47)) ((:name \"a\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00014c","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 6 0) (:end 6 4)) ((:name \"vlen\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 6 5) (:end 6 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000152","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 6 7) (:end 6 11)) ((:name \"Vect\") (:namespace \"Data.Vect\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000148","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 6 12) (:end 6 13)) ((:name \"n\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000148","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 6 14) (:end 6 15)) ((:name \"a\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 6 16) (:end 6 18)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000156","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 6 19) (:end 6 22)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000151","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 7 0) (:end 7 4)) ((:name \"vlen\") (:namespace \"Clean\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000147","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 7 5) (:end 7 7)) ((:name \"xs\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 7 8) (:end 7 9)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok ()) 1)\n"}
+{"kind":"send","prefix":"000031","text":"((:interpret \"the (IO ()) (putStrLn \\\"hi\\\")\") 2)\n"}
+{"kind":"recv","prefix":"00007f","text":"(:return (:ok \"MkIO (prim__putStr \\\"hi\\\\n\\\")\" ((0 4 ((:decor :data))) (6 12 ((:decor :function))) (19 6 ((:decor :data))))) 2)\n"}
+{"kind":"close"}
+{"kind":"stdout","text":"Alas the file is done, aborting\n"}
+{"kind":"socket-end"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":["build/.vscode-idris2-eval/ttc/2025081600/Clean.ttc","build/.vscode-idris2-eval/ttc/2025081600/Clean.ttm"]}

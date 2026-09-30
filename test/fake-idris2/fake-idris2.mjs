@@ -6,7 +6,9 @@
 // output recorded from the real compiler (recorded-cli-0.8.0.json), and the fault modes of
 // test/fake-tools/faults.mjs. M2: the session command line (`--no-color`, `-p`, `--build-dir`),
 // replay of the IDE-mode transcripts recorded from the real compiler (FAKE_IDRIS2_TRANSCRIPTS),
-// injected protocol faults (FAKE_IDRIS2_IDE_FAULT) and an invocation log (FAKE_IDRIS2_LOG). The
+// injected protocol faults (FAKE_IDRIS2_IDE_FAULT) and an invocation log (FAKE_IDRIS2_LOG). M3:
+// replay by session role (the build directory tells a `check` session from an `eval` one) and a
+// log of the requests received (FAKE_IDRIS2_REQUEST_LOG). The
 // behaviour mirrors Idris 2 0.8.0 (15a3e4e); each rule cites the compiler source it follows.
 // README.md says what was compared byte for byte with the real binary and what is not mirrored.
 import { createHash } from 'node:crypto';
@@ -235,6 +237,7 @@ function createSession(io, replayer, faults) {
     /** `input` is the frame payload as the compiler sees it: one character per byte. */
     receive(input) {
       if (hung) { return; }
+      logRequest(input);
       received += 1;
       fault = faults.get(received);
       if (fault === 'crash') {
@@ -379,6 +382,21 @@ function mapStrings(sexp, f) {
 }
 
 /**
+ * The session role a command line's `--build-dir` names: the extension gives the `check` session
+ * `<session directory>/build/.vscode-idris2` and the `eval` session (M3)
+ * `<session directory>/build/.vscode-idris2-eval` (`src/backend/ide/types.ts` `SessionRole`), and
+ * the recorder does the same. Undefined when the command line has no `--build-dir` (the `.ipkg`
+ * chose the directory) or another one: such a session, or recording, is not told apart by role.
+ */
+function roleOf(args) {
+  const i = args.lastIndexOf('--build-dir');
+  const dir = i < 0 ? undefined : args[i + 1];
+  if (dir === undefined) { return undefined; }
+  const base = dir.split(/[\\/]/).pop();
+  return base === '.vscode-idris2' ? 'check' : base === '.vscode-idris2-eval' ? 'eval' : undefined;
+}
+
+/**
  * Reads every `*.jsonl` transcript of `dir` into scenarios, sorted by name: for each recorded
  * request its key, id and reply group (the frames and program output up to the next request or
  * the recorder's `close`). Everything before the first request (the port line, the handshake)
@@ -430,7 +448,7 @@ function loadScenarios(dir) {
       step.recognised = step.id !== undefined && step.replies.some((r) => r.sexp !== undefined
         && r.sexp.items[0].name === 'return' && r.sexp.items.at(-1).value === step.id);
     }
-    return { name: name.slice(0, -'.jsonl'.length), fixtures: meta.fixtures ?? {}, steps };
+    return { name: name.slice(0, -'.jsonl'.length), role: roleOf(meta.args ?? []), fixtures: meta.fixtures ?? {}, steps };
   });
 }
 
@@ -445,8 +463,12 @@ function loadScenarios(dir) {
  * the transcripts allow. Ties go to a request whose whole recorded prefix matched (a session
  * replayed from its start), then to the first scenario by name, then to the earlier request.
  * The replies are the recorded group with the paths spelled as this session spells them.
+ * `role` (`roleOf` this process's command line) restricts the scenarios to those recorded in the
+ * same role, when both are known: an `eval` session is answered from `eval` recordings and a
+ * `check` session from `check` ones, so a request sent to the wrong session (an `:interpret` of
+ * the evaluation on the `check` session) gets the "no recorded reply" error, as a test needs.
  */
-function createReplayer(dir) {
+function createReplayer(dir, role) {
   const scenarios = loadScenarios(dir);
   const cwd = process.cwd();
   const realRoot = fs.realpathSync(cwd);
@@ -487,7 +509,8 @@ function createReplayer(dir) {
     (spelling[name] === undefined ? whole : spelling[name] + (sep === '/' ? rest : rest.replace(/\//g, sep))));
 
   const hashes = new Map();
-  const eligible = (scenario) => Object.entries(scenario.fixtures).every(([rel, sha256]) => {
+  const sameRole = (scenario) => role === undefined || scenario.role === undefined || scenario.role === role;
+  const eligible = (scenario) => sameRole(scenario) && Object.entries(scenario.fixtures).every(([rel, sha256]) => {
     if (!hashes.has(rel)) {
       let hash;
       try { hash = createHash('sha256').update(fs.readFileSync(path.join(realRoot, rel))).digest('hex'); } catch { hash = undefined; }
@@ -755,9 +778,11 @@ function dumpIpkgJson(file) {
  * `--ide-mode-socket` with an optional `host:port` (the next argument unless it starts with '-',
  * `[Optional "host:port"]`), in any order with `--no-color`, `-p`/`--package <pkg>` and
  * `--build-dir <dir>`. These three are accepted and ignored: the replies come from the
- * transcripts, whatever packages or build directory the recording used. Returns `{ socket }`
- * (undefined for stdio), or undefined for any other command line — so `--find-ipkg`, which the
- * extension must never pass (F13), is refused like every argument the fake does not implement.
+ * transcripts, whatever packages or build directory the recording used — except that the build
+ * directory names the session's role (`roleOf`), which picks the recordings. Returns `{ socket,
+ * role }` (`socket` undefined for stdio), or undefined for any other command line — so
+ * `--find-ipkg`, which the extension must never pass (F13), is refused like every argument the
+ * fake does not implement.
  */
 function ideModeArgs(argv) {
   let mode;
@@ -777,7 +802,7 @@ function ideModeArgs(argv) {
       return undefined;
     }
   }
-  return mode === undefined ? undefined : { socket };
+  return mode === undefined ? undefined : { socket, role: roleOf(argv) };
 }
 
 /** FAKE_IDRIS2_LOG: one JSON line per invocation, `{"pid", "args", "cwd"}` (as FAKE_PACK_LOG). */
@@ -785,6 +810,19 @@ function logInvocation(argv) {
   const file = process.env.FAKE_IDRIS2_LOG;
   if (file !== undefined && file !== '') {
     fs.appendFileSync(file, `${JSON.stringify({ pid: process.pid, args: argv, cwd: process.cwd() })}\n`);
+  }
+}
+
+/**
+ * FAKE_IDRIS2_REQUEST_LOG: every request an IDE-mode process reads, as one JSON line `{"pid",
+ * "request"}` — the frame's payload (or unframed line) as UTF-8 text — appended before it is
+ * answered, faults included (a `hang` stops the reading, so nothing after it is logged). With
+ * FAKE_IDRIS2_LOG's `pid` a test sees which session received what, and that nothing was sent.
+ */
+function logRequest(input) {
+  const file = process.env.FAKE_IDRIS2_REQUEST_LOG;
+  if (file !== undefined && file !== '') {
+    fs.appendFileSync(file, `${JSON.stringify({ pid: process.pid, request: Buffer.from(input, 'latin1').toString('utf8') })}\n`);
   }
 }
 
@@ -814,7 +852,7 @@ async function main(argv) {
     ideVersion(); // reject an unusable FAKE_IDRIS2_VERSION before the handshake
     const faults = ideFaults();
     const dir = process.env.FAKE_IDRIS2_TRANSCRIPTS;
-    const replayer = dir === undefined || dir === '' ? undefined : createReplayer(dir);
+    const replayer = dir === undefined || dir === '' ? undefined : createReplayer(dir, ide.role);
     if (ide.socket === undefined) {
       serveStdio(replayer, faults);
     } else {

@@ -16,7 +16,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { ideCodec } from '../../src/backend/ide/protocol';
 import type { DecodedMessage, IncomingFrame } from '../../src/backend/ide/types';
-import { exchanges, readTranscripts, requestFrame, substitute, transcriptsDir, type Transcript } from '../fake-idris2/client';
+import { exchanges, readTranscripts, recordedArgs, requestFrame, substitute, transcriptsDir, type Transcript } from '../fake-idris2/client';
 import { repoRoot } from '../fake-tools/paths';
 
 /** No single reply may take longer (the longest recorded load takes about 2 s). */
@@ -257,16 +257,16 @@ export function scenarioRequests(transcript: Transcript, values: Readonly<Record
   return exchanges(transcript).exchanges.map((e) => substitute(e.request, values));
 }
 
-/** The arguments the recorder (and the extension) passes after the mode flag. */
+/** The arguments the recorder (and the extension) passes after the mode flag to a `check` session. */
 export function sessionArgs(root: string): string[] {
   return ['--no-color', '--build-dir', path.join(root, 'build', '.vscode-idris2')];
 }
 
 /**
  * Runs the requests of the recorded scenario `name` against `executable` over the recorded
- * transport (or `transport`), in `workspace` (a `copyWorkspace` result the caller owns) or in a
- * fresh copy of the scenario's workspace, which is deleted unless `keep` is set (the caller then
- * deletes `dir`).
+ * transport (or `transport`), with the recorded arguments (so in the recorded session role), in
+ * `workspace` (a `copyWorkspace` result the caller owns) or in a fresh copy of the scenario's
+ * workspace, which is deleted unless `keep` is set (the caller then deletes `dir`).
  */
 export async function runScenario(
   executable: string,
@@ -294,7 +294,7 @@ export async function runScenario(
       executable,
       cwd,
       transport: options.transport ?? transcript.meta.transport,
-      args: sessionArgs(root),
+      args: recordedArgs(transcript, values),
       requests: scenarioRequests(transcript, values),
       env: options.env,
     });

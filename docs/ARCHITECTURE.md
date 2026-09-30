@@ -3,9 +3,9 @@
 Status: design document, 2026-09-23. Companion to `ROADMAP.md` (what to build, in which
 increments) and `landscape.md` (the verified survey this design rests on). This file is the
 specification the skeleton and every milestone are built to; `src/README.md` and
-`test/README.md` mark which parts exist (as of M2, 2026-09-27: the parts tagged M0, M1 or M2
-below; `docs/as-built/M0.md`, `M1.md` and `M2.md` record where the code departs from this text,
-with the evidence).
+`test/README.md` mark which parts exist (as of M3, 2026-09-29: the parts tagged M0, M1, M2 or M3
+below; `docs/as-built/M0.md` … `M3.md` record where the code departs from this text, with the
+evidence).
 
 Evidence tags follow `landscape.md`: **[live]** run on this machine (macOS arm64, Homebrew
 `idris2` 0.8.0) during the planning session, **[src]** read in the named checkout (`idris2-lsp`
@@ -106,10 +106,17 @@ vscode-idris2/
 │  │  ├─ errors.ts               IdrisError union: ToolchainMissing | VersionMismatch |
 │  │  │                          BackendCrashed | RequestTimeout | ProtocolError | NoIpkg |
 │  │  │                          IpkgParseError | DirtyDocument | LoadFailed | Unsupported(reason)
+│  │  │                          (as built, M3: also NotLoaded — a query about a file the check
+│  │  │                          session has not loaded last; the caller loads it and asks again)
 │  │  ├─ positions.ts            the ONLY module converting between the five coordinate
-│  │  │                          conventions (§7) incl. the .lidr column offset
+│  │  │                          conventions (§7) incl. the .lidr column offset; as built (M3):
+│  │  │                          compiler columns in code points ↔ editor columns in UTF-16 units
+│  │  │                          (E14)
 │  │  ├─ notificationText.ts     (as built, M2) plainText: notification messages and the
 │  │  │                          status item's detail as text, never `[..](command:..)` links
+│  │  ├─ untrustedText.ts        (as built, M3) compiler text shown as text: a code fence no line
+│  │  │                          of it can close, control and format characters written out,
+│  │  │                          one-line labels, QuickPick texts without theme icons
 │  │  ├─ async.ts                debounce, AsyncQueue, withTimeout, CancellationToken helpers
 │  │  │                          (as built: not created in M2 — the queue, time limits and
 │  │  │                          cancellation are in backend/ide/session.ts, the afterDelay
@@ -125,7 +132,8 @@ vscode-idris2/
 │  │  │                          ~/.idris2/bin; absolute directories only (Windows: drive
 │  │  │                          or UNC root)
 │  │  ├─ fileSystem.ts           the file-system probe the search takes (faked in unit tests);
-│  │  │                          the bounded read of a regular file (pack.toml, .ipkg)
+│  │  │                          the bounded read of a regular file (pack.toml, .ipkg; as built,
+│  │  │                          M3: the source files IDE mode's replies name, readSourceFile)
 │  │  ├─ pack.ts                 pack's directories and current collection, read from the file
 │  │  │                          system; pack is never started (F22 corrections)
 │  │  ├─ versions.ts             parse `idris2 --version`, `--ttc-version`, `--paths`,
@@ -196,7 +204,10 @@ vscode-idris2/
 │  │  │  ├─ highlight.ts         :highlight-source frames → token index of name/decor/span
 │  │  │  │                       only (semantic tokens, document symbols/highlights, the
 │  │  │  │                       :bound tokens inlay hints ask :type-of about); the frames'
-│  │  │  │                       :type/:doc-overview are always "" (F33)
+│  │  │  │                       :type/:doc-overview are always "" (F33); as built (M3):
+│  │  │  │                       document symbols come from M0's syntax model instead
+│  │  │  ├─ replCommand.ts       (as built, M3) whether the REPL parser could read a text as a
+│  │  │  │                       command: Evaluate Selection's refusal (ROADMAP §9, 2026-09-28)
 │  │  │  ├─ holes.ts             :metavariables decoding (unquote, multiplicity prefix) +
 │  │  │  │                       :name-at location resolution
 │  │  │  └─ backend.ts           IdeBackend implements IdrisBackend over a SessionPool
@@ -228,8 +239,12 @@ vscode-idris2/
 │  │  │                          crash notices), trace.ts (Protocol Trace, Send Raw)
 │  │  ├─ intelligence/           hover, Type/Docs at Cursor, definition, semanticTokens,
 │  │  │                          documentSymbols, documentHighlights, completion, docs
-│  │  │                          virtual document, inlay hints (pattern-variable types) (M3)
-│  │  ├─ eval/                   evaluate selection (eval session), inline decorations (M3)
+│  │  │                          virtual document, inlay hints (pattern-variable types) (M3);
+│  │  │                          as built: types.ts, queries.ts, occurrence.ts, text.ts,
+│  │  │                          hover.ts, semanticTokens.ts, symbols.ts, highlights.ts,
+│  │  │                          docs.ts, completion.ts, inlayHints.ts, register.ts
+│  │  ├─ eval/                   evaluate selection (eval session), inline decorations (M3);
+│  │  │                          as built: evaluation.ts, register.ts
 │  │  ├─ editing/                commands, CodeActionProvider, CyclingController,
 │  │  │                          save-before-action, keybinding schemes                (M4)
 │  │  ├─ holes/                  HoleModel, tree view, next/previous, QuickPick       (M4)
@@ -282,7 +297,9 @@ vscode-idris2/
 
 Naming rules: `features/*` never import from `backend/ide` or `backend/lsp` directly, only
 from `backend/types.ts` and `backend/registry.ts`. `core/positions.ts` is the only module that
-adds or subtracts 1 from a line or column.
+adds or subtracts 1 from a line or column (as built, one exception from M1: the fallback `.ipkg`
+parser `project/ipkg.ts` counts its own lexer's positions into the 1-based ones the compiler
+prints).
 
 ---
 
@@ -333,6 +350,26 @@ first", "stubbed in this compiler version"), never a silent no-op.
 `NullBackend` (all capabilities `false`) is defined in M0 so that the LSP backend (M5) and the
 IDE backend (M2) can be built in either order and every feature can be registered
 unconditionally behind `caps` checks.
+
+**As built (M3).** The query methods take the document whose context answers them —
+`docsFor(doc, name, mode)`, `browseNamespace(doc, ns)`, `evaluate(doc, expr)` returning an
+`Evaluation` (a value, or the compiler's error about the expression, which is an answer, not a
+failure) — and M3 adds `completions(doc, prefix)` and the synchronous `tokens(doc)` (the token
+index of the file's last load that sent highlighting; `TokenIndex` in `backend/types.ts`). In IDE
+mode a query is answered by the root's `check` session in the context of the file it loaded last
+(the compiler keeps one loaded file, F2); for another file it rejects with `NotLoaded` at once,
+having sent and started nothing, and the caller (`features/intelligence` `DocumentQueries`) loads
+the document the way **Check File** does (or waits for the check of it that is already running)
+and asks again. `TypeInfo` says how the type was found
+(`lookup: 'position' | 'name'`). `typeAt` and `definition` take the decoration the caller's token
+index gives the occurrence (`decor?: Decor`): a `bound` one is not looked up by name (the backend
+used its own index at the editor position until the third review of M3, which describes the saved
+file); `definition` also takes the token's namespace, which picks the definitions of that name
+in it (fourth review of M3). A position is one of the text the document shows; while that differs
+from the text the compiler loaded, IDE mode asks about it where it lies in the loaded text (by a
+line diff, `core/positions.ts` `lineCorrespondence`), and a definition's range, read from the
+target file on disk, is moved to the text the target's open document shows. Details:
+`backend/types.ts` and `docs/as-built/M3.md`, *Queries*.
 
 ### 3.2 Registry and routing
 
@@ -504,7 +541,10 @@ stopped ─spawn─▶ starting ─(:protocol-version 2 1 within 10 s)─▶ rea
   tail `Alas the file is done, aborting` is ignored, anything else is a `ProtocolError`
   (restart). On the socket transport program output never reaches the stream (F5).
 - **Loaded-file tracking.** The session remembers `(uri, savedVersion)` of the last
-  `:load-file`; file-scoped requests re-issue `:load-file` when different. A reload of a file
+  `:load-file`; file-scoped requests re-issue `:load-file` when different. **As built (M3):** a
+  query never re-issues a load in the session: it rejects with `NotLoaded`, having sent and started
+  nothing, and the caller loads the document through the checks, so that the load's diagnostics are
+  shown (§3.1 *As built (M3)*; `docs/as-built/M3.md`, *Queries*). A reload of a file
   whose TTC is fresh emits no `:write-string "N/M: Building …"` and **no `:warning` frames**
   (but does re-emit `:highlight-source` frames) [live, F7]: the absence of a `Building` line
   is the signal to keep existing diagnostics.
@@ -571,6 +611,28 @@ what the pool checks before every spawn (trust, the toolchain scan, the consent 
 directory's real path), the path sent in `:load-file`, the package walk before each load and the
 build directory the compiler ends up using are recorded in `docs/as-built/M2.md`, *ARCHITECTURE
 §5.2*.
+
+**As built (M3).** The `eval` role differs from the table in one argument: it gets `--build-dir
+<session directory>/build/.vscode-idris2-eval` whenever the `.ipkg` and `extraArgs` choose no
+build directory, whatever `idris2.ideMode.isolateBuildDir` says, so that it never compiles into the
+`check` session's directory (whose next load would then report no warnings for a file the `eval`
+session rebuilt, F7) and the two processes never write one directory at once (E21). It is
+started at the first evaluation in its root, through the same trust, toolchain and consent checks
+and with the same transport rule as the `check` session; it loads the document's file (with the
+same package walk right before the write) before every `:interpret`, which is queued right behind
+that load, so that it evaluates in the files as saved at that moment; the `:interpret` has its own
+time limit, `idris2.eval.timeout` (10 s), and a cancelled evaluation stops the session; it counts
+towards `idris2.ideMode.maxSessions` while it is idle (being started or evaluating, it does not
+make room for itself by stopping another session; fourth review of M3), and that limit's eviction
+stops idle `eval` sessions first. **It never
+starts a process by itself**: **Restart Backend** (one project or all) and a change of its command
+line stop it instead of restarting it, it is not restarted after an unexpected end (a deviation
+from §5.1's backoff), and it stops after 2 minutes without a request (or the shorter
+`idris2.ideMode.idleTimeout`; never for being idle when that is 0) and after an evaluation whose
+`:interpret` took more than a second, to give back the memory the process kept (second review of
+M3); **Stop Backend** and the other ways a root's sessions stop stop it too. Evaluate refuses text the REPL parser could read as a command before the backend classifies,
+starts or sends anything (`backend/ide/replCommand.ts`, at least as strict as the parser). Record:
+`docs/as-built/M3.md`, *Evaluation*.
 
 ### 5.3 LanguageClient lifecycle
 
@@ -704,17 +766,33 @@ columns too (`(:type-of "n" 6 2)` succeeds for an `n` at file column 4; `:case-s
 1-based unlit columns; F11). The CLI text columns of `--check` on a `.lidr` are unlit as well
 (`Err:6:5--6:8` for file columns 6–9, 0-based; F11). Lines are file lines — in a file with LF
 line breaks: the compiler drops a CRLF break in a `.lidr`, joining the line to the next one,
-which is why `[lidr]` defaults `files.eol` to `\n` (F11). For fenced styles
-(`.md` verified; `.tex`/`.org`/`.typ` [open]) lines and columns are exact. `positions.ts`
-therefore exposes `toIdeTypeOfRequest` / `toIdeCaseSplitRequest` / `toIdeLineRequest` for
-requests and `fromIdeReply(Span)` / `fromCli(Span)` for replies and CLI text, which consult
-`project/literate.ts` for the per-line prefix width and for whether the compiler reads the
-document as bird-track at all (M0). The compiler decides that by the file name
+which is why `[lidr]` defaults `files.eol` to `\n` (F11) — except below a marker followed only by
+white space (`> `, `>   `), which is two lines of the unlit text, so that every such line above a
+file line adds one to the compiler's line (F11 addendum [live], second review of M3; `.lidr`'s
+Enter rule makes such lines). Org's `#+IDRIS:` lines are line markers too (offset 9, and the same
+doubling [live]). For fenced styles (`.md` verified; `.tex`/`.typ` and Org's blocks [open], E19)
+lines and columns are exact in a file with LF line breaks; with CRLF the compiler drops the breaks
+outside code blocks, so its lines after prose are smaller than the file's (F11 addendum of the
+third review of M3 [live]; not mapped, README *Known limitations*). `positions.ts` therefore exposes `toIdeTypeOfRequest` /
+`toIdeCaseSplitRequest` / `toIdeLineRequest` for requests and `fromIdeReply(Span)` /
+`fromCli(Span)` for replies and CLI text, which consult `project/literate.ts` for the per-line
+prefix width, the doubled lines (kept per document and version) and for whether the compiler
+reads the document as bird-track at all (M0). The compiler decides that by the file name
 (`isLitFile`, a case-sensitive suffix test in `src/Parser/Unlit.idr`), not by the editor's
 language mode, so `compilerLiterateStyleOf` does too; only an untitled document, which has no
 name the compiler could see, falls back to its language id [src] [live, 0.8.0: a bird-track
 `Up.LIDR` fails `--check` at its first `>`]. Upstream fix: Idris2 #1508
 [gh, cited by plan-ecosystem; issue number not verified offline].
+
+**Column unit (E14, settled in M3).** The compiler counts columns in **code points**, in requests
+and in replies [live, 2026-09-29, transcript `unicode-columns`: `:type-of`, `:highlight-source`
+and `:name-at`; `:warning`, `:case-split` and the CLI text by the same lexer counts, [src]
+`Libraries/Text/Lexer/Tokenizer.idr`, not recorded on such a line]; VS Code counts UTF-16 units.
+They differ only for characters outside the Basic Multilingual Plane, so `positions.ts` converts
+every column with the text of its line (`codePointsBefore`, `utf16Length`), and a line without such
+characters passes through unchanged. The highlighting offsets inside a reply's text count code
+points too (`backend/ide/protocol.ts` `toRichText` converts them). Details and the recorded
+columns: `docs/as-built/M3.md`, *E14*.
 
 **Edit replies in `.lidr`** come back *with* the `> ` prefix (`> f 0 = ?f_rhs_0`,
 `> h k = ?h_rhs`, and even the make-lemma `definition-type` `> f_rhs : Nat -> Nat`, while
@@ -857,6 +935,21 @@ mutable) or to LSP `didChangeConfiguration`.
   (the default keymap is not an npm artefact); deliberate, editor-scoped collisions are
   listed in the table.
 
+  **As built (M3).** VS Code has no per-platform setting default, so the setting's default is
+  `auto`, which binds `chords` on macOS and `prefix` elsewhere (a `mac` key on the `auto`
+  bindings); `idris2.keybindings.scheme` has `application` scope (user settings only). The
+  integration suite reads VS Code's resolved Default Keybindings: nine bindings (t, d, e under
+  `auto`, `chords` and `prefix`), none under `none`, and E23 — on macOS no other binding of VS
+  Code 1.139.1 starts with `ctrl+c` or `ctrl+alt+i` [live]. On Linux the setting's description
+  warns that `ctrl+c` (copy) and `ctrl+alt+i` (the Chat view) are shadowed in Idris editors under
+  the scheme that uses them. The Chat binding is VS Code 1.139.1's **Open Chat**, `primary: 2599`
+  (CtrlCmd+Alt+I: Ctrl+Alt+I on Linux and Windows) with `mac: 2343` (Cmd+Ctrl+I) and no `when`
+  [src, the workbench bundle]; the rest of the Linux list is [open]: the test prints it, but no
+  Linux run of it was recorded. The check covers VS Code's own bindings only: a keymap
+  extension's binding of `ctrl+c` (VSCodeVim's, active with its defaults) outranks the `chords`
+  bindings, which the README and the setting's description say [src and doc, not run].
+  `docs/as-built/M3.md`, *Keybindings*.
+
 ---
 
 ## 11. Settings (`idris2.*`)
@@ -883,11 +976,12 @@ Every key has a `markdownDescription` and a scope (`machine-overridable` for pat
 | `diagnostics.includeSourceExcerpt` | `false` | M2 |
 | `lsp.{logFile,logSeverity,longActionTimeout,maxCodeActionResults,showImplicits,showMachineNames,fullNamespace,briefCompletions}` | server defaults [landscape §3] | M5 |
 | `lsp.trace.server` | `"off"` | M5 |
-| `keybindings.scheme` | `"chords"` on macOS, `"prefix"` elsewhere | M3 or M4, whichever ships first (both contribute bindings under it, §10) |
+| `keybindings.scheme` | `"chords"` on macOS, `"prefix"` elsewhere (as built: `"auto"`, which means that, §10) | M3 or M4, whichever ships first (both contribute bindings under it, §10) |
 | `holes.showInSideBar` | `true` | M4 |
 | `goalPanel.autoOpen`, `goalPanel.followCursor`, `goalPanel.debounce` | `false`, `true`, `50` ms | M7 |
 | `eval.inlineResults` | `true` | M3 |
-| `inlayHints.variableTypes`, `inlayHints.multiplicities` | `true`, `false` (the latter [open]) | M3 |
+| `eval.timeout` | `10000` ms (as built; the time limit of an evaluation, *review of M3*) | M3 |
+| `inlayHints.variableTypes`, `inlayHints.multiplicities` | `true`, `false` (the latter [open]; not created in M3, which has no multiplicity hints) | M3 |
 | `repl.reloadOnSave` | `false` | M8 |
 | `build.tool` | `"auto"` (`auto` \| `idris2` \| `pack`) | M9 |
 | `test.runnerCommand` | `""` (convention) | M10 |
@@ -899,7 +993,10 @@ Every key has a `markdownDescription` and a scope (`machine-overridable` for pat
 **As built (M1, M2).** The keys of M1 and M2 in the table exist. Their scopes, which of them are
 `restrictedConfigurations`, the bounds of the time limits and limits, and how a value of the
 wrong type reads are recorded in `docs/as-built/M1.md` and `docs/as-built/M2.md`, *ARCHITECTURE
-§11*.
+§11*. **As built (M3):** `inlayHints.variableTypes`, `eval.inlineResults` (both `window` scope,
+on unless `false`), `eval.timeout` (`window`, 1000 ms to 2^31 − 1 ms, added by the review of M3)
+and `keybindings.scheme` (`application` scope, read by VS Code's `when` clauses only) exist;
+`docs/as-built/M3.md`, *Settings*.
 
 Migration (M5): on first activation, if bamboo's `idris2-lsp.*` settings exist, offer to copy
 them with this key map (F36): `idris2-lsp.loglevel → idris2.lsp.logSeverity` (bamboo's key
@@ -924,7 +1021,9 @@ briefCompletions} → idris2.lsp.<same>`, `idris2-lsp.path → idris2.toolchain.
 **As built (M1, M2).** The suites that exist and what drives them, the transcript recorder (`npm
 run record:transcripts`, in place of `IDRIS2_RECORD=1`), the fake compiler's faults and the unit
 suite's run time are recorded in `docs/as-built/M1.md` and `docs/as-built/M2.md`, *ARCHITECTURE
-§12*; `test/README.md` describes every suite.
+§12*; `test/README.md` describes every suite. M3 adds the integration suites `intelligence`
+(`simple-ipkg`) and `intelligence-loose` (`broken`), the fake compiler's replay by session role
+and its request log, and the e2e file `intelligence.test.ts` (`docs/as-built/M3.md`, *Tests*).
 
 Fixture workspaces: `loose-file/` (no ipkg, `import Data.Vect`), `simple-ipkg/` (`sourcedir =
 "src"`, `depends = contrib`, two modules), `multi-module/` (one error in a sub-module),

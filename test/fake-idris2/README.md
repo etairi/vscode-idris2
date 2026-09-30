@@ -18,7 +18,8 @@ node test/fake-idris2/fake-idris2.mjs --ide-mode-socket --no-color -p contrib --
 
 `--no-color`, `-p`/`--package <pkg>` and `--build-dir <dir>` are accepted next to either IDE
 mode and ignored (the replies come from the transcripts, whatever packages or build directory
-their recording used). Any other command line — including `--find-ipkg`, which the extension
+their recording used), except that the build directory names the session's role, which selects
+the recordings (M3, "Which recording" below). Any other command line — including `--find-ipkg`, which the extension
 must never pass (F13), and two IDE modes at once — is rejected with exit code 2 and a message on
 stderr naming the arguments. The real compiler would accept many of them, so the fake does not
 pretend to be the real compiler's `Error: Unknown flag …` (stderr, exit 1). Tests start it
@@ -30,6 +31,7 @@ through the launchers in `test/fake-tools/bin`, and its fault modes (`FAKE_IDRIS
 | `FAKE_IDRIS2_TRANSCRIPTS=<dir>` | IDE mode replays the transcripts in `<dir>` ("Transcript replay" below); `.vscode-test.mjs` sets it to `test/fixtures/transcripts/0.8.0` for every fake-tool suite. Unset: the M0 behaviour below |
 | `FAKE_IDRIS2_IDE_FAULT=<fault>@<n>[,…]` | injects a protocol fault at the n-th request ("Injected protocol faults" below) |
 | `FAKE_IDRIS2_LOG=<file>` | every invocation first appends `{"pid", "args", "cwd"}` as one JSON line to `<file>` (like `FAKE_PACK_LOG`), so a test can see which command lines were started, and how often |
+| `FAKE_IDRIS2_REQUEST_LOG=<file>` | (M3) IDE mode appends every request it reads as one JSON line `{"pid", "request"}` to `<file>` — the frame's payload (or the unframed line) as UTF-8 text, before it is answered (a `hang` fault stops the reading, so nothing after it is logged). Joined with `FAKE_IDRIS2_LOG` by `pid`, a test sees which session received what — and that a refused evaluation sent nothing at all |
 
 ## Recorded command-line output (M1)
 
@@ -169,7 +171,18 @@ rules above stay the fake's own; everything else is replayed:
   working directory) have the recorded SHA-256 *now* are eligible, so an edited or unrelated
   file is never answered with a stale reply, and two scenarios with the same request (for
   example `Main.idr` under `bad-ipkg/` and under `warnings/old-version/`) are told apart by their
-  files. Among the recorded requests that match, the one whose recorded predecessors equal the
+  files. (M3) Only scenarios recorded in the session's **role** are eligible, when both roles
+  are known: the last `--build-dir` of the command line (the process's, and `meta.args` of the
+  recording) ending in `.vscode-idris2` is a `check` session, one ending in `.vscode-idris2-eval`
+  an `eval` session (`src/backend/ide/types.ts` `SessionRole`; the recorder passes the same). A
+  session or recording without such a build directory (the `.ipkg` chose it, or
+  `idris2.ideMode.extraArgs` did) is eligible for, and answered from, either role. So an
+  `:interpret` of **Evaluate Selection** that reached the `check` session instead of the `eval`
+  one gets the "no recorded reply" error below (the `:interpret` requests recorded in the
+  `check` role are other texts: `"→"`, `:printdef f`, `:missing g` and the `:exec` of the `exec-*`
+  scenarios), and the `eval` session's first load of a file gets a recording in which that load
+  built the file, as its own build directory makes it do. An `eval` session can therefore load
+  only what the `eval-*` scenarios loaded (`broken/Clean.idr`). Among the recorded requests that match, the one whose recorded predecessors equal the
   longest run of this session's latest requests wins; ties go to a request whose whole recorded
   prefix matched (a session replayed from its start), then to the first scenario by name, then
   to the earlier request. So a session that repeats a recording gets exactly the recording, and
@@ -197,7 +210,8 @@ rules above stay the fake's own; everything else is replayed:
   writing replies by hand.
 
 `test/unit/fakeIdris2Replay.test.ts` replays every transcript over both transports (ids shifted,
-through a symbolic link where the recording used one) and compares each item of the stream, the
+through a symbolic link where the recording used one, with the recording's own command line, so
+in its role) and compares each item of the stream, the
 program output, the end of input and the exit code with the recording; it also checks that every
 fixture file a transcript read still has its recorded SHA-256. The e2e test
 `test/e2e/fakeParity.test.ts` gives the real compiler and the fake the same bytes for three

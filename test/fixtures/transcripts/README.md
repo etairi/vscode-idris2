@@ -4,7 +4,8 @@ Sessions of the real compiler's IDE mode, recorded by `scripts/record-transcript
 M2, ARCHITECTURE §12). They are the ground truth for the fake compiler's replay
 (`test/fake-idris2`) and for the protocol decoders, and they pin the protocol facts of ROADMAP §0
 that each scenario names. `0.8.0/` holds the recordings of the Homebrew `idris2` 0.8.0
-(`/opt/homebrew/bin/idris2`, macOS arm64), made on 2026-09-27.
+(`/opt/homebrew/bin/idris2`, macOS arm64), made on 2026-09-27; the eight M3 scenarios (the last
+rows of the table below) on 2026-09-29.
 
 ## Recording
 
@@ -25,13 +26,14 @@ request's `:return` has not arrived within 60 s. It runs only on macOS and Linux
 
 For every scenario it copies the scenario's fixture workspace (without `build/` directories) to a
 fresh temporary directory, starts `idris2 --ide-mode` (or `--ide-mode-socket`) there with the
-arguments the extension uses — `--no-color --build-dir <session directory>/build/.vscode-idris2`,
-never `--find-ipkg` (ARCHITECTURE §5.2, D4, D5) — waits for the handshake, sends each request
+arguments the extension uses — `--no-color --build-dir <session directory>/build/.vscode-idris2`
+(`…/.vscode-idris2-eval` for the M3 `eval` session, `backend/ide/types.ts` `SessionRole`), never
+`--find-ipkg` (ARCHITECTURE §5.2, D4, D5) — waits for the handshake, sends each request
 only after the `:return` of the previous one (ARCHITECTURE §5.1: one request in flight), then
 ends the input (closes stdin, or the socket) and waits for the exit. Nothing is written to the
 repository except the transcripts; the compiler's `build/` output stays in the temporary copy and
 is listed in the transcript. Two runs on the development machine produced byte-identical files
-(2026-09-27).
+(2026-09-27; for the eight M3 scenarios, 2026-09-29).
 
 A changed fixture must be recorded again: each transcript carries the SHA-256 of the fixture
 files it read (`fixtures` below), so a test can detect a stale recording.
@@ -88,6 +90,10 @@ A text that is not valid UTF-8 would be stored as `base64` instead of `text`; no
 Only these exact spellings are replaced. The recorder refuses to write a transcript that still
 contains the temporary directory in any other spelling (such as `/tmp` for `/private/tmp` on
 macOS), the repository's path or the home directory, and one where the compiler printed `${`.
+Other paths stay as the compiler wrote them: `:name-at` of a name from an installed package
+answers the absolute path of its source in the compiler's installation
+(`/opt/homebrew/Cellar/idris2/0.8.0_2/libexec/idris2-0.8.0/…` in `shapes-lookups` and
+`clean-queries`), which is the recording machine's.
 
 ### Prefixes
 
@@ -140,3 +146,11 @@ socket on 2026-09-27 and were identical (the recordings kept are the stdio ones)
 | `exec-socket` | `loose-file`, socket | the same | F5: `hi` on the process stdout |
 | `warning-parser`, `-shadow-global`, `-shadow-local`, `-visibility`, `-deprecated`, `-generic` | `broken/warnings` | the file of that warning kind | E5, F28: each warning kind arrives as `:warning` with `(:return (:ok ()))` |
 | `warning-ipkg-deprecated` | `broken/warnings/old-version` | `Main.idr` twice | E5: the `.ipkg`'s deprecation warning, sent at every load, before `Building` |
+| `shapes-lookups` | `simple-ipkg` | `src/Foo/Shapes.idr`; positional `:type-of` at 16 occurrences of globals (declarations, definitions, uses, operators) and at the start of each of the 37 `:bound` tokens of its highlighting; `:type-of` by name (7 names, one a local); `:docs-for` (10 names: with and without docs, a constructor, the type, an interface and its method, an operator, `pi`, an unknown name); `:name-at` (6); `:browse-namespace` of `Foo.Shapes`, `Data.Vect` (not imported) and `Nope.Nothing`; `:repl-completions` of `ar`, `Ci`, `\|+` | M3: the decorations of the semantic-tokens acceptance (`Circle` `:data`, `area` `:function`), `:namespace` of references (the defining module); a positional `:type-of` of the interface parameter on its header answers `Undefined name`; the shapes of `:docs-for`, `:name-at` (from the doc comment or visibility to the end of the signature; a method's is its name) and `:browse-namespace` |
+| `simple-ipkg-lookups` | `simple-ipkg` | `src/Foo/B.idr`; positional `:type-of` of `greeting` (declaration and definition) and of `shout`; `:name-at` of `shout` (in `src/Foo/A.idr`) and `greeting`; `:docs-for` of both; `:browse-namespace "Foo.A"`; `:repl-completions` of `sh`, `gr`; then `src/Foo/A.idr` (its TTC is fresh: no `Building`, F7) and positional `:type-of` there | definition across modules; completions repeat names (`show` 24 times) |
+| `clean-queries` | `broken` | `Clean.idr`; positional `:type-of` at the start of its 10 `:bound` tokens; `:repl-completions` of `vl`, `vlen`, `Data.V`, `?`, `vlen_` and `""`; `:name-at` of `vlen`, `index`, `id`, `Vect`, `::`; `:browse-namespace` of `Data.Vect`, `Clean`, `Nope.Nothing`; `:docs-for` of `Vect`, `::`, `vlen`; `:type-of` by name of `xs` and `index`; positional `:type-of` of `Vect` and of the hole `vlen_rhs` | the completion context (`Data.V` → `("Vect" "Void" "View")` and `"Data."`) and the prefixes it cannot complete; `:name-at` into the installed sources, one entry per overloaded name; a private name is not browsed, a hole is (with its multiplicity); a hole's `:type-of` is its goal |
+| `unicode-columns` | `broken` | `Unicode.idr`; positional `:type-of` at every column from 0 to one past the UTF-8 length of lines 12, 15, 18 and 21 (one name per line), and of `x₁` at its two starts; `ℕ` positionally, `α` by name; `:name-at` of `α` and `commented`; `:docs-for "ℕ"`; `:repl-completions "α"` (non-ASCII text as decimal escapes) | E14: request and reply columns count code points (not UTF-8 bytes, UTF-16 units or graphemes); a positional `:type-of` answers for the local at the column whatever name it asks for (F2); F1 (non-ASCII in both directions) |
+| `lit-lookups` | `loose-file` | `Lit.lidr`; positional `:type-of` of `double`, `+` and the three `n` at unlit columns; `:name-at`, `:docs-for` of `double`; `:browse-namespace "Lit"`; below its `> ` and `>   ` lines (re-recorded 2026-09-29, second review of M3): positional `:type-of` of `glue`, `bump` and their `:bound` tokens, of `++` in `xs++ys` and `+` in `n+1` at their start and one column further, `++` by name, `:docs-for` of `glue` and `++`, `:name-at` of `glue` and `bump` | F11: `:name-at` answers unlit columns too; a private name is not browsed; F11 addendum: a marker followed only by white space is two lines of the unlit text (`glue` on file line 7, 0-based, is the compiler's line 8, `bump` on 10 its 12); at the start of an operator right after a local the local answers (`xs : List Nat`), one column further the operator |
+| `eval-values` | `broken`, the `eval` session's build directory | `Clean.idr`; `:interpret` of `the (Vect 2 Nat) [1, 2]` (and `[1,2]`), `"hi" ++ "!"`, `vlen`, `the (Nat -> Nat) (\x => x + 1)`, `putStrLn "hi"`, `the (IO ()) (putStrLn "hi")`, `vlen [1, 2]`, `the Nat "x"`, `nope`, `:t id` | ROADMAP §9 (2026-09-28): an IO action is normalised, not run (`MkIO (prim__putStr "hi\n")`; nothing unframed in the stream); `putStrLn "hi"` alone is an error (no `HasIO` implementation chosen); `:interpret` runs REPL commands |
+| `eval-command-forms` | `broken`, the `eval` session's build directory | `Clean.idr`; `:interpret` of `:t id` behind each of space, tab, CR, LF, VT, FF, U+00A0, U+3000, U+200B, U+FEFF, behind `{- c -}`, `-- c` and a line break, `\|\|\| d` and a line break; as `: t id`, with U+FF1A for the colon, as `:T id`; of `""`, three spaces and `-- c` | which texts the REPL parser reads as a command (the refusal of the `eval` session, `backend/ide/replCommand.ts`) |
+| `eval-socket` | `broken`, the `eval` session's build directory, socket | `Clean.idr`, `:interpret` of `the (IO ()) (putStrLn "hi")` | F5: nothing is printed on the process stdout either |

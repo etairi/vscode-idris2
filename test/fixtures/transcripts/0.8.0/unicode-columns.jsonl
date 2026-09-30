@@ -1,0 +1,309 @@
+{"kind":"meta","format":1,"scenario":"unicode-columns","description":"E14: Unicode.idr, whose lines 12, 15, 18 and 21 have characters of 2, 3 and 4 UTF-8 bytes (4 bytes are 2 UTF-16 units) and a combining mark before a pattern variable: its highlighting, and a positional :type-of at every column from 0 to one past the line's UTF-8 length; non-ASCII names in requests (decimal escapes) and replies","facts":["F1","F2"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-09-29","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build/.vscode-idris2"],"cwd":"test/fixtures/workspaces/broken","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"Unicode.idr":"0aae07ff058ef1bd447a75e53df4ed04ff475d7576ac88c5937c1636da1f5519"}}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"0000a0","text":"((:load-file \"${ROOT}/Unicode.idr\") 1)\n"}
+{"kind":"recv","prefix":"0000b9","text":"(:write-string \"1/1: Building Unicode (${ROOT}/Unicode.idr)\" 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 0 0) (:end 0 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 0 7) (:end 0 14)) ((:decor :module)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f4","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 2 0) (:end 2 96)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f4","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 3 0) (:end 3 90)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f4","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 4 0) (:end 4 86)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f4","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 5 0) (:end 5 73)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"00014b","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 7 0) (:end 7 1)) ((:name \"ℕ\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 7 2) (:end 7 3)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f0","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 7 4) (:end 7 8)) ((:decor :type)))))) 1)\n"}
+{"kind":"recv","prefix":"000152","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 8 0) (:end 8 1)) ((:name \"ℕ\") (:namespace \"Unicode\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 8 2) (:end 8 3)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000156","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 8 4) (:end 8 7)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00014d","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 10 0) (:end 10 1)) ((:name \"α\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 10 2) (:end 10 3)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000154","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 10 4) (:end 10 5)) ((:name \"ℕ\") (:namespace \"Unicode\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 10 6) (:end 10 8)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000155","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 10 9) (:end 10 10)) ((:name \"ℕ\") (:namespace \"Unicode\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f7","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 10 11) (:end 10 13)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000156","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 10 14) (:end 10 15)) ((:name \"ℕ\") (:namespace \"Unicode\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000154","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 11 0) (:end 11 1)) ((:name \"α\") (:namespace \"Unicode\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00014b","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 11 2) (:end 11 4)) ((:name \"x₁\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00014a","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 11 5) (:end 11 6)) ((:name \"y\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 11 7) (:end 11 8)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00014c","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 11 9) (:end 11 11)) ((:name \"x₁\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00015a","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 11 12) (:end 11 13)) ((:name \"+\") (:namespace \"Prelude.Num\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00014c","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 11 14) (:end 11 15)) ((:name \"y\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000152","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 13 0) (:end 13 6)) ((:name \"astral\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 13 7) (:end 13 8)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 13 9) (:end 13 15)) ((:decor :type)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f7","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 13 16) (:end 13 18)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f7","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 13 19) (:end 13 20)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f4","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 13 20) (:end 13 26)) ((:decor :type)))))) 1)\n"}
+{"kind":"recv","prefix":"000155","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 13 26) (:end 13 27)) ((:name \"Pair\") (:namespace \"Builtin\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f4","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 13 28) (:end 13 34)) ((:decor :type)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f7","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 13 34) (:end 13 35)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000159","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 14 0) (:end 14 6)) ((:name \"astral\") (:namespace \"Unicode\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00014a","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 14 7) (:end 14 8)) ((:name \"s\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f6","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 14 9) (:end 14 10)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f7","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 14 11) (:end 14 12)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f4","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 14 12) (:end 14 16)) ((:decor :data)))))) 1)\n"}
+{"kind":"recv","prefix":"000157","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 14 16) (:end 14 17)) ((:name \"MkPair\") (:namespace \"Builtin\") (:decor :data) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00014c","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 14 18) (:end 14 19)) ((:name \"s\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f7","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 14 19) (:end 14 20)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000155","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 16 0) (:end 16 9)) ((:name \"combining\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f7","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 16 10) (:end 16 11)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f4","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 16 12) (:end 16 18)) ((:decor :type)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f7","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 16 19) (:end 16 21)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f7","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 16 22) (:end 16 23)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f4","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 16 23) (:end 16 29)) ((:decor :type)))))) 1)\n"}
+{"kind":"recv","prefix":"000155","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 16 29) (:end 16 30)) ((:name \"Pair\") (:namespace \"Builtin\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f4","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 16 31) (:end 16 37)) ((:decor :type)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f7","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 16 37) (:end 16 38)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00015c","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 17 0) (:end 17 9)) ((:name \"combining\") (:namespace \"Unicode\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00014c","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 17 10) (:end 17 11)) ((:name \"t\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f7","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 17 12) (:end 17 13)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f7","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 17 14) (:end 17 15)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f4","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 17 15) (:end 17 19)) ((:decor :data)))))) 1)\n"}
+{"kind":"recv","prefix":"000157","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 17 19) (:end 17 20)) ((:name \"MkPair\") (:namespace \"Builtin\") (:decor :data) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00014c","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 17 21) (:end 17 22)) ((:name \"t\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f7","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 17 22) (:end 17 23)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000155","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 19 0) (:end 19 9)) ((:name \"commented\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f7","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 19 10) (:end 19 11)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00015a","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 19 12) (:end 19 15)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f7","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 19 16) (:end 19 18)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00015a","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 19 19) (:end 19 22)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00015c","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 20 0) (:end 20 9)) ((:name \"commented\") (:namespace \"Unicode\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f7","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 20 10) (:end 20 19)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"00014c","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 20 20) (:end 20 21)) ((:name \"m\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f7","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 20 22) (:end 20 23)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00014c","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Unicode.idr\") (:start 20 24) (:end 20 25)) ((:name \"m\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok ()) 1)\n"}
+{"kind":"send","prefix":"000018","text":"((:type-of \"y\" 12 0) 2)\n"}
+{"kind":"recv","prefix":"0000df","text":"(:return (:error \"Undefined name y. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 2)\n"}
+{"kind":"send","prefix":"000018","text":"((:type-of \"y\" 12 1) 3)\n"}
+{"kind":"recv","prefix":"0000df","text":"(:return (:error \"Undefined name y. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 3)\n"}
+{"kind":"send","prefix":"000018","text":"((:type-of \"y\" 12 2) 4)\n"}
+{"kind":"recv","prefix":"000038","text":"(:return (:ok \"x₁ : ℕ\" ((5 1 ((:decor :function))))) 4)\n"}
+{"kind":"send","prefix":"000018","text":"((:type-of \"y\" 12 3) 5)\n"}
+{"kind":"recv","prefix":"000038","text":"(:return (:ok \"x₁ : ℕ\" ((5 1 ((:decor :function))))) 5)\n"}
+{"kind":"send","prefix":"000018","text":"((:type-of \"y\" 12 4) 6)\n"}
+{"kind":"recv","prefix":"000038","text":"(:return (:ok \"x₁ : ℕ\" ((5 1 ((:decor :function))))) 6)\n"}
+{"kind":"send","prefix":"000018","text":"((:type-of \"y\" 12 5) 7)\n"}
+{"kind":"recv","prefix":"000037","text":"(:return (:ok \"y : ℕ\" ((4 1 ((:decor :function))))) 7)\n"}
+{"kind":"send","prefix":"000018","text":"((:type-of \"y\" 12 6) 8)\n"}
+{"kind":"recv","prefix":"000037","text":"(:return (:ok \"y : ℕ\" ((4 1 ((:decor :function))))) 8)\n"}
+{"kind":"send","prefix":"000018","text":"((:type-of \"y\" 12 7) 9)\n"}
+{"kind":"recv","prefix":"0000df","text":"(:return (:error \"Undefined name y. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 9)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"y\" 12 8) 10)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name y. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 10)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"y\" 12 9) 11)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"x₁ : ℕ\" ((5 1 ((:decor :function))))) 11)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"y\" 12 10) 12)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"x₁ : ℕ\" ((5 1 ((:decor :function))))) 12)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"y\" 12 11) 13)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"x₁ : ℕ\" ((5 1 ((:decor :function))))) 13)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"y\" 12 12) 14)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name y. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 14)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"y\" 12 13) 15)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name y. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 15)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"y\" 12 14) 16)\n"}
+{"kind":"recv","prefix":"000038","text":"(:return (:ok \"y : ℕ\" ((4 1 ((:decor :function))))) 16)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"y\" 12 15) 17)\n"}
+{"kind":"recv","prefix":"000038","text":"(:return (:ok \"y : ℕ\" ((4 1 ((:decor :function))))) 17)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"y\" 12 16) 18)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name y. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 18)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"y\" 12 17) 19)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name y. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 19)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"y\" 12 18) 20)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name y. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 20)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"y\" 12 19) 21)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name y. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 21)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"y\" 12 20) 22)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name y. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 22)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"y\" 12 21) 23)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name y. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 23)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"s\" 15 0) 24)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name s. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 24)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"s\" 15 1) 25)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name s. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 25)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"s\" 15 2) 26)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name s. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 26)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"s\" 15 3) 27)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name s. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 27)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"s\" 15 4) 28)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name s. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 28)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"s\" 15 5) 29)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name s. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 29)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"s\" 15 6) 30)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name s. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 30)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"s\" 15 7) 31)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"s : String\" ((4 6 ((:decor :type))))) 31)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"s\" 15 8) 32)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"s : String\" ((4 6 ((:decor :type))))) 32)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"s\" 15 9) 33)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name s. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 33)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"s\" 15 10) 34)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name s. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 34)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"s\" 15 11) 35)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name s. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 35)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"s\" 15 12) 36)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name s. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 36)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"s\" 15 13) 37)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name s. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 37)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"s\" 15 14) 38)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name s. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 38)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"s\" 15 15) 39)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name s. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 39)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"s\" 15 16) 40)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name s. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 40)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"s\" 15 17) 41)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name s. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 41)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"s\" 15 18) 42)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"s : String\" ((4 6 ((:decor :type))))) 42)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"s\" 15 19) 43)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"s : String\" ((4 6 ((:decor :type))))) 43)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"s\" 15 20) 44)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name s. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 44)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"s\" 15 21) 45)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name s. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 45)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"s\" 15 22) 46)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name s. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 46)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"s\" 15 23) 47)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name s. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 47)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"s\" 15 24) 48)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name s. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 48)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"s\" 15 25) 49)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name s. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 49)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"s\" 15 26) 50)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name s. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 50)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"s\" 15 27) 51)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name s. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 51)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"t\" 18 0) 52)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name t. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 52)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"t\" 18 1) 53)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name t. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 53)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"t\" 18 2) 54)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name t. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 54)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"t\" 18 3) 55)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name t. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 55)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"t\" 18 4) 56)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name t. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 56)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"t\" 18 5) 57)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name t. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 57)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"t\" 18 6) 58)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name t. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 58)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"t\" 18 7) 59)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name t. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 59)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"t\" 18 8) 60)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name t. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 60)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"t\" 18 9) 61)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name t. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 61)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"t\" 18 10) 62)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"t : String\" ((4 6 ((:decor :type))))) 62)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"t\" 18 11) 63)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"t : String\" ((4 6 ((:decor :type))))) 63)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"t\" 18 12) 64)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name t. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 64)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"t\" 18 13) 65)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name t. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 65)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"t\" 18 14) 66)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name t. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 66)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"t\" 18 15) 67)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name t. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 67)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"t\" 18 16) 68)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name t. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 68)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"t\" 18 17) 69)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name t. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 69)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"t\" 18 18) 70)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name t. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 70)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"t\" 18 19) 71)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name t. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 71)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"t\" 18 20) 72)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name t. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 72)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"t\" 18 21) 73)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"t : String\" ((4 6 ((:decor :type))))) 73)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"t\" 18 22) 74)\n"}
+{"kind":"recv","prefix":"000039","text":"(:return (:ok \"t : String\" ((4 6 ((:decor :type))))) 74)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"t\" 18 23) 75)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name t. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 75)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"t\" 18 24) 76)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name t. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 76)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"t\" 18 25) 77)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name t. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 77)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"m\" 21 0) 78)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 78)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"m\" 21 1) 79)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 79)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"m\" 21 2) 80)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 80)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"m\" 21 3) 81)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 81)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"m\" 21 4) 82)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 82)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"m\" 21 5) 83)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 83)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"m\" 21 6) 84)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 84)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"m\" 21 7) 85)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 85)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"m\" 21 8) 86)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 86)\n"}
+{"kind":"send","prefix":"000019","text":"((:type-of \"m\" 21 9) 87)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 87)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"m\" 21 10) 88)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 88)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"m\" 21 11) 89)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 89)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"m\" 21 12) 90)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 90)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"m\" 21 13) 91)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 91)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"m\" 21 14) 92)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 92)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"m\" 21 15) 93)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 93)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"m\" 21 16) 94)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 94)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"m\" 21 17) 95)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 95)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"m\" 21 18) 96)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 96)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"m\" 21 19) 97)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 97)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"m\" 21 20) 98)\n"}
+{"kind":"recv","prefix":"000036","text":"(:return (:ok \"m : Nat\" ((4 3 ((:decor :type))))) 98)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"m\" 21 21) 99)\n"}
+{"kind":"recv","prefix":"000036","text":"(:return (:ok \"m : Nat\" ((4 3 ((:decor :type))))) 99)\n"}
+{"kind":"send","prefix":"00001b","text":"((:type-of \"m\" 21 22) 100)\n"}
+{"kind":"recv","prefix":"0000e1","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 100)\n"}
+{"kind":"send","prefix":"00001b","text":"((:type-of \"m\" 21 23) 101)\n"}
+{"kind":"recv","prefix":"0000e1","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 101)\n"}
+{"kind":"send","prefix":"00001b","text":"((:type-of \"m\" 21 24) 102)\n"}
+{"kind":"recv","prefix":"000037","text":"(:return (:ok \"m : Nat\" ((4 3 ((:decor :type))))) 102)\n"}
+{"kind":"send","prefix":"00001b","text":"((:type-of \"m\" 21 25) 103)\n"}
+{"kind":"recv","prefix":"000037","text":"(:return (:ok \"m : Nat\" ((4 3 ((:decor :type))))) 103)\n"}
+{"kind":"send","prefix":"00001b","text":"((:type-of \"m\" 21 26) 104)\n"}
+{"kind":"recv","prefix":"0000e1","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 104)\n"}
+{"kind":"send","prefix":"00001b","text":"((:type-of \"m\" 21 27) 105)\n"}
+{"kind":"recv","prefix":"0000e1","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 105)\n"}
+{"kind":"send","prefix":"00001b","text":"((:type-of \"m\" 21 28) 106)\n"}
+{"kind":"recv","prefix":"0000e1","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 106)\n"}
+{"kind":"send","prefix":"00001b","text":"((:type-of \"m\" 21 29) 107)\n"}
+{"kind":"recv","prefix":"0000e1","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 107)\n"}
+{"kind":"send","prefix":"00001b","text":"((:type-of \"m\" 21 30) 108)\n"}
+{"kind":"recv","prefix":"0000e1","text":"(:return (:error \"Undefined name m. \n\n(Interactive):1:1--1:1\n 1 | module Unicode\n     \n\" ((15 1 ((:decor :bound))) (20 22 ((:decor :type))) (44 3 ((:decor :type))) (68 0 ((:text-formatting :bold) (:decor :postulate))))) 108)\n"}
+{"kind":"send","prefix":"00001f","text":"((:type-of \"x\\8321\" 12 2) 109)\n"}
+{"kind":"recv","prefix":"00003a","text":"(:return (:ok \"x₁ : ℕ\" ((5 1 ((:decor :function))))) 109)\n"}
+{"kind":"send","prefix":"00001f","text":"((:type-of \"x\\8321\" 12 9) 110)\n"}
+{"kind":"recv","prefix":"00003a","text":"(:return (:ok \"x₁ : ℕ\" ((5 1 ((:decor :function))))) 110)\n"}
+{"kind":"send","prefix":"00001d","text":"((:type-of \"\\8469\" 9 0) 111)\n"}
+{"kind":"recv","prefix":"00005c","text":"(:return (:ok \"Unicode.ℕ : Type\" ((0 9 ((:decor :function))) (12 4 ((:decor :type))))) 111)\n"}
+{"kind":"send","prefix":"000018","text":"((:type-of \"\\945\") 112)\n"}
+{"kind":"recv","prefix":"0000d5","text":"(:return (:ok \"Unicode.α : ℕ -> ℕ -> ℕ\" ((0 9 ((:decor :function))) (12 1 ((:decor :function))) (14 2 ((:decor :keyword))) (17 1 ((:decor :function))) (19 2 ((:decor :keyword))) (22 1 ((:decor :function))))) 112)\n"}
+{"kind":"send","prefix":"000018","text":"((:name-at \"\\945\") 113)\n"}
+{"kind":"recv","prefix":"0000da","text":"(:return (:ok ((\"Unicode.α\" (:filename \"${ROOT}/Unicode.idr\") (:start 10 0) (:end 10 15)))) 113)\n"}
+{"kind":"send","prefix":"00001d","text":"((:name-at \"commented\") 114)\n"}
+{"kind":"recv","prefix":"0000e2","text":"(:return (:ok ((\"Unicode.commented\" (:filename \"${ROOT}/Unicode.idr\") (:start 19 0) (:end 19 22)))) 114)\n"}
+{"kind":"send","prefix":"00001a","text":"((:docs-for \"\\8469\") 115)\n"}
+{"kind":"recv","prefix":"0000b5","text":"(:return (:ok \"Unicode.ℕ : Type\n  Visibility: private\" ((0 9 ((:decor :function))) (12 4 ((:decor :type))) (19 10 ((:text-formatting :underline))) (31 7 ((:decor :keyword))))) 115)\n"}
+{"kind":"send","prefix":"000021","text":"((:repl-completions \"\\945\") 116)\n"}
+{"kind":"recv","prefix":"00001f","text":"(:return (:ok ((\"α\") \"\")) 116)\n"}
+{"kind":"close"}
+{"kind":"unframed","text":"Alas the file is done, aborting\n"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":["build/.vscode-idris2/ttc/2025081600/Unicode.ttc","build/.vscode-idris2/ttc/2025081600/Unicode.ttm"]}

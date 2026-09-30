@@ -1,5 +1,8 @@
 // E2E (ROADMAP M2 acceptance): the protocol facts of ROADMAP §0 that M2 pins — F1–F7, F10,
-// F12–F14, F29–F33 — against the real idris2, one row (or one part of a row) per test. Each
+// F12–F14, F29–F33 — against the real idris2, one row (or one part of a row) per test; and (M3)
+// the facts M3's features rest on: E14 (columns count code points), how `:interpret` renders an IO
+// action (normalised, not run), and which texts the REPL parser inside `:interpret` reads as a
+// command (the ground truth of the evaluation's refusal, src/backend/ide/replCommand.ts). Each
 // test runs the requests of a recorded scenario (test/fixtures/transcripts/0.8.0; the requests
 // do not depend on the compiler version) or requests of its own in a fresh temporary copy of the
 // scenario's fixture workspace, and reads the replies with the extension's codec and decoders
@@ -98,6 +101,9 @@ function errorMessage(exchange: LiveExchange): string {
   assert.strictEqual(payload.kind, 'error', `${exchange.request}: ${json(payload)}`);
   return payload.message;
 }
+
+/** A request's text with its id: `((:cmd …) ID)\n` → `(:cmd …)`. */
+const withoutId = (request: string): string => request.replace(/^\((.*) [0-9]+\)\n$/s, '$1');
 
 /** Frame texts with the request id of `(… ID)\n` removed, for comparing replies of two requests. */
 const withoutIds = (exchange: LiveExchange): string[] => exchange.frames.map((f) => mapTrailingId(f, () => 0n));
@@ -596,6 +602,99 @@ suite('E2E: IDE-mode protocol facts (ROADMAP §0) against the real idris2', func
       }
     }
     assert.ok(names > 10, `only ${names} names highlighted`);
+  });
+
+  // M3: E14 ---------------------------------------------------------------------------------
+
+  test('E14: :type-of columns count code points — not UTF-8 bytes, UTF-16 units or graphemes', async () => {
+    const run = await live('unicode-columns');
+    const at = (name: string, line: number, column: number): string => {
+      const { payload } = returned(reply(run, `(:type-of "${name}" ${line} ${column})`));
+      return payload.kind === 'error' ? 'error' : okText(reply(run, `(:type-of "${name}" ${line} ${column})`));
+    };
+    // A column answers for a name from its start to its end inclusive (F2), so only a count that
+    // puts the start past the name's end tells the counts apart.
+    // Line 15, `astral s = ("𝕟𝕟", s)`: the last s starts at code point 18, UTF-16 unit 20, byte 24.
+    assert.deepStrictEqual([at('s', 15, 18), at('s', 15, 19), at('s', 15, 20), at('s', 15, 24)], ['s : String', 's : String', 'error', 'error']);
+    // Line 18, `combining t = ("é", t)` with e + U+0301: t starts at code point 21 and grapheme 20
+    // (its byte column, 22, falls on t's inclusive end and tells nothing).
+    assert.deepStrictEqual([at('t', 18, 21), at('t', 18, 20)], ['t : String', 'error']);
+    // Line 21, `commented {- 𝕟 α -} m = m`: the m start at code points 20 and 24; the second at byte 28.
+    assert.deepStrictEqual([at('m', 21, 20), at('m', 21, 24), at('m', 21, 28)], ['m : Nat', 'm : Nat', 'error']);
+    // Line 12, `α x₁ y = x₁ + y`: a positional :type-of answers for the local at the column, whatever NAME asks (F2).
+    assert.strictEqual(at('y', 12, 2), 'x₁ : ℕ');
+  });
+
+  test('E14: :highlight-source columns count code points too', async () => {
+    const run = await live('unicode-columns');
+    const spans = highlightFrames(run.exchanges[0]).flatMap((m) =>
+      m.kind === 'output' && m.payload.kind === 'highlight-source' ? decodeSourceHighlights(m.payload.highlights) : [],
+    );
+    const span = (name: string, line: number): number[][] =>
+      spans.filter((h) => h.name === name && h.span.start.line === line).map((h) => [h.span.start.column, h.span.end.column]);
+    assert.deepStrictEqual(span('s', 14), [[7, 8], [18, 19]]);
+    assert.deepStrictEqual(span('x₁', 11), [[2, 4], [9, 11]]);
+    assert.deepStrictEqual(span('m', 20), [[20, 21], [24, 25]]);
+  });
+
+  // M3: evaluation (ROADMAP §9, 2026-09-28) -----------------------------------------------------
+
+  test('an IO action given to :interpret is normalised, not run: MkIO (prim__putStr "hi\\n"), nothing printed (stdio)', async () => {
+    const run = await live('eval-values');
+    const io = reply(run, '(:interpret "the (IO ()) (putStrLn \\"hi\\")")');
+    assert.strictEqual(okText(io), 'MkIO (prim__putStr "hi\\n")');
+    assert.ok(io.items.every((i) => i.kind === 'framed'), json(io.items)); // no program output (F5)
+    assert.match(errorMessage(reply(run, '(:interpret "putStrLn \\"hi\\"")')), /^Error: Can't find an implementation for HasIO \?io\./);
+    assert.strictEqual(okText(reply(run, '(:interpret "the (Vect 2 Nat) [1, 2]")')), '[1, 2]');
+  });
+
+  test('an IO action given to :interpret prints nothing on the socket transport\'s process stdout either', async () => {
+    const run = await live('eval-socket');
+    const [, io] = run.exchanges;
+    assert.strictEqual(okText(io), 'MkIO (prim__putStr "hi\\n")');
+    assert.strictEqual(io.stdout, '');
+  });
+
+  test(':interpret runs REPL commands: which spellings of `:t id` the REPL parser reads as a command', async () => {
+    const run = await live('eval-command-forms');
+    const outcome = (e: LiveExchange): string => {
+      const { payload } = returned(e);
+      if (payload.kind === 'error') {
+        return 'not a command';
+      }
+      const text = okText(e);
+      return text === 'Prelude.id : a -> a' ? 'runs' : text === '' ? 'nothing' : `? ${text}`;
+    };
+    // In the order of the recording (scripts/record-transcripts.mjs, eval-command-forms): what
+    // `:interpret` was given, and what the compiler did with it.
+    const expected: [string, string][] = [
+      [' :t id', 'runs'],
+      ['\t:t id', 'runs'],
+      ['\r:t id', 'runs'],
+      ['\n:t id', 'runs'],
+      ['\v:t id', 'runs'],
+      ['\f:t id', 'runs'],
+      ['\u00a0:t id', 'runs'],
+      ['\u3000:t id', 'not a command'],
+      ['\u200b:t id', 'not a command'],
+      ['\ufeff:t id', 'not a command'],
+      ['{- c -} :t id', 'runs'],
+      ['-- c\n:t id', 'runs'],
+      ['||| d\n:t id', 'not a command'],
+      [': t id', 'runs'],
+      ['\uff1at id', 'not a command'],
+      [':T id', 'not a command'],
+      ['', 'nothing'],
+      ['   ', 'nothing'],
+      ['-- c', 'nothing'],
+    ];
+    // The request as the extension's encoder writes it (non-ASCII and control characters as decimal escapes, F1).
+    const request = (text: string): string => withoutId(ideCodec.encodeRequest(interpret(text), 0n).text.slice(6));
+    const interprets = run.exchanges.slice(1);
+    assert.deepStrictEqual(
+      interprets.map((e) => [withoutId(e.request), outcome(e)]),
+      expected.map(([text, result]) => [request(text), result]),
+    );
   });
 
   // The recordings ----------------------------------------------------------------------------

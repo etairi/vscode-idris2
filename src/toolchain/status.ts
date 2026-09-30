@@ -5,7 +5,13 @@
  * (`Idris 2 0.8.0 · IDE mode · 2 errors`; ARCHITECTURE §6.1: `checking… / ✓ / n errors / stale /
  * stopped`), the status QuickPick (**Idris 2: Show Commands…**) and the `idris2.packFound` context
  * key. Each change of the item's text or severity is written to the "Idris 2" output channel
- * (`Status: …`).
+ * (`Status: …`). The item's properties are written only when something it shows changed (third
+ * review of M3): the registry and the checks report every request of a `check` session twice
+ * (`ready` → `busy` → `ready`), and each write of a property of a VS Code 1.139.1 language status
+ * item, equal or not, schedules a message that sends the whole item to the window (the writes of
+ * one turn of the event loop share one; `createLanguageStatusItem` in the extension host bundle
+ * [src]), so a round of inlay hints (about 140 requests) sent about 280 unchanged items [reasoned
+ * from that code, not counted].
  *
  * When the compiler may not start in the active document's directory (the user did not allow
  * it, ROADMAP §9 2026-09-27), the item says so (`not allowed here`) and its link is **Allow…**,
@@ -448,6 +454,8 @@ export function registerToolchainStatus(api: StatusApi, deps: StatusDeps): Toolc
   // The last text and severity written to the log: the item is not readable through VS Code's
   // API, so the "Idris 2" output channel records each change of what it says.
   let logged: string | undefined;
+  // What the item's properties were last set to (module comment: written only when it changed).
+  let written: string | undefined;
   const render = (): void => {
     const snapshot = deps.toolchain.current;
     const view = describeStatus({
@@ -464,9 +472,15 @@ export function registerToolchainStatus(api: StatusApi, deps: StatusDeps): Toolc
       logged = shown;
       deps.log.info(shown);
     }
-    item.text = view.text;
+    setPackFound(snapshot?.pack.status === 'found');
     // Text, not links, also in a pinned item's tooltip (module comment).
     const detail = plainText(view.detail);
+    const key = JSON.stringify([view.text, detail, view.busy, view.severity, view.commandTitle, view.allow ?? null]);
+    if (key === written) {
+      return;
+    }
+    written = key;
+    item.text = view.text;
     item.detail = detail;
     item.busy = view.busy;
     item.severity =
@@ -479,7 +493,6 @@ export function registerToolchainStatus(api: StatusApi, deps: StatusDeps): Toolc
       view.allow === undefined
         ? { command: STATUS_MENU_COMMAND, title: view.commandTitle, tooltip: detail }
         : { command: ALLOW_FOLDER_COMMAND, title: view.commandTitle, tooltip: detail, arguments: [view.allow] };
-    setPackFound(snapshot?.pack.status === 'found');
   };
 
   // The root of the active Idris document. Classification is asynchronous (it may read the

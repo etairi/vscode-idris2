@@ -10,11 +10,12 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   placeholders for future parts are the README files in `src/` and `test/`. M0 is implemented
   and accepted (2026-09-27, `docs/as-built/M0.md`); M1 is implemented (2026-09-27,
   `docs/as-built/M1.md`, which lists its deviations from the M1 text); M2 is implemented
-  (2026-09-28, `docs/as-built/M2.md`, likewise). The one planned stub is M0's
+  (2026-09-28, `docs/as-built/M2.md`, likewise); M3 is implemented and integrated (2026-09-29,
+  `docs/as-built/M3.md`, likewise; not committed when this was written). The one planned stub is M0's
   `src/webview/goalPanel.ts` (an empty second esbuild entry, ROADMAP M0 "Out"), which M7
   replaces.
-- `docs/as-built/` — what was built: one file per finished milestone (`M0.md`, `M1.md`,
-  `M2.md`) with its deviations from ROADMAP §5 and ARCHITECTURE, measurements, experiments,
+- `docs/as-built/` — what was built: one file per finished milestone (`M0.md` … `M3.md`) with
+  its deviations from ROADMAP §5 and ARCHITECTURE, measurements, experiments,
   review rounds and gate runs; `README.md` there explains the files and how to read their
   references. Moved out of ROADMAP and ARCHITECTURE on 2026-09-28 so that those two stay
   readable: **a finished milestone's record goes into a new `docs/as-built/Mn.md`**, and its
@@ -77,7 +78,8 @@ npm run test:corpus   # fetch the pinned corpora (network) and tokenise them; wi
                       # IDRIS2_LEXER_ORACLE=1 also compare with the 0.8.0 lexer (needs idris2)
 npm test              # pretest (compile-tests + compile) + vscode-test (.vscode-test.mjs):
                       # the suites integration, simple-ipkg, toolchain-path, diagnostics,
-                      # loose-stdio, consent (fake tools; the fake idris2 replays transcripts)
+                      # loose-stdio, consent, intelligence, intelligence-loose (fake tools;
+                      # the fake idris2 replays transcripts)
 npm run test:e2e      # compile + the e2e suite against the real idris2 on PATH
 npm run check:fixtures        # idris2 --check / --dump-ipkg-json on every fixture and snippet
                               # expansion (temp copy); the broken fixtures must fail as listed
@@ -287,6 +289,50 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
   backend (`LoadPreflight`) before they ask a consent question themselves, and Stop Backend drops
   the checks still waiting (`DocumentChecks.cancelWaiting`) before it stops the sessions. Both
   limits count per VS Code window (each has its own extension host, pool and checks).
+
+## Rules established by M3
+
+- **Compiler text is untrusted** (it quotes the user's and installed packages' source): a
+  `MarkdownString` that shows any is never `isTrusted` and has `supportHtml` and
+  `supportThemeIcons` off, and compiler text enters it only inside `core/untrustedText.ts`
+  `codeBlock` (a fence no line of the text can close — not `appendCodeblock`, whose fence an
+  indented line can close, and not `appendText`, whose escaper in VS Code 1.139.1 lets named
+  character references and autolinks through), with `visible` writing out control and format
+  characters; text drawn inside a line (inlay hint labels, decorations' `contentText`)
+  goes through `editorLabel`, QuickPick item texts through `quickPickText`; documents that show it
+  are plain text (the `idris2-doc:` scheme). The M2 `plainText` rule still covers notifications.
+  `test/unit/untrustedText.test.ts`, `hover.test.ts` and `eval.test.ts` pin it.
+- **Evaluate evaluates expressions only** (ROADMAP §9, 2026-09-28): `IdrisBackend.evaluate`
+  refuses with `backend/ide/replCommand.ts` `replCommandRefusal` — at least as strict as the
+  compiler's REPL parser; the argument is in its module comment, `test/unit/replCommand.test.ts`
+  checks it against the recordings and a lexer oracle — before anything is classified, started
+  or sent. Nothing may send to the `eval` session text that changes its evaluation mode (`:set`),
+  runs a program (`:exec`) or anything else the parser reads as a command, and nothing but
+  evaluations (with the load before each) goes to it; the `check` session never gets
+  `:interpret` of an evaluation. The `eval` session goes through the same `prepare` (trust,
+  toolchain, consent gate) as the `check` session.
+- **Columns count code points** in the compiler (E14, settled [live]); only `core/positions.ts`
+  converts them (`codePointsBefore`, `utf16Length`, with each line's text), also for the
+  highlighting offsets inside a reply (`protocol.ts` `toRichText`). Features never convert again.
+  **Lines are not always file lines either**: in a bird-track (or Org `#+IDRIS:`) file every line
+  of a marker and white space only (`> `) is two lines of the compiler's unlit text (ROADMAP F11
+  addendum), so a compiler line goes through `positions.ts` (`toIdeLineRequest`, `fromIdeReply`,
+  `fromCli`, …) too, never `line ± 1` in a feature (`displayLine` for a line shown to the user).
+- **Queries go through `features/intelligence` `DocumentQueries`**: a backend query never loads a
+  file (it rejects with `NotLoaded`, having sent and started nothing), and the caller loads the
+  document through the checks, so that the load's diagnostics are shown. A passive provider loads
+  only the active document. Providers refresh on `LoadNotifications.onDidLoad`, **never on
+  `BackendRegistry.onDidChange`**, which IDE mode fires at every state change of a `check`
+  session (twice per request) — refreshing there would re-query at every answer.
+- Integration tests must not assume that a `check` session is `ready` right after a load: M3
+  sends requests after loads (the completion warm-up, inlay hints). Wait for the state instead —
+  and `ready` is not the end either: the warm-up is sent once the session has been idle for
+  150 ms (`WARM_UP_QUIET_MS`), so a test that asserts no request is sent first waits with
+  `settled` (`test/integration/support.ts`: `ready` and no state change for 1 s). Likewise a
+  completion asked right after a load may get the keywords alone, marked incomplete; ask again.
+- Transcripts of the `eval` role (`eval-*`) are recorded with the `eval` session's command line
+  (`--build-dir …/.vscode-idris2-eval`); the fake compiler answers a process only from recordings
+  of its own role, told by that build directory.
 
 ## Platforms
 

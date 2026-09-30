@@ -20,6 +20,7 @@ import {
   saveUnchanged,
   setToolchainSetting,
   setUserSetting,
+  settled,
   settledScan,
   showFile,
   statusText,
@@ -152,7 +153,9 @@ suite('M2 diagnostics (fake compiler replaying the 0.8.0 transcripts, socket tra
       const doc = await showFile('Bad.idr');
       await vscode.commands.executeCommand('idris2.checkFile');
       assert.strictEqual(api.checks.loadStateOf(doc), 'errors');
-      assert.strictEqual(checkSession(api, root())?.state, 'ready');
+      // Ready once the requests M3 sends after a load are answered (inlay hints; the completion
+      // warm-up waits for the session to be idle, so it may come later).
+      await waitFor('the session to be ready', () => (checkSession(api, root())?.state === 'ready' ? true : undefined));
     });
 
     test('changing idris2.toolchain.idris2Path to a second fake compiler restarts the running session with it', async () => {
@@ -252,7 +255,8 @@ suite('M2 diagnostics (fake compiler replaying the 0.8.0 transcripts, socket tra
       await statusText(api, 'Idris 2 0.8.0 · IDE mode · 1 error');
       const session = checkSession(api, root());
       assert.ok(session);
-      await waitFor('the session to be ready', () => (session.state === 'ready' ? true : undefined));
+      // The completion warm-up after the load before (Restart Backend's) follows `ready` by 150 ms.
+      await settled(session);
       const events: string[] = [];
       const changes: string[] = [];
       const subscriptions = [
@@ -303,7 +307,7 @@ suite('M2 diagnostics (fake compiler replaying the 0.8.0 transcripts, socket tra
       }
       assert.ok(!doc.isDirty);
       await vscode.commands.executeCommand('idris2.checkFile');
-      assert.strictEqual(checkSession(api, root())?.state, 'ready');
+      await waitFor('the session to be ready', () => (checkSession(api, root())?.state === 'ready' ? true : undefined));
     });
   });
 
@@ -374,7 +378,8 @@ suite('M2 diagnostics (fake compiler replaying the 0.8.0 transcripts, socket tra
         );
         assert.strictEqual(loose.state, 'stopped');
         assert.strictEqual(loose.launch, undefined);
-        assert.strictEqual(project.state, 'ready', 'the active file\'s session runs');
+        // The active file's session runs (ready once the requests M3 sends after a load are answered).
+        await waitFor('the active file\'s session to be ready', () => (project.state === 'ready' ? true : undefined));
         assert.strictEqual(api.checks.activeDocument()?.uri.fsPath, main.uri.fsPath);
         assert.strictEqual(idrisDiagnostics(bad.uri).length, 1, 'Bad.idr keeps its error');
         if (fakeIdeProcesses(root()) !== undefined) {

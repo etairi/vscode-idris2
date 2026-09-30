@@ -8,7 +8,9 @@ import {
   MAX_DELAY_MS,
   readCheckingSettings,
   readDiagnosticsSettings,
+  readEvaluationSettings,
   readIdeModeSettings,
+  readInlayHintSettings,
   readToolchainSettings,
   readTraceSettings,
   usableHomeDirectory,
@@ -319,6 +321,49 @@ suite('core/config', () => {
         const ide = readIdeModeSettings(section({ 'ideMode.maxSessions': value, 'ideMode.maxBackgroundChecks': value }));
         assert.deepStrictEqual([ide.maxSessions, ide.maxBackgroundChecks], [read, read], String(value));
       }
+    });
+  });
+
+  suite('M3 settings (inlayHints, eval)', () => {
+    test('both are on unless false is written; a value of the wrong type reads as the default (on)', () => {
+      assert.deepStrictEqual(readInlayHintSettings(section({})), { variableTypes: true });
+      assert.deepStrictEqual(readEvaluationSettings(section({})), { inlineResults: true, timeoutMs: 10000 });
+      assert.deepStrictEqual(readInlayHintSettings(section({ 'inlayHints.variableTypes': false })), { variableTypes: false });
+      assert.deepStrictEqual(readEvaluationSettings(section({ 'eval.inlineResults': false })), { inlineResults: false, timeoutMs: 10000 });
+      for (const value of ['false', 0, null, [], {}, true]) {
+        assert.strictEqual(readInlayHintSettings(section({ 'inlayHints.variableTypes': value })).variableTypes, true, String(value));
+        assert.strictEqual(readEvaluationSettings(section({ 'eval.inlineResults': value })).inlineResults, true, String(value));
+      }
+    });
+
+    test('eval.timeout: from 1000 ms to MAX_DELAY_MS; outside reads as the nearer bound, anything else as 10000', () => {
+      const timeout = (value: unknown) => readEvaluationSettings(section({ 'eval.timeout': value })).timeoutMs;
+      assert.strictEqual(timeout(2500), 2500);
+      assert.strictEqual(timeout(0), 1000);
+      assert.strictEqual(timeout(2 ** 31), MAX_DELAY_MS);
+      for (const value of ['5000', null, Number.NaN, Number.POSITIVE_INFINITY, {}]) {
+        assert.strictEqual(timeout(value), 10000, String(value));
+      }
+    });
+
+    test('Config reads them from the idris2 section afresh, and onDidChange fires for their groups only', () => {
+      const values: Record<string, unknown> = { 'inlayHints.variableTypes': false };
+      const { host, sections, change } = fakeHost(values);
+      const config = new Config(host, HOME);
+      assert.strictEqual(config.inlayHints().variableTypes, false);
+      values['inlayHints.variableTypes'] = true;
+      assert.strictEqual(config.inlayHints().variableTypes, true);
+      assert.strictEqual(config.evaluation().inlineResults, true);
+      assert.deepStrictEqual(sections, ['idris2', 'idris2', 'idris2']);
+      const calls: string[] = [];
+      for (const group of ['inlayHints', 'eval'] as const) {
+        config.onDidChange(group, () => calls.push(group));
+      }
+      change(['idris2.inlayHints.variableTypes']);
+      change(['idris2.eval.inlineResults']);
+      change(['idris2.keybindings.scheme']);
+      change(['idris2.evalX']);
+      assert.deepStrictEqual(calls, ['inlayHints', 'eval']);
     });
   });
 

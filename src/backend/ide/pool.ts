@@ -1,8 +1,10 @@
 /**
- * The session pool (docs/ARCHITECTURE.md §4, §5; ROADMAP M2): one `IdeSession` per root and role
- * (`check` in M2), created when first asked for and started by its first request. The contract
- * is `SessionPool` in `types.ts`; `extension.ts` creates the pool with `createSessionPool` and
- * disposes it in `deactivate()`, which kills every session process at once.
+ * The session pool (docs/ARCHITECTURE.md §4, §5; ROADMAP M2, M3): one `IdeSession` per root and
+ * role (`check` since M2, `eval` since M3; `types.ts` `SessionRole`), created when first asked for
+ * and started by its first request. The contract is `SessionPool` in `types.ts`; `extension.ts`
+ * creates the pool with `createSessionPool` and disposes it in `deactivate()`, which kills every
+ * session process at once. Both roles go through the same `prepare` before every spawn (below),
+ * in the same directory, with the same transport rule and time limits.
  *
  * - **Command line** (ARCHITECTURE §5.2, `sessionLaunch`): the `idris2` of the current toolchain
  *   snapshot (its `probed` location) with `--ide-mode` (the default on every platform) or, when
@@ -12,7 +14,10 @@
  *   <effectiveCheckBuildDir>` when `idris2.ideMode.isolateBuildDir` is on and nothing else sets
  *   the build directory (`checkBuildDir`: a `builddir` or a `--build-dir` in the `.ipkg`'s `opts`
  *   overrides the flag at every load, F12; D5; a `--build-dir` in `extraArgs` comes after it),
- *   then `idris2.ideMode.extraArgs`; never `--find-ipkg` (F13). An `extraArgs` that names
+ *   then `idris2.ideMode.extraArgs`; never `--find-ipkg` (F13). The `eval` session's command line
+ *   differs in the build directory only: `--build-dir <cwd>/build/.vscode-idris2-eval` whenever the
+ *   package and `extraArgs` set none, whatever `isolateBuildDir` says (`evalBuildDir`; the reason is
+ *   in `types.ts` `SessionRole`). An `extraArgs` that names
  *   `--ide-mode` or `--ide-mode-socket` starts nothing (`extraArgsProblem`): the compiler takes
  *   the socket from anywhere on its command line, so extraArgs, which a trusted workspace can set,
  *   would open the socket's unauthenticated port past `transport`'s user-settings-only rule, and
@@ -54,7 +59,8 @@
  *   toolchain scan publishes a new snapshot, or `sessionFor` is given a changed classification of
  *   a root (e.g. its `.ipkg` gained a `builddir`), every running session (`starting`, `ready`,
  *   `busy`) whose command line would now differ — executable, arguments, working directory,
- *   environment or transport — is restarted, and every `failed` session returns to `stopped`, so
+ *   environment or transport — is restarted (an `eval` session is stopped instead, *Stop, release
+ *   and idle*), and every `failed` session returns to `stopped`, so
  *   that its next request tries again; both with the cause `reconfigure`, on which the checks
  *   check the visible documents of the root again (`IdeMode.onDidRestart`). **Deviation from ARCHITECTURE §5.1 / ROADMAP M2** ("any
  *   `idris2.toolchain.*` or `idris2.ideMode.*` setting restarts every session"): a change that
@@ -65,22 +71,46 @@
  * - **Consent withdrawn.** When the gate's verdicts may have changed (`SessionGate.onDidChange`),
  *   every session that is not `stopped` or `failed` and whose directory `SessionGate.current`
  *   does not allow (refused, or unknown again) is stopped with cause `consentRevoked`.
- * - **Stop, release and idle.** `stop(root?)` stops sessions (Stop Backend, cause `stop`);
- *   `release(root)` stops a root's sessions when its last open document was closed (cause
+ * - **Stop, release and idle.** `stop(root?)` stops sessions of both roles (Stop Backend, cause
+ *   `stop`); `restart(root)` stops the root's `eval` session (cause `stop`) and restarts its `check`
+ *   session, and `restartAll()` restarts every `check` session that is not stopped and stops every
+ *   `eval` session, so an `eval` session starts again at the next evaluation; `cancelEvaluation(root)`
+ *   stops the root's `eval` session (cause `stop`: its evaluation was cancelled, and IDE mode has no
+ *   cancel), and so does `releaseEvaluation(root, detail)` (after an evaluation that ran long,
+ *   `backend.ts`); `release(root)` stops a root's sessions when its last open document was closed (cause
  *   `closed`; `features/diagnostics/checks.ts` decides when); `packageChanged(root)` stops them
  *   when the root's package file is not the one the compiler would find any more (cause
  *   `packageChanged`; `backend.ts` decides); a session stops itself after
- *   `idris2.ideMode.idleTimeout` without a request (`session.ts`). Each starts again on its next
- *   request.
+ *   `idris2.ideMode.idleTimeout` without a request (`session.ts`), an `eval` session after
+ *   `EVAL_IDLE_TIMEOUT_MS` (2 min) when that is shorter — evaluations come in bursts, and its next
+ *   start costs a start and a load of the file, which the evaluation makes anyway —, none when the
+ *   setting is 0. Each starts again on its next request. **An `eval` session never starts a process
+ *   by itself**: it is stopped, not restarted, when its command line changes (cause `reconfigure`,
+ *   *Restarts*) and by the two Restart Backend commands, and it does not restart after its
+ *   process ended unexpectedly (`session.ts`, *Unexpected ends*), so that no evaluation process
+ *   runs that no evaluation asked for (*review of M3*).
  * - **At most `idris2.ideMode.maxSessions`** (ROADMAP §9 Q21; `0`, the default, is no limit and
- *   changes nothing above). A session counts while it has a process or is getting one (`starting`,
- *   `ready`, `busy`, `restarting`). While more count than the limit, the pool stops the least
- *   recently used of those that are `idle` (`ManagedSession.idle`: `ready`, nothing in flight or
- *   waiting) and are not the active root's (`setActiveRoot`), with cause `evicted`, until the
- *   count is within the limit or no such session is left; a busy one, and the active document's,
- *   are never stopped for it, so the count can stay above the limit until one of them becomes
- *   idle. While the active document's root is `pending` (a file just opened is being classified)
- *   nothing is stopped for the limit: that root may be the one whose session is idle
+ *   changes nothing above). A `check` session counts while it has a process or is getting one
+ *   (`starting`, `ready`, `busy`, `restarting`); an `eval` session — a process of the same size (it
+ *   loads the same modules; a `check` session took 206–278 MiB on `contrib`,
+ *   docs/measurements/first-load.md [live]) — only while it is also `idle`. One that is being
+ *   started or evaluating is left out, so that an evaluation never stops another session to make
+ *   room for itself; once it has answered it counts, and is the first one stopped (below). Until the
+ *   fourth review of M3 it counted from its start: with a limit of 2, Evaluate in project P stopped
+ *   project Q's idle `check` session, whose next check started it again (a start, a load that counts
+ *   as `rebuilt` and drops its kept answers) and stopped the evaluation session in turn
+ *   [unit-level, the reviewer's probe with the real pool]. While more count than the limit, the pool stops, with
+ *   cause `evicted`, sessions that are `idle` (`IdeSession.idle`: `ready`, nothing in flight or
+ *   waiting): first the `eval` sessions, the active root's included, then the `check` sessions that
+ *   are not the active root's (`setActiveRoot`), each group least recently used first, until the
+ *   count is within the limit or no such session is left. The `eval` sessions go first because
+ *   they are the lesser role (a stopped one costs the next evaluation a start and a load, while a
+ *   stopped `check` session costs the checks and every query of its root), and the active root's
+ *   `eval` session too, since with a limit of 1 the active root's two sessions would otherwise stay
+ *   above it for good. A busy session, and the active root's `check` session, are never stopped for
+ *   it, so the number of processes can stay above the limit until one becomes idle. While the active document's
+ *   root is `pending` (a file just opened is being classified) nothing is stopped for the limit:
+ *   that root may be the one whose session is idle
  *   (*verification after Q20–Q22*: it was stopped, and the file's first load started it again). "Used" is a request sent or answered, or a start (the order of those events, not the
  *   clock). The limit is applied after every state change of a session, after a change of the
  *   setting and after a change of the active root, in a microtask, so never inside a session's
@@ -114,6 +144,12 @@ import type {
   SessionRole,
   Transport,
 } from './types';
+
+/**
+ * The idle limit of an `eval` session (module comment, *Stop, release and idle*):
+ * `idris2.ideMode.idleTimeout` when that is shorter, and none when it is 0.
+ */
+export const EVAL_IDLE_TIMEOUT_MS = 2 * 60_000;
 
 /** What `createTunedSessionPool` takes besides the dependencies; `createSessionPool` uses the defaults. */
 export interface SessionPoolTuning {
@@ -163,8 +199,7 @@ export function checkBuildDir(
   platform: NodeJS.Platform,
 ): { readonly dir: string; readonly isolated: boolean } {
   const pathApi = platform === 'win32' ? path.win32 : path.posix;
-  const model = root.kind === 'project' && root.model.status === 'ok' ? root.model.model : undefined;
-  const chosen = buildDirOption(packageOptionWords(model?.opts)) ?? model?.builddir ?? buildDirOption(settings.extraArgs);
+  const chosen = compilerBuildDir(root, settings);
   if (chosen !== undefined) {
     return { dir: pathApi.resolve(cwd, chosen), isolated: false };
   }
@@ -174,13 +209,42 @@ export function checkBuildDir(
 }
 
 /**
- * The command line of `root`'s `check` session (see the module comment). `buildBase`: the
- * directory the isolated `--build-dir` is placed in — the real path the process starts in
- * (`SessionLaunch.realCwd`, POSIX), so that the build directory, too, is the one the gate judged
- * and not reached through the spelled path's symbolic links; `cwd` when unset.
+ * The build directory that the package or `idris2.ideMode.extraArgs` sets, as written
+ * (`checkBuildDir`: a `--build-dir` in the `.ipkg`'s `opts`, its `builddir`, a `--build-dir` in
+ * `extraArgs`); `undefined` when the extension chooses it.
+ */
+function compilerBuildDir(root: Classification, settings: Pick<IdeModeSettings, 'extraArgs'>): string | undefined {
+  const model = root.kind === 'project' && root.model.status === 'ok' ? root.model.model : undefined;
+  return buildDirOption(packageOptionWords(model?.opts)) ?? model?.builddir ?? buildDirOption(settings.extraArgs);
+}
+
+/**
+ * The `--build-dir` of `root`'s `eval` session (`types.ts` `SessionRole`): `<cwd>/build/.vscode-idris2-eval`
+ * whenever the extension chooses the build directory — the package and `extraArgs` set none —,
+ * whatever `idris2.ideMode.isolateBuildDir` says, so that the `eval` session never compiles into
+ * the `check` session's directory, whose next load would then report nothing for a file the `eval`
+ * session built (F7); `undefined` when the compiler takes the directory from the package or
+ * `extraArgs` for both sessions (a documented limitation, as for the user's own builds, D5).
+ */
+export function evalBuildDir(
+  root: Classification,
+  cwd: string,
+  settings: Pick<IdeModeSettings, 'extraArgs'>,
+  platform: NodeJS.Platform,
+): string | undefined {
+  const pathApi = platform === 'win32' ? path.win32 : path.posix;
+  return compilerBuildDir(root, settings) === undefined ? pathApi.join(cwd, 'build', '.vscode-idris2-eval') : undefined;
+}
+
+/**
+ * The command line of `root`'s session of `role` (`check` unless given; see the module comment).
+ * `buildBase`: the directory the extension's `--build-dir` is placed in — the real path the
+ * process starts in (`SessionLaunch.realCwd`, POSIX), so that the build directory, too, is the one
+ * the gate judged and not reached through the spelled path's symbolic links; `cwd` when unset.
  */
 export function sessionLaunch(input: {
   readonly root: Classification;
+  readonly role?: SessionRole;
   readonly cwd: string;
   readonly buildBase?: string;
   readonly idris2: string;
@@ -196,9 +260,17 @@ export function sessionLaunch(input: {
       args.push('-p', pkg);
     }
   }
-  const build = checkBuildDir(root, input.buildBase ?? cwd, settings, input.platform);
-  if (build.isolated) {
-    args.push('--build-dir', build.dir);
+  const base = input.buildBase ?? cwd;
+  if (input.role === 'eval') {
+    const evalDir = evalBuildDir(root, base, settings, input.platform);
+    if (evalDir !== undefined) {
+      args.push('--build-dir', evalDir);
+    }
+  } else {
+    const build = checkBuildDir(root, base, settings, input.platform);
+    if (build.isolated) {
+      args.push('--build-dir', build.dir);
+    }
   }
   args.push(...settings.extraArgs);
   return { executable: input.idris2, args, cwd, env: input.env, transport };
@@ -312,14 +384,15 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
 
   const keyOf = (root: Classification, role: SessionRole): string => `${role}|${rootKey(root)}`;
 
-  /** The command line of `root` now; `realCwd`: the real path it starts in (POSIX), with the build directory in it. */
-  function launchFor(root: Classification, snapshot: ToolchainSnapshot, realCwd?: string): SessionLaunch | undefined {
+  /** The command line of `root`'s session of `role` now; `realCwd`: the real path it starts in (POSIX), with the build directory in it. */
+  function launchFor(root: Classification, role: SessionRole, snapshot: ToolchainSnapshot, realCwd?: string): SessionLaunch | undefined {
     const idris2 = snapshot.idris2;
     if (idris2.status !== 'probed') {
       return undefined;
     }
     const launch = sessionLaunch({
       root,
+      role,
       cwd: deps.projects.sessionCwd(root),
       buildBase: realCwd,
       idris2: idris2.location.path,
@@ -409,14 +482,18 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
     }
     // Started in the real path just judged, not through the links of the spelled one, with the
     // isolated build directory in it too (module comment).
-    const launch = launchFor(session.root, snapshot, deps.platform === 'win32' ? undefined : now.realDir);
+    const launch = launchFor(session.root, session.role, snapshot, deps.platform === 'win32' ? undefined : now.realDir);
     if (launch === undefined) {
       return { refused: new IdrisException({ kind: 'ToolchainMissing', message: toolchainProblem(snapshot) ?? '' }) };
     }
     return { launch };
   }
 
-  /** Restarts `session` if it runs with another command line than it would get now. */
+  /**
+   * Restarts `session` if it runs with another command line than it would get now; an `eval`
+   * session is stopped instead, and starts with the new one at the next evaluation (module comment,
+   * *Stop, release and idle*).
+   */
   function reconcile(session: ManagedSession, reason: string): void {
     if (session.state !== 'starting' && session.state !== 'ready' && session.state !== 'busy') {
       return;
@@ -427,14 +504,16 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
       return;
     }
     // Built on the real path the process was started in, as its own command line was.
-    const next = launchFor(session.root, snapshot, running.realCwd);
-    if (next === undefined) {
-      session.restart(`${reason}: ${toolchainProblem(snapshot) ?? ''}`, 'reconfigure');
+    const next = launchFor(session.root, session.role, snapshot, running.realCwd);
+    const differences = next === undefined ? [toolchainProblem(snapshot) ?? ''] : launchDifferences(running, next);
+    if (differences.length === 0) {
       return;
     }
-    const differences = launchDifferences(running, next);
-    if (differences.length > 0) {
-      session.restart(`${reason}: ${differences.join(', ')}`, 'reconfigure');
+    const detail = `${reason}: ${differences.join(', ')}`;
+    if (session.role === 'eval') {
+      session.stop('reconfigure', `${detail}; the evaluation session starts again at the next evaluation`);
+    } else {
+      session.restart(detail, 'reconfigure');
     }
   }
 
@@ -499,20 +578,29 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
     });
   }
 
-  /** Stops least recently used idle sessions, not the active root's, while more run than the limit. */
+  /**
+   * While more sessions count than the limit, stops idle ones (module comment): first the `eval`
+   * sessions, the active root's included, then the `check` sessions that are not the active root's,
+   * each group least recently used first.
+   */
   function limitSessions(): void {
     const max = deps.config.ideMode().maxSessions;
     if (disposed || max <= 0 || activePending) {
       return;
     }
     const counted = [...sessions.values()].filter(running);
-    let excess = counted.length - max;
+    // An `eval` session counts only while idle (module comment): one being started or evaluating
+    // does not make room for itself by stopping another root's `check` session.
+    let excess = counted.filter((session) => session.role === 'check' || session.idle).length - max;
     if (excess <= 0) {
       return;
     }
-    const candidates = counted
-      .filter((session) => session.idle && rootKey(session.root) !== activeKey)
-      .sort((a, b) => (lastUse.get(a) ?? 0) - (lastUse.get(b) ?? 0));
+    const byUse = (a: ManagedSession, b: ManagedSession): number => (lastUse.get(a) ?? 0) - (lastUse.get(b) ?? 0);
+    const idle = counted.filter((session) => session.idle);
+    const candidates = [
+      ...idle.filter((session) => session.role === 'eval').sort(byUse),
+      ...idle.filter((session) => session.role === 'check' && rootKey(session.root) !== activeKey).sort(byUse),
+    ];
     for (const session of candidates) {
       if (excess <= 0) {
         break;
@@ -521,7 +609,9 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
       session.stop(
         'evicted',
         `idris2.ideMode.maxSessions is ${max} and ${counted.length} IDE-mode sessions were running; ` +
-          'this was the least recently used idle one, and it starts again at its next check',
+          (session.role === 'eval'
+            ? 'this was an idle evaluation session, which starts again at the next evaluation'
+            : 'this was the least recently used idle one, and it starts again at its next check'),
       );
     }
   }
@@ -543,7 +633,7 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
         return {
           requestTimeoutMs: settings.requestTimeoutMs,
           longActionTimeoutMs: settings.longActionTimeoutMs,
-          idleTimeoutMs: settings.idleTimeoutMs,
+          idleTimeoutMs: role === 'eval' && settings.idleTimeoutMs > 0 ? Math.min(settings.idleTimeoutMs, EVAL_IDLE_TIMEOUT_MS) : settings.idleTimeoutMs,
         };
       },
       onNewerProtocol: (warning) => {
@@ -618,7 +708,8 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
       if (disposed) {
         return;
       }
-      // `check` is the only role in M2, so restarting it restarts every session of the root.
+      // The `eval` session starts again at the next evaluation (it has nothing loaded that a check needs).
+      sessions.get(keyOf(root, 'eval'))?.stop('stop', 'Restart Backend: the evaluation session starts again at the next evaluation');
       const session = sessions.get(keyOf(root, 'check')) ?? create(root, 'check');
       session.setRoot(root);
       session.restart('Restart Backend');
@@ -626,10 +717,23 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
 
     restartAll(): void {
       for (const session of sessions.values()) {
-        if (session.state !== 'stopped') {
+        if (session.state === 'stopped') {
+          continue;
+        }
+        if (session.role === 'eval') {
+          session.stop('stop', 'Restart Backend, all roots: the evaluation session starts again at the next evaluation');
+        } else {
           session.restart('Restart Backend, all roots');
         }
       }
+    },
+
+    cancelEvaluation(root: Classification): void {
+      sessions.get(keyOf(root, 'eval'))?.stop('stop', 'Evaluate Selection was cancelled; the evaluation session starts again at the next evaluation');
+    },
+
+    releaseEvaluation(root: Classification, detail: string): void {
+      sessions.get(keyOf(root, 'eval'))?.stop('stop', detail);
     },
 
     setActiveRoot(root: Classification | 'pending' | undefined): void {

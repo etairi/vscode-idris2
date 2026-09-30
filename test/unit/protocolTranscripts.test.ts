@@ -8,13 +8,15 @@
 import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
-import { fromIdeReplySpan, toIdeTypeOfRequest, type PositionDocument } from '../../src/core/positions';
+import { fromIdeReply, fromIdeReplySpan, toIdeTypeOfRequest, type PositionDocument } from '../../src/core/positions';
 import {
   addClause,
   answersWithPreviousId,
+  browseNamespace,
   caseSplit,
   decodeAmbiguity,
   decodeBuildingLine,
+  decodeCompletions,
   decodeIntro,
   decodeLemma,
   decodeMetavariables,
@@ -40,6 +42,8 @@ import {
   proofSearch,
   proofSearchNext,
   refine,
+  replCompletions,
+  toRichText,
   typeOf,
   version,
   type CommandResult,
@@ -131,6 +135,17 @@ const raw = (text: string): IdeCommand => ({ kind: 'raw', text });
 const load1 = (file: string): Request => ({ command: loadFile(`${ROOT}/${file}`) });
 const text = (command: IdeCommand): Request => ({ command, decode: decodeText });
 
+/** The M3 queries, as `scripts/record-transcripts.mjs` sends them. */
+const at = (name: string, line: number, column: number): Request => text(typeOf(name, { line, column }));
+const sweep = (name: string, line: number, from: number, to: number): Request[] =>
+  Array.from({ length: to - from + 1 }, (_, i) => at(name, line, from + i));
+const byName = (name: string): Request => text(typeOf(name));
+const docs = (name: string): Request => text(docsFor(name));
+const where = (name: string): Request => ({ command: nameAt(name), decode: decodeNameAt });
+const browse = (ns: string): Request => text(browseNamespace(ns));
+const complete = (prefix: string): Request => ({ command: replCompletions(prefix), decode: decodeCompletions });
+const evaluate = (input: string): Request => text(interpret(input));
+
 /** A stub command (F3): its answer is `(:ok "…")`, or `(:ok ())` for the name lists. */
 const stub = (name: string, ...args: (string | number)[]): IdeCommand =>
   list(sym(name), ...args.map((a) => (typeof a === 'number' ? int(a) : str(a))));
@@ -158,6 +173,19 @@ const REQUESTS: Readonly<Record<string, readonly Request[]>> = {
     { command: intro(8, 'vlen_rhs'), decode: decodeIntro },
     text(refine(8, 'vlen_rhs', 'S')),
   ],
+  'clean-queries': [
+    load1('Clean.idr'),
+    ...([['n', 5, 14], ['a', 5, 16], ['m', 5, 26], ['a', 5, 28], ['n', 5, 39], ['m', 5, 43], ['a', 5, 46], ['n', 7, 12], ['a', 7, 14], ['xs', 8, 5]] as const)
+      .map(([name, line, column]) => at(name, line, column)),
+    ...['vl', 'vlen', 'Data.V', '?', 'vlen_', ''].map(complete),
+    ...['vlen', 'index', 'id', 'Vect', '::'].map(where),
+    ...['Data.Vect', 'Clean', 'Nope.Nothing'].map(browse),
+    ...['Vect', '::', 'vlen'].map(docs),
+    byName('xs'),
+    byName('index'),
+    at('Vect', 7, 7),
+    at('vlen_rhs', 8, 11),
+  ],
   'clean-lookups': [
     load1('Clean.idr'),
     text(typeOf('xs', { line: 8, column: 4 })),
@@ -176,6 +204,19 @@ const REQUESTS: Readonly<Record<string, readonly Request[]>> = {
     { command: list(sym('load-file'), str(`${ROOT}/Clean.idr`), int(3)) },
   ],
   'enable-syntax': [text(list(sym('enable-syntax'), { kind: 'bool', value: false })), load1('Clean.idr')],
+  'eval-command-forms': [
+    load1('Clean.idr'),
+    ...[' ', '\t', '\r', '\n', '\v', '\f', '\u00a0', '\u3000', '\u200b', '\ufeff'].map((space) => evaluate(`${space}:t id`)),
+    ...['{- c -} :t id', '-- c\n:t id', '||| d\n:t id', ': t id', '\uff1at id', ':T id', '', '   ', '-- c'].map(evaluate),
+  ],
+  'eval-socket': [load1('Clean.idr'), evaluate('the (IO ()) (putStrLn "hi")')],
+  'eval-values': [
+    load1('Clean.idr'),
+    ...[
+      'the (Vect 2 Nat) [1, 2]', 'the (Vect 2 Nat) [1,2]', '"hi" ++ "!"', 'vlen', 'the (Nat -> Nat) (\\x => x + 1)', 'putStrLn "hi"',
+      'the (IO ()) (putStrLn "hi")', 'vlen [1, 2]', 'the Nat "x"', 'nope', ':t id',
+    ].map(evaluate),
+  ],
   'exec-socket': [text(interpret(':exec putStrLn "hi"'))],
   'exec-stdio': [text(interpret(':exec putStrLn "hi"'))],
   'exec-stdio-putstr': [text(interpret(':exec putStr "hi"'))],
@@ -191,6 +232,13 @@ const REQUESTS: Readonly<Record<string, readonly Request[]>> = {
   'load-bad': [load1('Bad.idr')],
   'load-bad-ipkg': [load1('Main.idr')],
   'load-builddir-ipkg': [load1('src/Hello.idr')],
+  'lit-lookups': [
+    load1('Lit.lidr'),
+    at('double', 5, 0), at('double', 6, 0), at('+', 6, 13), at('n', 6, 7), at('n', 6, 11), at('n', 6, 15),
+    where('double'), docs('double'), browse('Lit'),
+    at('glue', 9, 0), docs('glue'), at('xs', 10, 5), at('ys', 10, 8), at('++', 10, 15), at('++', 10, 16), byName('++'), docs('++'),
+    at('bump', 13, 0), at('n', 14, 5), at('+', 14, 10), at('+', 14, 11), where('glue'), where('bump'),
+  ],
   'load-lidr': [load1('Err.lidr'), text(typeOf('n', { line: 4, column: 2 })), text(typeOf('n', { line: 4, column: 4 }))],
   'load-lit': [load1('Lit.lidr'), text(typeOf('n', { line: 6, column: 7 })), text(typeOf('n', { line: 6, column: 9 }))],
   'load-logging': [load1('Logging.idr')],
@@ -217,6 +265,32 @@ const REQUESTS: Readonly<Record<string, readonly Request[]>> = {
     text(raw('(:interpret "\\"→\\"")')),
     { command: raw('(:bogus "é")') },
   ],
+  'shapes-lookups': [
+    load1('src/Foo/Shapes.idr'),
+    ...([
+      ['Shape', 5, 5], ['Circle', 7, 2], ['Rectangle', 8, 2], ['area', 12, 0], ['area', 13, 0], ['Circle', 13, 6], ['pi', 13, 18],
+      ['*', 13, 21], ['Measured', 18, 10], ['perimeter', 20, 2], ['perimeter', 24, 2], ['scale', 28, 0], ['twice', 33, 0],
+      ['|+|', 40, 1], ['|+|', 41, 2], ['+', 41, 17],
+      ['r', 13, 13], ['r', 13, 23], ['r', 13, 27], ['w', 14, 16], ['h', 14, 18], ['w', 14, 23], ['h', 14, 27],
+      ['a', 18, 19], ['a', 20, 14], ['r', 24, 20], ['r', 24, 34], ['w', 25, 23], ['h', 25, 25], ['w', 25, 35], ['h', 25, 39],
+      ['k', 29, 6], ['r', 29, 16], ["r'", 29, 25], ['k', 29, 30], ['r', 29, 34], ["r'", 29, 46],
+      ['k', 30, 6], ['w', 30, 19], ['h', 30, 21], ['k', 30, 37], ['w', 30, 41], ['k', 30, 45], ['h', 30, 49],
+      ['f', 34, 6], ['s', 34, 11], ['f', 34, 16], ['f', 34, 19], ['s', 34, 21],
+      ['a', 41, 0], ['b', 41, 6], ['a', 41, 15], ['b', 41, 24],
+    ] as const).map(([name, line, column]) => at(name, line, column)),
+    ...['area', 'Circle', 'Shape', 'perimeter', '|+|', '+', 'r'].map(byName),
+    ...['area', 'scale', 'Circle', 'Rectangle', 'Shape', 'Measured', 'perimeter', '|+|', 'pi', 'nope'].map(docs),
+    ...['area', 'Circle', 'perimeter', '|+|', 'r', 'pi'].map(where),
+    ...['Foo.Shapes', 'Data.Vect', 'Nope.Nothing'].map(browse),
+    ...['ar', 'Ci', '|+'].map(complete),
+  ],
+  'simple-ipkg-lookups': [
+    load1('src/Foo/B.idr'),
+    at('greeting', 6, 0), at('greeting', 7, 0), at('shout', 7, 11),
+    where('shout'), where('greeting'), docs('shout'), docs('greeting'), browse('Foo.A'), complete('sh'), complete('gr'),
+    load1('src/Foo/A.idr'),
+    at('shout', 4, 0), at('s', 5, 6), at('s', 5, 10),
+  ],
   'stubs': [
     text(stub('name-at', 'vlen_rhs', 8, 10)),
     text(stub('add-missing', 5, 'f')),
@@ -229,6 +303,11 @@ const REQUESTS: Readonly<Record<string, readonly Request[]>> = {
     text(stub('hide-term-implicits', 'id')),
     text(stub('elaborate-term', 'id')),
     text(stub('print-definition', 'id')),
+  ],
+  'unicode-columns': [
+    load1('Unicode.idr'),
+    ...sweep('y', 12, 0, 21), ...sweep('s', 15, 0, 27), ...sweep('t', 18, 0, 25), ...sweep('m', 21, 0, 30),
+    at('x₁', 12, 2), at('x₁', 12, 9), at('ℕ', 9, 0), byName('α'), where('α'), where('commented'), docs('ℕ'), complete('α'),
   ],
   'warning-deprecated': [load1('Deprecated.idr')],
   'warning-generic': [load1('GenericWarn.idr')],
@@ -317,8 +396,8 @@ function prng(seed: number): () => number {
 // -------------------------------------------------------------------------------------------
 
 suite('backend/ide protocol against the 0.8.0 transcripts', () => {
-  test('the recordings are the 34 scenarios of format 1 from idris2 0.8.0, and each has a request table', () => {
-    assert.strictEqual(SCENARIOS.length, 34);
+  test('the recordings are the 42 scenarios of format 1 from idris2 0.8.0, and each has a request table', () => {
+    assert.strictEqual(SCENARIOS.length, 42);
     for (const [scenario, t] of TRANSCRIPTS) {
       assert.strictEqual(t.meta.format, 1, scenario);
       assert.strictEqual(t.meta.idris2.version, '0.8.0', scenario);
@@ -396,6 +475,16 @@ suite('backend/ide protocol against the 0.8.0 transcripts', () => {
           items.push(...decoder.end());
           assert.deepStrictEqual(items.map(({ kind, text }) => ({ kind, text })), expected, `run ${run}`);
           assert.strictEqual(items.reduce((n, i) => n + i.byteLength, 0), bytes.length);
+        }
+      });
+
+      test('highlightSourceId gives the id of exactly the :highlight-source outputs, read without parsing (the eval session drops them)', () => {
+        for (const event of transcript(scenario).events) {
+          if (event.kind === 'recv') {
+            const message = decoded(event.text);
+            const expected = message.kind === 'output' && message.payload.kind === 'highlight-source' ? message.id : undefined;
+            assert.strictEqual(ideCodec.highlightSourceId(event.text), expected, event.text);
+          }
         }
       });
 
@@ -664,6 +753,95 @@ suite('backend/ide protocol against the 0.8.0 transcripts', () => {
       const [viaLink, real, relative] = exchanges('load-symlink');
       assert.strictEqual(errorMessage(viaLink.payload), `Source file "${LINK}/Clean.idr" is not in the source directory "${ROOT}"`);
       assert.deepStrictEqual([real.payload.kind, relative.payload.kind], ['ok', 'ok']);
+    });
+
+    test('E14: positional :type-of columns count code points, and core/positions.ts maps the editor\'s UTF-16 columns onto them', () => {
+      const unicode = fixtureDocument('broken/Unicode.idr');
+      // The columns at which each swept line answered for its local (F2: the local at the column,
+      // whatever name is asked), as recorded.
+      const answered = new Map<string, number[]>();
+      let positional = 0;
+      for (const x of exchanges('unicode-columns')) {
+        const request = /\(:type-of "((?:[^"\\]|\\.)*)" (\d+) (\d+)\)/.exec(x.sent);
+        if (request === null || x.payload.kind !== 'ok') {
+          continue;
+        }
+        const [line, column] = [Number(request[2]), Number(request[3])];
+        const local = ok(decodeText(x.payload)).text.split(' : ')[0];
+        if (local.includes('.')) {
+          continue; // a global (ℕ)
+        }
+        positional++;
+        answered.set(`${line} ${local}`, [...(answered.get(`${line} ${local}`) ?? []), column]);
+        // The editor column of that compiler column holds the local, or ends it (inclusive end, F2) …
+        const editor = fromIdeReply(unicode, { line: line - 1, column });
+        const text = unicode.lineAt(line - 1).text;
+        const starts = [...text.matchAll(new RegExp(`(?<![\\p{L}\\p{N}_])${local}(?![\\p{L}\\p{N}_'])`, 'gu'))].map((m) => m.index);
+        assert.ok(starts.some((start) => start <= editor.character && editor.character <= start + local.length), `${local} at ${line}:${column}`);
+        // … and goes back to it.
+        assert.deepStrictEqual(toIdeTypeOfRequest(unicode, editor), { line, column });
+      }
+      assert.strictEqual(positional, 24);
+      // Code points: under UTF-8 bytes `y` would answer at 8–9 and 19–20, `s` at 24–25; under UTF-16 `s` at 20–21, `m` at 22 and 26.
+      assert.deepStrictEqual(Object.fromEntries(answered), {
+        '12 x₁': [2, 3, 4, 9, 10, 11, 2, 9],
+        '12 y': [5, 6, 14, 15],
+        '15 s': [7, 8, 18, 19],
+        '18 t': [10, 11, 21, 22],
+        '21 m': [20, 21, 24, 25],
+      });
+      // Replies too: :name-at of α ends at code point 15 of its signature line (23 UTF-8 bytes).
+      const [alpha] = ok(decodeNameAt(exchanges('unicode-columns').find((x) => x.sent.includes('(:name-at "\\945")'))?.payload ?? assert.fail()));
+      assert.deepStrictEqual(alpha.span, { start: { line: 10, column: 0 }, end: { line: 10, column: 15 } });
+    });
+
+    test('M3: highlighting offsets in a reply count code points; toRichText gives offsets into the JavaScript string', () => {
+      const docs = ok(decodeText(exchange('plain', 3).payload));
+      const rich = toRichText(docs);
+      const visibility = rich.spans.find((span) => rich.text.slice(span.start, span.start + span.length) === 'Visibility');
+      assert.deepStrictEqual(visibility, { start: 96, length: 10 });
+      assert.strictEqual(docs.highlighting.find((h) => h.length === 10)?.start, 94);
+      const area = toRichText(ok(decodeText(exchange('shapes-lookups', 54).payload)));
+      assert.strictEqual(area.text, 'Foo.Shapes.area : Shape -> Double');
+      assert.deepStrictEqual(area.spans.map((span) => [area.text.slice(span.start, span.start + span.length), span.decor]), [
+        ['Foo.Shapes.area', 'function'], ['Shape', 'type'], ['->', 'keyword'], ['Double', 'type'],
+      ]);
+    });
+
+    test('M3: :repl-completions completes the trailing letters and digits against name roots, repeating names; the rest is the context', () => {
+      const answers = exchanges('clean-queries').slice(11, 17).map((x) => decodeCompletions(x.payload));
+      assert.deepStrictEqual(answers.slice(0, 3).map(ok), [
+        { names: ['vlen_rhs', 'vlen'], context: '' },
+        { names: ['vlen_rhs', 'vlen'], context: '' },
+        { names: ['Vect', 'Void', 'View'], context: 'Data.' },
+      ]);
+      assert.deepStrictEqual(answers.slice(3).map((a) => a.kind === 'error' && a.message.split('\n')[0]), Array(3).fill("I can't make sense of the completion task:"));
+      const sh = ok(decodeCompletions(exchange('simple-ipkg-lookups', 9).payload));
+      assert.strictEqual(sh.names.filter((n) => n === 'show').length, 24);
+      assert.deepStrictEqual(ok(decodeCompletions(exchanges('unicode-columns').at(-1)?.payload ?? assert.fail())), { names: ['α'], context: '' });
+    });
+
+    test('M3: :browse-namespace lists one NAME : TYPE per line, sorted, without continuation lines; "" when nothing is visible', () => {
+      const shapes = ok(decodeText(exchange('shapes-lookups', 77).payload)).text.split('\n');
+      assert.deepStrictEqual(shapes.map((l) => l.split(' : ')[0]), ['Circle', 'Measured', 'Rectangle', 'Shape', 'area', 'perimeter', 'scale', 'twice', '(|+|)']);
+      assert.deepStrictEqual([78, 79].map((i) => ok(decodeText(exchange('shapes-lookups', i).payload)).text), ['', '']);
+      const vect = ok(decodeText(exchange('clean-queries', 22).payload)).text.split('\n');
+      assert.strictEqual(vect.length, 84);
+      assert.ok(vect.every((line) => /^\S/.test(line) && line.includes(' : ')));
+      assert.ok(Math.max(...vect.map((l) => [...l].length)) >= 196);
+      assert.strictEqual(ok(decodeText(exchange('clean-queries', 23).payload)).text.split(' : ')[0], '1 vlen_rhs');
+    });
+
+    test('M3 (ROADMAP §9, 2026-09-28): an IO action is normalised, not run; :interpret runs REPL commands', () => {
+      const values = exchanges('eval-values').map((x) => x.payload);
+      assert.strictEqual(ok(decodeText(values[1])).text, '[1, 2]');
+      assert.match(errorMessage(values[6]), /^Error: Can't find an implementation for HasIO \?io\./);
+      assert.strictEqual(ok(decodeText(values[7])).text, 'MkIO (prim__putStr "hi\\n")');
+      assert.strictEqual(ok(decodeText(values[11])).text, 'Prelude.id : a -> a');
+      for (const scenario of ['eval-values', 'eval-socket']) {
+        assert.deepStrictEqual(eventsOf(scenario, 'unframed', 'stdout').map((e) => e.text).filter((t) => !isEndOfInputLine(t) && t !== '${PORT}\n'), [], scenario);
+      }
+      assert.strictEqual(ok(decodeText(exchange('eval-socket', 1).payload)).text, 'MkIO (prim__putStr "hi\\n")');
     });
 
     test('E5: each warning kind arrives as :warning of a load that returns :ok', () => {

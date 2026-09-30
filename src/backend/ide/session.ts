@@ -66,6 +66,13 @@
  *   of an unknown shape (a newer compiler) is logged and ignored, except a `:return` with the
  *   in-flight id whose payload cannot be read (`DecodedMessage.returnId`): it ends that request
  *   at once with a `ProtocolError`, and the process, still in step, is kept.
+ * - **Unread highlighting** (`eval` sessions; third review of M3). An `eval` session's load
+ *   serves only its evaluation, which reads the load's `:return` and `:warning` frames, never its
+ *   highlighting, so a `:highlight-source` frame with the in-flight id (`IdeCodec.highlightSourceId`,
+ *   read from the frame's start and end) is dropped without being parsed: parsing the 16,654 frames
+ *   of one load of the e2e suite's 2,000-line module took 77 ms of the extension host's thread at
+ *   every evaluation [unit-level, the reviewer's offline run on the recorded frames]. Such a frame is
+ *   not checked for being an s-expression. `check` sessions parse every frame.
  * - **Program output.** Over stdio every unframed item — a complete line, or the text before a
  *   reply glued to it (`wire.ts`) — is the process's own output in the protocol stream (F5): the
  *   compiler's log lines (`LOG <topic>:<level>: …`, which `logString` writes with `putStrLn` to
@@ -77,8 +84,12 @@
  * - **Unexpected ends** — the process exits, a time limit expires (handshake or request), or a
  *   protocol error — reject the in-flight request (`BackendCrashed`, `RequestTimeout`,
  *   `ProtocolError`) and restart the process; the other waiting requests stay queued for the new
- *   one, except after a request time-out (above). A process that cannot be started at all
- *   (`spawnError`) makes the session `failed` at once.
+ *   one, except after a request time-out (above). An `eval` session (M3) is not restarted: it is
+ *   `stopped` with the cause of the end, every waiting request rejects (`BackendCrashed`), and the
+ *   next evaluation starts a process — so that no evaluation process runs, for up to its idle limit,
+ *   that no evaluation asked for, and a runaway evaluation's time-out does not start one at once
+ *   (*review of M3*). A process that cannot be started at all (`spawnError`) makes the session
+ *   `failed` at once.
  * - **A socket taken by another program** (ROADMAP §9 Q20; the socket is an opt-in in user settings
  *   since 2026-09-28, stdio the default). `--ide-mode-socket` serves the first
  *   connection to its port and never checks who made it (`initIDESocketFile`,
@@ -101,7 +112,7 @@
  *   `REPL.idr` 40–46; `Driver.idr` 216–221 [src]), which would otherwise be taken for a takeover
  *   whenever the connection completed before the exit. Likewise a connection made in the last 2 s
  *   before the handshake limit is a slow start and is restarted as usual.
- * - **Backoff and give-up.** ARCHITECTURE §5.1 gives a backoff of 0 s, 2 s, 10 s and a give-up
+ * - **Backoff and give-up** (`check` sessions). ARCHITECTURE §5.1 gives a backoff of 0 s, 2 s, 10 s and a give-up
  *   after three crashes in five minutes without saying how the two relate. The reading
  *   implemented here, which the user confirmed on 2026-09-28 (ROADMAP §9 Q22), uses all three
  *   steps: the session restarts itself **at most three times
@@ -233,12 +244,6 @@ export interface SessionDeps {
 
 /** An `IdeSession` with the controls the pool uses. */
 export interface ManagedSession extends IdeSession, IDisposable {
-  /**
-   * `ready` with no request in flight or waiting (none queued, so no `beforeSend` running whose
-   * result counts: a cancelled request's run is abandoned): stopping it abandons nothing. The pool
-   * evicts only such a session (`idris2.ideMode.maxSessions`).
-   */
-  readonly idle: boolean;
   /** Records the root as last given to `sessionFor` (its model may have changed). */
   setRoot(root: Classification): void;
   /**
@@ -247,8 +252,11 @@ export interface ManagedSession extends IdeSession, IDisposable {
    * Restart Backend, `reconfigure` when the command line changed (the pool).
    */
   restart(detail: string, cause?: 'restart' | 'reconfigure'): void;
-  /** Stops the process and rejects every request; `stopped` with `cause`. */
-  stop(cause: 'stop' | 'idle' | 'closed' | 'evicted' | 'consentRevoked' | 'packageChanged', detail: string): void;
+  /**
+   * Stops the process and rejects every request; `stopped` with `cause` (`reconfigure`: the pool
+   * stopped an `eval` session whose command line changed).
+   */
+  stop(cause: 'stop' | 'idle' | 'closed' | 'evicted' | 'consentRevoked' | 'packageChanged' | 'reconfigure', detail: string): void;
   /**
    * `failed` → `stopped` with cause `reconfigure` (the next request starts a process again): the
    * command line may have changed; otherwise nothing.
@@ -890,6 +898,12 @@ class Session implements ManagedSession {
             : idrisError('BackendCrashed', `The Idris 2 process ended while answering ${name}: ${detail}.`)),
       );
     }
+    if (this.role === 'eval') {
+      // Not restarted (module comment, *Unexpected ends*): the next evaluation starts a process.
+      this.rejectQueue(idrisError('BackendCrashed', `The Idris 2 evaluation process ended (${detail}); it starts again at the next evaluation.`));
+      this.setState('stopped', cause, detail);
+      return;
+    }
     const now = this.deps.clock.now();
     const { restartDelaysMs, crashWindowMs } = this.deps.timing;
     this.crashTimes = this.crashTimes.filter((t) => now - t < crashWindowMs);
@@ -985,6 +999,14 @@ class Session implements ManagedSession {
         break;
     }
     this.trace('receive', item.text);
+    if (this.role === 'eval' && proc.protocolVersion !== undefined && proc.inFlight?.id !== undefined) {
+      // Module comment, *Unread highlighting*.
+      const id = this.deps.codec.highlightSourceId(item.text);
+      if (id === proc.inFlight.id) {
+        proc.lastRecognisedId = id;
+        return;
+      }
+    }
     const decoded = this.deps.codec.decodeMessage(item.text);
     switch (decoded.kind) {
       case 'invalid':
@@ -1163,7 +1185,7 @@ class Session implements ManagedSession {
     }
   }
 
-  stop(cause: 'stop' | 'idle' | 'closed' | 'evicted' | 'consentRevoked' | 'packageChanged', detail: string): void {
+  stop(cause: 'stop' | 'idle' | 'closed' | 'evicted' | 'consentRevoked' | 'packageChanged' | 'reconfigure', detail: string): void {
     if (this.disposed) {
       return;
     }

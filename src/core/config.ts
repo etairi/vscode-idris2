@@ -5,9 +5,11 @@
  * keeps the two in step.
  *
  * M1 contributes the `idris2.toolchain.*` section; M2 adds `idris2.checking.*`,
- * `idris2.ideMode.*`, `idris2.diagnostics.*` and `idris2.trace.*`. The module has no runtime
- * dependency on `vscode` (one type import): `extension.ts` passes `vscode.workspace` as the
- * `ConfigurationHost`, unit tests pass a fake.
+ * `idris2.ideMode.*`, `idris2.diagnostics.*` and `idris2.trace.*`; M3 adds
+ * `idris2.inlayHints.*`, `idris2.eval.*` and `idris2.keybindings.scheme`, which only VS Code
+ * reads (the `when` clauses of the keybindings in `package.json`), so it has no accessor here. The
+ * module has no runtime dependency on `vscode` (one type import): `extension.ts` passes
+ * `vscode.workspace` as the `ConfigurationHost`, unit tests pass a fake.
  *
  * Values are validated here, so that callers never see a wrongly typed value from a
  * hand-edited `settings.json`: a value of the wrong type (or an unknown enum value) reads as the
@@ -29,7 +31,7 @@ export const CONFIGURATION_SECTION = 'idris2';
  * The groups of settings a listener can subscribe to (`idris2.<group>.*`); later milestones add
  * theirs.
  */
-export type ConfigurationGroup = 'toolchain' | 'checking' | 'ideMode' | 'diagnostics' | 'trace';
+export type ConfigurationGroup = 'toolchain' | 'checking' | 'ideMode' | 'diagnostics' | 'trace' | 'inlayHints' | 'eval';
 
 /** `idris2.toolchain.*` (ARCHITECTURE §11, M1). */
 export interface ToolchainSettings {
@@ -315,13 +317,48 @@ export interface TraceSettings {
   readonly protocol: boolean;
 }
 
+// -------------------------------------------------------------------------------------------
+// M3: inlay hints and evaluation (ARCHITECTURE §11; ROADMAP M3 and §9 "Decided by the user on
+// 2026-09-28 (before M3)")
+// -------------------------------------------------------------------------------------------
+
+/** `idris2.inlayHints.*`. */
+export interface InlayHintSettings {
+  /**
+   * `idris2.inlayHints.variableTypes` (default on, ROADMAP §9 2026-09-28): show `: <type>` after
+   * each pattern variable, from a positional `:type-of` of the saved file's last load; nothing while
+   * the document has unsaved changes (the answers would describe the saved text). VS Code's own
+   * `editor.inlayHints.enabled` applies on top.
+   */
+  readonly variableTypes: boolean;
+}
+
+/** `idris2.eval.*`. */
+export interface EvaluationSettings {
+  /**
+   * `idris2.eval.inlineResults` (default on): **Idris 2: Evaluate Selection** shows its result
+   * after the last line of the evaluated text and in a hover over it; off, in a notification
+   * instead (its text through `core/notificationText.ts` `plainText`).
+   */
+  readonly inlineResults: boolean;
+  /**
+   * `idris2.eval.timeout` (ms, default 10000, from `MIN_REQUEST_TIMEOUT_MS` to `MAX_DELAY_MS`): how
+   * long the compiler has to evaluate an expression (`:interpret`); one that takes longer stops the
+   * evaluation's process (IDE mode has no cancel). Its own limit, shorter than
+   * `idris2.ideMode.longActionTimeout`, since an evaluation that does not end grows the compiler's
+   * memory fast (*review of M3* [live]: 265 → 1,576 MiB in 7.0 s). The load before the evaluation
+   * keeps the long-action limit.
+   */
+  readonly timeoutMs: number;
+}
+
 /** The smallest `idris2.checking.delay` (ms); also the schema's `minimum` in package.json. */
 export const MIN_CHECKING_DELAY_MS = 100;
-/** The smallest request time limit (ms), for both `requestTimeout` and `longActionTimeout`. */
+/** The smallest request time limit (ms), for `requestTimeout`, `longActionTimeout` and `eval.timeout`. */
 export const MIN_REQUEST_TIMEOUT_MS = 1000;
 /**
  * The largest value of every setting that is a delay (`checking.delay`, the three
- * `ideMode.*Timeout`s), 2^31 − 1 ms (about 24.8 days); also the schema's `maximum`. Node's
+ * `ideMode.*Timeout`s, `eval.timeout`), 2^31 − 1 ms (about 24.8 days); also the schema's `maximum`. Node's
  * `setTimeout` runs a callback whose delay does not fit a signed 32-bit integer after 1 ms
  * instead (`TimeoutOverflowWarning` [live, Node 24.13, 2026-09-27]), so a larger value meant to
  * turn a limit off would make every load time out at once.
@@ -405,6 +442,19 @@ export function readTraceSettings(section: ConfigurationReader): TraceSettings {
   return { protocol: section.get('trace.protocol') === true };
 }
 
+/** Reads and validates `idris2.inlayHints.*` from the `idris2` section: on unless `false`. */
+export function readInlayHintSettings(section: ConfigurationReader): InlayHintSettings {
+  return { variableTypes: section.get('inlayHints.variableTypes') !== false };
+}
+
+/** Reads and validates `idris2.eval.*` from the `idris2` section: `inlineResults` on unless `false`. */
+export function readEvaluationSettings(section: ConfigurationReader): EvaluationSettings {
+  return {
+    inlineResults: section.get('eval.inlineResults') !== false,
+    timeoutMs: delaySetting(section.get('eval.timeout'), MIN_REQUEST_TIMEOUT_MS, 10000),
+  };
+}
+
 /**
  * The settings as the rest of the extension sees them. Reads are not cached: each call
  * reflects the current value, so callers read again after `onDidChange` fires.
@@ -438,6 +488,14 @@ export class Config {
 
   trace(): TraceSettings {
     return readTraceSettings(this.host.getConfiguration(CONFIGURATION_SECTION));
+  }
+
+  inlayHints(): InlayHintSettings {
+    return readInlayHintSettings(this.host.getConfiguration(CONFIGURATION_SECTION));
+  }
+
+  evaluation(): EvaluationSettings {
+    return readEvaluationSettings(this.host.getConfiguration(CONFIGURATION_SECTION));
   }
 
   /**

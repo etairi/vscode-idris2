@@ -246,6 +246,19 @@ export function substitute(text: string, values: Readonly<Record<string, string>
   });
 }
 
+/**
+ * A recorded scenario's arguments after the mode flag, with the placeholders spelled as `values`
+ * give (unescaped: these are command-line arguments, not s-expression strings): the `check`
+ * session's (`load-symlink`'s names its directory through the link), or (M3) the
+ * `eval` session's, whose build directory is `build/.vscode-idris2-eval`
+ * (`src/backend/ide/types.ts` `SessionRole`).
+ */
+export function recordedArgs(transcript: Transcript, values: Readonly<Record<string, string>>): string[] {
+  return transcript.meta.args
+    .slice(1)
+    .map((arg) => arg.replace(/\$\{(ROOT|LINK)\}/g, (whole, name: string) => values[`\${${name}}`] ?? whole));
+}
+
 /** The same text with every trailing request id `n` of `(… n)\n` replaced by `map(n)`. */
 export function mapTrailingId(text: string, map: (id: bigint) => bigint): string {
   return text.replace(/ ([0-9]+)\)\n$/, (_, id: string) => ` ${map(BigInt(id))})\n`);

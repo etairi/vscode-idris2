@@ -1,16 +1,22 @@
 /**
  * Shared helpers of the integration suites (`integration`, `simple-ipkg`, `toolchain-path`,
- * `diagnostics`, `loose-stdio`, `consent` in .vscode-test.mjs): the running extension's test API,
- * polling, settings that tests change and restore, and (M2) sessions, diagnostics and the status
- * text. Not a test file itself (the suites load `*.test.js` only).
+ * `diagnostics`, `loose-stdio`, `consent`, `intelligence`, `intelligence-loose` in
+ * .vscode-test.mjs): the running extension's test API, polling, settings that tests change and
+ * restore, (M2) sessions, diagnostics and the status text, and (M3) the fake compiler's logs,
+ * hovers, semantic tokens, inlay hints and evaluations as VS Code's commands return them. Not a
+ * test file itself (the suites load `*.test.js` only).
  */
 import * as assert from 'assert';
 import { execFileSync } from 'child_process';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import * as vscode from 'vscode';
 // Type-only: the tests talk to the running extension (dist/extension.js), not to a second copy
 // of its modules.
 import type { IdeSession } from '../../src/backend/ide/types';
 import type { TestApi } from '../../src/extension';
+import type { EvaluationOutcome } from '../../src/features/eval/register';
 import type { ToolchainSnapshot } from '../../src/toolchain/types';
 
 export const EXTENSION_ID = 'etairi.vscode-idris2';
@@ -166,4 +172,263 @@ export function fakeIdeProcesses(dir: string): string[] | undefined {
   }
   const out = execFileSync('/bin/ps', ['-A', '-ww', '-o', 'args='], { encoding: 'utf8' });
   return out.split('\n').filter((line) => line.includes('fake-idris2.mjs') && line.includes('--ide-mode') && line.includes(dir));
+}
+
+/** Polls the asynchronous `probe` every 50 ms, like `waitFor` (10 s by default). */
+export async function waitForAsync<T>(what: string | (() => string), probe: () => Promise<T | undefined>, deadlineMs = 10000): Promise<T> {
+  const start = Date.now();
+  for (;;) {
+    const value = await probe();
+    if (value !== undefined) {
+      return value;
+    }
+    if (Date.now() - start > deadlineMs) {
+      assert.fail(`timed out after ${deadlineMs} ms waiting for ${typeof what === 'string' ? what : what()}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+}
+
+/**
+ * How long `settled` wants a session without a state change: well above the quiet the completion
+ * warm-up waits for before it is sent (`WARM_UP_QUIET_MS`, 150 ms, `src/backend/ide/backend.ts`;
+ * not imported, see above). Should that constant grow past it, a test that asserts no request
+ * fails rather than passes.
+ */
+const SETTLE_MS = 1000;
+
+/**
+ * Waits until `session` is `ready` and its state has not changed for `SETTLE_MS`: the requests M3
+ * sends on its own after a load (the completion warm-up, once the session has been idle for 150
+ * ms) have then been sent and answered. `ready` alone is not enough (CLAUDE.md, M3 rules).
+ */
+export async function settled(session: IdeSession, deadlineMs = 10000): Promise<void> {
+  let last = Date.now();
+  const subscription = session.onDidChangeState(() => {
+    last = Date.now();
+  });
+  try {
+    await waitFor(
+      () => `the session to be ready without a state change for ${SETTLE_MS} ms (it is ${session.state})`,
+      () => (session.state === 'ready' && Date.now() - last >= SETTLE_MS ? true : undefined),
+      deadlineMs,
+    );
+  } finally {
+    subscription.dispose();
+  }
+}
+
+/** Waits until the `check` session of `dir` is ready with `file` loaded (the load on open, or a query's). */
+export function loadedIn(api: TestApi, dir: string, file: string): Promise<IdeSession> {
+  return waitFor(
+    () => `${file} to be loaded in the check session of ${dir} (it has ${JSON.stringify(checkSession(api, dir)?.loadedFile)})`,
+    () => {
+      const session = checkSession(api, dir);
+      return session?.state === 'ready' && session.loadedFile?.path === file ? session : undefined;
+    },
+  );
+}
+
+// -------------------------------------------------------------------------------------------
+// M3: the fake compiler's logs
+// -------------------------------------------------------------------------------------------
+
+/** A line of FAKE_IDRIS2_LOG: a command line the fake was started with. */
+export interface FakeInvocation {
+  readonly pid: number;
+  readonly args: readonly string[];
+  readonly cwd: string;
+}
+
+/** A line of FAKE_IDRIS2_REQUEST_LOG: a request an IDE-mode process read. */
+export interface FakeRequest {
+  readonly pid: number;
+  readonly request: string;
+}
+
+/** The session role a fake's command line names by its build directory (test/fake-idris2/README.md). */
+export type FakeRole = 'check' | 'eval';
+
+function readJsonLines<T>(file: string): T[] {
+  return fs.existsSync(file)
+    ? fs
+        .readFileSync(file, 'utf8')
+        .split('\n')
+        .filter((line) => line !== '')
+        .map((line) => JSON.parse(line) as T)
+    : [];
+}
+
+/**
+ * The fake compiler's two logs (test/fake-idris2/README.md): FAKE_IDRIS2_LOG, the command lines
+ * started, and FAKE_IDRIS2_REQUEST_LOG, every request each IDE-mode process read. A suite switches
+ * them on with `setToolchainSetting(api, 'env', logs.env)`: the extension passes
+ * `idris2.toolchain.env` to every process it starts, the `eval` session's included, so the logs
+ * show what reached which session — and that a refused evaluation reached none.
+ */
+export class FakeLogs {
+  readonly dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'vi2-fakelog-')));
+  private readonly invocationFile = path.join(this.dir, 'invocations.jsonl');
+  private readonly requestFile = path.join(this.dir, 'requests.jsonl');
+
+  get env(): Record<string, string> {
+    return { FAKE_IDRIS2_LOG: this.invocationFile, FAKE_IDRIS2_REQUEST_LOG: this.requestFile };
+  }
+
+  invocations(): FakeInvocation[] {
+    return readJsonLines<FakeInvocation>(this.invocationFile);
+  }
+
+  requests(): FakeRequest[] {
+    return readJsonLines<FakeRequest>(this.requestFile);
+  }
+
+  /** The role of the IDE-mode process `pid`: the last `--build-dir` of its command line. */
+  roleOf(pid: number): FakeRole | undefined {
+    const args = this.invocations().find((i) => i.pid === pid)?.args ?? [];
+    const i = args.lastIndexOf('--build-dir');
+    const base = i < 0 ? undefined : path.basename(args[i + 1] ?? '');
+    return base === '.vscode-idris2' ? 'check' : base === '.vscode-idris2-eval' ? 'eval' : undefined;
+  }
+
+  /** The IDE-mode processes started in `role`. */
+  started(role: FakeRole): FakeInvocation[] {
+    return this.invocations().filter((i) => i.args.some((a) => a.startsWith('--ide-mode')) && this.roleOf(i.pid) === role);
+  }
+
+  /** The requests read by processes of `role`, from the `from`-th request of the log on. */
+  requestsOf(role: FakeRole, from = 0): FakeRequest[] {
+    return this.requests()
+      .slice(from)
+      .filter((r) => this.roleOf(r.pid) === role);
+  }
+
+  dispose(): void {
+    fs.rmSync(this.dir, { recursive: true, force: true });
+  }
+}
+
+// -------------------------------------------------------------------------------------------
+// M3: what the language features return
+// -------------------------------------------------------------------------------------------
+
+/** The markdown of the hovers at `pos` (every provider's), as `vscode.executeHoverProvider` returns them. */
+export async function hovers(uri: vscode.Uri, pos: vscode.Position): Promise<vscode.MarkdownString[]> {
+  const result = await vscode.commands.executeCommand<vscode.Hover[]>('vscode.executeHoverProvider', uri, pos);
+  return result.flatMap((h) =>
+    h.contents.map((c) => (c instanceof vscode.MarkdownString ? c : new vscode.MarkdownString(typeof c === 'string' ? c : c.value))),
+  );
+}
+
+/**
+ * The text a reader sees of `markdown` written with `appendText` (VS Code 1.139.1 escapes markdown
+ * punctuation with a backslash, writes each space and tab as `&nbsp;` and `>` as `\>`: `appendText`
+ * and `B6` in its extension host bundle [src]). Applied to the whole value, code blocks included,
+ * where it would drop a backslash before punctuation; none of the texts the tests look for has one.
+ */
+export function readableText(markdown: vscode.MarkdownString): string {
+  return markdown.value.replace(/&nbsp;/g, ' ').replace(/\\([\\`*_{}[\]()#+!~>-])/g, '$1');
+}
+
+/**
+ * Waits until a hover at `pos` contains `text` (in `readableText`), and returns that hover's
+ * markdown. The first hover of a document may load it first (a passive query of the active
+ * document), so it is asked again.
+ */
+export function hoverWith(uri: vscode.Uri, pos: vscode.Position, text: string): Promise<vscode.MarkdownString> {
+  let last: string[] = [];
+  return waitForAsync(
+    () => `a hover at ${pos.line}:${pos.character} of ${path.basename(uri.fsPath)} containing ${JSON.stringify(text)} (last: ${JSON.stringify(last)})`,
+    async () => {
+      const found = await hovers(uri, pos);
+      last = found.map((m) => m.value);
+      return found.find((m) => readableText(m).includes(text));
+    },
+  );
+}
+
+/**
+ * The hard rules for compiler text in a hover (features/intelligence/types.ts): never trusted, no
+ * HTML, no theme icons.
+ */
+export function assertUntrustedMarkdown(markdown: vscode.MarkdownString): void {
+  assert.ok(!markdown.isTrusted, `a hover is trusted: ${markdown.value}`);
+  assert.ok(!markdown.supportHtml, `a hover renders HTML: ${markdown.value}`);
+  assert.ok(!markdown.supportThemeIcons, `a hover renders theme icons: ${markdown.value}`);
+}
+
+/** One semantic token, decoded with the provider's legend. */
+export interface DecodedToken {
+  readonly line: number;
+  readonly character: number;
+  readonly length: number;
+  readonly type: string;
+  readonly modifiers: number;
+}
+
+/** The semantic tokens of `uri` as VS Code gets them from the providers, decoded (VS Code's relative encoding). */
+export async function semanticTokens(uri: vscode.Uri): Promise<DecodedToken[]> {
+  const legend = await vscode.commands.executeCommand<vscode.SemanticTokensLegend | undefined>('vscode.provideDocumentSemanticTokensLegend', uri);
+  const tokens = await vscode.commands.executeCommand<vscode.SemanticTokens | undefined>('vscode.provideDocumentSemanticTokens', uri);
+  if (legend === undefined || tokens === undefined) {
+    return [];
+  }
+  const out: DecodedToken[] = [];
+  let line = 0;
+  let character = 0;
+  for (let i = 0; i + 4 < tokens.data.length; i += 5) {
+    const [deltaLine, deltaStart, length, type, modifiers] = tokens.data.subarray(i, i + 5);
+    line += deltaLine;
+    character = deltaLine === 0 ? character + deltaStart : deltaStart;
+    out.push({ line, character, length, type: legend.tokenTypes[type] ?? `#${type}`, modifiers });
+  }
+  return out;
+}
+
+/** Waits until the semantic tokens of `uri` satisfy `accept` (they come with the document's load). */
+export function semanticTokensWhen(uri: vscode.Uri, what: string, accept: (tokens: DecodedToken[]) => boolean): Promise<DecodedToken[]> {
+  let last: DecodedToken[] = [];
+  return waitForAsync(
+    () => `the semantic tokens of ${path.basename(uri.fsPath)}: ${what} (${last.length} tokens: ${JSON.stringify(last.slice(0, 12))}…)`,
+    async () => {
+      last = await semanticTokens(uri);
+      return accept(last) ? last : undefined;
+    },
+  );
+}
+
+/** The token that starts at `line`:`character`, if any. */
+export const tokenAt = (tokens: readonly DecodedToken[], line: number, character: number): DecodedToken | undefined =>
+  tokens.find((t) => t.line === line && t.character === character);
+
+/** An inlay hint's label as one string. */
+export const hintLabel = (hint: vscode.InlayHint): string =>
+  typeof hint.label === 'string' ? hint.label : hint.label.map((part) => part.value).join('');
+
+/** The inlay hints of the whole of `doc`, as `vscode.executeInlayHintProvider` returns them. */
+export async function inlayHints(doc: vscode.TextDocument): Promise<vscode.InlayHint[]> {
+  const whole = new vscode.Range(0, 0, doc.lineCount, 0);
+  return vscode.commands.executeCommand<vscode.InlayHint[]>('vscode.executeInlayHintProvider', doc.uri, whole);
+}
+
+/** The labels of the completion items at `pos`. */
+export async function completionLabels(uri: vscode.Uri, pos: vscode.Position): Promise<string[]> {
+  const list = await vscode.commands.executeCommand<vscode.CompletionList>('vscode.executeCompletionItemProvider', uri, pos);
+  return list.items.map((item) => (typeof item.label === 'string' ? item.label : item.label.label));
+}
+
+// -------------------------------------------------------------------------------------------
+// M3: evaluation
+// -------------------------------------------------------------------------------------------
+
+/**
+ * Selects `range` in `editor` and runs **Evaluate Selection**, then returns the outcome it
+ * recorded (`TestApi.evaluations`: what the user was shown, which VS Code's API does not expose —
+ * neither the decoration after the line nor the notification).
+ */
+export async function evaluateSelection(api: TestApi, editor: vscode.TextEditor, range: vscode.Range): Promise<EvaluationOutcome> {
+  const before = api.evaluations.length;
+  editor.selection = new vscode.Selection(range.start, range.end);
+  await vscode.commands.executeCommand('idris2.evaluateSelection');
+  return waitFor(`the evaluation of ${JSON.stringify(editor.document.getText(range))} to be shown`, () => api.evaluations[before]);
 }

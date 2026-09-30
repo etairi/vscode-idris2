@@ -57,14 +57,18 @@ npm run docs:graph:check  # docs/ROADMAP.md §4 matches docs/milestones.yaml
 npm run record:transcripts # re-record the IDE-mode transcripts with the idris2 on PATH
 ```
 
-`npm test` runs six suites, each in its own VS Code instance: `integration`, `simple-ipkg` and
+`npm test` runs eight suites, each in its own VS Code instance: `integration`, `simple-ipkg` and
 `toolchain-path` (toolchain and project discovery), and `diagnostics` (the `broken` workspace
 over the socket transport, chosen in the suite's user settings), `loose-stdio` (loose files over
 standard input and output, the default, in a workspace whose own settings ask for the socket in
-vain) and `consent` (a package above the opened folder, which needs the user's consent). The e2e
-suite runs the protocol facts of `docs/ROADMAP.md` §0 against the real compiler, the extension's
-own sessions (over stdio, and over the socket when opted into), and a comparison of the fake
-compiler with the real one.
+vain), `consent` (a package above the opened folder, which needs the user's consent),
+`intelligence` (hover, definition, documentation, semantic tokens on `simple-ipkg`) and
+`intelligence-loose` (inlay hints, completion, evaluation and the keyboard shortcuts on
+`broken`). The fake compiler tells a checking process from an evaluating one by its build
+directory and answers each only from the recordings made in that role; `FAKE_IDRIS2_REQUEST_LOG`
+logs the requests each process read. The e2e suite runs the protocol facts of `docs/ROADMAP.md`
+§0 against the real compiler, the extension's own sessions (over stdio, and over the socket when
+opted into), a comparison of the fake compiler with the real one, and the M3 features.
 
 Please run no more than one `idris2` process at a time; type-checking library code in
 parallel uses a lot of memory. `check:fixtures`, `record:transcripts` and the lexer comparison
@@ -101,7 +105,9 @@ by `npm run record:transcripts` (format and scenarios in
 truth for the fake compiler and the protocol tests. Each transcript carries the SHA-256 of the
 fixture files it read, and the fake answers only while they match: after changing such a
 fixture, record its scenarios again (`npm run record:transcripts <scenario> …`) and review the
-diff.
+diff. A scenario recorded in the evaluation role (`eval-*`) is started with the `eval` session's
+command line (`--build-dir …/.vscode-idris2-eval`), and the fake replays it only to such a
+process.
 
 ## Test corpora and licences
 
@@ -131,8 +137,8 @@ before M3, their method and their limits are in
 ## Trying a packaged extension
 
 To try a `.vsix` without touching your own VS Code profile, follow
-[docs/checklists/M2.md](docs/checklists/M2.md) (or `M1.md`): it installs the package into
-separate `--user-data-dir`, `--extensions-dir` and `--shared-data-dir` directories.
+[docs/checklists/M3.md](docs/checklists/M3.md) (or `M1.md`, `M2.md`): it installs the package
+into separate `--user-data-dir`, `--extensions-dir` and `--shared-data-dir` directories.
 
 ## License
 

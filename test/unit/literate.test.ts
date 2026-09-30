@@ -6,10 +6,13 @@ import {
   MODULE_SOURCE_EXTENSIONS,
   birdPrefixWidth,
   compilerLiterateStyleOf,
+  hasLineMarkers,
   idrisDocumentSelector,
+  isDoubledLine,
   isIdrisDocument,
   isIdrisSourceFileName,
   isIdrisSpace,
+  linePrefixWidth,
   literateStyleOf,
   literateStyleOfFileName,
   splitFileExtensions,
@@ -187,6 +190,40 @@ suite('project/literate', () => {
       assert.strictEqual(birdPrefixWidth('Some prose.'), undefined);
       assert.strictEqual(birdPrefixWidth(''), undefined);
       assert.strictEqual(birdPrefixWidth(' > x'), undefined);
+    });
+  });
+
+  suite('linePrefixWidth and isDoubledLine (the line markers of `styleBird` and `styleOrg`)', () => {
+    test('Org: `#+IDRIS:` and one isSpace character is stripped (width 9); alone, 8; glued to code, not a code line', () => {
+      assert.strictEqual(linePrefixWidth('org', '#+IDRIS: f : Nat'), 9);
+      assert.strictEqual(linePrefixWidth('org', '#+IDRIS:\tf'), 9);
+      assert.strictEqual(linePrefixWidth('org', '#+IDRIS:'), 8);
+      assert.strictEqual(linePrefixWidth('org', '#+IDRIS:f'), undefined);
+      assert.strictEqual(linePrefixWidth('org', '#+idris: f'), undefined, 'exact: case-sensitive');
+      assert.strictEqual(linePrefixWidth('org', '> f'), undefined, 'bird markers are not Org\'s');
+      assert.strictEqual(linePrefixWidth('bird', '#+IDRIS: f'), undefined);
+    });
+
+    test('the fenced styles and plain source have no line markers', () => {
+      for (const style of ['cmark', 'tex', 'typst', undefined] as const) {
+        assert.strictEqual(hasLineMarkers(style), false, String(style));
+        assert.strictEqual(linePrefixWidth(style, '> x'), undefined, String(style));
+        assert.strictEqual(isDoubledLine(style, '> '), false, String(style));
+      }
+      assert.strictEqual(hasLineMarkers('bird'), true);
+      assert.strictEqual(hasLineMarkers('org'), true);
+    });
+
+    test('doubled: a marker and one or more isSpace characters, nothing else; not a marker alone, nor with code', () => {
+      for (const line of ['> ', '>   ', '<\t', '>\u00a0', '> \f\v ']) {
+        assert.strictEqual(isDoubledLine('bird', line), true, JSON.stringify(line));
+      }
+      for (const line of ['>', '<', '> x', '>x', ' > ', '', 'prose ']) {
+        assert.strictEqual(isDoubledLine('bird', line), false, JSON.stringify(line));
+      }
+      assert.strictEqual(isDoubledLine('org', '#+IDRIS: '), true);
+      assert.strictEqual(isDoubledLine('org', '#+IDRIS:'), false);
+      assert.strictEqual(isDoubledLine('org', '> '), false);
     });
   });
 

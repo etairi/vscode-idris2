@@ -2,7 +2,8 @@
  * `NullBackend` (`backend/null.ts`, docs/ARCHITECTURE.md §3.1, decision D7): the backend of a
  * document for which no Idris 2 process is available ("syntax only"). Every capability is
  * false and every call rejects with `Unsupported`, so features can be registered
- * unconditionally behind `caps` checks and still explain themselves when invoked.
+ * unconditionally behind `caps` checks and still explain themselves when invoked; `tokens`, the
+ * one synchronous accessor (M3), has none to give.
  */
 import type * as vscode from 'vscode';
 import { unsupported } from '../core/errors';
@@ -11,11 +12,13 @@ import type {
   Capabilities,
   EditRequest,
   EditResult,
+  Evaluation,
   Hole,
   IdrisBackend,
   LoadResult,
   NamespaceEntry,
   RichText,
+  TokenIndex,
   TypeInfo,
 } from './types';
 
@@ -73,12 +76,20 @@ export class NullBackend implements IdrisBackend {
     return noBackend(`The ${req.kind} edit`);
   }
 
-  evaluate(): Promise<RichText> {
+  completions(): Promise<readonly string[]> {
+    return noBackend('Completion');
+  }
+
+  evaluate(): Promise<Evaluation> {
     return noBackend('Evaluation');
   }
 
   browseNamespace(): Promise<NamespaceEntry[]> {
     return noBackend('Browsing a namespace');
+  }
+
+  tokens(): TokenIndex | undefined {
+    return undefined;
   }
 
   /** Holds no resources. */

@@ -49,7 +49,7 @@ document (the reviewers' runs were reproduced independently before being recorde
 | F8 | **Shadow typecheck of an unsaved copy.** Copy `Foo/B.idr` (with a new `?arg`) to `<shadow>/Foo/B.idr` where no `.ipkg` exists above; spawn with cwd `<shadow>`, env `IDRIS2_PATH=<proj>/build/ttc` (the directory *containing* the TTC-version directory), `--build-dir <shadow>/build`; `:load-file "Foo/B.idr"` → `Building Foo.B`, `(:ok ())`, `:metavariables` lists `Foo.B.arg`, and every file under `<proj>/build/ttc` keeps its mtime. Without `IDRIS2_PATH`, or with it pointing at the version subdirectory, → `Module Foo.A not found`. | [live] |
 | F9 | `idris2 --check` exit codes: 1 for a type error and for a coverage error, **0 for `Module Nope.Thing not found`**; `--typecheck`/`--build` of a clean ipkg exit 0. Qualifies landscape §4.2. | [live] |
 | F10 | `.ipkg` parse errors: `idris2 --dump-ipkg-json bad.ipkg` prints `Error: Unrecognised property "pkgs".` then `"bad.ipkg":3:1--3:5` and a snippet, exit 1 (same shape for a trailing comma: `Expected end of file.`). In IDE mode a malformed `.ipkg` in the cwd chain turns `:load-file` into `(:return (:error "<the same text>"))` with **no** `:warning` frame. With several `.ipkg` files in one directory the compiler picks one of them. **Addendum (M1, 2026-09-27): which one.** `findIpkgFile` lists each directory with `listDir` and takes `find (\f => extension f == Just "ipkg")` of the names, unsorted, stopping (with nothing) at a directory it cannot list [src v0.8.0 `Core/Directory.idr` 333–349]; so the first `.ipkg` in the order the file system lists the directory wins. On APFS, in a directory whose `ls -f` order was `c.ipkg b.ipkg d.ipkg X.idr a.ipkg`, `idris2 --find-ipkg --check X.idr` read `c.ipkg` [live, M1 project work]; other file systems and Windows not tried. Node's `fs.readdir` sorts names, `fs.opendir` keeps that order (`project/ipkg.ts`). | [live] + [src] |
-| F11 | **Literate positions.** `.lidr` (bird tracks): all reply columns are *unlit* columns (`> module Lit` reports `module` at (0 0)–(0 6); an error under `> g = "x"` reports (5 4)–(5 7) for file columns 6–9), and requests expect unlit columns too (`(:type-of "n" 6 2)` succeeds for `n` at file column 4). Lines are file lines even with prose lines in between. Edit replies come back **with** `> ` (`> f 0 = ?f_rhs_0`, `> h k = ?h_rhs`, make-lemma `definition-type` `> f_rhs : Nat -> Nat`; `replace-metavariable` unprefixed). `.md` (fenced): lines and columns exact, replies plain. Added in M0 (2026-09-27): `:case-split` in a `.lidr` takes 1-based *unlit* columns (`> f n = ?f_rhs` on line 6: C = 1–4 succeed, 5–6 fail), and the CLI text of `idris2 --check` is unlit too (an error under `> g = "x"`, file columns 6–9, is reported `Err:6:5--6:8`). Added in M0 review: **the compiler picks the literate style by file name, and a CRLF break in a `.lidr` joins two lines.** `isLitFile` is a case-sensitive suffix test (`src/Parser/Unlit.idr`): a bird-track `Up.LIDR` fails at its first `>` (1:1). `reduce` in `src/Libraries/Text/Literate.idr` (same on master) keeps a newline token only when it is exactly `"\n"`: `> g : Nat\r\n> g = 1` fails with `Undefined name Natg`, an all-CRLF `.lidr` with `Couldn't parse declaration` at 1:14; the same text with LF, and a CRLF `.idr`, pass. Hence `"files.eol": "\n"` in the `[lidr]` defaults (`files.eol` is language-overridable: `scope: 6` in VS Code 1.139.1's workbench bundle, the `language-overridable` value). **Addendum (M1 review, 2026-09-27): case folding.** On the development machine's case-insensitive APFS volume, `idris2 --check Main.idr` with `import Up` and only a file `Up.IDR` beside it printed `1/2: Building Up (Up.idr)` and exited 0: the compiler opens `<dir>/Up.idr`, and the file system resolves that name to `Up.IDR`. `project/index.ts` compares names case-sensitively, as the compiler's name tests do, so `pathToModule` gives `Up.IDR` no module name (`docs/as-built/M1.md`, *Modules ↔ paths*). | [live] + [src] |
+| F11 | **Literate positions.** `.lidr` (bird tracks): all reply columns are *unlit* columns (`> module Lit` reports `module` at (0 0)–(0 6); an error under `> g = "x"` reports (5 4)–(5 7) for file columns 6–9), and requests expect unlit columns too (`(:type-of "n" 6 2)` succeeds for `n` at file column 4). Lines are file lines even with prose lines in between (but see the addendum of the second review of M3 below: not after a marker followed only by white space). Edit replies come back **with** `> ` (`> f 0 = ?f_rhs_0`, `> h k = ?h_rhs`, make-lemma `definition-type` `> f_rhs : Nat -> Nat`; `replace-metavariable` unprefixed). `.md` (fenced): lines and columns exact in a file with LF line breaks (not with CRLF: the addendum of the third review of M3 below), replies plain. Added in M0 (2026-09-27): `:case-split` in a `.lidr` takes 1-based *unlit* columns (`> f n = ?f_rhs` on line 6: C = 1–4 succeed, 5–6 fail), and the CLI text of `idris2 --check` is unlit too (an error under `> g = "x"`, file columns 6–9, is reported `Err:6:5--6:8`). Added in M0 review: **the compiler picks the literate style by file name, and a CRLF break in a `.lidr` joins two lines.** `isLitFile` is a case-sensitive suffix test (`src/Parser/Unlit.idr`): a bird-track `Up.LIDR` fails at its first `>` (1:1). `reduce` in `src/Libraries/Text/Literate.idr` (same on master) keeps a newline token only when it is exactly `"\n"`: `> g : Nat\r\n> g = 1` fails with `Undefined name Natg`, an all-CRLF `.lidr` with `Couldn't parse declaration` at 1:14; the same text with LF, and a CRLF `.idr`, pass. Hence `"files.eol": "\n"` in the `[lidr]` defaults (`files.eol` is language-overridable: `scope: 6` in VS Code 1.139.1's workbench bundle, the `language-overridable` value). **Addendum (M1 review, 2026-09-27): case folding.** On the development machine's case-insensitive APFS volume, `idris2 --check Main.idr` with `import Up` and only a file `Up.IDR` beside it printed `1/2: Building Up (Up.idr)` and exited 0: the compiler opens `<dir>/Up.idr`, and the file system resolves that name to `Up.IDR`. `project/index.ts` compares names case-sensitively, as the compiler's name tests do, so `pathToModule` gives `Up.IDR` no module name (`docs/as-built/M1.md`, *Modules ↔ paths*). **Addendum (second review of M3, 2026-09-29): lines are not always file lines.** A marker followed only by white space (`> `, `>   `, `<\t`; Org's `#+IDRIS: `) is **two** lines of the unlit text: `reduce` (`src/Libraries/Text/Literate.idr`, the same on master) emits `"\n"` for a code line whose `trim` is the marker, and the line break, which `space <+> untilEOL` did not consume, is a token of its own that emits a second one; a marker alone (`>`) consumes its line break and is one line. So the compiler's line of a file line is the file line plus the number of such lines above it, in requests, replies and CLI text: after `> ` on file line 6 and `>   ` on file line 12 (0-based), `(:name-at "g")` answered line 8 for file line 7 and `(:name-at "k")` line 15 for file line 13; `idris2 --check` reported an error on file line 7 (1-based) below a `> ` line as `E:8:5--8:8` [live, idris2 0.8.0, one `--ide-mode` session and one `--check`; transcript `lit-lookups`, re-recorded]. M0's `.lidr` Enter rule makes such lines (a new line after a code line starts with `> `). `core/positions.ts` maps them (`compilerLine`, `fileLine`). Org's `#+IDRIS:` lines are line markers with offset 9 [live, the same review]. **Addendum (third review of M3, 2026-09-29): CRLF in every literate style.** `reduce` keeps a line break only when it is exactly `"\n"`, so every CRLF break outside code — of a prose line, a blank line, a closing fence — is lost, not only in `.lidr`: a CRLF `X.md` with four lines of prose and blank lines before its block compiled, and an error on file line 9 was reported as `X:5:5--5:8`, the same file with LF as `X:9:5--9:8` [live, idris2 0.8.0, two `timeout 60 idris2 --check` runs]. So a CRLF fenced file compiles with every compiler line after prose smaller than its file line; `core/positions.ts` does not map that (the fenced styles are M12's, E19), and README *Known limitations* asks for LF. | [live] + [src] |
 | F12 | `--build-dir build/.vscode-idris2` with an auto-discovered ipkg writes TTCs under that directory — **unless the ipkg has a `builddir` field, which overrides the flag** (TTC went to `out/`). **Addendum (M2 second review, 2026-09-27): `opts`.** A `--build-dir` in the ipkg's `opts` overrides both: at every load `findIpkg` applies `builddir` and then `processOptions (options pkg)` (`getOpts (words opts)`, `src/Idris/Package.idr` 460–467, 1093–1110 on v0.8.0 [src]). With `opts = "--build-dir build"` and the command line's `--build-dir <root>/build/.vscode-idris2`, the TTCs went to `build/ttc/…`; with `builddir = "bd"` and `opts = "--build-dir od"`, to `od/ttc/…` [live, one `timeout 60 idris2 --ide-mode` each; e2e `F12 addendum`]. | [live] |
 | F13 | `:load-file` calls `findIpkg`, which walks **up from the process cwd**, `changeDir`s to the ipkg directory and applies `sourcedir`/`depends`/`builddir`/`opts`. From the ipkg directory both `src/Foo/B.idr` and its absolute path load; from a foreign cwd both fail (`Module Foo.A not found`), also with `--find-ipkg`; from `src/Foo`, `B.idr` loads without `--find-ipkg` but fails with it (`Source file "B.idr" is not in the source directory`). **Addendum (M2, 2026-09-27):** from an empty sibling directory with no `.ipkg` above it, the absolute path of `src/Foo/B.idr` is refused with `(:error "Source file \"…/B.idr\" is not in the source directory \"…/foreign\"")`, not `Module Foo.A not found` [live, `test/e2e/protocolFacts.test.ts`]; which foreign directory gave the text above is not recorded. From the ipkg directory `src/Foo/B.idr` and from `src/Foo` `B.idr` (without `--find-ipkg`) loaded, as stated [live, same test]. A session started in a directory spelled through a symbolic link refuses the file's absolute path through the link, since the compiler compares it with `getcwd()` [live, transcript `load-symlink`]. | [live] + [src `Idris/Package.idr` 1093–1110, `IDEMode/REPL.idr` 143–147] |
 | F14 | `((:enable-syntax :False) 1)` → `"Syntax highlight option changed to False"`; the following load emits **zero** `:highlight-source` frames (31 without it for an 8-line file). | [live] |
@@ -608,10 +608,36 @@ M0 → M1 → M2 → M3 → M14).
   normal form of an IO action in an `:interpret` reply [open: not run; the first M3 e2e run
   records it]. The `eval` session's transport, left open here by §9 Q20, is settled (§9, decided
   2026-09-28 before M3: Evaluate sends no `:exec`, so the `check` session's reason for stdio holds
-  for it too).
+  for it too). Both answered in M3 (2026-09-29): E14 — code points (§9, E14); the IO action — `the (IO ())
+  (putStrLn "hi")` is `MkIO (prim__putStr "hi\n")`, nothing printed, and a bare `putStrLn "hi"` is
+  the compiler's `HasIO` error (§9, the pre-M3 block) [live, transcripts `eval-values`,
+  `eval-socket`]. Raised by M3: Q23 (elaborator scripts in Evaluate).
 - **Upstream.** U2.2 (positional `name-at`), U2.1 (`who-calls`), U2.11 (populated
   `:type`/`:doc-overview`/`:namespace` in `:highlight-source` — zero-round-trip hover and inlay
   hints).
+- **Status: implemented and integrated** (2026-09-29); not committed yet, so no commit or CI run
+  to cite. Every gate green on macOS (types, lint, unit, grammar, graph, fixtures, the eight
+  integration suites, e2e, `vsce package`, the packaged-extension check), again after the review
+  of M3 and its fixes (re-integration, the same day). A second review the same day changed code
+  and documents again (`docs/as-built/M3.md`, *Second review of M3*), and every gate was run again
+  after it, all green (re-integration after the second review, the same day). A third review the
+  same day changed code and documents again (`docs/as-built/M3.md`, *Third review of M3*; among
+  others inlay hints are shown from the last check while a file has unsaved changes, where this
+  text says "skipped"), and every gate was run again after it, all green (re-integration after
+  the third review, the same day; it fixed two tests that expected the completion warm-up right
+  after a load, and a second load of a file opened while a query asked about it). A fourth review
+  the same day changed code and documents again (`docs/as-built/M3.md`, *Fourth review of M3*:
+  among others a line diff for unsaved text, definitions moved to the target's open document, and
+  Q23 restated on a corrected premise), and every gate was run again after it, all green on the
+  first run (re-integration after the fourth review, the same day; no code change).
+  The acceptance was tested with three corrections of
+  its text: the fixture's name is `greeting` (hover `Foo.B.greeting : String`), the IO action
+  evaluated is `the (IO ()) (putStrLn "hi")`, since `putStrLn "hi"` alone does not type-check;
+  and the replay's `:namespace` fields are empty only on bound and declaring occurrences (F33).
+  As built — the deviations from the text above (document symbols from the syntax model, inlay
+  hints at the first occurrence of each variable per declaration, highlights of globals over the
+  whole file, the `eval` session's own build directory and a load before every evaluation, …),
+  E14, the measurements and the gate runs: `docs/as-built/M3.md`.
 
 ### M4 — Interactive editing and holes: commands, code actions, hole tree, keybindings (L)
 
@@ -1341,7 +1367,13 @@ retiring every backend risk before UI work is preferred.
     read as a command, and nothing that sends to the `eval` session — M8's Query box and
     `-- >>>` lenses share it — ever changes its evaluation mode (added 2026-09-28 after the docs
     verification; how M8 keeps to it is an M8 open question). What such a reply
-    looks like for an IO action was not run [open: M3's e2e records it].
+    looks like for an IO action was not run [open: M3's e2e records it]. **Recorded in M3**
+    [live, 2026-09-29, transcripts `eval-values` (stdio) and `eval-socket`, and the e2e suite]:
+    `the (IO ()) (putStrLn "hi")` answers `MkIO (prim__putStr "hi\n")` and nothing is printed —
+    no unframed output over stdio, nothing on the socket process's stdout —; a bare `putStrLn
+    "hi"` answers `Can't find an implementation for HasIO ?io.` (nothing fixes its monad), which
+    Evaluate shows as the answer. Which spellings the parser reads as a command was recorded too
+    (transcript `eval-command-forms`; `docs/as-built/M3.md`, *Evaluation*).
 - **Q5, keybindings as planned.** The setting `idris2.keybindings.scheme` offers `chords`
   (`ctrl+c ctrl+<x>`, the default on macOS), `prefix` (`ctrl+alt+i <x>`, the default elsewhere)
   and `none`, as in `ARCHITECTURE.md` §10 and §11. Each milestone contributes the bindings of the
@@ -1349,7 +1381,9 @@ retiring every backend risk before UI work is preferred.
   Selection), and it introduces the setting unless M4 shipped first (`ARCHITECTURE.md` §11). The
   rest of the reservation table — M4's letters, M7's `,` and `ctrl+shift+enter` — stays as
   planned; E23 (the collision check against VS Code's default keymap) still comes before the
-  first binding ships.
+  first binding ships. (M3, 2026-09-29: the integration suite lists the collisions from VS Code's
+  resolved keymap — none on macOS for `ctrl+c` or `ctrl+alt+i` [live]; the Linux list is printed
+  there, not recorded; `docs/as-built/M3.md`, *Keybindings*.)
 
 **Decided by the user on 2026-09-28 (platforms)**
 
@@ -1489,6 +1523,38 @@ retiring every backend risk before UI work is preferred.
 - **Q22** (raised by the M2 second review, 2026-09-27; **confirmed by the user on 2026-09-28**:
   the backoff and give-up reading as built stays — see the block at the top of this section).
   The question as it was put: `docs/as-built/M2.md`, *ROADMAP §9 Q20, Q21, Q22*.
+- **Q23** (raised by M3, 2026-09-29; restated by the fourth review of M3, 2026-09-29, whose
+  experiments refuted the first statement's premise) Should Evaluate keep elaborator scripts from
+  running? An evaluated expression is elaborated, and on 0.8.0 that runs elaborator scripts in two
+  ways. (1) The script of any `%macro` function the expression applies, from the project or an
+  installed package, with or without `%language ElabReflection` anywhere: the elaborator rewrites
+  a macro application to `IRunElab fc False …` (`src/TTImp/Elab/Ambiguity.idr` 150 [src]), and
+  `checkRunElab` requires the extension only when that flag is `True` (`src/TTImp/Elab/RunElab.idr`
+  374–377 [src]). [live, idris2 0.8.0, the review's acceptance reviewer and its fixer: a module
+  `M` with `export %macro touch : Elab Nat` that calls `writeFile ProjectDir "written-by-macro.txt"
+  "x"`, and `Main` importing it, neither with `ElabReflection`; after `(:load-file ".../Main.idr")`
+  the file did not exist, after `(:interpret "touch")` (answered `"0"`) it did, both in the process
+  that had just built `M` and in a new one reading `M`'s TTC; the security reviewer likewise with
+  a macro of a module that turns the extension on, imported by a file that does not. One `timeout`
+  process at a time.] `replCommandRefusal("touch")` is `undefined`: a macro application reads like
+  any name. (2) `%runElab` in the expression itself, which needs `ElabReflection` on in the
+  compiler's context: it ran in a file without the extension when an imported module that turns it
+  on had been built by the same process (the `eval` session's first evaluation builds into a fresh
+  `build/.vscode-idris2-eval`), and was refused ("`%language ElabReflection not enabled`") in a
+  new process reading that module's TTC [live, the same review: the security reviewer and the
+  fixer, one run of each kind each]. Such a script can
+  read and write files under the project, source and build directories (`ReadFile`/`WriteFile`
+  with a `LookupDir`: `ProjectDir`, `SourceDir`, `CurrentModuleDir`, `SubmodulesDir`, `BuildDir`;
+  `validatePath` refuses an absolute path and one whose `..` leaves the directory, lexically — a
+  symbolic link inside is followed [src, `RunElab.idr` 115–156, 334–351; the link not tried]);
+  the other `Elab` primitives the compiler implements act on its own state (declarations, terms,
+  names, logging) [src, the `elabCon` cases of `RunElab.idr`]. Checking a file runs the scripts
+  that file uses; evaluating runs those the selected expression uses, which may be scripts the
+  checked file never runs. A rule in
+  `backend/ide/replCommand.ts` could refuse a literal `%runElab`, not a macro application: keeping
+  scripts from running would take the compiler's cooperation (no option of 0.8.0 turns off macro
+  expansion [open: not searched beyond `RunElab.idr` and `Ambiguity.idr`]) or refusing Evaluate
+  wherever a macro is in scope. The user decides; nothing was changed.
 
 **Verification experiments** (each ≤ 1 h, at the start of the named milestone)
 
@@ -1555,14 +1621,25 @@ retiring every backend risk before UI work is preferred.
   names that NTFS keeps apart in case-sensitive folders), and what `fs.stat` gives as a directory's
   identity (device, inode) there.
 - **E14** (M3) Column base of `:type-of NAME LINE COL` on lines containing multi-byte characters
-  (the byte-vs-character question applies to columns too).
+  (the byte-vs-character question applies to columns too). **Settled 2026-09-29 (M3): code points**, in
+  requests and replies [live, transcript `unicode-columns`: after two U+1D55F the local `s` answers
+  `(:type-of "s" 15 C)` at C = 18–19, where UTF-16 units give 20 and UTF-8 bytes 24; a combining
+  mark counts as a code point of its own; `:highlight-source` and `:name-at` count the same way];
+  `:warning`, `:case-split` and the CLI text by the same lexer counts [src, not recorded on such a
+  line]. `core/positions.ts` converts with each line's text (ARCHITECTURE §7).
 - **E15** (M4) Exact replacement-range rules for `make-with`, `make-case`, `make-lemma` insertion
   point, and multi-line signatures.
 - **E16** (M4/M7) `:metavariables` across a dependency closure and `:name-at` collisions for
   same-named holes in two modules.
 - **E17** (M9) `pack` CLI sub-commands and output format for tasks.
 - **E19** (M12) Positions inside `\begin{code}` (LaTeX), `#+BEGIN_SRC` (Org) and Typst fences in
-  `:warning`/`:highlight-source` replies; edit replies for those styles.
+  `:warning`/`:highlight-source` replies; edit replies for those styles. Org also has a line
+  marker, `#+IDRIS:` (`styleOrg`, `src/Parser/Unlit.idr`): the compiler strips it and one `isSpace`
+  character (`#+IDRIS: f : Nat` reports `f` at unlit column 0, file column 9), and `#+IDRIS: `
+  alone is two lines of the unlit text (F11 addendum) [live, idris2 0.8.0, second review of M3];
+  `core/positions.ts` applies both since that review (`project/literate.ts` `linePrefixWidth`,
+  `isDoubledLine`). Open: a `#+IDRIS:` line inside a `#+BEGIN_SRC idris` block is the block's
+  (its lexer is tried first), which the one-line model does not see.
 - **E21** (M2) Do the LSP server and an IDE-mode session sharing a build directory (ipkg with
   `builddir`, F12) corrupt each other's TTCs? **Status 2026-09-27: not settled.** A session
   beside `idris2 --build` on a one-module fixture never compiled at the same instant in five
@@ -1575,7 +1652,19 @@ retiring every backend risk before UI work is preferred.
 - **E23** (M4) Export VS Code 1.139's default keymap ("Open Default Keyboard Shortcuts (JSON)")
   into `test/fixtures/default-keybindings.json`, confirm `ctrl+shift+enter` is
   `editor.action.insertLineBefore` there (recalled, not machine-checked yet), and list every
-  chord/prefix collision of both schemes before the first binding ships.
+  chord/prefix collision of both schemes before the first binding ships. **Status (M3,
+  2026-09-29):** the first bindings shipped with M3, and the check was made differently: the
+  `intelligence-loose` integration suite reads VS Code's resolved Default Keybindings document
+  (no checked-in snapshot) and lists the bindings whose first key is a scheme's first key — on
+  macOS none in VS Code 1.139.1 [live], so "no collision" holds of VS Code's built-in bindings
+  only; on Linux `auto` = `prefix` shadows **Open Chat** (`Ctrl+Alt+I`) in Idris editors [src,
+  the workbench bundle], and the rest of the Linux list is **open** (the ubuntu CI job prints it;
+  to be recorded before a release). Keymap extensions are not covered: VSCodeVim's `ctrl+c`
+  (when `vim.overrideCtrlC`, true with its defaults) outranks `chords`, since VS Code weighs a
+  later extension contribution higher and takes the last binding whose `when` holds [src: VS
+  Code 1.139.1 `_asCommandRule`, `_findCommand`; doc: VSCodeVim 1.32.4's manifest, fetched
+  2026-09-29; not run] (`docs/as-built/M3.md`, *Keybindings*). The `ctrl+shift+enter` part stays
+  M4's.
 - **E24** (M4/M5) LSP editing semantics against a real server: does VS Code's
   `editor.action.codeAction` with `kind: refactor.rewrite.CaseSplit` drop the server's
   generic `refactor.rewrite` action (expected from VS Code's kind-prefix filter; not

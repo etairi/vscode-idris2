@@ -25,6 +25,7 @@ import type { Event } from '../../core/event';
 import type { Log } from '../../core/log';
 import { plainText } from '../../core/notificationText';
 import type { WorkspaceTrust } from '../../core/trust';
+import { editorLabel } from '../../core/untrustedText';
 import { isIdrisDocument } from '../../project/literate';
 import type { Classification, ProjectIndex } from '../../project/types';
 import type { ToolchainService } from '../../toolchain/types';
@@ -187,15 +188,18 @@ export function registerBackendCommands(api: CommandsApi, deps: BackendCommandsD
         deps.log.info(`Not shown as a notice again (the compiler for ${where} has answered no request since the last one): ${detail}`);
         return;
       }
+      // One line with its control and format characters written out (`editorLabel`): the detail
+      // may quote what the process sent (a protocol error's excerpt, F5), and so the user's source
+      // (fourth review of M3: a bidirectional control reached the notice raw).
       const notice: BackendNotice = gaveUp
         ? {
             kind: 'gaveUp',
-            message: `Idris 2: the compiler for ${where} was given up: ${detail}. Restart it to try again.`,
+            message: editorLabel(`Idris 2: the compiler for ${where} was given up: ${detail}. Restart it to try again.`),
             actions: ['Show Output', 'Restart'],
           }
         : {
             kind: 'crashed',
-            message: `Idris 2: the compiler for ${where} stopped unexpectedly (${detail}); it is being restarted.`,
+            message: editorLabel(`Idris 2: the compiler for ${where} stopped unexpectedly (${detail}); it is being restarted.`),
             actions: ['Show Output', 'Restart'],
           };
       notices.push(notice);
