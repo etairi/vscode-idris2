@@ -629,6 +629,18 @@ suite('features/diagnostics/checks', () => {
       await check;
       assert.strictEqual(t.checks.loadStateOf(t.asDoc(a)), 'ipkgError');
       assert.deepStrictEqual(t.status(a), { kind: 'packageError', ipkg: '/w/b/bad.ipkg', message: 'Unrecognised property "pkgs".', stale: false });
+      // Stale, it says why, as a result does (seventh review of M3: Type at Cursor took the trigger
+      // as not manual and advised a save, which checks nothing under the manual trigger).
+      a.isDirty = true;
+      t.edited.fire({ document: a });
+      t.state.trigger = 'manual';
+      assert.deepStrictEqual(t.status(a), {
+        kind: 'packageError',
+        ipkg: '/w/b/bad.ipkg',
+        message: 'Unrecognised property "pkgs".',
+        stale: true,
+        staleness: { unsaved: true, manual: true },
+      });
     });
 
     test('an older result that arrives after a newer one does not overwrite what the newer one set', async () => {
@@ -2089,10 +2101,17 @@ suite('features/diagnostics/checks', () => {
 
     test('the active document\'s load is urgent while a limit is set: before its root\'s loads that wait; not with 0', async () => {
       const [a, b] = ['/w/a/A.idr', '/w/a/B.idr'].map((f) => new FakeDocument(f));
-      const t = setup({ visible: [a, b], active: a, maxBackgroundChecks: 1 });
+      const t = setup({ visible: [b], active: b, maxBackgroundChecks: 1 });
       await settle();
-      const urgent = () => t.backend.loads.map((l) => l.options?.urgent?.() === true);
-      assert.deepStrictEqual(loaded(t), [a, b]);
+      t.backend.loads[0].resolve(clean(b));
+      await settle();
+      t.activate(a); // opened: visible and active
+      t.show(b, a);
+      await settle();
+      t.saved.fire(b); // a background check of b
+      await settle();
+      const urgent = () => t.backend.loads.slice(1).map((l) => l.options?.urgent?.() === true);
+      assert.deepStrictEqual(loaded(t).slice(1), [a, b]);
       assert.deepStrictEqual(urgent(), [true, false]);
       t.activate(b);
       assert.deepStrictEqual(urgent(), [false, true], 'asked when the backend chooses: b is the active one now');
@@ -2100,6 +2119,218 @@ suite('features/diagnostics/checks', () => {
       assert.deepStrictEqual(urgent(), [false, true], 'still b while no Idris editor is active');
       t.setMaxBackgroundChecks(0);
       assert.deepStrictEqual(urgent(), [false, false], 'without a limit the queue is first-in, first-out');
+    });
+
+    test('several visible documents checked at once while a limit is set: the active one\'s load is not urgent, so that it stays last where the gate knows the folder; at activation and trust grant it does not (fifth and sixth reviews of M3)', async () => {
+      // Both loads wait for a process that is starting (activation, a restart): urgent, the active
+      // document's load was sent first, the other file was the one loaded, and the active one was
+      // loaded again for its first hover.
+      const [a, b] = ['/w/a/A.idr', '/w/a/B.idr'].map((f) => new FakeDocument(f));
+      const t = setup({ visible: [a, b], active: a, maxBackgroundChecks: 1 });
+      await settle();
+      const urgent = () => t.backend.loads.map((l) => `${l.doc.fileName} ${l.options?.urgent?.() === true}`);
+      // Documented exception, not fixed (sixth review of M3; CLAUDE.md, the M2 rules): at activation the gate has
+      // no verdict for the folder yet, so the other document's check asks about it first
+      // (`askFirst`) and hands its load over after the active one's. No load of the batch in A's
+      // root was handed over before A's, so A's is urgent (ninth review of M3).
+      assert.deepStrictEqual(urgent(), ['/w/a/A.idr true', '/w/a/B.idr false'], 'at activation');
+      t.activate(b);
+      assert.deepStrictEqual(urgent(), ['/w/a/A.idr false', '/w/a/B.idr true'], 'a document of the batch that becomes the active one is urgent');
+      t.activate(a);
+      t.backend.loads.forEach((l) => l.resolve(clean(l.doc)));
+      await settle();
+      const rechecked = t.checks.recheckVisible();
+      await settle();
+      assert.deepStrictEqual(urgent().slice(2), ['/w/a/B.idr false', '/w/a/A.idr false'], 'Restart Backend (recheckVisible)');
+      t.backend.loads.slice(2).forEach((l) => l.resolve(clean(l.doc)));
+      await settle();
+      await rechecked;
+      // Trust granted: likewise before the gate knows the folder; once it does, the active one last.
+      const u = setup({ visible: [a, b], active: a, trusted: false, maxBackgroundChecks: 1 });
+      await settle();
+      u.trust.isTrusted = true;
+      u.trustGranted.fire();
+      await settle();
+      assert.deepStrictEqual(loaded(u), [a, b], 'trust granted, no verdict for the folder yet');
+      const k = setup({ visible: [a, b], active: a, trusted: false, maxBackgroundChecks: 1 });
+      k.state.verdicts.set('/w/a', { allowed: true, basis: 'workspaceFolder' });
+      await settle();
+      k.trust.isTrusted = true;
+      k.trustGranted.fire();
+      await settle();
+      assert.deepStrictEqual(loaded(k), [b, a], 'trust granted, the folder known');
+    });
+
+    test('a batch whose other loads in the active document\'s root were not handed over before its own: the active one\'s load is urgent (ninth review of M3)', async () => {
+      // An import fixed checks again the active document alone in its root: every batch made its load
+      // not urgent, so it waited behind the background loads already in its root's session (the
+      // verifier's probe).
+      const [usesBad, bad, c, d] = ['/w/a/UsesBad.idr', '/w/a/Bad.idr', '/w/a/C.idr', '/w/a/D.idr'].map((f) => new FakeDocument(f));
+      const t = setup({ visible: [bad, usesBad], active: usesBad, maxBackgroundChecks: 3 });
+      t.state.verdicts.set('/w/a', { allowed: true, basis: 'workspaceFolder' });
+      await settle();
+      const notChecked = { message: 'Not checked: the compiler reported errors in Bad.idr.', severity: ERROR };
+      const badError = { message: 'While processing right hand side of f.', severity: ERROR };
+      for (const l of t.backend.loads) {
+        l.resolve(
+          l.doc === usesBad
+            ? result([[usesBad.uri, [notChecked]], [bad.uri, [badError]]], { blockedBy: [bad.uri] } as unknown as Partial<LoadResult>)
+            : result([[bad.uri, [badError]]]),
+        );
+        await settle();
+      }
+      // C and D saved: their background loads wait in the session. Bad.idr fixed and saved.
+      t.saved.fire(c);
+      t.saved.fire(d);
+      t.saved.fire(bad);
+      await settle();
+      assert.deepStrictEqual(loaded(t).slice(2), [c, d, bad]);
+      t.backend.loads[4].resolve(clean(bad));
+      await settle();
+      assert.deepStrictEqual(loaded(t).slice(2), [c, d, bad, usesBad], 'UsesBad.idr checked again');
+      assert.strictEqual(t.backend.loads[5].options?.urgent?.(), true, 'before C and D, as after a save of it');
+      t.backend.loads.slice(2).forEach((l) => l.resolve(clean(l.doc)));
+      await settle();
+      // A batch whose other document is of another root (Restart Backend with a limit of 1): the
+      // active one's load is urgent in its own root; with another document of its root handed over
+      // first, it is not.
+      const [a, b, a2] = ['/w/a/A.idr', '/w/b/B.idr', '/w/a/A2.idr'].map((f) => new FakeDocument(f));
+      for (const [others, expected] of [
+        [[b], ['/w/b/B.idr false', '/w/a/A.idr true']],
+        [[a2], ['/w/a/A2.idr false', '/w/a/A.idr false']],
+      ] as const) {
+        const u = setup({ visible: [a, ...others], active: a, maxBackgroundChecks: 1 });
+        ['/w/a', '/w/b'].forEach((dir) => u.state.verdicts.set(dir, { allowed: true, basis: 'workspaceFolder' }));
+        await settle();
+        u.backend.loads.forEach((l) => l.resolve(clean(l.doc)));
+        await settle();
+        const before = u.backend.loads.length;
+        const rechecked = u.checks.recheckVisible();
+        await settle();
+        assert.deepStrictEqual(
+          u.backend.loads.slice(before).map((l) => `${l.doc.fileName} ${l.options?.urgent?.() === true}`),
+          expected,
+          others[0].fileName,
+        );
+        u.backend.loads.slice(before).forEach((l) => l.resolve(clean(l.doc)));
+        await rechecked;
+      }
+      // The other load of its root settled before the active one's was handed over (its file took
+      // longer to classify): urgent again.
+      const k = setup({ visible: [a, a2], active: a, maxBackgroundChecks: 1 });
+      k.state.verdicts.set('/w/a', { allowed: true, basis: 'workspaceFolder' });
+      await settle();
+      k.backend.loads.forEach((l) => l.resolve(clean(l.doc)));
+      await settle();
+      const before = k.backend.loads.length;
+      let classified: () => void = () => undefined;
+      k.state.slowClassify.set('/w/a/A.idr', new Promise((resolve) => (classified = () => resolve({ kind: 'loose', dir: '/w/a' }))));
+      const rechecked = k.checks.recheckVisible();
+      await settle();
+      assert.deepStrictEqual(loaded(k).slice(before), [a2]);
+      k.backend.loads[before].resolve(clean(a2));
+      await settle();
+      classified();
+      await settle();
+      assert.deepStrictEqual(
+        k.backend.loads.slice(before).map((l) => `${l.doc.fileName} ${l.options?.urgent?.() === true}`),
+        ['/w/a/A2.idr false', '/w/a/A.idr true'],
+      );
+      k.backend.loads.slice(before).forEach((l) => l.resolve(clean(l.doc)));
+      await rechecked;
+    });
+
+    test('a batch counts its unsettled loads per root, and whether the active one\'s load is urgent is decided at its handover (tenth review of M3)', async () => {
+      // B, C and the active A in one root; A takes longer to classify, and B's load settles before A's
+      // is handed over while C's has not: A's load is not urgent (the verifier's mutant C5, which made
+      // the count a flag, made it urgent, so it went before C's and C was the file loaded last).
+      const [a, b, c] = ['/w/a/A.idr', '/w/a/B.idr', '/w/a/C.idr'].map((f) => new FakeDocument(f));
+      const t = setup({ visible: [a, b, c], active: a, maxBackgroundChecks: 3 });
+      t.state.verdicts.set('/w/a', { allowed: true, basis: 'workspaceFolder' });
+      await settle();
+      t.backend.loads.forEach((l) => l.resolve(clean(l.doc)));
+      await settle();
+      const before = t.backend.loads.length;
+      let classified: () => void = () => undefined;
+      t.state.slowClassify.set('/w/a/A.idr', new Promise((resolve) => (classified = () => resolve({ kind: 'loose', dir: '/w/a' }))));
+      const rechecked = t.checks.recheckVisible();
+      await settle();
+      assert.deepStrictEqual(loaded(t).slice(before), [b, c]);
+      t.backend.loads[before].resolve(clean(b));
+      await settle();
+      classified();
+      await settle();
+      const urgent = () => t.backend.loads.slice(before).map((l) => `${l.doc.fileName} ${l.options?.urgent?.() === true}`);
+      assert.deepStrictEqual(urgent(), ['/w/a/B.idr false', '/w/a/C.idr false', '/w/a/A.idr false'], 'C\'s load has not settled');
+      // Decided once: after C's load settles A's stays not urgent, so it keeps its place in the queue
+      // behind whatever the root's session held at its handover (`CheckOptions.batch`).
+      t.backend.loads[before + 1].resolve(clean(c));
+      await settle();
+      assert.deepStrictEqual(urgent().slice(2), ['/w/a/A.idr false'], 'after C\'s load settled');
+      t.backend.loads[before + 2].resolve(clean(a));
+      await rechecked;
+    });
+
+    test('a batch with more other visible documents than the limit: those beyond it wait for a slot and are loaded after the active one, also with the folder known (not fixed, documented; seventh review of M3)', async () => {
+      // The active document's check never waits for a slot, so it is not queued last whenever others
+      // wait for one: Restart Backend with a limit of 1 loads B, A, C (the verifier's probe).
+      // Documented beside the gate case (CLAUDE.md, the M2 rules; `checks.ts` *The active document*):
+      // making the active check wait for their slots would delay its diagnostics by their compile times.
+      const [a, b, c] = ['/w/a/A.idr', '/w/a/B.idr', '/w/a/C.idr'].map((f) => new FakeDocument(f));
+      const t = setup({ visible: [a, b, c], active: a, maxBackgroundChecks: 1 });
+      t.state.verdicts.set('/w/a', { allowed: true, basis: 'workspaceFolder' });
+      /** Answers the loads in the order they were handed over, as the root's one session would. */
+      const drain = async (from: number): Promise<void> => {
+        for (let i = from; i < t.backend.loads.length; i++) {
+          t.backend.loads[i].resolve(clean(t.backend.loads[i].doc));
+          await settle();
+        }
+      };
+      await settle();
+      await drain(0);
+      const before = t.backend.loads.length;
+      const rechecked = t.checks.recheckVisible();
+      await settle();
+      await drain(before);
+      await rechecked;
+      assert.deepStrictEqual(loaded(t).slice(before), [b, a, c]);
+      // With a limit that leaves no other check waiting, the active one is last.
+      const u = setup({ visible: [a, b, c], active: a, maxBackgroundChecks: 2 });
+      u.state.verdicts.set('/w/a', { allowed: true, basis: 'workspaceFolder' });
+      await settle();
+      u.backend.loads.forEach((l) => l.resolve(clean(l.doc)));
+      await settle();
+      const again = u.backend.loads.length;
+      const all = u.checks.recheckVisible();
+      await settle();
+      assert.deepStrictEqual(loaded(u).slice(again), [b, c, a]);
+      u.backend.loads.slice(again).forEach((l) => l.resolve(clean(l.doc)));
+      await all;
+    });
+
+    test('a batch with no more other visible documents than the limit, while a background check outside it holds a slot: one of them waits and is loaded after the active one (not fixed, documented; eighth review of M3)', async () => {
+      // The documented condition is "another document of the batch waits for a slot": more other
+      // documents than free slots, the limit less the checks already running (the verifier's probe).
+      const [a, b, c, x] = ['/w/a/A.idr', '/w/a/B.idr', '/w/a/C.idr', '/w/a/X.idr'].map((f) => new FakeDocument(f));
+      const t = setup({ visible: [a, b, c], active: a, maxBackgroundChecks: 2 });
+      t.state.verdicts.set('/w/a', { allowed: true, basis: 'workspaceFolder' });
+      await settle();
+      t.backend.loads.forEach((l) => l.resolve(clean(l.doc)));
+      await settle();
+      // X is open but not visible; its save starts a background check, which holds a slot while it runs.
+      t.saved.fire(x);
+      await settle();
+      const held = t.backend.loads.length;
+      assert.deepStrictEqual(loaded(t).slice(held - 1), [x]);
+      const rechecked = t.checks.recheckVisible();
+      await settle();
+      assert.deepStrictEqual(loaded(t).slice(held), [b, a], 'C waits for the slot X holds; the active A does not');
+      // X ends: C gets its slot.
+      t.backend.loads[held - 1].resolve(clean(x));
+      await settle();
+      assert.deepStrictEqual(loaded(t).slice(held), [b, a, c]);
+      t.backend.loads.slice(held).forEach((l) => l.resolve(clean(l.doc)));
+      await rechecked;
     });
 
     test('closing the active document while another editor is active counts its running check: no more background checks than the limit', async () => {

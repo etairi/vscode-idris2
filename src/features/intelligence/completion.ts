@@ -57,7 +57,7 @@ import { DisposableStore, type IDisposable } from '../../core/disposable';
 import { editorLabel, quickPickText } from '../../core/untrustedText';
 import { birdPrefixWidth, compilerLiterateStyleOf, idrisDocumentSelector, isIdrisDocument } from '../../project/literate';
 import { KEYWORDS } from '../syntax/lexer';
-import { StaleAnswers } from './queries';
+import { isFileDocument, StaleAnswers } from './queries';
 import type { IntelligenceDeps, LoadedFileEvent, QueryOutcome } from './types';
 
 /**
@@ -235,10 +235,9 @@ class CompilerNames implements IDisposable {
     return { names: (answer ?? []).filter((name) => name.startsWith(prefix)), incomplete: false };
   }
 
-  /** Drops what is kept for `file` (its document was closed; a reopened document is checked again). */
+  /** Drops the names kept for `file` (its document was closed); its root stays known (`StaleAnswers`). */
   forget(file: string): void {
     this.files.delete(file);
-    this.stale.forget(file);
   }
 
   dispose(): void {
@@ -348,7 +347,14 @@ function isCodeLine(doc: vscode.TextDocument, line: number): boolean {
 export function registerCompletion(api: CompletionApi, deps: CompletionDeps, options: CompletionOptions = {}): IDisposable {
   const store = new DisposableStore();
   const names = store.add(new CompilerNames(deps, () => api.window.activeTextEditor?.document, options));
-  store.add(api.workspace.onDidCloseTextDocument((doc) => names.forget(doc.fileName)));
+  // Not another document of the same path, such as a `git:` one (`queries.ts` `isFileDocument`).
+  store.add(
+    api.workspace.onDidCloseTextDocument((doc) => {
+      if (isFileDocument(doc)) {
+        names.forget(doc.fileName);
+      }
+    }),
+  );
 
   const provider: vscode.CompletionItemProvider = {
     provideCompletionItems: async (doc, position, token) => {

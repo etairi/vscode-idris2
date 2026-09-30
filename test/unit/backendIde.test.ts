@@ -31,7 +31,7 @@ import type {
 } from '../../src/backend/ide/types';
 import type { TokenIndex } from '../../src/backend/types';
 import type { IdeModeSettings } from '../../src/core/config';
-import { cancelled, IdrisException, isCancelled } from '../../src/core/errors';
+import { cancelled, errorText, IdrisException, isCancelled } from '../../src/core/errors';
 import { Emitter } from '../../src/core/event';
 import type { GateVerdict } from '../../src/core/trust';
 import type { Classification } from '../../src/project/types';
@@ -952,7 +952,7 @@ suite('backend/ide/backend M3 (queries, token index, evaluation)', () => {
         index.tokens.filter((t) => t.name === 'xs').map((t) => [t.range.start.line, t.range.start.character, t.decor]),
         [[7, 5, 'bound']],
       );
-      assert.deepStrictEqual(announced, [{ root: { kind: 'loose', dir: '/w/broken' }, file: CLEAN, rebuilt: true }]);
+      assert.deepStrictEqual(announced, [{ root: { kind: 'loose', dir: '/w/broken' }, file: CLEAN, rebuilt: true, failed: false }]);
       assert.strictEqual(backend.tokens(doc('/w/broken/Other.idr')), undefined);
     });
 
@@ -976,7 +976,7 @@ suite('backend/ide/backend M3 (queries, token index, evaluation)', () => {
       assert.strictEqual(t.backend.tokens(cleanDoc()), undefined);
     });
 
-    test('rebuilt: a load that built a module, failed, or is its process\'s first; not a later one that built nothing', async () => {
+    test('rebuilt: a load that built a module, failed, or is its process\'s first; not a later one that built nothing; failed: one that returned an error', async () => {
       const t = setup({ readFile: fixtureFile });
       const announced: LoadedDocument[] = [];
       t.ide.onDidLoad((e) => announced.push(e));
@@ -998,6 +998,40 @@ suite('backend/ide/backend M3 (queries, token index, evaluation)', () => {
       await t.backend.load(cleanDoc());
       await t.backend.load(cleanDoc());
       assert.deepStrictEqual(announced.map((e) => e.rebuilt), [true, true, false, false, true, false, true, false]);
+      assert.deepStrictEqual(announced.map((e) => e.failed), [false, false, false, false, true, false, false, false]);
+    });
+
+    test('rebuilt: also a load that built nothing of a text other than the one the file\'s last load read (seventh review of M3)', async () => {
+      // Where the package or extraArgs give the check and eval sessions one build directory (D5), an
+      // evaluation (or the user's own build) builds the saved text there first, and the check load
+      // builds nothing: the hover's answers kept by position described the text before.
+      let clean = fixtureText('broken/Clean.idr');
+      const t = setup({ readFile: (p) => (p === CLEAN ? Promise.resolve(clean) : fixtureFile(p)) });
+      const announced: LoadedDocument[] = [];
+      t.ide.onDidLoad((e) => announced.push(e));
+      const session = t.pool.sessionFor({ kind: 'loose', dir: '/w/broken' });
+      session.launch = { executable: '/bin/idris2', args: [], cwd: '/w/broken', env: {}, transport: 'stdio' as const };
+      const quiet = (): Reply => ({ id: 2n, payload: { kind: 'ok', result: { kind: 'list', items: [] }, highlighting: [] }, messages: [] });
+      session.next = () => Promise.resolve(quiet());
+      const plain = doc('/w/broken/Plain.idr', { text: fixtureText('broken/Plain.idr') });
+      await t.backend.load(cleanDoc());
+      await t.backend.load(cleanDoc());
+      await t.backend.load(plain);
+      clean = `-- a note\n${clean}`;
+      await t.backend.load(cleanDoc({ text: clean }));
+      await t.backend.load(cleanDoc({ text: clean }));
+      await t.backend.load(plain);
+      assert.deepStrictEqual(
+        announced.map((e) => `${path.basename(e.file)} ${e.rebuilt}`),
+        // The process's first; the same text; another file's first load in this process (no answer
+        // about it can be kept yet); a changed text; the same again; Plain unchanged.
+        ['Clean.idr true', 'Clean.idr false', 'Plain.idr false', 'Clean.idr true', 'Clean.idr false', 'Plain.idr false'],
+      );
+      // A new process: its first load counts, whatever it read.
+      session.launch = { ...session.launch };
+      await t.backend.load(cleanDoc({ text: clean }));
+      await t.backend.load(cleanDoc({ text: clean }));
+      assert.deepStrictEqual(announced.slice(6).map((e) => e.rebuilt), [true, false]);
     });
 
     test('the index keeps the text only when the file reads the same right before the load and after its reply', async () => {
@@ -1097,6 +1131,29 @@ suite('backend/ide/backend M3 (queries, token index, evaluation)', () => {
       assert.deepStrictEqual(commands(t.session), ['(:load-file "/private/w/broken/Clean.idr")']);
     });
 
+    test('a reload of the same file that went before a waiting query (an urgent load): the query is refused (NotLoaded), not sent with the position of the load before (sixth review of M3)', async () => {
+      // While maxBackgroundChecks is set the active document's load is urgent and passes every
+      // request that waits, lookups too: the :type-of converted for the load before was sent after
+      // the reload, and the compiler answered about the reloaded text at the old coordinates.
+      const t = await loaded('clean-queries');
+      let open: () => void = () => undefined;
+      t.session.waitBeforeSend = new Promise<void>((resolve) => (open = resolve));
+      const queries = [
+        t.backend.typeAt(cleanDoc(), pos(7, 5), 'xs'),
+        t.backend.docsFor(cleanDoc(), 'vlen', 'full'),
+        t.backend.definition(cleanDoc(), pos(6, 1), 'vlen'),
+      ].map((query) => query.then(() => 'answered', (e: unknown) => (e instanceof IdrisException ? `${e.error.kind}: ${errorText(e.error)}` : String(e))));
+      await settle();
+      t.session.waitBeforeSend = Promise.resolve();
+      await t.backend.load(cleanDoc({ version: 9 })); // the reload, sent first
+      open();
+      // Not "is not the file … loaded last", which it is (ninth review of M3).
+      assert.deepStrictEqual(await Promise.all(queries), Array(3).fill('NotLoaded: Clean.idr was checked again while the question waited; ask again.'));
+      assert.deepStrictEqual(commands(t.session), ['(:load-file "/private/w/broken/Clean.idr")', '(:load-file "/private/w/broken/Clean.idr")']);
+      // Asked again (as DocumentQueries does), they are sent for the new load.
+      assert.strictEqual((await t.backend.typeAt(cleanDoc(), pos(7, 5), 'xs'))?.text, 'xs : Vect ?_ ?_');
+    });
+
     test('typeAt: the positional :type-of (F2) with the lookup it used and the reply\'s highlighting; cached per load and position', async () => {
       const t = await loaded('clean-queries');
       const xs = await t.backend.typeAt(cleanDoc(), pos(7, 5), 'xs');
@@ -1158,9 +1215,11 @@ suite('backend/ide/backend M3 (queries, token index, evaluation)', () => {
       assert.deepStrictEqual(commands(session).slice(2), ['(:type-of "perimeter" 24 2)', '(:type-of "perimeter")']);
     });
 
-    test('typeAt and docsFor wait for a reload of the file being made, instead of answering from the load before it', async () => {
+    test('typeAt, docsFor and definition wait for a reload of the file being made, instead of answering from the load before it', async () => {
       const t = await loaded('clean-queries');
+      t.session.launch = { executable: '/bin/idris2', args: [], cwd: '/w/broken', realCwd: '/private/w/broken', env: {}, transport: 'stdio' };
       const before = await t.backend.typeAt(cleanDoc(), pos(7, 5), 'xs');
+      await t.backend.definition(cleanDoc(), pos(6, 1), 'vlen'); // its :name-at answer is kept for this load
       let open: () => void = () => undefined;
       const gate = new Promise<void>((resolve) => (open = resolve));
       const replay = t.session.next;
@@ -1175,15 +1234,25 @@ suite('backend/ide/backend M3 (queries, token index, evaluation)', () => {
       let answered: unknown;
       const during = t.backend.typeAt(cleanDoc(), pos(7, 5), 'xs').then((a) => (answered = a));
       const docs = t.backend.docsFor(cleanDoc(), 'vlen', 'full');
+      // Go to Definition (or a Cmd-hover) during the check after a save (fifth review of M3: not pinned).
+      let found: unknown;
+      const where = t.backend.definition(cleanDoc(), pos(6, 1), 'vlen').then((l) => (found = l));
       await settle();
       assert.strictEqual(answered, undefined, 'not answered from the previous load while the reload runs');
+      assert.strictEqual(found, undefined, 'no location from the previous load\'s :name-at while the reload runs');
       open();
       await reload;
       await during;
       assert.notStrictEqual(answered, before, 'a new answer, of the new load');
       assert.deepStrictEqual(answered, before);
       assert.ok((await docs) !== undefined);
-      assert.deepStrictEqual(commands(t.session).slice(2), ['(:load-file "/private/w/broken/Clean.idr")', '(:type-of "xs" 8 5)', '(:docs-for "vlen")']);
+      assert.strictEqual(((await where) as unknown as Location[]).length, 1);
+      assert.deepStrictEqual(commands(t.session).slice(3), [
+        '(:load-file "/private/w/broken/Clean.idr")',
+        '(:type-of "xs" 8 5)',
+        '(:docs-for "vlen")',
+        '(:name-at "vlen")',
+      ]);
     });
 
     test('docsFor: the whole text for either mode (F31), cached per load; undefined for an unknown name', async () => {
@@ -1406,32 +1475,162 @@ suite('backend/ide/backend M3 (queries, token index, evaluation)', () => {
       const t = await loaded('clean-queries');
       t.session.launch = { executable: '/bin/idris2', args: [], cwd: '/w/broken', realCwd: '/private/w/broken', env: {}, transport: 'stdio' };
       const saved = fixtureText('broken/Clean.idr');
-      let shown: string | undefined = `-- a note\n${saved}`;
       const asked: string[] = [];
       t.deps.openText = (file) => {
         asked.push(file);
-        return file === CLEAN ? shown : undefined;
+        return undefined;
       };
-      const range = async (): Promise<number[][]> =>
-        ((await t.backend.definition(cleanDoc(), pos(0, 0), 'vlen')) as unknown as Location[]).map((l) => plainRange(l.range));
-      assert.deepStrictEqual(await range(), [[7, 0, 7, 22]], 'saved (6,0)-(6,22), one line further');
-      assert.deepStrictEqual(asked, [CLEAN], 'the document as the editor spells its path');
-      // No document open, or one showing the saved text (a byte order mark on disk ignored): as read.
-      shown = undefined;
-      assert.deepStrictEqual(await range(), [[6, 0, 6, 22]]);
-      shown = saved;
+      let version = 7;
+      const range = async (shown: string): Promise<number[][]> =>
+        ((await t.backend.definition(cleanDoc({ text: shown, version: ++version, isDirty: shown !== saved }), pos(0, 0), 'vlen')) as unknown as Location[]).map((l) =>
+          plainRange(l.range),
+        );
+      assert.deepStrictEqual(await range(`-- a note\n${saved}`), [[7, 0, 7, 22]], 'saved (6,0)-(6,22), one line further');
+      assert.deepStrictEqual(asked, [], 'the loaded file is the document asked about (the document as the editor spells its path)');
+      // The document showing the loaded text (a byte order mark on disk ignored): as read.
       t.deps.readFile = (p) => fixtureFile(p).then((text) => (p.endsWith('/Clean.idr') ? `\uFEFF${text}` : text));
       await t.backend.load(cleanDoc({ version: 9 }));
-      assert.deepStrictEqual(await range(), [[6, 0, 6, 22]]);
+      assert.deepStrictEqual(await range(saved), [[6, 0, 6, 22]]);
       // The signature edited in place after its first word: the start stays, the end (other text
       // before it) goes to the start.
-      shown = saved.replace('vlen : Vect n a -> Nat', 'vlen : Vect n a -> Integer');
-      assert.deepStrictEqual(await range(), [[6, 0, 6, 0]]);
+      assert.deepStrictEqual(await range(saved.replace('vlen : Vect n a -> Nat', 'vlen : Vect n a -> Integer')), [[6, 0, 6, 0]]);
       // The signature's line split in two: no line of it is known any more; with no other entry, why.
-      shown = saved.replace('vlen : Vect n a -> Nat', 'vlen : Vect n a ->\n  Nat');
-      await assert.rejects(range(), (e: unknown) => {
+      await assert.rejects(range(saved.replace('vlen : Vect n a -> Nat', 'vlen : Vect n a ->\n  Nat')), (e: unknown) => {
         assert.ok(e instanceof IdrisException && e.error.kind === 'Unsupported');
-        assert.strictEqual(e.message, 'The definition of vlen is in /w/broken/Clean.idr, on lines changed since it was saved: save that file to find it.');
+        assert.strictEqual(
+          e.message,
+          'The definition of vlen is in /w/broken/Clean.idr, on lines changed since the compiler read it: save that file and check it again to find it.',
+        );
+        return true;
+      });
+    });
+
+    test('definition in another file: its range read from disk, moved to the text of its open document (fourth review of M3)', async () => {
+      const t = setup({ readFile: (p) => Promise.resolve(p.endsWith('/Lib.idr') ? 'module Lib\n\nexport\nhelper : Nat\nhelper = 1\n' : 'module M\n\nimport Lib\n\nx : Nat\nx = helper\n') });
+      const session = t.pool.sessionFor({ kind: 'loose', dir: '/w/two' });
+      session.next = (command) => {
+        const text = command.kind === 'raw' ? command.text : serializeSexp(command);
+        return Promise.resolve(
+          text.startsWith('(:load-file') ? answer('(:ok ())') : answer('(:ok (("Lib.helper" (:filename "/w/two/Lib.idr") (:start 3 0) (:end 3 12))))'),
+        );
+      };
+      let shown: string | undefined = '-- a note\nmodule Lib\n\nexport\nhelper : Nat\nhelper = 1\n';
+      t.deps.openText = (file) => (file === '/w/two/Lib.idr' ? shown : undefined);
+      const m = doc('/w/two/M.idr', { text: 'module M\n\nimport Lib\n\nx : Nat\nx = helper\n' });
+      await t.backend.load(m);
+      const range = async (): Promise<number[]> => plainRange(((await t.backend.definition(m, pos(5, 5), 'helper', 'function')) as unknown as Location[])[0].range);
+      assert.deepStrictEqual(await range(), [4, 0, 4, 12], 'its open document has a line inserted above');
+      shown = undefined;
+      assert.deepStrictEqual(await range(), [3, 0, 3, 12], 'no document open: as read');
+      // A lone \r above it on disk, which the open document shows as a line break (fifth review of
+      // M3): the compiler's line 2 is the document's line 3.
+      t.deps.readFile = (p) => Promise.resolve(p.endsWith('/Lib.idr') ? 'module Lib\n-- a\rb\nhelper : Nat\nhelper = 1\n' : '');
+      shown = 'module Lib\n-- a\nb\nhelper : Nat\nhelper = 1\n';
+      session.next = (command) => {
+        const text = command.kind === 'raw' ? command.text : serializeSexp(command);
+        return Promise.resolve(
+          text.startsWith('(:load-file') ? answer('(:ok ())') : answer('(:ok (("Lib.helper" (:filename "/w/two/Lib.idr") (:start 2 0) (:end 2 12))))'),
+        );
+      };
+      await t.backend.load(m);
+      assert.deepStrictEqual(await range(), [3, 0, 3, 12]);
+      // Not open: VS Code will open it with the \r as a line break too (sixth review of M3: the range
+      // stayed on the compiler's line 2, one line too high).
+      shown = undefined;
+      assert.deepStrictEqual(await range(), [3, 0, 3, 12], 'not open');
+    });
+
+    test('definition in the loaded file: converted with the text the load read, not the file on disk, and moved to the text shown (fifth review of M3)', async () => {
+      // With the manual trigger a save checks nothing: the file on disk and the document show a line
+      // inserted at the top, and the compiler's span describes the text before it. Converted with the
+      // file on disk, F12 landed a line too high, and after an undo back to the loaded text two lines
+      // too high; and the result depended on whether F12 had been used before the save (the first
+      // read of the file is kept per load) [unit-level, the reviewer's probes].
+      const loadedText = 'module M\n\narea : Nat -> Nat\narea x = x\n\nmain : IO ()\nmain = printLn (area 1)\n';
+      const savedText = `-- a note\n${loadedText}`;
+      let disk = loadedText;
+      const t = setup({ readFile: () => Promise.resolve(disk) });
+      const session = t.pool.sessionFor({ kind: 'loose', dir: '/w/m' });
+      session.next = (command) => {
+        const text = command.kind === 'raw' ? command.text : serializeSexp(command);
+        return Promise.resolve(
+          text.startsWith('(:load-file') ? answer('(:ok ())') : answer('(:ok (("M.area" (:filename "/w/m/M.idr") (:start 2 0) (:end 3 10))))'),
+        );
+      };
+      await t.backend.load(doc('/w/m/M.idr', { text: loadedText }));
+      disk = savedText;
+      t.deps.openText = (file) => (file === '/w/m/M.idr' ? savedText : undefined);
+      const range = async (text: string, version: number, isDirty = false): Promise<number[]> =>
+        plainRange(((await t.backend.definition(doc('/w/m/M.idr', { text, version, isDirty }), pos(0, 0), 'area', 'function')) as unknown as Location[])[0].range);
+      assert.deepStrictEqual(await range(savedText, 8), [3, 0, 4, 10], 'saved, not checked: where area is shown');
+      assert.deepStrictEqual(await range(loadedText, 9, true), [2, 0, 3, 10], 'undone back to the loaded text (unsaved)');
+    });
+
+    test('a lone \\r in the file: the compiler\'s lines break at \\n only; below it a position is asked about and a range shown where it is (fifth review of M3)', async () => {
+      // idris2 --check on `module M\n-- a\r-- b\nx : Nat\nx = "s"\n` reported M:4:5--4:8 [live, idris2
+      // 0.8.0]; VS Code breaks lines at the \r too, and shows the file's lines joined by one line
+      // break. Split at the \r as well, the loaded text put x on the line above the one asked about.
+      const disk = 'module M\n-- a\rb\narea : Nat -> Nat\narea x = x\n';
+      const t = setup({ readFile: () => Promise.resolve(disk) });
+      const session = t.pool.sessionFor({ kind: 'loose', dir: '/w/cr' });
+      session.next = (command) => {
+        const text = command.kind === 'raw' ? command.text : serializeSexp(command);
+        if (text.startsWith('(:load-file')) {
+          return Promise.resolve(answer('(:ok ())'));
+        }
+        if (text === '(:type-of "x" 4 5)') {
+          return Promise.resolve(answer('(:ok "x : Nat" ())'));
+        }
+        return Promise.resolve(text === '(:name-at "area")' ? answer('(:ok (("M.area" (:filename "/w/cr/M.idr") (:start 2 0) (:end 3 10))))') : undefinedName(text));
+      };
+      const shown = doc('/w/cr/M.idr', { text: 'module M\n-- a\nb\narea : Nat -> Nat\narea x = x\n' });
+      await t.backend.load(shown);
+      assert.strictEqual((await t.backend.typeAt(shown, pos(4, 5), 'x', 'bound'))?.text, 'x : Nat');
+      assert.deepStrictEqual(commands(session).filter((c) => c.startsWith('(:type-of')), ['(:type-of "x" 4 5)']);
+      const [area] = (await t.backend.definition(shown, pos(3, 0), 'area', 'function')) as unknown as Location[];
+      assert.deepStrictEqual(plainRange(area.range), [3, 0, 4, 10]);
+    });
+
+    test('a definition starting on the line that holds a lone \\r: found, in the loaded file and in another file, open or not (seventh review of M3)', async () => {
+      // [live, idris2 0.8.0, the verifier] this file loads, and (:name-at "area") answers (:start 2 0)
+      // (:end 3 10). Diffed with the editor's lines, the compiler's line holding the \r was never
+      // paired: F12 was refused as "on lines changed since the compiler read it", also for a file
+      // that is not open, where there is nothing to save.
+      const disk = 'module M\n\narea : Nat -> Nat -- a\r-- b\narea x = x\n\ng : Nat -> Nat\ng y = y -- c\r-- d\n';
+      const lib = 'module Lib\n\nhelper : Nat -- a\r-- b\nhelper = 1\n';
+      const t = setup({ readFile: (p) => Promise.resolve(p.endsWith('/Lib.idr') ? lib : disk) });
+      const session = t.pool.sessionFor({ kind: 'loose', dir: '/w/cr' });
+      session.next = (command) => {
+        const text = command.kind === 'raw' ? command.text : serializeSexp(command);
+        if (text.startsWith('(:load-file')) {
+          return Promise.resolve(answer('(:ok ())'));
+        }
+        if (text === '(:type-of "y" 7 6)') {
+          return Promise.resolve(answer('(:ok "y : Nat" ())'));
+        }
+        if (text === '(:name-at "area")') {
+          return Promise.resolve(answer('(:ok (("M.area" (:filename "/w/cr/M.idr") (:start 2 0) (:end 3 10))))'));
+        }
+        return Promise.resolve(text === '(:name-at "helper")' ? answer('(:ok (("Lib.helper" (:filename "/w/cr/Lib.idr") (:start 2 0) (:end 2 12))))') : undefinedName(text));
+      };
+      const shown = doc('/w/cr/M.idr', { text: 'module M\n\narea : Nat -> Nat -- a\n-- b\narea x = x\n\ng : Nat -> Nat\ng y = y -- c\n-- d\n' });
+      await t.backend.load(shown);
+      const found = async (name: string): Promise<number[][]> =>
+        ((await t.backend.definition(shown, pos(4, 0), name, 'function')) as unknown as Location[]).map((l) => plainRange(l.range));
+      assert.deepStrictEqual(await found('area'), [[2, 0, 4, 10]], 'the loaded file: its end one line further down, after the \\r');
+      // The variable on the line holding the \r (the editor's line 7, the compiler's 6: 7 1-based), as
+      // the verifier asked it live.
+      assert.strictEqual((await t.backend.typeAt(shown, pos(7, 6), 'y', 'bound'))?.text, 'y : Nat');
+      assert.ok(commands(session).includes('(:type-of "y" 7 6)'));
+      t.deps.openText = () => undefined;
+      assert.deepStrictEqual(await found('helper'), [[2, 0, 2, 12]], 'another file, not open');
+      t.deps.openText = (file) => (file === '/w/cr/Lib.idr' ? 'module Lib\n\nhelper : Nat -- a\n-- b\nhelper = 1\n' : undefined);
+      assert.deepStrictEqual(await found('helper'), [[2, 0, 2, 12]], 'another file, open: the same text but for its line breaks');
+      // Its line edited, unsaved: refused, and the reason says why (not "since the compiler read it").
+      t.deps.openText = (file) => (file === '/w/cr/Lib.idr' ? 'module Lib\n\nhelper :\n  Nat -- a\n-- b\nhelper = 2\n' : undefined);
+      await assert.rejects(found('helper'), (e: unknown) => {
+        assert.ok(e instanceof IdrisException && e.error.kind === 'Unsupported');
+        assert.strictEqual(e.message, 'The definition of helper is in /w/cr/Lib.idr, on lines with unsaved changes: save that file and check it again to find it.');
         return true;
       });
     });

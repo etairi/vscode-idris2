@@ -4,7 +4,6 @@
 // — the backend refuses REPL commands before anything is sent — and when the results go away.
 // The answers are those of the recorded transcripts `eval-values` and `eval-command-forms`.
 import * as assert from 'assert';
-import type * as vscode from 'vscode';
 import { IdeMode, type IdeModeDeps } from '../../src/backend/ide/backend';
 import type { SessionPool } from '../../src/backend/ide/types';
 import type { Evaluation, IdrisBackend } from '../../src/backend/types';
@@ -431,6 +430,63 @@ suite('features/eval', () => {
       assert.strictEqual(other.state.progress.filter((p) => p.location === 15).length, 2);
       pending.forEach((answer) => answer(VECT));
       await Promise.all([inA, inB]);
+    });
+
+    test('one refused at once while another of its root runs does not start the next one\'s Cancel offer (fifth review of M3)', async () => {
+      // The backend refuses a REPL command before its queue: it settled before the running one, and
+      // the next evaluation, waiting behind the running one, got its offer at once.
+      const t = setup({ cancelOfferMs: 0 });
+      const answers: ((evaluation: Evaluation) => void)[] = [];
+      t.backend.answerEvaluation = (expr) =>
+        expr.startsWith(':')
+          ? Promise.reject(new IdrisException({ kind: 'Unsupported', reason: 'Not evaluated: a REPL command.' }))
+          : new Promise<Evaluation>((resolve) => answers.push(resolve));
+      const offers = () => t.state.progress.filter((p) => p.location === 15).length;
+      const doc = fakeDoc({ fileName: '/w/Clean.idr', text: 'module Clean\n\nx = 1\n:t id\n' });
+      const first = t.evaluate(doc, new FakeRange(2, 4, 2, 5));
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      await t.evaluate(doc, new FakeRange(3, 0, 3, 5));
+      assert.deepStrictEqual(t.messages, ['info: Idris 2: Not evaluated: a REPL command.']);
+      const third = t.evaluate(doc, new FakeRange(2, 4, 2, 5));
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      assert.strictEqual(answers.length, 2);
+      assert.strictEqual(offers(), 1, 'the running one only');
+      answers[0](VECT);
+      await first;
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      assert.strictEqual(offers(), 2, 'the third runs now');
+      answers[1](VECT);
+      await third;
+    });
+
+    test('three in a row: one asked while the second runs, after the first ended, waits for the second before its Cancel offer (seventh review of M3)', async () => {
+      // The chain of a root is deleted only when it is still the last one: if the first's end deleted
+      // it while the second ran, the third found no chain and got its offer at once, and Cancel on it
+      // stopped nothing that ran [unit-level, the verifier's probe].
+      const t = setup({ cancelOfferMs: 0 });
+      const answers: ((evaluation: Evaluation) => void)[] = [];
+      t.backend.answerEvaluation = () => new Promise<Evaluation>((resolve) => answers.push(resolve));
+      const offers = () => t.state.progress.filter((p) => p.location === 15).length;
+      const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
+      const doc = fakeDoc({ fileName: '/w/Clean.idr', text: 'module Clean\n\nx = 1\n' });
+      const first = t.evaluate(doc, new FakeRange(2, 4, 2, 5));
+      await tick();
+      const second = t.evaluate(doc, new FakeRange(2, 4, 2, 5));
+      await tick();
+      assert.strictEqual(offers(), 1, 'the first runs, the second waits');
+      answers[0](VECT);
+      await first;
+      await tick();
+      assert.strictEqual(offers(), 2, 'the second runs');
+      const third = t.evaluate(doc, new FakeRange(2, 4, 2, 5));
+      await tick();
+      assert.strictEqual(offers(), 2, 'the third waits for the second');
+      answers[1](VECT);
+      await second;
+      await tick();
+      assert.strictEqual(offers(), 3, 'the third runs');
+      answers[2](VECT);
+      await third;
     });
 
     test('notifications write out control and format characters of what they quote (a name, a compiler line)', async () => {

@@ -41,7 +41,7 @@ import type { IdrisBackend, RichText, Token, TypeInfo } from '../../backend/type
 import type { EditorPosition } from '../../core/positions';
 import { codeBlock, visible, type MarkdownSink } from '../../core/untrustedText';
 import type { Classification, ProjectIndex } from '../../project/types';
-import { isCheckable, type CheckStatus, type CheckStatusSource } from '../diagnostics/checks';
+import { isCheckable, type CheckStatus, type CheckStatusSource, type Staleness } from '../diagnostics/checks';
 import { currentTokens, occurrenceAt, type Occurrence } from './occurrence';
 import type { AnswerCache } from './queries';
 import { declaredNames, docBlocks, docOverview, nameRoot } from './text';
@@ -54,6 +54,11 @@ export interface HoverDeps {
   readonly registry: Pick<BackendRegistry, 'backendFor'>;
   readonly projects: Pick<ProjectIndex, 'classify'>;
   readonly checks: CheckStatusSource;
+  /**
+   * Whether `doc`'s `idris2.checking.trigger` is `manual`, under which a save checks nothing: what
+   * checks a stale document again when the checks say nothing about it (`stalenessOf`).
+   */
+  readonly manual: (doc: vscode.TextDocument) => boolean;
   /** `new vscode.Position(line, character)`. */
   readonly position: (p: EditorPosition) => vscode.Position;
 }
@@ -62,8 +67,11 @@ export interface HoverDeps {
 export type HoverResult =
   | { readonly kind: 'model'; readonly model: HoverModel; readonly occurrence: Occurrence }
   | { readonly kind: 'noName' }
-  /** `stale`: the document shows other text than the file as last checked (`isStale`). */
-  | { readonly kind: 'noType'; readonly occurrence: Occurrence; readonly stale: boolean }
+  /**
+   * `stale`: the document shows other text than the file as last checked (`isStale`); `staleness`,
+   * when it does, why (unsaved changes, the `manual` trigger), which says what checks it again.
+   */
+  | { readonly kind: 'noType'; readonly occurrence: Occurrence; readonly stale: boolean; readonly staleness?: Staleness }
   | { readonly kind: 'unavailable'; readonly reason: string; readonly occurrence: Occurrence };
 
 /**
@@ -75,6 +83,21 @@ export function isStale(doc: vscode.TextDocument, status: CheckStatus | undefine
     return true;
   }
   return (status?.kind === 'checked' || status?.kind === 'packageError') && status.stale;
+}
+
+/**
+ * Why `doc` is stale (`isStale`): what the checks say (`CheckStatus` `staleness`, of a result or a
+ * package error: until the seventh review of M3 a package error's trigger was taken as not
+ * `manual`, so Type at Cursor advised a save that checks nothing), or, when they say nothing about
+ * it (a check running, none yet, a load that failed), unsaved changes or not, with the trigger of
+ * the settings (`HoverDeps.manual`; until the eighth review of M3 taken as not `manual`, so with the
+ * `manual` trigger Type at Cursor advised a save while Check File ran [unit-level, the verifier's
+ * probe]).
+ */
+function stalenessOf(deps: Pick<HoverDeps, 'manual'>, doc: vscode.TextDocument, status: CheckStatus | undefined): Staleness {
+  return (status?.kind === 'checked' || status?.kind === 'packageError') && status.staleness !== undefined
+    ? status.staleness
+    : { unsaved: doc.isDirty, manual: deps.manual(doc) };
 }
 
 /** `doc`'s root, its backend, and the backend's index tokens of `doc` that still apply (`currentTokens`). */
@@ -133,7 +156,7 @@ export async function hoverAt(deps: HoverDeps, doc: vscode.TextDocument, pos: Ed
   }
   const type = acceptedType(typeOutcome.value, occurrence, stale);
   if (type === undefined) {
-    return { kind: 'noType', occurrence, stale };
+    return stale ? { kind: 'noType', occurrence, stale, staleness: stalenessOf(deps, doc, status) } : { kind: 'noType', occurrence, stale };
   }
   // A local variable has no docs of its own: `:docs-for` would answer for a global of its name.
   const docs: QueryOutcome<RichText | undefined> =

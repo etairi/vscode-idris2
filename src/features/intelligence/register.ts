@@ -25,7 +25,7 @@
  *   namespace's listing.
  * - Why there is nothing (no name at the cursor, the compiler's reason, no type — while the document
  *   is stale, that the compiler answers about the file as last checked: a position on a changed line
- *   is not asked about, fourth review of M3 —, no docs) is a
+ *   is not asked about, fourth review of M3 —, and what checks it again, `recheckAdvice` —, no docs) is a
  *   notification made with `plainText` (CLAUDE.md, M2 rule), and every handler catches what it
  *   throws (`guarded`), since VS Code shows a rejected command's message with links working. The
  *   texts quote names of the source and compiler output, so each is one line with its control and
@@ -47,12 +47,12 @@ import { plainText } from '../../core/notificationText';
 import type { EditorRange } from '../../core/positions';
 import { editorLabel } from '../../core/untrustedText';
 import { idrisDocumentSelector } from '../../project/literate';
-import { isCheckable } from '../diagnostics/checks';
+import { isCheckable, type Staleness } from '../diagnostics/checks';
 import { DOC_SCHEME, docPath, docQuery, namespaceItem, namespaceSuggestion, parseDocQuery, selectDocs } from './docs';
 import { documentHighlights } from './highlights';
 import { docsKey, documentTokens, hoverAt, nameAt, renderHover, type HoverDeps } from './hover';
 import { offsetOf, positionOf, syntaxModelOf } from './occurrence';
-import { AnswerCache } from './queries';
+import { AnswerCache, isFileDocument } from './queries';
 import { encodeRichText, encodeTokens, SEMANTIC_TOKEN_LEGEND } from './semanticTokens';
 import { documentSymbols, type DocumentSymbolModel } from './symbols';
 import { splitName } from './text';
@@ -102,18 +102,40 @@ const MAX_QUOTED_NAME = 100;
 /** `name` as a notification quotes it (module comment). */
 const quoted = (name: string): string => `"${editorLabel(name, MAX_QUOTED_NAME)}"`;
 
+/**
+ * What checks a stale document again, by why it is stale (the status item says the same,
+ * `toolchain/status.ts`): **Check File** checks the saved file and does not save, so with unsaved
+ * changes it leaves the document stale (fifth review of M3: the notification offered it there), and
+ * with the `manual` trigger a save checks nothing.
+ */
+function recheckAdvice(staleness: Staleness | undefined): string {
+  const { unsaved, manual } = staleness ?? { unsaved: true, manual: false };
+  if (!unsaved) {
+    return 'Run Idris 2: Check File to check it again.';
+  }
+  return manual ? 'Save the file, then run Idris 2: Check File, to check it again.' : 'Save the file to check it again.';
+}
+
 export function registerIntelligence(api: IntelligenceApi, deps: IntelligenceDeps, options: IntelligenceOptions = {}): Intelligence {
   const store = new DisposableStore();
   const notices: string[] = [];
   const selector = idrisDocumentSelector();
   const answers = store.add(new AnswerCache(deps.loads));
-  store.add(api.workspace.onDidCloseTextDocument((doc) => answers.forget(doc.fileName)));
+  // Not another document of the same path, such as a `git:` one (`isFileDocument`).
+  store.add(
+    api.workspace.onDidCloseTextDocument((doc) => {
+      if (isFileDocument(doc)) {
+        answers.forget(doc.fileName);
+      }
+    }),
+  );
   const hoverDeps: HoverDeps = {
     queries: deps.queries,
     answers,
     registry: deps.registry,
     projects: deps.projects,
     checks: deps.checks,
+    manual: (doc) => deps.config.checking(doc.uri).trigger === 'manual',
     position: (p) => new api.Position(p.line, p.character),
   };
   const range = (r: EditorRange): vscode.Range => new api.Range(r.start.line, r.start.character, r.end.line, r.end.character);
@@ -189,7 +211,7 @@ export function registerIntelligence(api: IntelligenceApi, deps: IntelligenceDep
             notify(
               result.stale
                 ? `Idris 2: no type for ${quoted(result.occurrence.name)} here: the compiler answers about the file as it last checked it, ` +
-                    'and the editor shows changes made since. Save the file (or run Idris 2: Check File) to check it again.'
+                    `and the editor shows changes made since. ${recheckAdvice(result.staleness)}`
                 : `Idris 2: the compiler has no type for ${quoted(result.occurrence.name)} here.`,
             );
             return;

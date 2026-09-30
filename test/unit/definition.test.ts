@@ -41,7 +41,7 @@ function setup() {
     registry,
     projects,
     checks: { statusOf: () => undefined, onDidChange: new Emitter<void>().event },
-    config: { inlayHints: () => ({ variableTypes: true }), onDidChange: () => ({ dispose: () => undefined }) },
+    config: { inlayHints: () => ({ variableTypes: true }), onDidChange: () => ({ dispose: () => undefined }), checking: () => ({ trigger: 'onSave', delayMs: 700 }) },
     log: { ...quietLog, debug: (m: string) => logged.push(`debug ${m}`), info: (m: string) => logged.push(`info ${m}`) },
   }, { keepNotices: true });
   const provide = (line: number, character: number, d: FakeDocument = doc) =>

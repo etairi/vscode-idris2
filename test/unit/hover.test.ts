@@ -6,6 +6,7 @@
 import * as assert from 'assert';
 import type * as vscode from 'vscode';
 import type { Token, TypeInfo } from '../../src/backend/types';
+import type { CheckingTrigger } from '../../src/core/config';
 import { IdrisException } from '../../src/core/errors';
 import { Emitter } from '../../src/core/event';
 import type { CheckStatus } from '../../src/features/diagnostics/checks';
@@ -48,6 +49,8 @@ function hoverSetup() {
   const loads = new Emitter<LoadedFileEvent>();
   const changed = new Emitter<void>();
   const status = { current: { kind: 'checked', errors: 0, warnings: 0, stale: false, known: true } as CheckStatus | undefined };
+  /** `idris2.checking.trigger`, for the queries' passive rule and what checks a stale document again. */
+  const settings = { trigger: 'onSave' as CheckingTrigger };
   const root: Classification = { kind: 'loose', dir: '/w' };
   const trust = { isTrusted: true, onDidGrant: new Emitter<void>().event };
   const registry = { backendFor: () => backend, stateFor: () => ({ kind: 'active' }) as const, onDidChange: changed.event };
@@ -57,7 +60,7 @@ function hoverSetup() {
     registry,
     projects,
     checks: { check: () => Promise.resolve(undefined), runningCheck: () => undefined, activeDocument: () => asDoc(doc) },
-    config: { checking: () => ({ trigger: 'onSave', delayMs: 700 }) },
+    config: { checking: () => ({ trigger: settings.trigger, delayMs: 700 }) },
     trust,
     log: quietLog,
   });
@@ -67,6 +70,7 @@ function hoverSetup() {
     registry,
     projects,
     checks,
+    manual: () => settings.trigger === 'manual',
     position: (p) => new FakePosition(p.line, p.character) as unknown as vscode.Position,
   };
   const intelligence: IntelligenceDeps = {
@@ -75,10 +79,14 @@ function hoverSetup() {
     registry,
     projects,
     checks,
-    config: { inlayHints: () => ({ variableTypes: true }), onDidChange: () => ({ dispose: () => undefined }) },
+    config: {
+      inlayHints: () => ({ variableTypes: true }),
+      onDidChange: () => ({ dispose: () => undefined }),
+      checking: () => ({ trigger: settings.trigger, delayMs: 700 }),
+    },
     log: quietLog,
   };
-  return { doc, tokens, backend, loads, changed, status, deps, intelligence, root };
+  return { doc, tokens, backend, loads, changed, status, settings, deps, intelligence, root };
 }
 
 /** `recordedType` answers by name, for the fake backend. */
@@ -228,6 +236,36 @@ suite('features/intelligence/occurrence', () => {
     assert.deepStrictEqual(onLine(between, 12), onLine(tokens, 11), 'between them: moved with its line');
     assert.deepStrictEqual(onLine(between, 13), onLine(tokens, 12), 'the line edited in place: every token, a space typed at its end');
     assert.strictEqual(between.length, tokens.length);
+  });
+
+  test('a lone \\r in the file the load read: the tokens below it are kept on their lines, as VS Code breaks them (fifth review of M3)', () => {
+    // The compiler numbers lines at \n only [live, idris2 0.8.0]; VS Code breaks them at the \r too,
+    // and its document is the file's lines joined by one line break. Split at the \r as well, the
+    // index text paired every line below with the line above it.
+    const disk = 'module M\n-- a\rb\narea : Nat -> Nat\narea x = x\n';
+    const doc = new FakeDocument('/w/M.idr', 'module M\n-- a\nb\narea : Nat -> Nat\narea x = x\n');
+    const area: Token = { range: { start: at(2, 0), end: at(2, 4) }, decor: 'function', name: 'area', namespace: '' };
+    const x: Token = { range: { start: at(3, 5), end: at(3, 6) }, decor: 'bound', name: 'x', namespace: '' };
+    const kept = currentTokens(doc, { file: doc.fileName, text: disk, tokens: [area, x] });
+    assert.deepStrictEqual(kept.map((t) => [t.name, t.range.start.line, t.range.start.character]), [['area', 3, 0], ['x', 4, 5]]);
+  });
+
+  test('the line that holds a lone \\r: its tokens are kept, those after the \\r one line down, a comment across it over two lines (seventh review of M3)', () => {
+    // Diffed with the editor's lines, the compiler's line holding the \r was never paired: its
+    // tokens, and so its hover and inlay hints, were dropped.
+    const disk = 'module M\n\nf : Nat -> Nat\nf x = x -- a\r-- b\ng y = y\n';
+    const doc = new FakeDocument('/w/M.idr', 'module M\n\nf : Nat -> Nat\nf x = x -- a\n-- b\ng y = y\n');
+    const x: Token = { range: { start: at(3, 2), end: at(3, 3) }, decor: 'bound', name: 'x', namespace: '' };
+    const comment: Token = { range: { start: at(3, 8), end: at(3, 17) }, decor: 'comment' };
+    const y: Token = { range: { start: at(4, 2), end: at(4, 3) }, decor: 'bound', name: 'y', namespace: '' };
+    const kept = currentTokens(doc, { file: doc.fileName, text: disk, tokens: [x, comment, y] });
+    assert.deepStrictEqual(
+      kept.map((t) => [t.name ?? t.decor, t.range.start.line, t.range.start.character, t.range.end.line, t.range.end.character]),
+      [['x', 3, 2, 3, 3], ['comment', 3, 8, 4, 4], ['y', 5, 2, 5, 3]],
+    );
+    assert.strictEqual(kept[0], x, 'a token that did not move is the index\'s own');
+    assert.strictEqual(indexTokenOf(kept[1]), comment);
+    assert.strictEqual(indexTokenOf(kept[2]), y);
   });
 
   test('two separate edits: the tokens between them are kept at the lines they moved to, none at a neighbouring line (fourth review of M3)', () => {
@@ -483,7 +521,7 @@ suite('features/intelligence/hover', () => {
       assert.deepStrictEqual(t.fake.messages, t.intelligence.notices);
     });
 
-    test('no type while the document is stale: the notification says the compiler answers about the file as last checked (fourth review of M3)', async () => {
+    test('no type while the document is stale: the notification says the compiler answers about the file as last checked (fourth review of M3), and what checks it again (fifth)', async () => {
       // A new unsaved line: its position is not in the file as loaded, so no positional request is
       // made; before, the notification said only that the compiler had no type for the name.
       const t = registered();
@@ -494,8 +532,78 @@ suite('features/intelligence/hover', () => {
       await t.fake.run(TYPE_AT_CURSOR_COMMAND);
       assert.deepStrictEqual(t.intelligence.notices, [
         'Idris 2: no type for "y" here: the compiler answers about the file as it last checked it, and the editor shows changes made since. ' +
-          'Save the file (or run Idris 2: Check File) to check it again.',
+          'Save the file to check it again.',
       ]);
+      // What checks it again depends on why it is stale (fifth review of M3: Check File, offered
+      // with unsaved changes, checks the saved file and leaves the document stale).
+      t.status.current = { kind: 'checked', errors: 0, warnings: 0, stale: true, known: true, staleness: { unsaved: true, manual: true } };
+      await t.fake.run(TYPE_AT_CURSOR_COMMAND);
+      t.doc.edit(lines.join('\n'), true); // saved (the manual trigger: not checked since)
+      t.status.current = { kind: 'checked', errors: 0, warnings: 0, stale: true, known: true, staleness: { unsaved: false, manual: true } };
+      await t.fake.run(TYPE_AT_CURSOR_COMMAND);
+      // A package error, stale, under the manual trigger: its staleness too (seventh review of M3:
+      // taken as not manual, the advice was a save, which checks nothing then).
+      t.doc.edit(lines.join('\n'));
+      t.status.current = { kind: 'packageError', ipkg: '/w/p.ipkg', message: 'bad', stale: true, staleness: { unsaved: true, manual: true } };
+      await t.fake.run(TYPE_AT_CURSOR_COMMAND);
+      // While a check runs (Check File on the saved file), the checks say nothing about why the
+      // document is stale: the trigger comes from the settings (eighth review of M3: taken as not
+      // manual, the advice was a save, which checks nothing then).
+      t.status.current = { kind: 'checking', waitingFor: undefined };
+      await t.fake.run(TYPE_AT_CURSOR_COMMAND);
+      t.settings.trigger = 'manual';
+      await t.fake.run(TYPE_AT_CURSOR_COMMAND);
+      assert.deepStrictEqual(
+        t.intelligence.notices.slice(1).map((n) => n.slice(n.indexOf('since. ') + 7)),
+        [
+          'Save the file, then run Idris 2: Check File, to check it again.',
+          'Run Idris 2: Check File to check it again.',
+          'Save the file, then run Idris 2: Check File, to check it again.',
+          'Save the file to check it again.',
+          'Save the file, then run Idris 2: Check File, to check it again.',
+        ],
+      );
+    });
+
+    test('closing another document of the same path (a git: one) keeps the file\'s answers and its root; its own close drops them (sixth review of M3)', async () => {
+      // VS Code gives a git: document the file's fileName (the Source Control view's Open Changes):
+      // its close dropped the answers and the file's root, so answers cached afterwards were never
+      // made stale by a load of its root, and the hover showed a type from before an import changed.
+      const t = registered();
+      t.backend.typeAnswer = answering({ r: { text: 'r : Double', spans: [], lookup: 'position' } });
+      const hover = () => t.fake.providers.hover?.provideHover(asDoc(t.doc), new FakePosition(12, 13) as never, t.fake.cancel);
+      t.loads.fire({ root: t.root, file: t.doc.fileName, rebuilt: false });
+      await hover();
+      const gitDoc: { uri: { scheme: string; toString(): string }; fileName: string } = new FakeDocument(t.doc.fileName, t.doc.getText(), 'idris2', 'git');
+      t.fake.closed.fire(gitDoc);
+      await hover();
+      assert.strictEqual(t.backend.calls.length, 1, 'still kept');
+      t.loads.fire({ root: t.root, file: '/w/Other.idr', rebuilt: true });
+      await hover();
+      assert.strictEqual(t.backend.calls.length, 2, 'made stale by a load of its root');
+      t.fake.closed.fire(t.doc);
+      await hover();
+      assert.strictEqual(t.backend.calls.length, 3, 'its own close drops them');
+      t.intelligence.dispose();
+    });
+
+    test('the file\'s own document closed and opened again with no load of its own: a load of its root still makes the answers asked since stale (tenth review of M3)', async () => {
+      // Under the manual trigger a reopened document is not loaded, and the session still answers
+      // about it while it is the file loaded last; the close forgot the file's root, so the hover kept
+      // a type from before an import changed, with no stale note (the verifier's probe).
+      const t = registered();
+      t.backend.typeAnswer = answering({ r: { text: 'r : Double', spans: [], lookup: 'position' } });
+      const hover = () => t.fake.providers.hover?.provideHover(asDoc(t.doc), new FakePosition(12, 13) as never, t.fake.cancel);
+      t.loads.fire({ root: t.root, file: t.doc.fileName, rebuilt: true });
+      await hover();
+      t.fake.closed.fire(t.doc);
+      await hover();
+      await hover();
+      assert.strictEqual(t.backend.calls.length, 2, 'asked again after the close, then kept');
+      t.loads.fire({ root: t.root, file: '/w/Other.idr', rebuilt: true });
+      await hover();
+      assert.strictEqual(t.backend.calls.length, 3, 'made stale by a load of its root');
+      t.intelligence.dispose();
     });
 
     test('notices are kept for the test API only when asked', async () => {

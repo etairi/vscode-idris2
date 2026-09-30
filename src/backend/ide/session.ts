@@ -26,7 +26,10 @@
  * - **One request in flight** (F5: a request pipelined on the socket is dropped), the others in
  *   one first-in, first-out queue, with one exception: a request that is `urgent`
  *   (`RequestOptions.urgent`, asked each time the next request is chosen) goes before the others
- *   waiting, but never before the one in flight, nor before one whose `beforeSend` check runs or
+ *   waiting, queries included (`IdeBackend.ask` refuses a query whose answer is kept per load —
+ *   `typeAt`, `docsFor`, `definition` — when an urgent reload replaced that load; completions and
+ *   namespace listings are answered from the newer load), but never before the one in flight, nor
+ *   before one whose `beforeSend` check runs or
  *   has passed for the process (that check and the write stay one step, *Consent* in docs/as-built/M2.md).
  *   The checks mark the active document's load so while `idris2.ideMode.maxBackgroundChecks` is
  *   above 0 (ROADMAP §9 Q21); without it the queue is first-in, first-out. A cancellation token

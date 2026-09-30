@@ -149,9 +149,12 @@ export function registerEvaluation(api: EvaluationApi, deps: EvaluationDeps, opt
   /** Per document (`uri.toString()`), the results drawn in it. */
   const results = new Map<string, DrawnResult[]>();
   /**
-   * Per root (`rootKey`), the evaluation this window asked for last, settled or not: the backend
-   * runs a root's evaluations one at a time (`IdrisBackend.evaluate`), so the next one starts when it
-   * ends (module comment, *Cancel*).
+   * Per root (`rootKey`), a promise that settles once every evaluation this window has asked for
+   * there has settled: the backend runs a root's evaluations one at a time (`IdrisBackend.evaluate`),
+   * so the next one starts then (module comment, *Cancel*). A chain, not the last evaluation alone:
+   * one that settles before those asked before it (the backend refuses a REPL command at once, and
+   * it never enters the backend's queue) must not make the next one look as if it ran at once (fifth
+   * review of M3). Deleted once the chain has settled and nothing was added to it.
    */
   const lastAsked = new Map<string, Promise<void>>();
   const decoration = store.add(
@@ -285,7 +288,13 @@ export function registerEvaluation(api: EvaluationApi, deps: EvaluationDeps, opt
     );
     const key = rootKey(root);
     const ahead = lastAsked.get(key);
-    lastAsked.set(key, settled);
+    const chain = ahead === undefined ? settled : ahead.then(() => settled);
+    lastAsked.set(key, chain);
+    void chain.then(() => {
+      if (lastAsked.get(key) === chain) {
+        lastAsked.delete(key);
+      }
+    });
     let finished = false;
     let offer: ReturnType<typeof setTimeout> | undefined;
     const offerCancel = (): void => {
@@ -340,9 +349,6 @@ export function registerEvaluation(api: EvaluationApi, deps: EvaluationDeps, opt
       finished = true;
       clearTimeout(offer);
       cancel.dispose();
-      if (lastAsked.get(key) === settled) {
-        lastAsked.delete(key);
-      }
     }
     record({
       file: doc.fileName,

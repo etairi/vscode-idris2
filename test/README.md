@@ -220,7 +220,13 @@ No compiler runs in them; recorded compiler output comes from `fixtures/transcri
   file; a file deleted and created again, one load per
   trigger for a document shown in two editor groups; the active document (the last active Idris
   file while another editor is active) and its root told to the backend, and its check started
-  last where several visible documents are checked at once (M3);
+  last where several visible documents are checked at once (M3; with a limit, its load urgent
+  unless, at its handover, a load of the batch in its root handed over before it has not settled,
+  decided once and counted per root — alone in its root, as after an import was fixed, urgent —,
+  and the documented exceptions: a folder not judged yet;
+  a check of the batch in its root left waiting for a slot, when the batch's checks that take one,
+  of any root, outnumber the free slots, also with a slot held by a background check outside the
+  batch);
   `idris2.ideMode.maxBackgroundChecks` (ROADMAP §9 Q21): all at once with the default 0, one at
   a time in order with 1 while the active document's check starts at once, a waiting document
   that becomes active promoted, a waiting check dropped when its document closes or a newer check
@@ -298,10 +304,15 @@ the backend.
 - `positions.test.ts` (M3 part) — E14: `codePointsBefore` and `utf16Length`, and every
   conversion of the §7 table on lines with characters outside the BMP (the recorded answers of
   `unicode-columns`); `toCompilerColumn` and `codeLineSpans` (a range over lines, per code line);
-  `lineCorrespondence` (a line diff: its equal pairs checked against a longest common subsequence
-  on 400 random pairs of texts, seed 23; the bound `MAX_LINE_EDITS`), `toLoadedPosition` (a
-  position of the text shown in the text a load read, also between two separate edits) and
-  `toShownPosition` (the converse, for a definition's range).
+  `lineCorrespondence` (a line diff anchored on unique lines: on 800 random pairs of texts, seed
+  23, its equal pairs a common subsequence to which no two equal lines can be added, and a longest
+  one when no text repeats a line; a block moved past another kept together; the bound
+  `MAX_LINE_EDITS`), `compilerLines` and `editorLines` (a lone `\r`), `editorSplit` and `textMap`
+  (a text a load read and a document's that differ only in line breaks mapped exactly, the line
+  holding a lone `\r` too: every position of 2,000 random texts, seed 777; split first, then
+  diffed, with an edit: below the lone `\r` and after it on its line, and every position of 3,000
+  randomly edited texts mapped to the same text before it and back, seed 99), `toLoadedPosition` (a position of the text shown in the text a load read,
+  also between two separate edits) and `toShownPosition` (the converse, for a definition's range).
 - `protocolTranscripts.test.ts` (M3 part) — the new recordings: every request rebuilt byte for
   byte and every reply decoded; E14 (all 24 positional answers of `unicode-columns` land on the
   named local and convert back to the recorded column), highlighting offsets inside a reply that
@@ -311,19 +322,26 @@ the backend.
 - `highlight.test.ts` — `backend/ide/highlight.ts`: the token index of eight recorded loads (every
   named token holds its name in the fixture text at the converted range, except the recorded
   sugar: tuple commas, list brackets), duplicates merged, E14, the `.lidr` offset, failed loads
-  (no index), frames of another file or shape, and the cost of 24,000 frames (asserted < 200 ms;
-  the numbers are in `docs/as-built/M3.md`, *Measured*).
+  (no index), frames of another file or shape, and the cost of 24,000 frames (asserted < 1,000 ms,
+  a guard against a regression in kind since the fifth review of M3; the 200 ms budget is timed for
+  the provider: its encoding by `semanticTokens.test.ts`, its answer after a real load by the e2e
+  suite; the numbers are in `docs/as-built/M3.md`, *Measured*).
 - `backendIde.test.ts` (M3 part) — the queries (`NotLoaded` at once and right before the write,
+  also when a reload of the same file went first, then with a text of its own,
   positional `:type-of` then by name, an answer about another local not taken, a variable not
   asked by name, `perimeter`'s machine name answered by name, caches per load, a reload being
   made waited for, a position of a document with unsaved changes asked where it lies in the file
   as loaded, a local operator's answer), definition (a bound variable refused by the caller's
   decoration, also with unsaved changes; qualified names; the token's namespace; unreadable and
   non-absolute targets; the `:name-at` answer and the target files kept per load; a range moved
-  to the target's open document with unsaved changes, or left out on a changed line),
+  to the target's open document with unsaved changes, or left out on a changed line with the
+  reason for its kind of change, and to the lines VS Code shows of a target that is not open,
+  below a lone `\r`; a definition starting on the line that holds one, in the loaded file and in
+  another file, open or not),
   completions, namespace listings, the token index (its text only when the file read the same
   before and after the load; at most 16 kept; a byte order mark dropped, as the compiler drops
-  it) and `onDidLoad` (`rebuilt`), the completion
+  it) and `onDidLoad` (`rebuilt` — also a load that built nothing of another text than the file's
+  last announced load read —, `failed`), the completion
   warm-up (sent once the session has been idle for a while, given up after a limit), and evaluation (the refusal before the backend classifies or starts anything, a load
   before every `:interpret`, the `:interpret` queued with the load under `idris2.eval.timeout`,
   one evaluation at a time, the load lost before the `:interpret`, a time-out, a failed session,
@@ -339,14 +357,17 @@ the backend.
 - `hover.test.ts`, `hoverQueries.test.ts`, `hoverText.test.ts` —
   `features/intelligence/{occurrence,hover,queries,text}.ts`: the name at a position (index, else
   the lexer), the tokens that still apply to another text (and all of them again for the text the
-  load read), the hover model and the answers it drops, the occurrence's decoration passed on, no
-  type kept while the document is stale, `isStale`, the rendering (compiler text only
+  load read; those of the line that holds a lone `\r`), the hover model and the answers it drops, the occurrence's decoration passed on, no
+  type kept while the document is stale, `isStale`, what checks a stale document again (also for a
+  stale package error under the `manual` trigger, and while a check runs, from the settings), the
+  rendering (compiler text only
   in fences no line can close — the overview too, whose named character references and autolinks
   `appendText` let through —, invisible characters written out), `DocumentQueries` (Restricted
   Mode, the load on `NotLoaded` for commands and for the active document only, one shared check,
   the document's running check waited for instead of a second)
   and `AnswerCache` (kept until a load of the root that built something, also of another file;
-  dropped when the document closes); the `:docs-for` blocks and their overview.
+  dropped when the file's document closes, not another document of its path, the file's root kept);
+  the `:docs-for` blocks and their overview.
 - `semanticTokens.test.ts`, `symbols.test.ts`, `documentHighlights.test.ts`, `definition.test.ts`,
   `docs.test.ts`, `browse.test.ts` — the legend and encoding (recorded tokens of `Shapes.idr` and
   `Lit.lidr`; multi-line tokens per line, after the bird-track marker and not on prose lines; of
@@ -363,14 +384,25 @@ the backend.
   icon; inserted as it is); which bound tokens get a hint, the label, the tooltip, the range asked
   about, the caches, nothing asked while the document has unsaved changes or shows another text
   than the index (also after it was closed, changed and opened again), and then the kept hints at
-  the places their tokens were carried to (also between two separate edits), and the answers a
-  load made stale where nothing can be asked (a failed save, a refused query).
+  the places their tokens were carried to (also between two separate edits), a saved file with
+  mixed line breaks or a lone `\r` asked about at the lines VS Code shows, and the answers a load
+  made stale where nothing can be asked (a failed save, a refused query, a line edited in place,
+  not a swapped clause, an index of another text without a stale event, a lone `\r` on a hinted
+  line saved as the document's line break, or kept with the line edited after the variable), not
+  replaced by an answer that shows nothing after a failed load, which a close of the file's own
+  document forgets; nothing asked while the file's index has no text,
+  also when the document shows the text of the index before; the index the answers were asked
+  with not kept alive once the backend replaced it (`WeakRef`, the collector exposed at run time);
+  the caches of both kept when another document of the file's path (a `git:` one) closes, and the
+  file's root kept when its own document closes (answers asked after it opened again go stale with
+  a load of the root).
 - `eval.test.ts`, `untrustedText.test.ts` — `features/eval`: the selected expression (bird
   tracks and Org's `#+IDRIS:` markers, prose, Org lines without a marker, a selection over lines
   indented to its column: `let` and `case … of` blocks),
   the label and the hover, the command's outcomes, notifications (one line, invisible characters
   written out) and results drawn, the Cancel offered a second after the evaluation started (not
-  while it waits behind another of its root), and, with the real `IdeMode`
+  while it waits behind another of its root, also a third one asked after the first ended), and,
+  with the real `IdeMode`
   over recording fakes, every command form refused before any session is asked for;
   `core/untrustedText.ts`: the fence (also for 200,000 runs of backticks), `visible`,
   `quickPickText`, `editorLabel` (every format character, also those that are not

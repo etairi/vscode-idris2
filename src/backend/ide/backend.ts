@@ -15,7 +15,8 @@
  * is for (`LoadRecord`, keyed by the session's `LoadedFile`), and a query whose document is not the
  * one the session's `loadedFile` records — another file, a raw request, no process — rejects with
  * `NotLoaded` at once, sending and starting nothing; one that is sends its request with a
- * `beforeSend` check that it still is (a load queued before it may change it). A query never
+ * `beforeSend` check that it still is (a load queued before it may change it) — for `typeAt`,
+ * `docsFor` and `definition`, that the same load is (an urgent reload may pass it, `ask`). A query never
  * loads. `typeAt` and `docsFor` answers, and `definition`'s `:name-at` answers and target files,
  * are cached per load (a new `LoadRecord`) and request, and the three wait for a reload of the
  * document's file that is being made (`loadedCheckSession`).
@@ -119,6 +120,7 @@
  * Only type imports from `vscode`: the diagnostic objects are built with the `api` passed in, so
  * the module is unit-tested on Node.
  */
+import { createHash } from 'crypto';
 import * as path from 'path';
 import type * as vscode from 'vscode';
 import { DisposableStore, type IDisposable } from '../../core/disposable';
@@ -127,16 +129,14 @@ import { Emitter, type Event } from '../../core/event';
 import type { Config } from '../../core/config';
 import {
   fromIdeReplySpan,
+  textMap,
   toIdeTypeOfRequest,
   toIdeTypeOfRequestPastStart,
-  lineCorrespondence,
-  toLoadedPosition,
-  toShownPosition,
   type EditorPosition,
   type EditorRange,
   type IdeRequestPoint,
-  type LineCorrespondence,
   type PositionDocument,
+  type TextMap,
 } from '../../core/positions';
 import type { SessionGate } from '../../core/trust';
 import { editorLabel } from '../../core/untrustedText';
@@ -250,9 +250,6 @@ export interface IdeModeDeps {
   openText(fileName: string): string | undefined;
 }
 
-/** A line break as VS Code's text model reads one (`occurrence.ts` splits the same way). */
-const LINE_BREAK = /\r\n|\r|\n/;
-
 /**
  * The text the compiler read, as `core/positions.ts` reads a document: without a byte order mark
  * at its start, which the compiler drops before it unlits and lexes the file — in a `.lidr` whose
@@ -272,25 +269,42 @@ function textDocument(fileName: string, text: string | undefined): PositionDocum
   };
 }
 
+/** Moves a range of a file's text, `range` of the lines `before`, to the lines `after` (`shownRange`). */
+type RangeMove = (range: EditorRange) => EditorRange | undefined;
+
 /**
- * How a range of a file, converted with `disk` (the file as read from disk), is moved to `shown`, the
- * text of the file's open document (`IdeBackend.definition`): `undefined` when no document is open or
- * it shows that text (the range stays); otherwise a function giving the range in `shown`
- * (`core/positions.ts` `toShownPosition` over the lines' correspondence), with its end at its start
- * when the end is on a line changed since, or `undefined` when its start is.
+ * `RangeMove` by `map`, from a text a load read to a document's text (`core/positions.ts`
+ * `textMap`): the range's start and end in the document's text, with its end at its start when the
+ * end is on a line changed since, or `undefined` when its start is.
  */
-function shownRange(disk: string, shown: string | undefined): ((range: EditorRange) => EditorRange | undefined) | undefined {
-  const saved = disk.replace(/^\uFEFF/, '');
-  if (shown === undefined || shown === saved) {
+function moveBy(map: TextMap): RangeMove {
+  return (range) => {
+    const start = map.toShown(range.start);
+    return start === undefined ? undefined : { start, end: map.toShown(range.end) ?? start };
+  };
+}
+
+/** A `\r` that is not the start of a `\r\n`. */
+const LONE_CR = /\r(?!\n)/;
+
+/**
+ * How a range of a file, converted with `read` (the file as read from disk), is moved to `shown`, the
+ * text of the file's open document (`IdeBackend.definition`), or, when none is open, to `read` as VS
+ * Code will show it: `undefined` when the lines are the same (the range stays); otherwise `moveBy`
+ * (`core/positions.ts` `textMap`, exact where the two differ only in their line breaks, in a file that
+ * is not literate: *Literate lines* there). A file that
+ * is not open has other lines in VS Code only after a lone `\r`, where its editor breaks a line and
+ * the compiler does not (`core/positions.ts` `editorLines`): until the sixth review of M3 the range
+ * stayed, and F12 landed one line too high there [unit-level, the verifier's probe; the compiler's
+ * `\n`-only lines live, idris2 0.8.0]; until the seventh, a definition starting on the line holding
+ * the `\r` was refused as changed, also in a file not open [unit-level, the verifier's probe].
+ */
+function shownRange(read: string, shown: string | undefined): RangeMove | undefined {
+  const text = read.replace(/^\uFEFF/, '');
+  if (!LONE_CR.test(text) && (shown === undefined || shown === text)) {
     return undefined;
   }
-  const before = saved.split(LINE_BREAK);
-  const after = shown.split(LINE_BREAK);
-  const correspondence = lineCorrespondence(before, after);
-  return (range) => {
-    const start = toShownPosition(before, after, range.start, correspondence);
-    return start === undefined ? undefined : { start, end: toShownPosition(before, after, range.end, correspondence) ?? start };
-  };
+  return moveBy(textMap(text, shown ?? text));
 }
 
 /**
@@ -338,12 +352,26 @@ export interface LoadedDocument {
   readonly file: string;
   /**
    * The load may have changed what the compiler answers about any file of the root: it built a
-   * module (a `Building` line: the file or a module it imports changed on disk), it failed, or it
-   * is the first load answered by this process (a load cut off earlier, by a time-out or a stop,
-   * may have built modules without an answer). A load that built nothing reloaded the same build
-   * files, so what was answered before it still holds (F7; *review of M3*).
+   * module (a `Building` line: the file or a module it imports changed on disk), it failed, it is
+   * the first load answered by this process (a load cut off earlier, by a time-out or a stop, may
+   * have built modules without an answer), or the file read another text right before it than
+   * before this process's last announced load of it (`LoadRecord.textBefore`). A load that built
+   * nothing reloaded the same build files, so what was answered before it still holds (F7; *review
+   * of M3*) — unless another process had built the file's new text into a build directory it shares
+   * with this one (the `eval` session, the user's own build: D5, where the package or `extraArgs`
+   * choose the directory): then the load builds nothing and the answers change, and until the
+   * seventh review of M3 a hover at a position not asked since answered from the text before
+   * [unit-level, the verifier's probe; that such a load builds nothing is from D5 and the code, not
+   * run].
    */
   readonly rebuilt: boolean;
+  /**
+   * The load returned an error: in the file (the compiler still answers about the declarations
+   * before it), or in a module the file imports (it then answers about none of the file's names:
+   * `(:type-of "xs" 6 5)` answered `Undefined name xs` [live, fifth review of M3]). A failed load is
+   * also `rebuilt`.
+   */
+  readonly failed: boolean;
 }
 
 /** The causes of a crash (the session restarts) as `SessionStateChange` reports them. */
@@ -654,6 +682,19 @@ function notLoaded(doc: vscode.TextDocument): IdrisException {
 }
 
 /**
+ * The rejection (`NotLoaded`) of a query that waited while its file was loaded again (`ask`): the file
+ * is the one loaded last, but not by the load the query was made for. Until the ninth review of M3 it
+ * was `notLoaded`'s text, false here; `DocumentQueries` shows it when the query is overtaken twice.
+ */
+function reloaded(doc: vscode.TextDocument): IdrisException {
+  return new IdrisException({
+    kind: 'NotLoaded',
+    message: `${path.basename(doc.fileName)} was checked again while the question waited; ask again.`,
+    file: doc.fileName,
+  });
+}
+
+/**
  * An `eval` session whose `:interpret` took longer than this is stopped once it has answered
  * (`SessionPool.releaseEvaluation`; module comment, *Evaluation*). The compiler keeps the memory an
  * evaluation made it take: on the e2e suite's 2,000-line module the `eval` process took 191 MiB after
@@ -766,6 +807,17 @@ function namespaceEntries(listing: RichText): NamespaceEntry[] {
  */
 type LoadedPlace = { readonly document: PositionDocument; readonly pos: EditorPosition } | undefined;
 
+/** How the text a load read and the text a document shows correspond (`core/positions.ts` `textMap`), and the loaded text as a document. */
+interface ComparedLines {
+  readonly map: TextMap;
+  readonly document: PositionDocument;
+}
+
+/** `ComparedLines` of `loaded` (the text of `fileName` a load read) and `shown` (a document's). */
+function compareLines(fileName: string, loaded: string, shown: string): ComparedLines {
+  return { map: textMap(loaded, shown), document: textDocument(fileName, loaded) };
+}
+
 export class IdeBackend implements IdrisBackend {
   readonly kind: BackendKind = 'ideMode';
   readonly caps: Readonly<Capabilities> = IDE_MODE_CAPABILITIES;
@@ -784,6 +836,11 @@ export class IdeBackend implements IdrisBackend {
   private readonly evaluations = new WeakMap<IdeSession, Promise<unknown>>();
   /** Per root (`rootKey`), the process whose load was announced last (`LoadedDocument.rebuilt`). */
   private readonly announcedLaunch = new Map<string, SessionLaunch | undefined>();
+  /**
+   * Per root (`rootKey`) and file, the SHA-256 of the text its last announced load read
+   * (`LoadRecord.textBefore`; `undefined`: not read), for `LoadedDocument.rebuilt`.
+   */
+  private readonly announcedTexts = new Map<string, Map<string, string | undefined>>();
   /** Per `check` session, when its state last changed (`sessionChanged`; `warmUpCompletions` waits for quiet). */
   private readonly lastChange = new WeakMap<IdeSession, number>();
   /** Per `check` session and file, the load of it that is being made (`typeAt` and `docsFor` wait for it). */
@@ -792,21 +849,7 @@ export class IdeBackend implements IdrisBackend {
    * Per load, the last document version compared with the text it read (`loadedPlace`): `lines`
    * when they differ.
    */
-  private readonly comparisons = new WeakMap<
-    LoadRecord,
-    {
-      readonly doc: vscode.TextDocument;
-      readonly version: number;
-      readonly lines:
-        | {
-            readonly before: readonly string[];
-            readonly after: readonly string[];
-            readonly correspondence: LineCorrespondence;
-            readonly document: PositionDocument;
-          }
-        | undefined;
-    }
-  >();
+  private readonly comparisons = new WeakMap<LoadRecord, { readonly doc: vscode.TextDocument; readonly version: number; readonly lines: ComparedLines | undefined }>();
 
   constructor(
     private readonly deps: IdeModeDeps,
@@ -1130,13 +1173,20 @@ export class IdeBackend implements IdrisBackend {
       }
       const key = rootKey(root);
       const launch = session.launch;
+      const failed = reply.payload.kind === 'error';
+      const newProcess = launch === undefined || this.announcedLaunch.get(key) !== launch;
+      let texts = this.announcedTexts.get(key);
+      if (texts === undefined) {
+        texts = new Map();
+        this.announcedTexts.set(key, texts);
+      }
+      const read = record.textBefore === undefined ? undefined : createHash('sha256').update(record.textBefore).digest('hex');
+      const changedText = texts.has(doc.fileName) && texts.get(doc.fileName) !== read;
+      texts.set(doc.fileName, read);
       const rebuilt =
-        reply.payload.kind === 'error' ||
-        launch === undefined ||
-        this.announcedLaunch.get(key) !== launch ||
-        reply.messages.some((m) => m.kind === 'write-string' && decodeBuildingLine(m.text) !== undefined);
+        failed || newProcess || changedText || reply.messages.some((m) => m.kind === 'write-string' && decodeBuildingLine(m.text) !== undefined);
       this.announcedLaunch.set(key, launch);
-      this.announce({ root, file: doc.fileName, rebuilt });
+      this.announce({ root, file: doc.fileName, rebuilt, failed });
     }
     const result = loadDiagnostics(reply, {
       loadedPath: doc.fileName,
@@ -1202,8 +1252,9 @@ export class IdeBackend implements IdrisBackend {
    * `afterReload`: while a load of `doc`'s file is being made in that session and `doc`'s file is the
    * one loaded (a check after a save), waits for that load first, so that an answer kept per load
    * (`typeAt`, `docsFor`, `definition`) is not the previous load's (*review of M3*: a hover during
-   * the check after a save showed the type before it, with no stale note). A query sent meanwhile needs no wait: it
-   * queues behind the load, and its check before the write sees the new load.
+   * the check after a save showed the type before it, with no stale note). A query asked before a
+   * reload was queued needs no wait: its check before the write refuses it when the reload went
+   * first (`ask`, an `urgent` load).
    */
   private async loadedCheckSession(
     doc: vscode.TextDocument,
@@ -1229,11 +1280,27 @@ export class IdeBackend implements IdrisBackend {
     return { session, record };
   }
 
-  /** Sends a query about `doc` to its `check` session, checking right before the write that `doc`'s file is still the one loaded. */
-  private ask(session: IdeSession, doc: vscode.TextDocument, command: IdeCommand): Promise<Reply> {
+  /**
+   * Sends a query about `doc` to its `check` session, checking right before the write that `doc`'s
+   * file is still the one loaded — and, given `record`, that the load answered last is that one, the
+   * load the query's answer is kept for and its positions were converted with (`typeAt`, `docsFor`,
+   * `definition`). A reload of the file may overtake a query that waits: the checks mark the active
+   * document's load `urgent` while `idris2.ideMode.maxBackgroundChecks` is set, and an urgent request
+   * goes before every request that waits (`session.ts`). Such a query is refused (`NotLoaded`, with
+   * `reloaded`'s text), and `DocumentQueries` asks again once the check has ended (sixth review of M3: it was sent after the
+   * reload with the position converted for the load before, and the compiler answered about another
+   * line [unit-level, the verifier's probe on the real session]).
+   */
+  private ask(session: IdeSession, doc: vscode.TextDocument, command: IdeCommand, record?: LoadRecord): Promise<Reply> {
     return session.request(command, {
       kind: 'lookup',
-      beforeSend: () => (this.recordOf(session, doc) === undefined ? Promise.reject(notLoaded(doc)) : Promise.resolve()),
+      beforeSend: () => {
+        const loaded = this.recordOf(session, doc);
+        if (loaded === undefined) {
+          return Promise.reject(notLoaded(doc));
+        }
+        return record !== undefined && loaded !== record ? Promise.reject(reloaded(doc)) : Promise.resolve();
+      },
     });
   }
 
@@ -1289,7 +1356,7 @@ export class IdeBackend implements IdrisBackend {
     const place = this.loadedPlace(doc, record, pos);
     const ask = (point: IdeRequestPoint | undefined): Promise<TypeInfo | undefined> =>
       this.cached(record.types, point === undefined ? `name ${name}` : `at ${point.line} ${point.column} ${name}`, async () => {
-        const answer = decodeText((await this.ask(session, doc, typeOf(name, point))).payload);
+        const answer = decodeText((await this.ask(session, doc, typeOf(name, point), record)).payload);
         return answer.kind === 'ok' ? { ...toRichText(answer.value), lookup: point === undefined ? 'name' : 'position' } : undefined;
       });
     const at = place === undefined ? undefined : toIdeTypeOfRequest(place.document, place.pos);
@@ -1315,28 +1382,32 @@ export class IdeBackend implements IdrisBackend {
    * The comparison is made once per document version and load.
    */
   private loadedPlace(doc: vscode.TextDocument, record: LoadRecord, pos: EditorPosition): LoadedPlace {
+    const compared = this.comparedWithLoad(doc, record);
+    if (compared === undefined || compared === 'same') {
+      return { document: doc, pos };
+    }
+    const moved = compared.map.toRead(pos);
+    return moved === undefined ? undefined : { document: compared.document, pos: moved };
+  }
+
+  /**
+   * The text `doc` shows compared with the text the load `record` read (`LoadRecord.textBefore`, a
+   * byte order mark ignored): `'same'`, or their lines and how they correspond, with the loaded text
+   * as a document to convert with; `undefined` when that text is not known. Made once per document
+   * version and load.
+   */
+  private comparedWithLoad(doc: vscode.TextDocument, record: LoadRecord): ComparedLines | 'same' | undefined {
     const loaded = record.textBefore?.replace(/^\uFEFF/, '');
     if (loaded === undefined) {
-      return { document: doc, pos };
+      return undefined;
     }
     let compared = this.comparisons.get(record);
     if (compared?.doc !== doc || compared.version !== doc.version) {
       const shown = doc.getText();
-      compared = { doc, version: doc.version, lines: shown === loaded ? undefined : this.compareLines(doc.fileName, loaded, shown) };
+      compared = { doc, version: doc.version, lines: shown === loaded ? undefined : compareLines(doc.fileName, loaded, shown) };
       this.comparisons.set(record, compared);
     }
-    if (compared.lines === undefined) {
-      return { document: doc, pos };
-    }
-    const moved = toLoadedPosition(compared.lines.before, compared.lines.after, pos, compared.lines.correspondence);
-    return moved === undefined ? undefined : { document: compared.lines.document, pos: moved };
-  }
-
-  /** The lines of `loaded` (the text of `fileName` a load read) and of `shown` (a document's), and how they correspond. */
-  private compareLines(fileName: string, loaded: string, shown: string) {
-    const before = loaded.split(LINE_BREAK);
-    const after = shown.split(LINE_BREAK);
-    return { before, after, correspondence: lineCorrespondence(before, after), document: textDocument(fileName, loaded) };
+    return compared.lines ?? 'same';
   }
 
   /**
@@ -1347,7 +1418,7 @@ export class IdeBackend implements IdrisBackend {
   async docsFor(doc: vscode.TextDocument, name: string): Promise<RichText | undefined> {
     const { session, record } = await this.loadedCheckSession(doc, true);
     return this.cached(record.docs, name, async () => {
-      const answer = decodeText((await this.ask(session, doc, docsFor(name))).payload);
+      const answer = decodeText((await this.ask(session, doc, docsFor(name), record)).payload);
       return answer.kind === 'ok' ? toRichText(answer.value) : undefined;
     });
   }
@@ -1378,12 +1449,31 @@ export class IdeBackend implements IdrisBackend {
    * spells it; each target file is read for its ranges (bird-track offset, F11 — `:name-at` answers
    * unlit columns [live, `lit-lookups`] — and E14). VS Code applies a location to the target's open
    * document, so when that document shows other text than the file read (unsaved changes), the range
-   * is moved to it (`shownRange`); a range that starts on a line changed since is left out. When no
+   * is moved to it (`shownRange`; for a file not open, to the lines VS Code will show, which differ
+   * below a lone `\r`); a range that starts on a line changed since is left out. When no
    * entry is left, `Unsupported` says why. The `:name-at` answer and the target files' texts are kept
    * per load (`LoadRecord`), the moving is done at each call: VS Code asks at every Go to Definition
    * and every Cmd-hover, for each occurrence of a name, and until the fourth review of M3 each asked
    * the compiler again and read every target file again (three installed sources, 67,267 bytes, for
    * `::` [unit-level, the reviewer's probe]). Like `typeAt`, waits for a reload of the file being made.
+   *
+   * **The loaded file** (fifth review of M3). An entry in the file the load read is converted with
+   * the text it read (`LoadRecord.textBefore`) and moved to the text `doc` shows, as `typeAt` compares
+   * them (`comparedWithLoad`), not with the file on disk: the two differ after a save that was not
+   * checked (the `manual` trigger, or a save during the load), and then F12 landed off — a line
+   * inserted at the top and saved gave `area` the range above it, an undo back to the loaded text
+   * one line higher still — and was right or not depending on whether it had been used before the
+   * save (the first read is kept per load) [unit-level, the reviewer's probes]. Another file's entry
+   * describes that module as the compiler last built it; after a change of that file on disk that no
+   * load has built since — a save under the `manual` trigger, and under any trigger a change made
+   * outside VS Code (a checkout, a formatter, a code generator) while the file is not checked —, its
+   * range is converted with the newer text on disk and may be off, and with an open document of it
+   * the result depends on whether it was read before the change (the first read is kept per load)
+   * [unit-level, ninth review of M3: the verifier's probe, two lines inserted at the top of an
+   * imported module not open gave its old range; not handled: the text the compiler built it from is
+   * not kept, and telling such a change by the file's modification time against the time of the load
+   * would refuse ranges that are right — of a file touched but not changed, until the next load, and
+   * wherever the file system's clock runs ahead of the extension host's (a WSL or container mount)].
    */
   async definition(doc: vscode.TextDocument, _pos: vscode.Position, name: string, decor?: Decor, namespace?: string): Promise<vscode.Location[]> {
     this.requireFile(doc, 'Only a file saved on disk can be asked about: the compiler reads the file, not the editor.');
@@ -1396,7 +1486,7 @@ export class IdeBackend implements IdrisBackend {
     const { session, record } = await this.loadedCheckSession(doc, true);
     const root = unqualified(name);
     const entries = await this.cached(record.names, root, async () => {
-      const answer = decodeNameAt((await this.ask(session, doc, nameAt(root))).payload);
+      const answer = decodeNameAt((await this.ask(session, doc, nameAt(root), record)).payload);
       return answer.kind === 'ok' ? answer.value : undefined;
     });
     if (entries === undefined) {
@@ -1413,30 +1503,44 @@ export class IdeBackend implements IdrisBackend {
       return inside === undefined || inside.startsWith('..') || path.isAbsolute(inside) ? file : path.join(session.cwd, inside);
     };
     const textOf = (file: string): Promise<string | undefined> => this.cached(record.sources, file, () => this.deps.readFile(file).catch(() => undefined));
-    const shown = new Map<string, ((range: EditorRange) => EditorRange | undefined) | undefined>();
+    const shown = new Map<string, RangeMove | undefined>();
+    // The loaded file's spans describe the text the load read (*The loaded file*, above).
+    const loaded = this.comparedWithLoad(doc, record);
     const { api } = this.deps;
     const located = await Promise.all(
       found.map(async (entry) => {
-        const text = await textOf(entry.file);
-        if (text === undefined) {
-          return 'unreadable';
-        }
         const file = spelled(entry.file);
-        if (!shown.has(file)) {
-          shown.set(file, shownRange(text, this.deps.openText(file)));
+        let range: EditorRange;
+        let toShown: RangeMove | undefined;
+        const fromLoad = file === doc.fileName && loaded !== undefined;
+        if (fromLoad) {
+          range = fromIdeReplySpan(loaded === 'same' ? doc : loaded.document, entry.span);
+          toShown = loaded === 'same' ? undefined : moveBy(loaded.map);
+        } else {
+          const text = await textOf(entry.file);
+          if (text === undefined) {
+            return 'unreadable';
+          }
+          if (!shown.has(file)) {
+            shown.set(file, shownRange(text, this.deps.openText(file)));
+          }
+          range = fromIdeReplySpan(textDocument(entry.file, text), entry.span);
+          toShown = shown.get(file);
         }
-        const range = fromIdeReplySpan(textDocument(entry.file, text), entry.span);
-        const toShown = shown.get(file);
         const moved = toShown === undefined ? range : toShown(range);
-        return moved === undefined ? 'changed' : new api.Location(api.Uri.file(file), this.range(moved));
+        return moved === undefined ? (fromLoad ? 'changedSinceLoad' : 'unsaved') : new api.Location(api.Uri.file(file), this.range(moved));
       }),
     );
     const readable = located.filter((location): location is vscode.Location => typeof location !== 'string');
     if (readable.length === 0 && found.length > 0) {
-      const changed = found.find((_, i) => located[i] === 'changed');
+      // A range the text shown moved: the loaded file's since its load read it, another file's
+      // against its text on disk, which differs only by unsaved changes (a saved one not built since
+      // is not seen: *The loaded file*, above).
+      const changed = found.findIndex((_, i) => located[i] !== 'unreadable');
       throw unsupported(
-        changed !== undefined
-          ? `The definition of ${name} is in ${spelled(changed.file)}, on lines changed since it was saved: save that file to find it.`
+        changed >= 0
+          ? `The definition of ${name} is in ${spelled(found[changed].file)}, on lines ` +
+              `${located[changed] === 'changedSinceLoad' ? 'changed since the compiler read it' : 'with unsaved changes'}: save that file and check it again to find it.`
           : `The definition of ${name} is in ${found[0].file}, which cannot be read on this computer ` +
               '(an installed package whose sources were not installed, or a file that was moved).',
       );
@@ -1539,7 +1643,7 @@ export class IdeBackend implements IdrisBackend {
     }
   }
 
-  /** Forgets the token indexes of the files of `root`, and its last announced process (its last document was closed). */
+  /** Forgets the token indexes of the files of `root`, its last announced process and texts (its last document was closed). */
   forget(root: Classification): void {
     const key = rootKey(root);
     for (const [file, entry] of this.indexes) {
@@ -1548,6 +1652,7 @@ export class IdeBackend implements IdrisBackend {
       }
     }
     this.announcedLaunch.delete(key);
+    this.announcedTexts.delete(key);
   }
 
   // -----------------------------------------------------------------------------------------
@@ -1707,9 +1812,10 @@ export class IdeBackend implements IdrisBackend {
     return `Not evaluated: ${path.basename(doc.fileName)} does not compile (${what}). Evaluation needs the file to load.`;
   }
 
-  /** Forgets the token indexes and the processes of the announced loads; the pool owns the sessions. */
+  /** Forgets the token indexes and the processes and texts of the announced loads; the pool owns the sessions. */
   dispose(): void {
     this.indexes.clear();
     this.announcedLaunch.clear();
+    this.announcedTexts.clear();
   }
 }

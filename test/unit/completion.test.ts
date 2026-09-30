@@ -272,6 +272,39 @@ suite('features/intelligence/completion', () => {
       assert.deepStrictEqual(t.backend.calls, ['completions v', 'completions vle', 'completions vle']);
     });
 
+    test('closing another document of the same path (a git: one) keeps the names and the file\'s root (sixth review of M3)', async () => {
+      // VS Code gives a git: document the file's fileName; its close dropped the kept names and the
+      // file's root, so a load of an import that changed no longer made them stale.
+      const t = setup();
+      t.backend.names = ['vlen', 'view'];
+      const doc = fakeDoc({ fileName: '/w/Clean.idr', text: 'x = v\n' });
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Clean.idr', rebuilt: true });
+      await t.complete(doc, 0, 5);
+      t.closed.fire(fakeDoc({ fileName: '/w/Clean.idr', text: 'x = v\n', scheme: 'git' }));
+      await t.complete(doc, 0, 5);
+      assert.deepStrictEqual(t.backend.calls, ['completions v'], 'still kept');
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Other.idr', rebuilt: true });
+      await t.complete(doc, 0, 5);
+      assert.deepStrictEqual(t.backend.calls, ['completions v', 'completions v'], 'made stale by a load of its root');
+    });
+
+    test('the file\'s own document closed and opened again with no load of its own: a load of its root still makes the names asked since stale (tenth review of M3)', async () => {
+      // Under the manual trigger a reopened document is not loaded; the close forgot the file's root,
+      // so the names asked after the reopen were kept across a load of a changed import.
+      const t = setup();
+      t.backend.names = ['vlen', 'view'];
+      const doc = fakeDoc({ fileName: '/w/Clean.idr', text: 'x = v\n' });
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Clean.idr', rebuilt: true });
+      await t.complete(doc, 0, 5);
+      t.closed.fire(doc);
+      await t.complete(doc, 0, 5);
+      await t.complete(doc, 0, 5);
+      assert.deepStrictEqual(t.backend.calls, ['completions v', 'completions v'], 'asked again after the close, then kept');
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Other.idr', rebuilt: true });
+      await t.complete(doc, 0, 5);
+      assert.deepStrictEqual(t.backend.calls, ['completions v', 'completions v', 'completions v'], 'made stale by a load of its root');
+    });
+
     test('an answer that arrives after a new load of the file is shown but not kept', async () => {
       const t = setup({ waitMs: 1000 });
       const answer = deferred<readonly string[]>();

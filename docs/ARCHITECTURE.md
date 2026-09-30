@@ -66,7 +66,8 @@ vscode-idris2/
 ├─ esbuild.mjs                   two entries: src/extension.ts → dist/extension.js (cjs, node,
 │                                external: vscode); src/webview/goalPanel.ts → dist/goalPanel.js
 │                                (iife, browser). --minify for release, sourcemaps in dev.
-├─ tsconfig.json                 strict; target es2022; module node16; noEmit (esbuild emits)
+├─ tsconfig.json                 strict, noUnusedLocals; target es2022; module node16; noEmit
+│                                (esbuild emits)
 ├─ eslint.config.mjs             typescript-eslint, flat config
 ├─ .vscode-test.mjs              @vscode/test-cli: one suite per fixture workspace; explicit
 │                                --user-data-dir (F17: >103-char socket paths fail; M0 uses
@@ -366,10 +367,17 @@ index gives the occurrence (`decor?: Decor`): a `bound` one is not looked up by 
 used its own index at the editor position until the third review of M3, which describes the saved
 file); `definition` also takes the token's namespace, which picks the definitions of that name
 in it (fourth review of M3). A position is one of the text the document shows; while that differs
-from the text the compiler loaded, IDE mode asks about it where it lies in the loaded text (by a
-line diff, `core/positions.ts` `lineCorrespondence`), and a definition's range, read from the
-target file on disk, is moved to the text the target's open document shows. Details:
-`backend/types.ts` and `docs/as-built/M3.md`, *Queries*.
+from the text the compiler loaded, IDE mode asks about it where it lies in the loaded text (the
+loaded text split at a lone `\r` as VS Code splits it, exactly for a file that is not literate
+— in a literate file the unlit step reads a lone `\r` otherwise, not modelled —, then a line diff:
+`core/positions.ts` `textMap`, `lineCorrespondence`; seventh review of M3). A definition's range in
+the loaded file is converted with the text the load read and moved to the text the document shows;
+one in another file is read from disk and moved to the lines VS Code shows of it — its open
+document's text, or, when none is open, the file's own lines as VS Code breaks them (they differ
+after a lone `\r`); after a change of that file on disk that no load has built — a save under the
+`manual` trigger, or a change outside VS Code under any trigger — it may be off
+(`docs/as-built/M3.md`, *Open issues*). Details: `backend/types.ts` and `docs/as-built/M3.md`,
+*Queries*.
 
 ### 3.2 Registry and routing
 
@@ -604,7 +612,8 @@ concurrent writers actually corrupt TTCs), and Stop Backend (§5.1) is the manua
 isolated directory does not keep windows apart: sessions are per window and per root, so two VS
 Code windows whose files belong to one root (two folders of one package, one loose file opened in
 both) each run a `check` session writing the same `build/.vscode-idris2` — the same [open]
-question (`docs/as-built/M2.md`, *E21*), the same remedy, and a README limitation.
+question (`docs/as-built/M2.md`, *E21*), the same remedy, and a limitation in `docs/guide.md`
+(*Resource use*, *Known limitations*).
 
 **As built (M2).** Only the `check` role exists (M3 adds `eval`, M6 `shadow`). Its command line,
 what the pool checks before every spawn (trust, the toolchain scan, the consent gate on the
@@ -612,7 +621,10 @@ directory's real path), the path sent in `:load-file`, the package walk before e
 build directory the compiler ends up using are recorded in `docs/as-built/M2.md`, *ARCHITECTURE
 §5.2*.
 
-**As built (M3).** The `eval` role differs from the table in one argument: it gets `--build-dir
+**As built (M3).** Elaborator scripts the expression reaches are not refused (ROADMAP §9 Q23,
+accepted 2026-09-29): a `%macro` applied by name runs its script, `%runElab` runs where
+`ElabReflection` is on in the compiler's context; M8's Query box and lenses inherit this unless
+M8 decides otherwise (ROADMAP M8, *Open questions*). The `eval` role differs from the table in one argument: it gets `--build-dir
 <session directory>/build/.vscode-idris2-eval` whenever the `.ipkg` and `extraArgs` choose no
 build directory, whatever `idris2.ideMode.isolateBuildDir` says, so that it never compiles into the
 `check` session's directory (whose next load would then report no warnings for a file the `eval`
@@ -718,9 +730,18 @@ its root reads `pending` to the pool (`docs/as-built/M2.md`, *ARCHITECTURE §5.1
 document no check tracks (the `manual` trigger) is classified by the checks for this. The limit is
 on checks, not on process starts (Restart Backend for every root restarts the processes together).
 Within one root the session sends one request at a time and the compiler cannot be interrupted, so
-the checks mark the active document's load `urgent` (`LoadOptions`, §3.1) while a limit is set: it
-goes before the root's loads that wait, after the one in flight and after one whose package walk
-runs or has passed — at most those two (`docs/as-built/M2.md`, *ARCHITECTURE §5.1*, *Queue*). Both
+the checks mark the active document's load `urgent` (`LoadOptions`, §3.1) while a limit is set —
+except when it is checked with other visible documents and, at its handover, one of theirs in its
+root handed over before it has not settled (then, decided once, it stays first-in, first-out,
+behind the root's requests queued before it, background loads included; `checks.ts` *The active
+document*, `CheckOptions.batch`) —: it
+goes before the root's requests that
+wait (queries too: a query whose answer is kept per load —
+`typeAt`, `docsFor`, `definition` — that it passes is refused before its write, `NotLoaded`, and
+asked again after the load; completions and namespace listings are sent after it and answer for the
+new load; `docs/as-built/M3.md`, *Sixth review of M3*), after the
+one in flight and after one whose package walk runs or has passed — at most those two
+(`docs/as-built/M2.md`, *ARCHITECTURE §5.1*, *Queue*). Both
 limits count per VS Code window: each window has its own extension host, pool and checks
 (`docs/as-built/M2.md`, *Resource limits*).
 
@@ -1082,7 +1103,7 @@ machine and < 1,000 ms when `CI` is set (the reasoning, with the one CI data poi
 
 | # | Decision | Rationale | Rejected alternatives |
 |---|---|---|---|
-| D1 | **stdio** (`--ide-mode`) for the `check` session by default on every platform; the socket (`--ide-mode-socket`) only as an explicit opt-in in user settings (`idris2.ideMode.transport`, `application` scope — not a workspace's settings nor a remote machine's; `machine` until the M2 verification of the Q20–Q22 fixes, which a dev container's configuration could fill —; an `extraArgs` naming it starts nothing, since the compiler would serve the socket whatever `transport` says; the takeover detection stays for the opt-in). Decided by the user on 2026-09-28 (ROADMAP §9 Q20); the transport of M3's `eval` session, which runs `:exec`, is revisited in M3 — **settled before M3** (2026-09-28, ROADMAP §9): Evaluate evaluates expressions only and sends no `:exec`, so the `eval` session follows the same rule | The socket's port serves the first local connection, unauthenticated, and whoever wins can run programs as the user (`:interpret ":sh …"`, `:exec`) [src + live, `docs/as-built/M2.md`, *ARCHITECTURE §5.1*]; stdio opens no port. The original reason for the socket — `:exec`/IO output is written unframed into the stdio stream (F5) — does not apply to the `check` session, which sends no `:exec` of its own (a raw request typed with the developer command can), and the compiler's log lines and other unframed output in the stdio stream are read as the process's output since the M2 review (`docs/as-built/M2.md`, *ARCHITECTURE §5.1*, *Unframed bytes*; one limitation left: a log line quoting a reply header, README). **History:** until 2026-09-28 D1 read "socket transport by default, stdio fallback", and M2 as first built defaulted to `auto` (socket on macOS and Linux, stdio on Windows) | the socket by default (the unauthenticated port); an authenticated socket upstream (U2, not available today); stdio only with "never send :exec" for the `eval` session (breaks on any IO evaluation — M3 decides its transport; since 2026-09-28 this is what the `eval` session does, because the user chose to have Evaluate show IO actions rather than run them, ROADMAP §9) |
+| D1 | **stdio** (`--ide-mode`) for the `check` session by default on every platform; the socket (`--ide-mode-socket`) only as an explicit opt-in in user settings (`idris2.ideMode.transport`, `application` scope — not a workspace's settings nor a remote machine's; `machine` until the M2 verification of the Q20–Q22 fixes, which a dev container's configuration could fill —; an `extraArgs` naming it starts nothing, since the compiler would serve the socket whatever `transport` says; the takeover detection stays for the opt-in). Decided by the user on 2026-09-28 (ROADMAP §9 Q20); the transport of M3's `eval` session, which runs `:exec`, is revisited in M3 — **settled before M3** (2026-09-28, ROADMAP §9): Evaluate evaluates expressions only and sends no `:exec`, so the `eval` session follows the same rule | The socket's port serves the first local connection, unauthenticated, and whoever wins can run programs as the user (`:interpret ":sh …"`, `:exec`) [src + live, `docs/as-built/M2.md`, *ARCHITECTURE §5.1*]; stdio opens no port. The original reason for the socket — `:exec`/IO output is written unframed into the stdio stream (F5) — does not apply to the `check` session, which sends no `:exec` of its own (a raw request typed with the developer command can), and the compiler's log lines and other unframed output in the stdio stream are read as the process's output since the M2 review (`docs/as-built/M2.md`, *ARCHITECTURE §5.1*, *Unframed bytes*; one limitation left: a log line quoting a reply header, `docs/guide.md`, *Known limitations*). **History:** until 2026-09-28 D1 read "socket transport by default, stdio fallback", and M2 as first built defaulted to `auto` (socket on macOS and Linux, stdio on Windows) | the socket by default (the unauthenticated port); an authenticated socket upstream (U2, not available today); stdio only with "never send :exec" for the `eval` session (breaks on any IO evaluation — M3 decides its transport; since 2026-09-28 this is what the `eval` session does, because the user chose to have Evaluate show IO actions rather than run them, ROADMAP §9) |
 | D2 | Request frame length = UTF-8 **bytes** incl. trailing newline; **reply** frames are read by their prefix in **code points** | Verified: byte count round-trips `→`, code-point count desynchronises (F1); landscape §4.3 agrees. The compiler prefixes its replies with their length in code points (F1 addendum [live]), so a reader that cuts replies by bytes desynchronises on the first non-ASCII reply | counting characters as the rst says [doc] — wrong in practice on 0.8.0 for requests, right for replies |
 | D3 | Separate `eval` session from the `check` session | `:set` persists across loads; evaluation of IO must not touch checking state | re-asserting options after each eval via `:get-options` (fragile) |
 | D4 | One `IdeSession` pool per ProjectRoot with cwd = ipkg dir (loose: file dir), never `--find-ipkg` | `findIpkg` walks up from the process cwd and `chdir`s (F13; [src `Package.idr` 1093–1110]); loads from a foreign cwd fail even with absolute paths, and `--find-ipkg` from a subdirectory breaks relative loads (F13) | one global process (cannot serve two projects); `--find-ipkg` |

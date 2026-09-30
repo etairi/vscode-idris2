@@ -264,6 +264,10 @@ suite('features/diagnostics/commands', () => {
     t.control.failed.fire({ root, gaveUp: false, detail: 'a frame that is not an s-expression: "(:ok \u202Eevil\nnext"', repeated: false });
     await settle();
     assert.strictEqual(t.messages.at(-1)?.text, 'Idris 2: the compiler for /w/a stopped unexpectedly (a frame that is not an s-expression: "(:ok \\u{202E}evil next"); it is being restarted.');
+    // The give-up notice too (fifth review of M3: not pinned).
+    t.control.failed.fire({ root, gaveUp: true, detail: 'a frame that is not an s-expression: "(:ok \u202Eevil\nnext"', repeated: false });
+    await settle();
+    assert.strictEqual(t.messages.at(-1)?.text, 'Idris 2: the compiler for /w/a was given up: a frame that is not an s-expression: "(:ok \\u{202E}evil next". Restart it to try again.');
   });
 
   test('no notice while the toolchain has no working idris2 (its own notice reports that)', async () => {

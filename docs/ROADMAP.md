@@ -13,9 +13,9 @@ focused work by one developer with an AI assistant. Dependencies are the *minimu
 "M2 or M5" means either backend suffices. **The user chooses the implementation order; any
 order that respects the dependency graph in §4 is valid.**
 
-Milestones that are done (M0, M1, M2) have a short **Status** entry in §5; how each was built —
+Milestones that are done (M0–M3) have a short **Status** entry in §5; how each was built —
 where it departs from its text here, its measurements and its review history — is recorded in
-`docs/as-built/` (`M0.md`, `M1.md`, `M2.md`; moved there from this file on 2026-09-28).
+`docs/as-built/` (`M0.md` … `M3.md`; moved there from this file on 2026-09-28).
 
 Evidence tags, as in `landscape.md`: **[live]** run on this machine (macOS arm64, Homebrew
 `idris2` 0.8.0, Node 24) during the planning session; **[src]** read in the named checkout
@@ -611,33 +611,41 @@ M0 → M1 → M2 → M3 → M14).
   for it too). Both answered in M3 (2026-09-29): E14 — code points (§9, E14); the IO action — `the (IO ())
   (putStrLn "hi")` is `MkIO (prim__putStr "hi\n")`, nothing printed, and a bare `putStrLn "hi"` is
   the compiler's `HasIO` error (§9, the pre-M3 block) [live, transcripts `eval-values`,
-  `eval-socket`]. Raised by M3: Q23 (elaborator scripts in Evaluate).
+  `eval-socket`]. Raised by M3: Q23 (elaborator scripts in Evaluate; accepted by the user on
+  2026-09-29, §9).
 - **Upstream.** U2.2 (positional `name-at`), U2.1 (`who-calls`), U2.11 (populated
   `:type`/`:doc-overview`/`:namespace` in `:highlight-source` — zero-round-trip hover and inlay
   hints).
-- **Status: implemented and integrated** (2026-09-29); not committed yet, so no commit or CI run
-  to cite. Every gate green on macOS (types, lint, unit, grammar, graph, fixtures, the eight
-  integration suites, e2e, `vsce package`, the packaged-extension check), again after the review
-  of M3 and its fixes (re-integration, the same day). A second review the same day changed code
-  and documents again (`docs/as-built/M3.md`, *Second review of M3*), and every gate was run again
-  after it, all green (re-integration after the second review, the same day). A third review the
-  same day changed code and documents again (`docs/as-built/M3.md`, *Third review of M3*; among
-  others inlay hints are shown from the last check while a file has unsaved changes, where this
-  text says "skipped"), and every gate was run again after it, all green (re-integration after
-  the third review, the same day; it fixed two tests that expected the completion warm-up right
-  after a load, and a second load of a file opened while a query asked about it). A fourth review
-  the same day changed code and documents again (`docs/as-built/M3.md`, *Fourth review of M3*:
-  among others a line diff for unsaved text, definitions moved to the target's open document, and
-  Q23 restated on a corrected premise), and every gate was run again after it, all green on the
-  first run (re-integration after the fourth review, the same day; no code change).
-  The acceptance was tested with three corrections of
-  its text: the fixture's name is `greeting` (hover `Foo.B.greeting : String`), the IO action
-  evaluated is `the (IO ()) (putStrLn "hi")`, since `putStrLn "hi"` alone does not type-check;
-  and the replay's `:namespace` fields are empty only on bound and declaring occurrences (F33).
-  As built — the deviations from the text above (document symbols from the syntax model, inlay
-  hints at the first occurrence of each variable per declaration, highlights of globals over the
-  whole file, the `eval` session's own build directory and a load before every evaluation, …),
-  E14, the measurements and the gate runs: `docs/as-built/M3.md`.
+- **Status: done** (2026-09-29). Commit `04e96aa`; CI run 36674477234 (on `04e96aa`) green on
+  ubuntu-latest and macos-latest. Before the commit: four review rounds, each followed by a
+  re-integration with every gate green on macOS. After it, a fifth review (a verification pass of
+  the fourth round's fixes) and a sixth (a verification pass of the fifth's) changed code and
+  documents again, each followed by a re-integration with every gate green on macOS (the last on
+  2026-09-30); then the README was split (`docs/guide.md`), and a seventh review (a verification
+  pass of the sixth's fixes and of the split, 2026-09-30) changed code and documents again,
+  followed by a re-integration with every gate green on macOS, the packaged-extension check
+  included (2026-09-30); an eighth (a verification pass of the seventh's fixes, 2026-09-30) changed
+  code and documents again, followed by a re-integration with every gate green on macOS, the
+  packaged-extension check included (2026-09-30); a ninth (a verification pass of the eighth's
+  fixes, 2026-09-30) changed code and documents again, followed by a re-integration with every gate
+  green on macOS, the packaged-extension check included (2026-09-30); a tenth (a review-only
+  verification pass of the ninth's fixes, then a fixer, 2026-09-30) changed code and documents
+  again, followed by a re-integration with every gate green on macOS, the packaged-extension check
+  not run (2026-09-30); an eleventh (a verification pass of the tenth's fixes, 2026-09-30) changed
+  comments, documents and a setting's description, no code, followed by a re-integration with every
+  gate green on macOS, the e2e suite (no runtime code changed) and the packaged-extension check not
+  run (2026-09-30). None of this was committed when this was written (`docs/as-built/M3.md`, *Fifth
+  review of M3* to *Re-integration after the eleventh review*). The
+  acceptance was tested with three corrections of its text: the fixture's name is `greeting`
+  (hover `Foo.B.greeting : String`), the IO action evaluated is `the (IO ()) (putStrLn "hi")`,
+  since `putStrLn "hi"` alone does not type-check; and the replay's `:namespace` fields are empty
+  only on bound and declaring occurrences (F33). As built — the deviations from the text above
+  (document symbols from the
+  syntax model, inlay hints at the first occurrence of each variable per declaration and kept
+  from an earlier check while a file has unsaved changes or cannot be asked, highlights of globals
+  over the whole file,
+  the `eval` session's own build directory and a load before every evaluation, …), E14, the
+  measurements, the review rounds and the gate runs: `docs/as-built/M3.md`.
 
 ### M4 — Interactive editing and holes: commands, code actions, hole tree, keybindings (L)
 
@@ -929,7 +937,12 @@ M0 → M1 → M2 → M3 → M14).
   any of them would break Evaluate's promise never to run IO, which rests on the `eval` session's
   evaluation mode never changing. Proposed: Query and the lenses send only expressions and the
   allow-listed commands `:t` and `:doc`, and refuse any other command before sending; the
-  alternative is a session of their own. [open: decide before M8]
+  alternative is a session of their own. [open: decide before M8] **Elaborator scripts** (raised
+  2026-09-29 by the fifth review of M3): the Query box's and the lenses' texts would run the
+  elaborator scripts they reach, as Evaluate does (§9 Q23, accepted for Evaluate, which runs only
+  a selection the user asked to evaluate); a `-- >>>` line is a comment, which checking the file
+  never runs, so **Run all** on a cloned repository would run the scripts its comments name.
+  Decide before M8 whether Q23's acceptance covers them, Run all especially. [open]
 - **Upstream.** None.
 
 ### M9 — Build, run and problem reporting: tasks (M)
@@ -1336,6 +1349,43 @@ retiring every backend risk before UI work is preferred.
 
 ## 9. Open questions and decisions needed from the user
 
+**Decided by the user on 2026-09-29 (after M3)**
+
+- **Q23 — accept**: Evaluate may run elaborator scripts that the expression reaches: a `%macro`
+  applied by name (no `ElabReflection` needed), or `%runElab` where `ElabReflection` is on in the
+  compiler's context (a module that turns it on, built by the same process, is enough [live, the
+  fourth review of M3]). This is documented, not refused, for two reasons: a textual rule cannot
+  recognise a macro application; and the script is the project's own or an installed package's
+  code, applied by an expression the user selected (a `%runElab`'s script is the selected text
+  itself), in a folder that is trusted or allowed (M2 consent). A fact beside them, not a reason:
+  the same macro application written into the file runs the same script during checking only once
+  `Language.Reflection` is in the file's scope (the file imports it, or the macro's module
+  re-exports it with `import public`); without that, checking fails with `Undefined name
+  Language.Reflection.Elab` and runs nothing, while Evaluate, after a successful load, runs it
+  [live, idris2 0.8.0, 2026-09-30, sixth review of M3, its verifier and its fixer, one `timeout 60`
+  process at a time: `Mac` imports `Language.Reflection` privately and exports `%macro touch`,
+  which writes a file; `idris2 --check` of a module with `import Mac` and `x = touch` failed so and
+  wrote nothing; in IDE mode, after `(:load-file …)` of a module importing `Mac` (`x = 1`),
+  `(:interpret "touch")` answered `(:ok "0")` and the file was written; a module importing both
+  `Language.Reflection` and `Mac` ran the script at its load; with `import public
+  Language.Reflection` in the macro's module, `--check` of `x = touch` ran it too (the verifier
+  only)]. A macro the file cannot name is not reachable by Evaluate either: with `Main` loaded,
+  which imports `Mid`, which imports `Mac` (`export %macro touch`) without `public`, `(:interpret
+  "touch")` and `(:interpret "Mac.touch")` answered that `Mac.touch` is inaccessible, and nothing
+  was written [live, idris2 0.8.0, the fifth review of M3, one `timeout 60` process]. Whether this
+  acceptance also covers M8's Query box and `-- >>>` lenses is M8's open question.
+  *Corrected on 2026-09-30* (sixth and seventh reviews of M3): the rationale recorded here on
+  2026-09-29, when the user accepted Q23, included that the same macro application written into
+  the file and saved would run the same script during checking; the sixth review refuted that for
+  a macro whose module imports `Language.Reflection` privately (above), and the seventh reordered
+  this entry so that only the reasons that hold are given as reasons. Whether the user confirms Q23
+  again on these reasons was not asked when this was written [open].
+- **The `eval` session keeps its highlighting output**: it does not send `(:enable-syntax :False)`,
+  although that would make each evaluation's reload faster (about 0.3 s → 0.14 s on the
+  2,000-line module); the `eval` session sends evaluations and their loads only.
+- **Publishing waits for M4**: no Marketplace or Open VSX release before M4 is finished; then a
+  pre-release, with the Idris logo as the icon as chosen in M0.
+
 **Decided by the user on 2026-09-28 (before M3)**
 
 - **Keybindings as planned** and **inlay hints for pattern-variable types on by default**
@@ -1416,7 +1466,8 @@ retiring every backend risk before UI work is preferred.
   and `idris2.ideMode.maxBackgroundChecks` (checks of documents other than the active one run at
   most this many at a time, queued in order; the active document's check always starts at once
   and is never queued behind background work; a document that becomes active while queued is
-  promoted). README documents the trade-off. **Implemented** (`docs/as-built/M2.md`, *Resource limits*,
+  promoted). The user guide documents the trade-off (`docs/guide.md`, *Resource use*; the README,
+  since its split on 2026-09-30, only suggests the values). **Implemented** (`docs/as-built/M2.md`, *Resource limits*,
   which also records the readings: what "the active document" is while a non-Idris editor is
   active, and that both limits count per VS Code window, which the decision did not say);
   completed after the verification after Q20–Q22, which found that Stop Backend, an open consent
@@ -1524,10 +1575,12 @@ retiring every backend risk before UI work is preferred.
   the backoff and give-up reading as built stays — see the block at the top of this section).
   The question as it was put: `docs/as-built/M2.md`, *ROADMAP §9 Q20, Q21, Q22*.
 - **Q23** (raised by M3, 2026-09-29; restated by the fourth review of M3, 2026-09-29, whose
-  experiments refuted the first statement's premise) Should Evaluate keep elaborator scripts from
-  running? An evaluated expression is elaborated, and on 0.8.0 that runs elaborator scripts in two
-  ways. (1) The script of any `%macro` function the expression applies, from the project or an
-  installed package, with or without `%language ElabReflection` anywhere: the elaborator rewrites
+  experiments refuted the first statement's premise; **accepted by the user on 2026-09-29**:
+  documented, not refused — see the block at the top of this section) Should Evaluate keep
+  elaborator scripts from running? An evaluated expression is elaborated, and on 0.8.0 that runs
+  elaborator scripts in two ways. (1) The script of any `%macro` function the expression applies,
+  from the project or an installed package, with or without `%language ElabReflection` anywhere:
+  the elaborator rewrites
   a macro application to `IRunElab fc False …` (`src/TTImp/Elab/Ambiguity.idr` 150 [src]), and
   `checkRunElab` requires the extension only when that flag is `True` (`src/TTImp/Elab/RunElab.idr`
   374–377 [src]). [live, idris2 0.8.0, the review's acceptance reviewer and its fixer: a module
@@ -1546,15 +1599,43 @@ retiring every backend risk before UI work is preferred.
   read and write files under the project, source and build directories (`ReadFile`/`WriteFile`
   with a `LookupDir`: `ProjectDir`, `SourceDir`, `CurrentModuleDir`, `SubmodulesDir`, `BuildDir`;
   `validatePath` refuses an absolute path and one whose `..` leaves the directory, lexically — a
-  symbolic link inside is followed [src, `RunElab.idr` 115–156, 334–351; the link not tried]);
+  symbolic link inside is followed [src, `RunElab.idr` 115–156, 334–351; live, idris2 0.8.0,
+  2026-09-30, sixth review of M3: a macro wrote through a symlink out of the project]; the build
+  directory is wherever the `.ipkg`'s `builddir` puts it, also outside the package's folder [live,
+  idris2 0.8.0, 2026-09-30, eighth review of M3: `writeFile BuildDir` with `builddir =
+  "../outside/b"` wrote there]);
   the other `Elab` primitives the compiler implements act on its own state (declarations, terms,
   names, logging) [src, the `elabCon` cases of `RunElab.idr`]. Checking a file runs the scripts
-  that file uses; evaluating runs those the selected expression uses, which may be scripts the
-  checked file never runs. A rule in
+  of the modules it builds (the file, and the project modules it imports that need building);
+  evaluating runs them again when the `eval` session's process rebuilds them (its own build
+  directory, unless the package or `extraArgs` choose one for both), and also those the selected
+  expression uses, which may be scripts the checked file never runs. That process rebuilds a module
+  (the file, or a project module it imports) at its first evaluation, unless its build directory
+  already holds that build; after its file was saved or touched since that build, even with the
+  same text (0.8.0 compares modification times: `isTTCOutdated`, `>=`, since `-Xcheck-hashes` is
+  disabled [src, `ModTree.idr` 159–163 and 185–199, `ProcessIdr.idr` 252–263 and 336–344,
+  `SetOptions.idr` 515–517]); and after a module it imports changed what it exports [live, idris2 0.8.0,
+  2026-09-30, ninth review of M3, the verifier and the fixer, one `timeout 60 idris2 --check` at a
+  time: a module `A` with a top-level `%runElab` that writes a file, imported by `Main`; `--check
+  Main.idr` with `--build-dir b1` built `A` and wrote the file, again with `b1` built nothing and
+  wrote nothing, with a fresh `b2` built `A` again and wrote it (IDE mode's `:load-file` builds
+  the imports the same way [src], `docs/as-built/M3.md` *Evaluation*); tenth review of M3, two
+  verifiers and the fixer, the same way (the fixer's `Main` with a `%runElab` of its own, `timeout
+  120`): after a comment was appended to `A`, `--check Main.idr` with the same `b1` printed only
+  `1/2: Building A` and wrote `A`'s file again, and `Main`'s script did not run; eleventh review
+  of M3, the same way: after `touch A.idr` (the same SHA-1; the verifier and the fixer) and after
+  `A.idr` was rewritten with the same text (the fixer), only `1/2: Building A`, and `A`'s file
+  written again; after `touch Main.idr` (the fixer), only `2/2: Building Main`, and `Main`'s file
+  written; and the seventh review's
+  verifier and its fixer, one IDE-mode process at a time under `timeout 90`, each with a fresh `--build-dir`: a module
+  whose `y = touch` applies a macro that writes a file; its first load wrote the file, a second load
+  of the unchanged module did not (0.09–0.11 s), a load after a comment was appended to it did; after
+  a comment was appended to the macro's module it imported, the load wrote nothing; after an
+  exported definition was added there, it wrote the file again (the fixer)]. A rule in
   `backend/ide/replCommand.ts` could refuse a literal `%runElab`, not a macro application: keeping
   scripts from running would take the compiler's cooperation (no option of 0.8.0 turns off macro
   expansion [open: not searched beyond `RunElab.idr` and `Ambiguity.idr`]) or refusing Evaluate
-  wherever a macro is in scope. The user decides; nothing was changed.
+  wherever a macro is in scope. Accepted by the user (2026-09-29); nothing was changed.
 
 **Verification experiments** (each ≤ 1 h, at the start of the named milestone)
 

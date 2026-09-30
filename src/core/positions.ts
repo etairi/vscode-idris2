@@ -51,9 +51,30 @@
  * after prose smaller than its file line by the breaks dropped above it [live, third review of
  * M3: `idris2 --check` on a CRLF `X.md` with four lines of prose and blank lines before its block
  * reported an error on file line 9 as `X:5:5--5:8`, the LF file as `X:9:5--9:8`]. Neither is
- * mapped here: the fenced styles are M12's (E19). `[lidr]` defaults `files.eol` to LF, but that
- * applies only to text without line breaks (a new file), and markdown has no such default; the
- * README's *Known limitations* asks for LF.
+ * mapped here: the fenced styles are M12's (E19). A lone `\r` is read otherwise in a literate file
+ * than by the lexer of a file that is not literate, which keeps it inside its line (`compilerLines`)
+ * [src, v0.8.0, `Libraries/Text/Literate.idr`]. (1) With line markers, `line` and `notCodeLine`
+ * stop before `newline`, which is CRLF, CR or LF (`Libraries/Text/Lexer.idr`), and `reduce` keeps a
+ * break only when it is exactly `"\n"`. After a marker with nothing but white space before the
+ * `\r` (`>\r`, `> \r`) the unlit step ends a line — the marker's code line gives a `"\n"` of its
+ * own, as a `> ` line does —, so every compiler line below is one more than its `\n`-line. After
+ * code or prose the `\r` is dropped and the text after it continues the same unlit line, as code
+ * when it starts with a marker (else it is dropped too): the compiler's lines there are the
+ * `\n`-lines, but a code line after the `\r` is joined to the one before it [live, idris2 0.8.0,
+ * eighth and ninth reviews of M3: `idris2 --check` of `> module T\n>\rjunk\n> x : Nat\n> x = "s"\n`
+ * reported `T:5:5--5:8` for the fourth `\n`-line, of `> module W\n> \rjunk\n…` likewise
+ * `W:5:5--5:8`, of `> module V\n> x : Nat -- c\r> junk\n> x = "s"\n` `V:3:5--3:8` for the third
+ * (`junk` read into the comment), and of `> module U\ntext\r> y : Nat\n> y = "s"\n` read `y : Nat`
+ * as code]. (2) In a code block (the fenced styles, and the blocks of Org, TeX and Typst files)
+ * `reduce` splits the block with `lines` (`Data.String.lines'` breaks at `\r\n`, `\r` and `\n`,
+ * `libs/base/Data/String.idr`), so there a lone `\r` ends a line as it does in the editor [live,
+ * ninth review of M3: `idris2 --check` of a `Z.idr.md` with `x : Nat\rx = 1` in its block reported
+ * `Z:7:5--7:8` for its sixth `\n`-line]. Neither is mapped: `editorSplit`, `textMap` and the literate
+ * line kinds assume the lexer's `\n`-only lines, so in a literate file with a lone `\r` positions
+ * after it may land on another line (below a `>\r`, or in a code block) or column (on a joined
+ * line). `[lidr]` defaults `files.eol` to LF, but that applies only to text without line breaks (a
+ * new file), and markdown has no such default; the README's and the guide's *Known limitations* ask
+ * for LF.
  *
  * Column unit (ROADMAP E14, settled in M3). VS Code columns count UTF-16 code units; the
  * compiler's columns count **code points**, in requests and in replies [live, 2026-09-29,
@@ -426,29 +447,213 @@ export function codeLineSpans(doc: PositionDocument, range: EditorRange): LineSp
 }
 
 /**
- * How the lines of `after` (a document as the editor shows it) correspond to those of `before` (the
- * file as a load read it), both split into lines. Used where an answer about `before` is shown on
- * `after` (`occurrence.ts` `currentTokens`, `IdeBackend.definition` for a target file open with
- * unsaved changes) or a position of `after` is asked about in `before` (`IdeBackend.typeAt`). Two
- * kinds of pairs (fourth review of M3):
+ * The lines of `text`, a file's text as the compiler read it, as the compiler numbers them: its
+ * lexer starts a line at `\n` only (`countNLs`, `Libraries/Text/Lexer/Tokenizer.idr` on v0.8.0
+ * [src]; `idris2 --check` on `module M\n-- a\r-- b\nx : Nat\nx = "s"\n` reported `M:4:5--4:8`
+ * [live, idris2 0.8.0, fifth review of M3], where a break at the lone `\r` too would make it line 5),
+ * so a line of a CRLF file loses its `\r` and a lone `\r` stays inside its line. A byte order mark at
+ * its start is left out (`backend/ide/backend.ts` `textDocument`). The basis of `editorSplit`, which
+ * moves positions of these lines to the editor's: a text a load read is compared with a document's
+ * after it (`textMap`), and so are two texts a load read with each other (the inlay hints' `rekeyed`,
+ * since the eighth review of M3; until then they were diffed on these lines). The ranges of a reply,
+ * converted with the lines split at `\n` (`textDocument`), have the same line numbers. A file that is
+ * not literate: in a literate one the unlit step reads a lone `\r` otherwise (module comment,
+ * *Literate lines*).
+ */
+export function compilerLines(text: string): string[] {
+  return text.replace(/^\uFEFF/, '').split(/\r?\n/);
+}
+
+/**
+ * The lines of `text`, a document's text, as VS Code's text model breaks them: at `\r\n`, `\r` and
+ * `\n`. An extension's document text is those lines joined by the document's one line break
+ * (`getText` is `this._lines.join(this._eol)` [src, VS Code 1.139.1's extension host bundle]), so a
+ * file with a lone `\r` shows another text than the one the compiler read, and below that `\r` the
+ * editor's line numbers are one more than the compiler's (`compilerLines`). Positions of the
+ * compiler's lines are moved to these exactly (`editorSplit`) before a text a load read is compared
+ * with a document's (`textMap`). Until the seventh review of M3 the compiler's lines were diffed
+ * with these directly: the line holding a lone `\r` was never paired — a definition starting on it
+ * was refused as "on lines changed since the compiler read it", also in a file not open, and it got
+ * no hover or inlay hint —, and near repeated lines the diff could pair a line with another line of
+ * the same text (740 of 315,772 lines in 20,000 random texts [unit-level, the verifier's property
+ * check, seed 777]). The diagnostics of a load (M2) are converted with the compiler's lines and shown
+ * on the editor's, so below a lone `\r` they are still one line off [src; not mapped: a lone `\r` in
+ * a source file is rare]. All of this is about files that are not literate: in a literate file the
+ * compiler's unlit step reads a lone `\r` otherwise — it ends a line after a marker with nothing but
+ * white space (`>\r`, `> \r`) and in a code block, and after code or prose it joins the code after
+ * it to the line before (module comment, *Literate lines*; not mapped).
+ */
+export function editorLines(text: string): string[] {
+  return text.split(/\r\n|\r|\n/);
+}
+
+/** A `\r` that is not the start of a `\r\n`. */
+const LONE_CR = /\r(?!\n)/;
+
+/**
+ * A text a load read, split as the editor splits it (`editorLines`), and positions moved exactly
+ * between the compiler's lines of it (`compilerLines`) and those. The two differ only at a lone `\r`,
+ * where the editor breaks a line and the compiler does not: a compiler position `(line, col)` is on
+ * the editor line `line` plus the lone `\r`s on the compiler lines above it plus those before `col` on
+ * its own line, at `col` less the offset just after the last of those on its line. Columns are UTF-16
+ * units of the lines they are on (a lone `\r` is one unit and one code point). Exact for a file that
+ * is not literate; in a literate file the unlit step reads a lone `\r` otherwise (module comment,
+ * *Literate lines*), which this does not model.
+ */
+export interface EditorSplit {
+  /** The text's lines as the editor breaks them (`editorLines`, a byte order mark left out). */
+  readonly lines: readonly string[];
+  /** The position on `lines` of `pos`, a position of the compiler's lines. */
+  toEditor(pos: EditorPosition): EditorPosition;
+  /** `toEditor` of both ends of `range`; `range` itself when neither moves. */
+  toEditorRange(range: EditorRange): EditorRange;
+  /** The position on the compiler's lines of `pos`, a position of `lines`. */
+  toCompiler(pos: EditorPosition): EditorPosition;
+}
+
+const unsplit = (lines: readonly string[]): EditorSplit => ({
+  lines,
+  toEditor: (pos) => pos,
+  toEditorRange: (range) => range,
+  toCompiler: (pos) => pos,
+});
+
+/** `EditorSplit` of `text`, a text a load read. */
+export function editorSplit(text: string): EditorSplit {
+  const compiler = compilerLines(text);
+  if (!compiler.some((line) => LONE_CR.test(line))) {
+    return unsplit(compiler);
+  }
+  /** Per compiler line: the editor line it starts on, and the offsets of the lone `\r`s in it. */
+  const first = new Int32Array(compiler.length);
+  const breaks: Array<readonly number[]> = [];
+  /** Per editor line: its compiler line and which of that line's parts it is (0: before any `\r`). */
+  const origin: Array<{ readonly line: number; readonly part: number }> = [];
+  const lines: string[] = [];
+  compiler.forEach((line, i) => {
+    first[i] = lines.length;
+    const parts = line.split('\r');
+    const offsets: number[] = [];
+    let offset = -1;
+    parts.forEach((part, k) => {
+      origin.push({ line: i, part: k });
+      lines.push(part);
+      if (k > 0) {
+        offsets.push(offset);
+      }
+      offset += part.length + 1;
+    });
+    breaks.push(offsets);
+  });
+  // A position past the text's last line (a stale reply) keeps its distance from the end.
+  const extra = lines.length - compiler.length;
+  const toEditor = (pos: EditorPosition): EditorPosition => {
+    if (pos.line < 0 || pos.line >= compiler.length) {
+      return pos.line < 0 ? pos : { line: pos.line + extra, character: pos.character };
+    }
+    const offsets = breaks[pos.line];
+    let k = 0;
+    while (k < offsets.length && offsets[k] < pos.character) {
+      k++;
+    }
+    return k === 0 && first[pos.line] === pos.line
+      ? pos
+      : { line: first[pos.line] + k, character: k === 0 ? pos.character : pos.character - (offsets[k - 1] + 1) };
+  };
+  return {
+    lines,
+    toEditor,
+    toEditorRange: (range) => {
+      const start = toEditor(range.start);
+      const end = toEditor(range.end);
+      return start === range.start && end === range.end ? range : { start, end };
+    },
+    toCompiler: (pos) => {
+      if (pos.line < 0 || pos.line >= lines.length) {
+        return pos.line < 0 ? pos : { line: pos.line - extra, character: pos.character };
+      }
+      const { line, part } = origin[pos.line];
+      return { line, character: part === 0 ? pos.character : breaks[line][part - 1] + 1 + pos.character };
+    },
+  };
+}
+
+/**
+ * How a text a load read (`read`) is shown in a document's text (`shown`): positions of `read`'s
+ * compiler lines moved to `shown` and back. `read` is split as the editor splits it first
+ * (`editorSplit`), exactly; then those lines are compared with `shown`'s (`lineCorrespondence`,
+ * `toShownPosition`, `toLoadedPosition`) — skipped when they are the same, as when the two texts
+ * differ only in their line breaks (a CRLF line in an LF file, a lone `\r`: VS Code joins a
+ * document's lines with its one line break), so that every position is moved exactly there — in a
+ * file that is not literate (`EditorSplit`; in a literate file a lone `\r` is not modelled).
+ */
+export interface TextMap {
+  /** The position in `shown` of `pos`, a position of `read`'s compiler lines, or `undefined` (`toShownPosition`). */
+  toShown(pos: EditorPosition): EditorPosition | undefined;
+  /** The position in `read`'s compiler lines of `pos`, a position of `shown`, or `undefined` (`toLoadedPosition`). */
+  toRead(pos: EditorPosition): EditorPosition | undefined;
+}
+
+export function textMap(read: string, shown: string): TextMap {
+  const split = editorSplit(read);
+  const before = split.lines;
+  const after = editorLines(shown);
+  if (before.length === after.length && before.every((line, i) => line === after[i])) {
+    return { toShown: split.toEditor, toRead: split.toCompiler };
+  }
+  const correspondence = lineCorrespondence(before, after);
+  return {
+    toShown: (pos) => toShownPosition(before, after, split.toEditor(pos), correspondence),
+    toRead: (pos) => {
+      const at = toLoadedPosition(before, after, pos, correspondence);
+      return at === undefined ? undefined : split.toCompiler(at);
+    },
+  };
+}
+
+/**
+ * How the lines of `after` (a document as the editor shows it, `editorLines`) correspond to those
+ * of `before` (the file as a load read it, split as the editor splits it: `editorSplit`; for two
+ * texts a load read, `editorSplit` of both, the inlay hints' `rekeyed`). Used where an answer about `before` is shown on
+ * `after` (`occurrence.ts` `currentTokens`, `IdeBackend.definition` for a target file whose open
+ * document or loaded text differs from the text it was converted with, through `textMap`) or a
+ * position of `after` is asked about in `before` (`IdeBackend.typeAt`, likewise). Two kinds of pairs
+ * (fourth and fifth reviews of M3):
  *
- * - **Equal lines**: those a line diff pairs — a longest common subsequence of the two texts' lines
- *   (`diagonalPairs`, Myers' O(ND) algorithm, run on the lines between those both texts begin and
- *   end with) —, so the unchanged lines between several separate edits are paired each with the
- *   line it was. Where the edit leaves that ambiguous (one of two equal lines deleted), a line is
- *   paired with one of the equal lines, the diff's choice.
- * - **Counterparts**: between two consecutive equal pairs (or the texts' start or end), the
- *   changed lines of `before` and those of `after` — a replaced hunk — are paired in order when
- *   both have the same number of lines (lines edited in place); a hunk that inserts or deletes lines
- *   pairs none of its lines, since which line became which is not known.
+ * - **Equal lines**, a line diff's: first the lines that occur exactly once in each text, the longest
+ *   run of them in the same order in both (`uniqueAnchors`, the anchors of a patience diff); then,
+ *   between two consecutive anchors (or the texts' start or end), the equal lines that continue the
+ *   anchor before (a common start), those that lead to the anchor after (a common end), and a
+ *   longest common subsequence of the lines left between (`diagonalPairs`, Myers' O(ND)
+ *   algorithm). So the unchanged lines between several separate edits are paired each with the line
+ *   it was, and a block of lines moved past another keeps its lines together: its unique lines (a
+ *   clause's head, a signature) anchor it, and its lines that are equal to another block's (`  pure
+ *   x`) are paired with those after its own anchor. A diff by the longest common subsequence alone
+ *   paired the two blocks' equal lines across them, leaving the differing heads as lines edited in
+ *   place, so that the hover asked about the other function's variable, a kept inlay hint showed the
+ *   other function's type and Go to Definition jumped to the other function [unit-level and live
+ *   answers, fifth review of M3]. The price: where the order of the unique lines disagrees with
+ *   more equal lines around them (a unique line moved across repeated ones), fewer lines are paired
+ *   than a longest common subsequence has, and the others are left unpaired — an answer withheld,
+ *   not one shown on another line [unit-level: in 385 of 20,000 randomly edited texts with repeated
+ *   lines, seed 4242 of the reviewer's property check]. Where the edit leaves the pairing ambiguous (one of two equal lines
+ *   deleted), a line is paired with one of the equal lines, the diff's choice.
+ * - **Counterparts**: between two consecutive equal pairs, the changed lines of `before` and those
+ *   of `after` — a replaced hunk — are paired in order when both have the same number of lines
+ *   (lines edited in place); a hunk that inserts or deletes lines pairs none of its lines, since
+ *   which line became which is not known.
  *
- * More than `MAX_LINE_EDITS` lines inserted and deleted in all leaves every line between the first
- * and the last changed one unpaired (a bound on the diff's time and memory, which grow with the
- * number of edits). Until the fourth review of M3 only the lines both texts begin and end with
- * were paired, and every line between two separate edits was compared with the line of the same
- * number, which is another line once lines were inserted or deleted above it: a hover asked about
- * the neighbouring line's `x` (`x : String` for a `Nat`), and a kept inlay hint was drawn one line
- * off [unit-level, the reviewer's probes on live answers].
+ * Between two anchors whose lines take more than `MAX_LINE_EDITS` insertions and deletions, the
+ * lines left after the common start and end are paired in order when both texts have the same
+ * number of them (a Replace All: every line edited in place), else none (a bound on the diff's time
+ * and memory, which grow with the number of edits; fifth review of M3: all of them were left
+ * unpaired, so a Replace All over more than 500 lines dropped every semantic token and kept inlay
+ * hint between the first and the last replaced line until the save). Until the fourth review of M3
+ * only the lines both texts begin and end with were paired, and every line between two separate
+ * edits was compared with the line of the same number, which is another line once lines were
+ * inserted or deleted above it: a hover asked about the neighbouring line's `x` (`x : String` for a
+ * `Nat`), and a kept inlay hint was drawn one line off [unit-level, the reviewer's probes on live
+ * answers].
  */
 export interface LineCorrespondence {
   /** Per line of `after`, the line of `before` paired with it, or -1. */
@@ -457,7 +662,7 @@ export interface LineCorrespondence {
   readonly toAfter: Int32Array;
 }
 
-/** `LineCorrespondence`: the most lines inserted and deleted for which the lines between the changes are diffed. */
+/** `LineCorrespondence`: the most lines inserted and deleted for which the lines between two anchors are diffed. */
 export const MAX_LINE_EDITS = 1000;
 
 export function lineCorrespondence(before: readonly string[], after: readonly string[]): LineCorrespondence {
@@ -467,55 +672,7 @@ export function lineCorrespondence(before: readonly string[], after: readonly st
     toAfter[b] = a;
     toBefore[a] = b;
   };
-  const most = Math.min(before.length, after.length);
-  let head = 0;
-  while (head < most && before[head] === after[head]) {
-    pair(head, head);
-    head++;
-  }
-  let tail = 0;
-  while (tail < most - head && before[before.length - 1 - tail] === after[after.length - 1 - tail]) {
-    pair(before.length - 1 - tail, after.length - 1 - tail);
-    tail++;
-  }
-  const beforeEnd = before.length - tail;
-  const afterEnd = after.length - tail;
-  const equal = diagonalPairs(before.slice(head, beforeEnd), after.slice(head, afterEnd));
-  if (equal === undefined) {
-    return { toBefore, toAfter };
-  }
-  let b = head;
-  let a = head;
-  for (const [pb, pa] of [...equal.map(([x, y]): [number, number] => [x + head, y + head]), [beforeEnd, afterEnd] as [number, number]]) {
-    if (pb - b === pa - a) {
-      for (let k = 0; k < pb - b; k++) {
-        pair(b + k, a + k);
-      }
-    }
-    if (pb < beforeEnd) {
-      pair(pb, pa);
-    }
-    b = pb + 1;
-    a = pa + 1;
-  }
-  return { toBefore, toAfter };
-}
-
-/** An unreachable diagonal in `diagonalPairs`. */
-const UNREACHED = -1;
-
-/**
- * The pairs `[i, j]` (increasing) of a longest common subsequence of `xs` and `ys`, by Myers'
- * greedy algorithm ("An O(ND) Difference Algorithm and Its Variations", Algorithmica 1(2), 1986),
- * with every path kept inside the edit graph; `undefined` when more than `MAX_LINE_EDITS`
- * insertions and deletions are needed. The lines are compared as numbers (one per distinct text).
- */
-function diagonalPairs(xs: readonly string[], ys: readonly string[]): Array<[number, number]> | undefined {
-  const n = xs.length;
-  const m = ys.length;
-  if (n === 0 || m === 0) {
-    return [];
-  }
+  // The lines are compared as numbers, one per distinct text.
   const ids = new Map<string, number>();
   const id = (text: string): number => {
     let known = ids.get(text);
@@ -525,8 +682,122 @@ function diagonalPairs(xs: readonly string[], ys: readonly string[]): Array<[num
     }
     return known;
   };
-  const x = Int32Array.from(xs, id);
-  const y = Int32Array.from(ys, id);
+  const x = Int32Array.from(before, id);
+  const y = Int32Array.from(after, id);
+  let b = 0;
+  let a = 0;
+  for (const [pb, pa] of [...uniqueAnchors(x, y, ids.size), [before.length, after.length] as const]) {
+    pairBetween(x, y, { b, a, bEnd: pb, aEnd: pa }, pair);
+    if (pb < before.length) {
+      pair(pb, pa);
+    }
+    b = pb + 1;
+    a = pa + 1;
+  }
+  return { toBefore, toAfter };
+}
+
+/**
+ * The pairs `[i, j]` (increasing) of the lines that occur exactly once in `x` and once in `y` (as
+ * line ids, `distinct` of them), the longest run of them in the same order in both: a longest
+ * increasing subsequence of their `j` in the order of `i`, by patience sorting.
+ */
+function uniqueAnchors(x: Int32Array, y: Int32Array, distinct: number): Array<readonly [number, number]> {
+  const countX = new Int32Array(distinct);
+  const countY = new Int32Array(distinct);
+  const atY = new Int32Array(distinct);
+  x.forEach((line) => countX[line]++);
+  y.forEach((line, j) => {
+    countY[line]++;
+    atY[line] = j;
+  });
+  const candidates: Array<readonly [number, number]> = [];
+  x.forEach((line, i) => {
+    if (countX[line] === 1 && countY[line] === 1) {
+      candidates.push([i, atY[line]]);
+    }
+  });
+  /** `tails[k]`: the candidate ending the run of k + 1 found so far whose `j` is smallest. */
+  const tails: number[] = [];
+  const previous = new Int32Array(candidates.length).fill(-1);
+  candidates.forEach(([, j], c) => {
+    let lo = 0;
+    let hi = tails.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (candidates[tails[mid]][1] < j) {
+        lo = mid + 1;
+      } else {
+        hi = mid;
+      }
+    }
+    previous[c] = lo > 0 ? tails[lo - 1] : -1;
+    tails[lo] = c;
+  });
+  const anchors: Array<readonly [number, number]> = [];
+  for (let c = tails.length > 0 ? tails[tails.length - 1] : -1; c >= 0; c = previous[c]) {
+    anchors.push(candidates[c]);
+  }
+  return anchors.reverse();
+}
+
+/**
+ * Pairs the lines `b` … `bEnd - 1` of `x` with the lines `a` … `aEnd - 1` of `y`, the lines between
+ * two anchors (`LineCorrespondence`): the equal lines they start with, those they end with, and
+ * between these the lines of a longest common subsequence and the counterparts of the same-size
+ * hunks, or, beyond `MAX_LINE_EDITS`, all of them in order when both have as many.
+ */
+function pairBetween(
+  x: Int32Array,
+  y: Int32Array,
+  between: { readonly b: number; readonly a: number; readonly bEnd: number; readonly aEnd: number },
+  pair: (b: number, a: number) => void,
+): void {
+  let { b, a, bEnd, aEnd } = between;
+  while (b < bEnd && a < aEnd && x[b] === y[a]) {
+    pair(b++, a++);
+  }
+  while (b < bEnd && a < aEnd && x[bEnd - 1] === y[aEnd - 1]) {
+    pair(--bEnd, --aEnd);
+  }
+  const equal = diagonalPairs(x.subarray(b, bEnd), y.subarray(a, aEnd));
+  if (equal === undefined) {
+    if (bEnd - b === aEnd - a) {
+      for (let k = 0; k < bEnd - b; k++) {
+        pair(b + k, a + k);
+      }
+    }
+    return;
+  }
+  for (const [pb, pa] of [...equal.map(([i, j]) => [i + b, j + a] as const), [bEnd, aEnd] as const]) {
+    if (pb - b === pa - a) {
+      for (let k = 0; k < pb - b; k++) {
+        pair(b + k, a + k);
+      }
+    }
+    if (pb < bEnd) {
+      pair(pb, pa);
+    }
+    b = pb + 1;
+    a = pa + 1;
+  }
+}
+
+/** An unreachable diagonal in `diagonalPairs`. */
+const UNREACHED = -1;
+
+/**
+ * The pairs `[i, j]` (increasing) of a longest common subsequence of `x` and `y` (line ids), by
+ * Myers' greedy algorithm ("An O(ND) Difference Algorithm and Its Variations", Algorithmica 1(2),
+ * 1986), with every path kept inside the edit graph; `undefined` when more than `MAX_LINE_EDITS`
+ * insertions and deletions are needed.
+ */
+function diagonalPairs(x: Int32Array, y: Int32Array): Array<[number, number]> | undefined {
+  const n = x.length;
+  const m = y.length;
+  if (n === 0 || m === 0) {
+    return [];
+  }
   const most = Math.min(n + m, MAX_LINE_EDITS);
   const offset = most + 1;
   // `v[offset + k]`: the furthest `i` reached on diagonal `k = i - j`; diagonal 1 starts at 0.

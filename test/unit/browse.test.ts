@@ -69,7 +69,7 @@ suite('features/intelligence: Browse Namespace', () => {
         registry,
         projects,
         checks: { statusOf: () => undefined, onDidChange: new Emitter<void>().event },
-        config: { inlayHints: () => ({ variableTypes: true }), onDidChange: () => ({ dispose: () => undefined }) },
+        config: { inlayHints: () => ({ variableTypes: true }), onDidChange: () => ({ dispose: () => undefined }), checking: () => ({ trigger: 'onSave', delayMs: 700 }) },
         log: quietLog,
       }, { keepNotices: true });
       return { doc, backend, fake, intelligence };

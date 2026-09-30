@@ -2,13 +2,17 @@ import * as assert from 'assert';
 import {
   codeLineSpans,
   codePointsBefore,
+  compilerLines,
   displayLine,
+  editorLines,
+  editorSplit,
   fromCli,
   fromCliSpan,
   fromIdeReply,
   fromIdeReplySpan,
   lineCorrespondence,
   MAX_LINE_EDITS,
+  textMap,
   toCompilerColumn,
   toIdeCaseSplitRequest,
   toIdeLineRequest,
@@ -491,7 +495,22 @@ suite('core/positions', () => {
       assert.deepStrictEqual(pairs(['a'], []), { toBefore: [], toAfter: [-1] });
     });
 
-    test('lineCorrespondence: the equal pairs are a longest common subsequence, increasing, of equal lines (property, seed 23)', () => {
+    test('lineCorrespondence: a block moved past another whose lines are partly the same keeps its lines together (fifth review of M3)', () => {
+      // g's block cut and pasted above f's: a longest common subsequence paired the two bodies across
+      // the functions and the heads as lines edited in place, so that g's x was asked about as f's
+      // (x : Nat for a String) [live answers, the reviewer's probe].
+      const saved = ['module M', '', 'f : Nat -> IO Nat', 'f x = do', '  printLn x', '  pure x', '', 'g : String -> IO String', 'g x = do', '  printLn x', '  pure x', ''];
+      const shown = ['module M', '', 'g : String -> IO String', 'g x = do', '  printLn x', '  pure x', '', 'f : Nat -> IO Nat', 'f x = do', '  printLn x', '  pure x', ''];
+      assert.deepStrictEqual(pairs(saved, shown).toBefore, [0, 1, 7, 8, 9, 10, 11, -1, -1, -1, -1, -1], 'g kept together; f, moved across it, left unpaired');
+      assert.deepStrictEqual(toLoadedPosition(saved, shown, { line: 4, character: 10 }), { line: 9, character: 10 }, "g's x");
+      assert.strictEqual(toLoadedPosition(saved, shown, { line: 9, character: 10 }), undefined, "f's x: not asked, rather than asked as g's");
+      // Fewer shared lines (one of four): the same.
+      const one = (body: string) => ['module M', '', 'f : Nat -> IO ()', 'f x = do', `  ${body}`, '  pure ()', '', 'g : String -> IO ()', 'g x = do', '  putStrLn x', '  pure ()', ''];
+      const moved = (lines: string[]) => [...lines.slice(0, 2), ...lines.slice(7, 11), '', ...lines.slice(2, 6), ''];
+      assert.deepStrictEqual(pairs(one('printLn x'), moved(one('printLn x'))).toBefore.slice(2, 6), [7, 8, 9, 10]);
+    });
+
+    test('lineCorrespondence: the equal pairs are a common subsequence to which no two equal lines can be added, and a longest one when no text repeats a line (property, seed 23)', () => {
       const next = prng(23);
       const pick = (n: number) => Math.floor(next() * n);
       const lcsLength = (a: string[], b: string[]): number => {
@@ -506,12 +525,18 @@ suite('core/positions', () => {
         }
         return row[b.length];
       };
-      for (let round = 0; round < 400; round++) {
-        const alphabet = 1 + pick(5);
-        const before = Array.from({ length: pick(30) }, () => `l${pick(alphabet)}`);
-        const after = Array.from({ length: pick(30) }, () => `l${pick(alphabet)}`);
+      for (let round = 0; round < 800; round++) {
+        // Half the rounds repeat lines (a small alphabet), half do not (distinct lines, some shared).
+        const unique = round % 2 === 1;
+        const alphabet = unique ? 60 : 1 + pick(5);
+        const draw = (n: number): string[] => {
+          const lines = Array.from({ length: n }, () => `l${pick(alphabet)}`);
+          return unique ? [...new Set(lines)] : lines;
+        };
+        const before = draw(pick(30));
+        const after = draw(pick(30));
         const { toBefore, toAfter } = lineCorrespondence(before, after);
-        let last = -1;
+        const fences: Array<[number, number]> = [[-1, -1]];
         let equal = 0;
         for (let a = 0; a < after.length; a++) {
           const b = toBefore[a];
@@ -519,22 +544,178 @@ suite('core/positions', () => {
             continue;
           }
           assert.strictEqual(toAfter[b], a, `round ${round}: the arrays are converse`);
-          assert.ok(b > last, `round ${round}: increasing`);
-          last = b;
+          assert.ok(b > fences[fences.length - 1][0], `round ${round}: increasing`);
+          fences.push([b, a]);
           equal += before[b] === after[a] ? 1 : 0;
         }
-        assert.strictEqual(equal, lcsLength(before, after), `round ${round}: ${JSON.stringify(before)} / ${JSON.stringify(after)}`);
+        fences.push([before.length, after.length]);
+        const lcs = lcsLength(before, after);
+        const why = `round ${round}: ${JSON.stringify(before)} / ${JSON.stringify(after)}`;
+        assert.ok(equal <= lcs, why);
+        if (unique) {
+          assert.strictEqual(equal, lcs, why);
+        }
+        for (let k = 1; k < fences.length; k++) {
+          const [b0, a0] = fences[k - 1];
+          const [b1, a1] = fences[k];
+          const gap = new Set(after.slice(a0 + 1, a1));
+          assert.ok(!before.slice(b0 + 1, b1).some((line) => gap.has(line)), `${why}: equal lines left unpaired between two pairs`);
+        }
       }
     });
 
-    test(`lineCorrespondence: more than MAX_LINE_EDITS (${MAX_LINE_EDITS}) lines inserted and deleted leave the lines between the changes unpaired`, () => {
-      const before = Array.from({ length: 1200 }, (_, i) => `a${i}`);
-      const after = ['head', ...Array.from({ length: 1200 }, (_, i) => (i % 2 === 0 ? `a${i}` : `b${i}`)), 'tail'];
-      // 600 lines deleted and 602 inserted: the diff is not run.
-      assert.ok([...lineCorrespondence(before, after).toBefore].every((b) => b === -1));
+    test(`lineCorrespondence: more than MAX_LINE_EDITS (${MAX_LINE_EDITS}) lines inserted and deleted between two anchors pair the lines in order when both have as many, else none (fifth review of M3)`, () => {
+      // A Replace All over 1,200 lines (every line edited in place, none unique to both): before, none
+      // of them was paired, and every semantic token and kept hint between them was dropped.
+      const before = Array.from({ length: 1200 }, (_, i) => `f${i} x = foo x`);
+      const replaced = before.map((line) => line.replace('foo', 'bar'));
+      assert.deepStrictEqual([...lineCorrespondence(before, replaced).toBefore], before.map((_, i) => i));
+      // A line more: which line became which is not known.
+      assert.ok([...lineCorrespondence(before, [...replaced, 'g = 1']).toBefore].every((b) => b === -1));
+      // Unique lines left between the edits anchor them: the diff between them stays small.
+      const alternate = ['head', ...before.map((line, i) => (i % 2 === 0 ? line : `b${i}`)), 'tail'];
+      assert.deepStrictEqual([...lineCorrespondence(before, alternate).toBefore].slice(0, 4), [-1, 0, 1, 2]);
       // Within the bound: the unchanged lines are paired.
       const near = ['head', ...before.slice(0, 1199), 'tail'];
       assert.deepStrictEqual([...lineCorrespondence(before, near).toBefore].slice(0, 3), [-1, 0, 1]);
+    });
+
+    test('compilerLines: the compiler\'s lines, at \\n only, without a byte order mark; editorLines: the editor\'s, at \\r\\n, \\r and \\n (fifth review of M3)', () => {
+      // idris2 --check on this text reported M:4:5--4:8 for x = "s" [live, idris2 0.8.0]: line 4, not 5.
+      const text = '\uFEFFmodule M\n-- a\r-- b\nx : Nat\r\nx = "s"\n';
+      assert.deepStrictEqual(compilerLines(text), ['module M', '-- a\r-- b', 'x : Nat', 'x = "s"', '']);
+      assert.deepStrictEqual(editorLines(text.slice(1)), ['module M', '-- a', '-- b', 'x : Nat', 'x = "s"', '']);
+    });
+
+    test('textMap: a text a load read and a document\'s that differ only in line breaks map exactly, the line holding a lone \\r too (seventh review of M3)', () => {
+      const text = '\uFEFFmodule M\n-- a\r-- b\nx : Nat\r\nx = "s"\n';
+      const map = textMap(text, 'module M\n-- a\n-- b\nx : Nat\nx = "s"\n');
+      // Below the lone \r: one line further down.
+      assert.deepStrictEqual(map.toShown({ line: 3, character: 4 }), { line: 4, character: 4 });
+      assert.deepStrictEqual(map.toRead({ line: 4, character: 4 }), { line: 3, character: 4 });
+      // On the line holding it, before and after it: the diff of the compiler's lines with the
+      // editor's left that line unpaired, so a definition starting on it was refused as changed.
+      assert.deepStrictEqual(map.toShown({ line: 1, character: 2 }), { line: 1, character: 2 });
+      assert.deepStrictEqual(map.toShown({ line: 1, character: 4 }), { line: 1, character: 4 }, 'just before the \\r: the end of the editor line');
+      assert.deepStrictEqual(map.toShown({ line: 1, character: 5 }), { line: 2, character: 0 }, 'just after it');
+      assert.deepStrictEqual(map.toShown({ line: 1, character: 9 }), { line: 2, character: 4 });
+      assert.deepStrictEqual(map.toRead({ line: 2, character: 3 }), { line: 1, character: 8 });
+      // The verifier's case: diffed directly, the compiler's line 1 ('  pure x', the editor's line 2)
+      // was paired with the editor's line 0, which has the same text.
+      const repeated = textMap('  pure x\r  \n  pure x\n-- a\rb\ng : Nat\n', '  pure x\n  \n  pure x\n-- a\nb\ng : Nat\n');
+      assert.deepStrictEqual(repeated.toShown({ line: 1, character: 7 }), { line: 2, character: 7 });
+      assert.deepStrictEqual(repeated.toRead({ line: 0, character: 7 }), { line: 0, character: 7 });
+      assert.deepStrictEqual(repeated.toShown({ line: 3, character: 0 }), { line: 5, character: 0 });
+      // With an edit as well: split first, then diffed; a line inserted at the top moves every line.
+      const edited = textMap(text, '-- new\nmodule M\n-- a\n-- b\nx : Nat\nx = "s"\n');
+      assert.deepStrictEqual(edited.toShown({ line: 1, character: 7 }), { line: 3, character: 2 });
+      assert.deepStrictEqual(edited.toRead({ line: 2, character: 1 }), { line: 1, character: 1 });
+      assert.strictEqual(edited.toRead({ line: 0, character: 1 }), undefined, 'the inserted line');
+      // Below the lone \r and after it on its line, the diff's position is moved back to the
+      // compiler's lines (eighth review of M3: no test asked there, where the move is not the identity).
+      assert.deepStrictEqual(edited.toRead({ line: 5, character: 1 }), { line: 3, character: 1 });
+      assert.deepStrictEqual(edited.toRead({ line: 3, character: 1 }), { line: 1, character: 6 });
+    });
+
+    test('editorSplit: without a lone \\r the compiler\'s lines, nothing moved (the same objects); with one, the editor\'s lines', () => {
+      const plain = editorSplit('module M\r\nx : Nat\n');
+      assert.deepStrictEqual(plain.lines, ['module M', 'x : Nat', '']);
+      const range = { start: { line: 1, character: 0 }, end: { line: 1, character: 1 } };
+      assert.strictEqual(plain.toEditorRange(range), range);
+      const split = editorSplit('a\rb\r\r\nc\r');
+      assert.deepStrictEqual(split.lines, editorLines('a\rb\r\r\nc\r'));
+      assert.deepStrictEqual(split.lines, ['a', 'b', '', 'c', '']);
+      assert.strictEqual(split.toEditorRange(range).start.line, 3, 'moved: a copy');
+      assert.deepStrictEqual(split.toEditor({ line: 0, character: 4 }), { line: 2, character: 0 });
+      assert.deepStrictEqual(split.toCompiler({ line: 4, character: 0 }), { line: 1, character: 2 });
+      // Past the text's end (a stale reply): the same distance from its end.
+      assert.deepStrictEqual(split.toEditor({ line: 3, character: 1 }), { line: 6, character: 1 });
+      assert.deepStrictEqual(split.toCompiler({ line: 6, character: 1 }), { line: 3, character: 1 });
+    });
+
+    test('textMap: every position of 2,000 random texts with lone \\r, CRLF and repeated lines, shown with one line break, maps exactly and back (property, seed 777)', () => {
+      const random = prng(777);
+      const pick = <T>(a: readonly T[]): T => a[Math.floor(random() * a.length)];
+      const vocab = ['', '  pure x', '--', 'x = 1', 'f x = x', '  z', 'module M', '  let y = x', 'g : Nat'];
+      let checked = 0;
+      for (let n = 0; n < 2000; n++) {
+        const count = 1 + Math.floor(random() * 30);
+        let disk = random() < 0.1 ? '\uFEFF' : '';
+        for (let i = 0; i < count; i++) {
+          let line = random() < 0.6 ? pick(vocab) : `u${Math.floor(random() * 1000)}`;
+          if (random() < 0.1) {
+            line = `${line}\r${random() < 0.5 ? pick(vocab) : `v${Math.floor(random() * 50)}`}`;
+          }
+          if (random() < 0.03) {
+            line = `${line}\r`;
+          }
+          disk += line + (i < count - 1 ? (random() < 0.3 ? '\r\n' : '\n') : random() < 0.5 ? '\n' : '');
+        }
+        const map = textMap(disk, editorLines(disk.replace(/^\uFEFF/, '')).join(random() < 0.5 ? '\n' : '\r\n'));
+        // The truth: walk each compiler line, a lone \r starting the next editor line.
+        let editorLine = 0;
+        compilerLines(disk).forEach((line, i) => {
+          let at = { line: editorLine, character: 0 };
+          for (let col = 0; col <= line.length; col++) {
+            assert.deepStrictEqual(map.toShown({ line: i, character: col }), at, `${JSON.stringify(disk)} ${i}:${col}`);
+            assert.deepStrictEqual(map.toRead(at), { line: i, character: col });
+            checked++;
+            at = line[col] === '\r' ? { line: at.line + 1, character: 0 } : { line: at.line, character: at.character + 1 };
+          }
+          editorLine += line.split('\r').length;
+        });
+      }
+      assert.ok(checked > 100000, `${checked} positions`);
+    });
+
+    test('textMap: every position of 3,000 random texts with lone \\r and CRLF, shown with lines inserted, deleted and edited, maps to the same text before it and back (property, seed 99; eighth review of M3)', () => {
+      // The edited path: a position of the text shown is looked up by the line diff on the editor's
+      // lines, then moved back to the compiler's lines (`EditorSplit.toCompiler`).
+      const random = prng(99);
+      const pick = <T>(a: readonly T[]): T => a[Math.floor(random() * a.length)];
+      const vocab = ['', '  pure x', '--', 'x = 1', 'f x = x', '  z', 'module M', '  let y = x', 'g : Nat'];
+      let mapped = 0;
+      for (let n = 0; n < 3000; n++) {
+        const count = 1 + Math.floor(random() * 25);
+        let read = '';
+        for (let i = 0; i < count; i++) {
+          let line = random() < 0.6 ? pick(vocab) : `u${Math.floor(random() * 1000)}`;
+          if (random() < 0.15) {
+            line = `${line}\r${random() < 0.5 ? pick(vocab) : `v${Math.floor(random() * 50)}`}`;
+          }
+          read += line + (i < count - 1 && random() < 0.3 ? '\r\n' : '\n');
+        }
+        const lines = editorLines(read);
+        for (let e = Math.floor(random() * 4); e > 0; e--) {
+          const at = Math.floor(random() * (lines.length + 1));
+          const kind = random();
+          if (kind < 0.33) {
+            lines.splice(at, 0, `ins${Math.floor(random() * 100)}`);
+          } else if (kind < 0.66 && lines.length > 1) {
+            lines.splice(Math.min(at, lines.length - 1), 1);
+          } else if (at < lines.length) {
+            lines[at] = `${lines[at]} + 0`;
+          }
+        }
+        const map = textMap(read, lines.join('\n'));
+        const compiler = compilerLines(read);
+        lines.forEach((line, i) => {
+          for (let col = 0; col <= line.length; col++) {
+            const at = map.toRead({ line: i, character: col });
+            if (at === undefined) {
+              continue;
+            }
+            // The same text before it, on its part of the compiler's line (between lone \r's).
+            const readLine = compiler[at.line];
+            const partStart = readLine.lastIndexOf('\r', at.character - 1) + 1;
+            const where = `${JSON.stringify(read)} ${JSON.stringify(lines)} ${i}:${col}`;
+            assert.strictEqual(readLine.slice(partStart, at.character), line.slice(0, col), where);
+            assert.deepStrictEqual(map.toShown(at), { line: i, character: col }, where);
+            mapped++;
+          }
+        });
+      }
+      assert.ok(mapped > 100000, `${mapped} positions`);
     });
 
     test('toLoadedPosition: a position on an equal line moves with it; on a line edited in place only after the same text; none on an unpaired line', () => {

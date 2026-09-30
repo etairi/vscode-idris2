@@ -154,7 +154,38 @@
  *   line, a consent answer, a package file saved, an import fixed), the active document's check is
  *   started last (`visibleDocuments`), so that its load is queued last and its file is the one its
  *   root's compiler loaded last — unless the other files take longer to classify, since each load is
- *   queued once its file is classified (fourth review of M3).
+ *   queued once its file is classified (fourth review of M3), or, while a limit is set
+ *   (*Background checks*), a check of the batch in the active document's root waits before its load
+ *   while the active one does not, so that its load is handed over after the active one's: (1) the
+ *   gate has no verdict for its folder yet — at activation and when trust is granted —, and it asks
+ *   about the folder first (`askFirst`); (2) it waits for a slot, which the active document's check
+ *   never does: the batch's checks that take a slot — all but the active one's and those whose
+ *   folder the gate refuses or whose load is refused before the question (`LoadPreflight`), of any
+ *   root — outnumber the free slots (the limit less the checks that hold one: the background checks
+ *   that run, of the batch or not, such as the save of a document open but not visible, whose folder
+ *   is neither refused nor being asked about), and it is one of those left to wait — at any batch,
+ *   with the folder known (seventh review of M3: with a limit of 1 and three visible files of one
+ *   project, B, A, C; eighth review: with a limit of 2, two other visible files and a background
+ *   check of a fourth file running, B, A, C, and B, C, A without it; ninth review: with a limit of
+ *   1, B of another project allowed and C of A's project, B, A, C; B's folder refused, B, C, A).
+ *   Then the active file is loaded, then the other, then the active one again for its first query,
+ *   and the other file's queries are refused until it is focused. Not fixed, documented (sixth to
+ *   ninth reviews of M3, the finding's option (c); not a decision of the user's): a limit is not the
+ *   default; making the active document's check wait for the question step of the others would make
+ *   it wait for their preflight and, while a question about another folder is open, until it is
+ *   answered; and waiting for their slots would delay its diagnostics by their compile times. The
+ *   active document's load is not `urgent` when, at its handover, a load of the batch in its root
+ *   handed over before it has not settled — decided then, once: it stays first-in, first-out when
+ *   that load settles, so the loads of its root queued before it, background loads outside the batch
+ *   included, still go first (`CheckOptions.batch`). A batch that checks it alone in its root (an
+ *   import fixed) leaves it urgent; one that checks it with another file of its root (two files that
+ *   the fixed import blocked) makes it wait for the background loads of the root queued before it
+ *   (tenth review of M3: not fixed, documented). Deciding once is a choice, not a fix: the load keeps
+ *   its first-in, first-out place behind those loads, so they do not displace it; deciding again at
+ *   each dispatch would send it before them once the batch's earlier loads in its root had settled,
+ *   as the urgent rule does in the alone case (M2), which shows its diagnostics sooner but has it
+ *   loaded again for its first query (eleventh review of M3). Marking the batch's other loads urgent
+ *   would reorder the loads of documents that are not active.
  * - **Background checks** (`idris2.ideMode.maxBackgroundChecks`, ROADMAP §9 Q21; `0`, the default,
  *   is no limit and changes nothing above: no check waits, and the gate is not asked here).
  *   Otherwise a check of a document that is not the active one waits, after classifying the file
@@ -188,7 +219,10 @@
  *   those two, whatever they were checked for (*M2 verification of the Q20–Q22 fixes*: the queue
  *   was first-in, first-out, so after moving through several files of one project during its first
  *   compile the active file's load waited behind every load handed over before it, none of them
- *   bounded by the limit). Without a limit the order is as before.
+ *   bounded by the limit) — except where several visible documents are checked at once and, at the
+ *   active one's handover, a load of the batch in its root handed over before it has not settled:
+ *   then its load is not urgent, and waits for the root's requests queued before it (*The active
+ *   document*, `CheckOptions.batch`, with its exception). Without a limit the order is as before.
  *
  * Only type imports from `vscode`: `extension.ts` passes the `vscode` namespace as `api`, so the
  * logic is unit-tested against a fake of it.
@@ -231,7 +265,8 @@ export type CheckStatus =
       /** Set when `stale`: why, for the status's detail. */
       readonly staleness?: Staleness;
     }
-  | { readonly kind: 'packageError'; readonly ipkg: string; readonly message: string; readonly stale: boolean }
+  /** `staleness`: set when `stale`, as for `checked` (seventh review of M3: Type at Cursor took the trigger as not `manual`). */
+  | { readonly kind: 'packageError'; readonly ipkg: string; readonly message: string; readonly stale: boolean; readonly staleness?: Staleness }
   | { readonly kind: 'loadFailed'; readonly reason: string }
   /** `revokedDir`: stopped because the permission for that directory was revoked (the next check asks again). */
   | { readonly kind: 'stopped'; readonly revokedDir?: string }
@@ -300,6 +335,62 @@ export interface LoadPreflight {
 export interface CheckRefusal {
   readonly message: string;
   readonly dir: string | undefined;
+}
+
+/**
+ * Checks of several visible documents started at once (`CheckOptions.batch`): per root (`rootKey`),
+ * how many of their loads were handed over to the backend and have not settled yet.
+ */
+class CheckBatch {
+  private readonly loading = new Map<string, number>();
+
+  /** Whether a load of the batch in `root` was handed over and has not settled. */
+  pending(root: string): boolean {
+    return (this.loading.get(root) ?? 0) > 0;
+  }
+
+  handedOver(root: string): void {
+    this.loading.set(root, (this.loading.get(root) ?? 0) + 1);
+  }
+
+  settled(root: string): void {
+    const left = (this.loading.get(root) ?? 0) - 1;
+    if (left > 0) {
+      this.loading.set(root, left);
+    } else {
+      this.loading.delete(root);
+    }
+  }
+}
+
+/** How a check was started (`DocumentChecks.check`). */
+export interface CheckOptions {
+  /**
+   * The checks of several visible documents started at once, in `visibleDocuments`' order, the active
+   * document last (activation, trust granted, an automatic restart, a consent answer, a package file
+   * saved, an import fixed, Restart Backend); one object per such start. The active document's load
+   * is then not `urgent` when, at its handover, a load of the batch in its root handed over before it
+   * has not settled — decided once, not again at each dispatch (tenth review of M3; a choice, module
+   * comment *The active document*): it stays first-in, first-out, behind the root's requests queued
+   * before it. The batch queues it last on purpose, so that its file is the one its root's compiler
+   * loaded last, and `urgent` sent it first again whenever the batch's loads waited together, as
+   * for a process that is starting (fifth review of M3: with `maxBackgroundChecks` set, activation
+   * loaded the active file, then the other, then the active file once more for its first hover, and
+   * the other file's queries were refused).
+   * Otherwise it is `urgent` as ever (ninth review of M3: every batch made it not urgent, also one
+   * that checks the active document alone in its root — the check after an import it uses was
+   * fixed —, whose load then waited behind the background loads of its root [unit-level, the
+   * verifier's probe]).
+   * The active one is still not loaded last when a check of the batch in its root hands its load over
+   * after it (module comment, *The active document*: not fixed, documented, sixth to ninth reviews of
+   * M3).
+   */
+  readonly batch?: CheckBatch;
+}
+
+/** `CheckOptions` of the checks of one batch (`CheckOptions.batch`). */
+function newBatch(): CheckOptions {
+  return { batch: new CheckBatch() };
 }
 
 export interface ChecksDeps {
@@ -506,6 +597,8 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
         }
       }),
     );
+    // Not a batch: an editor opened makes its document visible and active, and while a limit is set
+    // its load goes before the root's loads that wait (module comment, *Background checks*).
     this.store.add(api.window.onDidChangeVisibleTextEditors(() => this.visibleDocuments().forEach((doc) => this.shown(doc))));
     this.store.add(
       api.workspace.onDidOpenTextDocument((doc) => {
@@ -524,11 +617,17 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
     this.store.add(files.onDidCreate((uri) => this.created(uri)));
     this.store.add(deps.registry.onDidChange(() => this.changed.fire()));
     // Documents shown in Restricted Mode were not checked; they are once trust is granted.
-    this.store.add(deps.trust.onDidGrant(() => this.visibleDocuments().forEach((doc) => this.shown(doc))));
+    this.store.add(
+      deps.trust.onDidGrant(() => {
+        const batch = newBatch();
+        this.visibleDocuments().forEach((doc) => this.shown(doc, batch));
+      }),
+    );
     this.store.add(deps.consent.onDidChange(() => this.consentChanged()));
     this.store.add(deps.roots.onDidRestart(({ root, cause }) => this.restarted(root, cause)));
     this.activeChanged();
-    this.visibleDocuments().forEach((doc) => this.shown(doc));
+    const batch = newBatch();
+    this.visibleDocuments().forEach((doc) => this.shown(doc, batch));
   }
 
   private trigger(doc: vscode.TextDocument): 'onSave' | 'afterDelay' | 'manual' {
@@ -574,14 +673,14 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
 
   // --- triggers ------------------------------------------------------------------------------
 
-  private shown(doc: vscode.TextDocument): void {
+  private shown(doc: vscode.TextDocument, options?: CheckOptions): void {
     if (!this.deps.trust.isTrusted || !isCheckable(doc) || this.trigger(doc) === 'manual') {
       return;
     }
     const t = this.track(doc);
     if (!t.checkedOnOpen || (t.refused && this.allowedNow(t)) || this.unblocked(t)) {
       t.checkedOnOpen = true;
-      void this.check(doc);
+      void this.check(doc, options);
     }
   }
 
@@ -611,10 +710,11 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
 
   /** A package file was saved: the visible documents of the root it governs are checked again. */
   private packageSaved(ipkg: string): void {
+    const batch = newBatch();
     for (const doc of this.visibleDocuments()) {
       const root = this.tracked.get(doc.uri.toString())?.root;
       if (root?.kind === 'project' && samePath(root.ipkgPath, ipkg) && isCheckable(doc) && this.trigger(doc) !== 'manual') {
-        void this.check(doc);
+        void this.check(doc, batch);
       }
     }
   }
@@ -861,6 +961,7 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
   /** A root's session serves again after an automatic restart (module comment). */
   private restarted(root: Classification, cause: 'reconfigure' | 'crash'): void {
     const key = rootKey(root);
+    const batch = newBatch();
     for (const doc of this.visibleDocuments()) {
       const t = this.tracked.get(doc.uri.toString());
       if (t?.root === undefined || rootKey(t.root) !== key || !isCheckable(doc) || this.trigger(doc) === 'manual') {
@@ -872,7 +973,7 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
         }
         t.retriedAfterCrash = true;
       }
-      void this.check(doc);
+      void this.check(doc, batch);
     }
   }
 
@@ -883,10 +984,11 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
     // session rejects its queue then (module comment, *Background checks*).
     this.dropWaiting((w) => this.deps.consent.current(this.deps.projects.sessionCwd(w.root))?.allowed !== true, REFUSED);
     this.recount();
+    const batch = newBatch();
     for (const doc of this.visibleDocuments()) {
       const t = this.tracked.get(doc.uri.toString());
       if (t?.refused === true && t.root !== undefined && this.deps.consent.current(this.deps.projects.sessionCwd(t.root))?.allowed) {
-        void this.check(doc);
+        void this.check(doc, batch);
       }
     }
   }
@@ -898,8 +1000,8 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
    * (or dropped), with the refusal when the consent gate refused the load; never rejects:
    * failures become the document's state and a log line.
    */
-  check(doc: vscode.TextDocument): Promise<CheckRefusal | undefined> {
-    const promise = this.checkNow(doc);
+  check(doc: vscode.TextDocument, options: CheckOptions = {}): Promise<CheckRefusal | undefined> {
+    const promise = this.checkNow(doc, options);
     // `checkNow` has tracked the document (and counted its generation) before its first wait.
     const t = this.tracked.get(doc.uri.toString());
     if (t !== undefined) {
@@ -924,10 +1026,13 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
     return this.tracked.get(doc.uri.toString())?.newest;
   }
 
-  private async checkNow(doc: vscode.TextDocument): Promise<CheckRefusal | undefined> {
+  private async checkNow(doc: vscode.TextDocument, options: CheckOptions): Promise<CheckRefusal | undefined> {
     if (!this.deps.trust.isTrusted || !isCheckable(doc)) {
       return undefined;
     }
+    const batch = options.batch;
+    /** The active document's check, started last of a batch on purpose (`CheckOptions.batch`). */
+    const lastOfBatch = batch !== undefined && this.isActive(doc);
     const key = doc.uri.toString();
     const t = this.track(doc);
     const generation = ++t.generation;
@@ -992,10 +1097,20 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
         return undefined;
       }
       // While a limit is set, the active document's load goes before the root's loads that wait
-      // (module comment, *Background checks*); without one the backend's queue is as before.
-      const result = await this.deps.registry
-        .backendFor(root)
-        .load(doc, { urgent: () => this.deps.config.ideMode().maxBackgroundChecks > 0 && this.isActive(doc) });
+      // (module comment, *Background checks*), unless a batch queued it last, after a load of the
+      // batch in its root that has not settled now (`CheckOptions.batch`: decided here, once); without
+      // a limit the backend's queue is as before.
+      const batchRoot = rootKey(root);
+      const queuedLast = lastOfBatch && batch.pending(batchRoot);
+      batch?.handedOver(batchRoot);
+      let result: LoadResult;
+      try {
+        result = await this.deps.registry
+          .backendFor(root)
+          .load(doc, { urgent: () => !queuedLast && this.deps.config.ideMode().maxBackgroundChecks > 0 && this.isActive(doc) });
+      } finally {
+        batch?.settled(batchRoot);
+      }
       if (!open()) {
         return undefined;
       }
@@ -1363,6 +1478,7 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
    */
   private unblock(root: Classification, determined: ReadonlyMap<string, vscode.Uri>, loaded: vscode.TextDocument): void {
     const key = rootKey(root);
+    const batch = newBatch();
     for (const doc of this.visibleDocuments()) {
       const t = this.tracked.get(doc.uri.toString());
       if (doc === loaded || t?.root === undefined || rootKey(t.root) !== key || t.loadState === 'loading') {
@@ -1370,7 +1486,7 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
       }
       const fixed = t.blockedBy.some((file) => determined.has(file.toString()) && this.errorCount(file) === 0);
       if (fixed && isCheckable(doc) && this.trigger(doc) !== 'manual') {
-        void this.check(doc);
+        void this.check(doc, batch);
       }
     }
   }
@@ -1381,10 +1497,11 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
    */
   async recheckVisible(root?: Classification): Promise<void> {
     const docs = this.visibleDocuments().filter((d) => isCheckable(d) && this.trigger(d) !== 'manual');
+    const batch = newBatch();
     await Promise.all(
       docs.map(async (doc) => {
         if (root === undefined || rootKey(await this.deps.projects.classify(doc.fileName)) === rootKey(root)) {
-          await this.check(doc);
+          await this.check(doc, batch);
         }
       }),
     );
@@ -1444,14 +1561,17 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
     const stale =
       doc.isDirty ||
       (t.checkedVersion !== undefined ? t.checkedVersion !== doc.version : t.checkedHash !== undefined && textHash(doc.getText()) !== t.checkedHash);
+    const staleness = (): Staleness => ({ unsaved: doc.isDirty, manual: this.trigger(doc) === 'manual' });
     switch (t.loadState) {
       case 'failed':
         return { kind: 'loadFailed', reason: t.failure ?? 'the compiler did not answer' };
-      case 'ipkgError':
-        return { kind: 'packageError', ipkg: t.packageError?.ipkg ?? '', message: t.packageError?.message ?? '', stale };
+      case 'ipkgError': {
+        const error = { kind: 'packageError', ipkg: t.packageError?.ipkg ?? '', message: t.packageError?.message ?? '', stale } as const;
+        return stale ? { ...error, staleness: staleness() } : error;
+      }
       default: {
         const checked = { kind: 'checked', ...this.counts(doc.uri), stale, known: this.reported.has(doc.uri.toString()) } as const;
-        return stale ? { ...checked, staleness: { unsaved: doc.isDirty, manual: this.trigger(doc) === 'manual' } } : checked;
+        return stale ? { ...checked, staleness: staleness() } : checked;
       }
     }
   }

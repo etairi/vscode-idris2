@@ -22,8 +22,9 @@ supports macOS and Linux; on Windows, use VS Code with WSL, where the extension 
 - **Evaluate Selection** (M3): the selected expression's value after the line and in a hover
   (`idris2.eval.inlineResults`), from a second compiler process of the project that starts at the
   first evaluation; expressions only — `IO` actions are shown, not run, and REPL commands such as
-  `:exec` are refused. An evaluation is stopped after `idris2.eval.timeout` (10 s) and can be
-  cancelled once it has run for a second. **Clear Evaluation Results** removes the results.
+  `:exec` are refused —, though it can run compile-time code (elaborator scripts; README, *Privacy
+  and security*). An evaluation is stopped after `idris2.eval.timeout` (10 s) and can be cancelled
+  once it has run for a second. **Clear Evaluation Results** removes the results.
 - **Keyboard shortcuts** (M3) for Type at Cursor, Docs at Cursor and Evaluate Selection:
   `Ctrl+C Ctrl+T` / `D` / `E` on macOS, `Ctrl+Alt+I T` / `D` / `E` on Linux, or none
   (`idris2.keybindings.scheme`).

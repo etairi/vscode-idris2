@@ -331,8 +331,17 @@ export interface IdrisBackend {
    * when there are any. Absolute paths only: an entry whose file is `(Interactive)` or
    * `(File-Not-Found)` is left out, and so is one whose file cannot be read (an installed package
    * without its sources, or a path that is not a regular file), or whose range starts on a line of
-   * the target's open document changed since it was saved — when none is left, `Unsupported` says
-   * why. The ranges are in the target file's own columns, in the text its open document shows. A
+   * the target's open document changed since the file was read (the loaded file: since its load
+   * read it; another file: since it was saved) — when none is left, `Unsupported` says why. A change
+   * of another file on disk that no load has built since goes unseen: a save under the `manual`
+   * trigger, and under any trigger a change made outside VS Code (a checkout, a formatter, a code
+   * generator); its range is converted with the newer text and may be off, and with an open
+   * document of it the result depends on whether Go to Definition read the file before the change
+   * (the first read is kept per load; ARCHITECTURE §3.1). The ranges are in the target file's own
+   * columns, in the text its open document shows; in a file that is not literate, a text that
+   * differs from the one read only in its line breaks is mapped exactly (a lone `\r`,
+   * `core/positions.ts` `textMap`). In a literate file the unlit step reads a lone `\r` otherwise,
+   * which is not modelled (such files need LF line breaks, `core/positions.ts` *Literate lines*). A
    * query (above).
    */
   definition(doc: vscode.TextDocument, pos: vscode.Position, name: string, decor?: Decor, namespace?: string): Promise<vscode.Location[]>;
@@ -360,7 +369,9 @@ export interface IdrisBackend {
    * the compiler's REPL parser would read as a command (`:exec`, `:sh`, `:set …`, `:q`, …, however
    * it is spelled or preceded) is refused before anything is sent or started, with `Unsupported`
    * whose reason says so; nothing that sends to the `eval` session changes its evaluation mode.
-   * Rejects with `LoadFailed` when the file does not load (its first error in the message). The load
+   * Elaborator scripts the expression reaches (a `%macro` applied by name, `%runElab` where
+   * `ElabReflection` is on) are not refused: they run (ROADMAP §9 Q23, accepted 2026-09-29; the
+   * README's *Privacy and security* says so). Rejects with `LoadFailed` when the file does not load (its first error in the message). The load
    * runs under `idris2.ideMode.longActionTimeout`, the evaluation under `idris2.eval.timeout`
    * (`RequestTimeout`; the `eval` session's process is stopped). Cancelling `token` stops the
    * evaluation — in IDE mode by stopping the `eval` session's process — and rejects with the

@@ -7,6 +7,8 @@ fills in the setup information for you.
 
 ## Project documents
 
+- [README.md](README.md) and [docs/guide.md](docs/guide.md): the user-facing overview and the
+  user guide (each feature, setting and limitation in detail).
 - [docs/ROADMAP.md](docs/ROADMAP.md): milestones, verified facts about the compiler and
   `idris2-lsp` (§0), open questions and the user's decisions (§9), and a short status per
   finished milestone.

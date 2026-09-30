@@ -109,6 +109,23 @@ export function createDocumentQueries(deps: DocumentQueriesDeps): DocumentQuerie
 }
 
 /**
+ * Whether a closed document is the file's own (`file` scheme), whose close drops what is kept for its
+ * path (`AnswerCache.forget`, the completion names, the inlay hints). VS Code
+ * 1.139.1 gives every document the `fileName` of its URI's path (`get fileName(){return
+ * e._uri.fsPath}` [src, the extension host bundle]) and tells the extension about every model but a
+ * too large one or a simple widget's [src, the workbench bundle], so a `git:` document of the file
+ * — the one the Source Control view's *Open Changes* shows — has the file's `fileName`. Until the
+ * sixth review of M3 its close dropped the file's answers and its root in `StaleAnswers` while the
+ * file stayed open: its kept hints vanished, and answers cached afterwards were never made stale by
+ * a load of its root, so the hover showed a type from before a change of an imported module, without
+ * a stale note [unit-level, the verifier's probe]. The providers keep answers only for `file`
+ * documents.
+ */
+export function isFileDocument(doc: { readonly uri: { readonly scheme: string } }): boolean {
+  return doc.uri.scheme === 'file';
+}
+
+/**
  * Which files' kept answers a load makes stale (`LoadNotifications`; *review of M3*). An answer
  * about a file depends on the file and on the modules it imports, so a load that may have changed
  * what the compiler answers (`rebuilt`: it built a module, failed, or was its process's first)
@@ -116,7 +133,13 @@ export function createDocumentQueries(deps: DocumentQueriesDeps): DocumentQuerie
  * by itself, and the files that import it are not checked again. A load that built nothing keeps
  * them all, the loaded file's included: the compiler answers from the same build files as before.
  * The root of each file is learnt from the loads (every file with answers was loaded: a query is
- * answered only while its file is the one loaded); `forget` drops a closed document's.
+ * answered only while its file is the one loaded) and kept when its document closes, one string per
+ * file: a document opened again can be answered without a load of its own — under the `manual`
+ * trigger nothing loads it, and its root's session still answers about it while it is the file loaded
+ * last (`IdeBackend.recordOf` compares file names) —, so the answers asked then must still be made
+ * stale by the loads of its root. (*Tenth review of M3*: the close forgot the root, and after a close
+ * and reopen under `manual` a hover showed a type from before an import changed, with no stale note,
+ * and the inlay hints were never asked again [unit-level, the verifier's probe].)
  */
 export class StaleAnswers {
   private readonly roots = new Map<string, string>();
@@ -126,10 +149,6 @@ export class StaleAnswers {
     const key = rootKey(loaded.root);
     this.roots.set(loaded.file, key);
     return loaded.rebuilt ? [...this.roots].filter(([, root]) => root === key).map(([file]) => file) : [];
-  }
-
-  forget(file: string): void {
-    this.roots.delete(file);
   }
 }
 
@@ -186,10 +205,9 @@ export class AnswerCache implements IDisposable {
     return asked;
   }
 
-  /** Drops what is kept for `file` (its document was closed; a reopened document is checked again). */
+  /** Drops the answers kept for `file` (its document was closed); its root stays known (`StaleAnswers`). */
   forget(file: string): void {
     this.files.delete(file);
-    this.stale.forget(file);
   }
 
   dispose(): void {

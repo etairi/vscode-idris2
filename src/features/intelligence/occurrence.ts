@@ -10,7 +10,12 @@
  * version (`indexDescribes`) — every token applies. Otherwise — unsaved changes, a file changed on
  * disk and not checked since, one closed and opened again after it changed — the index's text is
  * compared with the document's by lines (`currentTokens`, `core/positions.ts`
- * `lineCorrespondence`: a line diff): the tokens on unchanged lines are kept, moved to where those
+ * `lineCorrespondence`: a line diff; the index's tokens are on the compiler's lines, which break at
+ * `\n` only, the document's lines break at a lone `\r` too, so the index's text is split as the
+ * document's and its tokens moved to those lines exactly first, `editorSplit`, in a file that is not
+ * literate — fifth and seventh reviews of M3; a literate file's unlit step reads a lone `\r`
+ * otherwise, `core/positions.ts` *Literate lines*): the tokens on unchanged lines are kept, moved to
+ * where those
  * lines are now, and on a line edited in place a single-line token is kept where the document shows
  * exactly the text the index had at its range, not continued by a neighbouring character; the
  * tokens on lines of a change that inserted or deleted lines are dropped. So typing does not drop
@@ -28,7 +33,7 @@
  * this extension's answer (the grammar's colours, the word-based highlights).
  */
 import type { Decor, Token, TokenIndex } from '../../backend/types';
-import { lineCorrespondence, type EditorPosition, type EditorRange } from '../../core/positions';
+import { editorLines, editorSplit, lineCorrespondence, type EditorPosition, type EditorRange, type EditorSplit } from '../../core/positions';
 import { literateStyleOf, type CompiledDocument } from '../../project/literate';
 import { buildSyntaxModel, isModelledStyle, type SyntaxModel } from '../syntax/selectionRangeModel';
 import type { Token as LexToken } from '../syntax/lexer';
@@ -113,12 +118,38 @@ function continues(c: string, edge: string): boolean {
   return isIdentChar(edge) && isIdentChar(c);
 }
 
-/** Per index, the document version last compared with its text and whether they matched. */
-const describedVersions = new WeakMap<TokenIndex, { readonly doc: TextDoc; readonly version: number; readonly describes: boolean }>();
+/** How a document's text compares with an index's (`shownText`). */
+type ShownText = 'exactly' | 'butLineBreaks' | 'other';
+
+/** Per index, the document version last compared with its text and how they compared. */
+const describedVersions = new WeakMap<TokenIndex, { readonly doc: TextDoc; readonly version: number; readonly shown: ShownText }>();
+
+/** `text` with every `\r\n` and lone `\r` read as `\n`. */
+const oneLineBreak = (text: string): string => text.replace(/\r\n?/g, '\n');
+
+/**
+ * How `doc` shows the text `index` was made from: `exactly`, `butLineBreaks` (`showsIndexText`), or
+ * `other` — also with unsaved changes, and when the index's text is not known. Compared once per
+ * document and version.
+ */
+function shownText(doc: TextDoc, index: TokenIndex): ShownText {
+  if (doc.isDirty || index.text === undefined) {
+    return 'other';
+  }
+  const known = describedVersions.get(index);
+  if (known !== undefined && known.doc === doc && known.version === doc.version) {
+    return known.shown;
+  }
+  const text = doc.getText();
+  const read = index.text.replace(/^\uFEFF/, '');
+  const shown = text === read ? 'exactly' : oneLineBreak(text) === oneLineBreak(read) ? 'butLineBreaks' : 'other';
+  describedVersions.set(index, { doc, version: doc.version, shown });
+  return shown;
+}
 
 /**
  * Whether `doc` shows the text `index` was made from (module comment, *Stale tokens*): no unsaved
- * changes, and exactly the index's text (compared once per document and version), but for a
+ * changes, and exactly the index's text, but for a
  * byte order mark at its start, which the file read from disk has and VS Code 1.139.1 reads as the
  * encoding `utf8bom` ("UTF-8 with BOM" [src, the workbench bundle]) rather than as the document's
  * text [not run]. Not the version alone: VS Code numbers a
@@ -126,34 +157,57 @@ const describedVersions = new WeakMap<TokenIndex, { readonly doc: TextDoc; reado
  * would match (*review of M3*).
  */
 export function indexDescribes(doc: TextDoc, index: TokenIndex): boolean {
-  if (doc.isDirty || index.text === undefined) {
-    return false;
-  }
-  const known = describedVersions.get(index);
-  if (known !== undefined && known.doc === doc && known.version === doc.version) {
-    return known.describes;
-  }
-  const describes = doc.getText() === index.text.replace(/^\uFEFF/, '');
-  describedVersions.set(index, { doc, version: doc.version, describes });
-  return describes;
+  return shownText(doc, index) === 'exactly';
+}
+
+/**
+ * Whether `doc` shows the text `index` was made from but perhaps for its line breaks: as
+ * `indexDescribes`, or with no unsaved changes and the same text once every `\r\n` and lone `\r` is
+ * read as `\n`. A saved file with mixed line breaks (a CRLF line in an LF file) or a lone `\r` is
+ * such a text: VS Code's document joins its lines with one line break and breaks a line at a lone
+ * `\r` too (`core/positions.ts` `editorLines`), so it never shows exactly the text the compiler read,
+ * but every answer about that text still applies, at the place `currentTokens` carries its token to
+ * (after a lone `\r`, one line further down, exactly in a file that is not literate:
+ * `core/positions.ts` `editorSplit`, *Literate lines*, since the seventh review of M3; before it the
+ * line holding the `\r` lost its tokens). Until the sixth review of M3 such a file got no inlay
+ * hints at all, silently [unit-level, the verifier's probe]: nothing is asked while the document
+ * shows other text.
+ */
+export function showsIndexText(doc: TextDoc, index: TokenIndex): boolean {
+  return shownText(doc, index) !== 'other';
 }
 
 /** Per index, the tokens `currentTokens` gave for a document version other than the index's text. */
 const carriedVersions = new WeakMap<TokenIndex, { readonly doc: TextDoc; readonly version: number; readonly tokens: readonly Token[] }>();
 
-/** A line break as VS Code's text model reads one. */
-const LINE_BREAK = /\r\n|\r|\n/;
-
-/** The index token each token that `carriedOver` moved to another line stands for (`indexTokenOf`). */
+/** The index token each copy `carriedOver` made stands for (`indexTokenOf`). */
 const origins = new WeakMap<Token, Token>();
+
+/** The copies `carriedOver` made of tokens it kept by their text alone (`keptByTextAlone`). */
+const byTextAlone = new WeakSet<Token>();
 
 /**
  * The token of the index that `token`, one of `currentTokens`, stands for: itself, unless it was
- * moved to another line with the lines below a change (then a copy with the moved range). For
- * answers kept by the index's positions (the inlay hints' `line:character:name`).
+ * moved to another line with the lines below a change, or kept by its text alone
+ * (`keptByTextAlone`) — then a copy. For answers kept by the index's positions (the inlay hints'
+ * `line:character:name`).
  */
 export function indexTokenOf(token: Token): Token {
   return origins.get(token) ?? token;
+}
+
+/**
+ * Whether `token`, one of `currentTokens`, was kept on a line edited in place only because the
+ * document shows the index's text at its range, with other text before it on the line. Such a token
+ * may be another occurrence than the index's: two clauses swapped and both edited pair each with
+ * the other (`f (Left  x) = x` shown as `f (Right x) = length x + 0`), and `x` is at the same range
+ * in both. The semantic tokens keep it (a colour); an answer about the index's token — a type in an
+ * inlay hint — is not shown on it (fifth review of M3: the swapped clauses swapped their hints'
+ * types [unit-level, the reviewer's probe]), as a hover is not asked there
+ * (`core/positions.ts` `toLoadedPosition`, the same text before the position).
+ */
+export function keptByTextAlone(token: Token): boolean {
+  return byTextAlone.has(token);
 }
 
 /**
@@ -177,7 +231,7 @@ export function currentTokens(doc: TextDoc, index: TokenIndex): readonly Token[]
           const text = textAt(doc, t.range);
           return t.name !== undefined && text !== undefined && text !== '' && spells(text, t.name) && wholeToken(doc.lineAt(t.range.start.line).text, t.range, text);
         })
-      : carriedOver(index.tokens, index.text.replace(/^\uFEFF/, '').split(LINE_BREAK), doc.getText().split(LINE_BREAK));
+      : carriedOver(index.tokens, editorSplit(index.text), editorLines(doc.getText()));
   carriedVersions.set(index, { doc, version: doc.version, tokens });
   return tokens;
 }
@@ -188,20 +242,26 @@ function wholeToken(line: string, range: EditorRange, text: string): boolean {
 }
 
 /**
- * The tokens of an index of the text `before` (its lines) that describe the text `after` (module
- * comment, *Stale tokens*), by the lines' correspondence (`core/positions.ts`
- * `lineCorrespondence`): a token on a line paired with an equal line is kept, moved to that line; a
- * token over several lines only when each of its lines is paired with an equal line and they are
- * consecutive; a single-line token on a line edited in place (a counterpart) where `after` has the
- * same text at the same range, as a whole token; a token on an unpaired line (in a hunk that inserts
- * or deletes lines) is dropped.
+ * The tokens of an index of the text `read` that describe the text `after` (a document's lines)
+ * (module comment, *Stale tokens*): each token moved exactly to `read`'s lines as the editor splits
+ * them (`EditorSplit`, exact in a file that is not literate: a token on a line holding a lone `\r`
+ * may move, or come to span two lines),
+ * then carried by the lines' correspondence (`core/positions.ts` `lineCorrespondence`): a token on a
+ * line paired with an equal line is kept, moved to that line; a token over several lines only when
+ * each of its lines is paired with an equal line and they are consecutive; a single-line token on a
+ * line edited in place (a counterpart) where `after` has the same text at the same range, as a whole
+ * token (a copy, `keptByTextAlone` when the text before it differs); a token on an unpaired line (in
+ * a hunk that inserts or deletes lines) is dropped. A token whose range changed is a copy
+ * (`indexTokenOf`).
  */
-function carriedOver(tokens: readonly Token[], before: readonly string[], after: readonly string[]): Token[] {
+function carriedOver(tokens: readonly Token[], read: EditorSplit, after: readonly string[]): Token[] {
+  const before = read.lines;
   const { toAfter } = lineCorrespondence(before, after);
   const pairedLine = (line: number): number => (line >= 0 && line < toAfter.length ? toAfter[line] : -1);
   const kept: Token[] = [];
   for (const t of tokens) {
-    const { start, end } = t.range;
+    const range = read.toEditorRange(t.range);
+    const { start, end } = range;
     const line = pairedLine(start.line);
     if (line < 0) {
       continue;
@@ -214,19 +274,25 @@ function carriedOver(tokens: readonly Token[], before: readonly string[], after:
       if (!equal) {
         continue;
       }
-    } else if (before[start.line] !== after[line]) {
+    }
+    let textAlone = false;
+    if (start.line === end.line && before[start.line] !== after[line]) {
       const text = before[start.line].slice(start.character, end.character);
       const shown = after[line];
-      if (end.character <= start.character || shown.slice(start.character, end.character) !== text || !wholeToken(shown, t.range, text)) {
+      if (end.character <= start.character || shown.slice(start.character, end.character) !== text || !wholeToken(shown, range, text)) {
         continue;
       }
+      textAlone = shown.slice(0, start.character) !== before[start.line].slice(0, start.character);
     }
-    if (line === start.line) {
+    if (range === t.range && line === start.line && !textAlone) {
       kept.push(t);
     } else {
       const shift = line - start.line;
       const moved = { ...t, range: { start: { line: start.line + shift, character: start.character }, end: { line: end.line + shift, character: end.character } } };
       origins.set(moved, t);
+      if (textAlone) {
+        byTextAlone.add(moved);
+      }
       kept.push(moved);
     }
   }

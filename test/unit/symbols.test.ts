@@ -136,7 +136,7 @@ suite('features/intelligence/symbols', () => {
       registry: { backendFor: () => backend },
       projects: { classify: () => Promise.resolve<Classification>({ kind: 'loose', dir: '/w' }) },
       checks: { statusOf: () => undefined, onDidChange: new Emitter<void>().event },
-      config: { inlayHints: () => ({ variableTypes: true }), onDidChange: () => ({ dispose: () => undefined }) },
+      config: { inlayHints: () => ({ variableTypes: true }), onDidChange: () => ({ dispose: () => undefined }), checking: () => ({ trigger: 'onSave', delayMs: 700 }) },
       log: quietLog,
     });
     const provide = (doc: FakeDocument) => fake.providers.symbols?.provideDocumentSymbols(asDoc(doc), fake.cancel) as Promise<{ name: string; kind: number; children: { kind: number }[] }[] | undefined>;

@@ -206,7 +206,7 @@ suite('features/intelligence/semanticTokens', () => {
         registry: { backendFor: () => backend },
         projects: { classify: () => Promise.resolve<Classification>({ kind: 'loose', dir: '/w' }) },
         checks: { statusOf: () => undefined, onDidChange: new Emitter<void>().event },
-        config: { inlayHints: () => ({ variableTypes: true }), onDidChange: () => ({ dispose: () => undefined }) },
+        config: { inlayHints: () => ({ variableTypes: true }), onDidChange: () => ({ dispose: () => undefined }), checking: () => ({ trigger: 'onSave', delayMs: 700 }) },
         log: quietLog,
       });
       const entry = fake.providers.semanticTokens.get('idris');

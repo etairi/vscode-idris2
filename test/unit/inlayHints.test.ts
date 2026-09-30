@@ -4,6 +4,8 @@
 // another text, the setting off). The tokens and answers are those of the recorded transcript
 // `clean-queries` (test/fixtures/transcripts/0.8.0, Clean.idr of the broken workspace).
 import * as assert from 'assert';
+import * as v8 from 'v8';
+import * as vm from 'vm';
 import type * as vscode from 'vscode';
 import type { Decor, Token, TokenIndex, TypeInfo } from '../../src/backend/types';
 import { IdrisException } from '../../src/core/errors';
@@ -63,6 +65,17 @@ const CLEAN_TOKENS: Token[] = [
 const RECORDED: Record<string, string> = { n: 'n : Nat', a: 'a : Type', m: 'm : Nat', xs: 'xs : Vect ?_ ?_' };
 
 const typeInfo = (text: string, lookup: TypeInfo['lookup'] = 'position'): TypeInfo => ({ text, spans: [], lookup });
+
+/** `token` moved `by` lines down, as the index of a text with lines inserted above it has it. */
+const shifted = (t: Token, by: number): Token => ({
+  ...t,
+  range: { start: { line: t.range.start.line + by, character: t.range.start.character }, end: { line: t.range.end.line + by, character: t.range.end.character } },
+});
+
+/** The hints of the recorded answers (`RECORDED`) on CLEAN_TEXT, with the lines of vlen `by` lines down. */
+const cleanHints = (by = 0): string[] => ['4:15 : Nat', '4:17 : Type', '4:27 : Nat', `${6 + by}:13 : Nat`, `${6 + by}:15 : Type`, `${7 + by}:7 : Vect ?_ ?_`];
+
+const REFUSED = (): Promise<never> => Promise.reject(new IdrisException({ kind: 'Unsupported', reason: "only the active editor's file is loaded" }));
 
 class FakeInlayHint {
   paddingLeft: boolean | undefined;
@@ -256,12 +269,15 @@ suite('features/intelligence/inlayHints', () => {
       t.loads.fire({ root: looseRoot('/w'), file: '/w/Clean.idr', rebuilt: true });
       assert.deepStrictEqual(t.shown(await t.hints()), saved);
       assert.strictEqual(t.backend.calls.length, asked);
-      // A load of that text: its new index is not the one those answers were asked with; where a
-      // query is refused, nothing is shown for it.
+      // A load of that text: its new index is not the one those answers were asked with; they are
+      // carried over to it (the lines are unchanged), shown where a query is refused, and their
+      // tooltip says they come from an earlier check (fifth review of M3: nothing was shown).
       t.backend.index = { file: '/w/Clean.idr', text: t.doc.text, tokens: CLEAN_TOKENS };
       t.loads.fire({ root: looseRoot('/w'), file: '/w/Clean.idr', rebuilt: true });
       t.backend.answerType = () => Promise.reject(new IdrisException({ kind: 'Unsupported', reason: 'stopped' }));
-      assert.deepStrictEqual(await t.hints(), []);
+      const carried = await t.hints();
+      assert.deepStrictEqual(t.shown(carried), saved);
+      assert.ok(carried[5].tooltip?.value.endsWith('as the compiler inferred it at an earlier check; the file, or a module it imports, has changed since\\.'), carried[5].tooltip?.value);
     });
 
     test('a query refused after another file\'s load made the answers stale (an editor that is not the active one): the hints stay until fresh ones come (fourth review of M3)', async () => {
@@ -279,6 +295,412 @@ suite('features/intelligence/inlayHints', () => {
       t.closed.fire(t.doc);
       t.backend.answerType = () => Promise.reject(new IdrisException({ kind: 'Unsupported', reason: 'stopped' }));
       assert.deepStrictEqual(await t.hints(), []);
+    });
+
+    test('a save, then typing before its load answered: the hints stay, carried over to the new index; nothing asked (fifth review of M3)', async () => {
+      // The load replaced the index, the document showed other text again, and the answers, of
+      // another index text, were dropped: every hint went (also with files.autoSave = afterDelay).
+      const t = setup();
+      assert.deepStrictEqual(t.shown(await t.hints()), cleanHints());
+      const asked = t.backend.calls.length;
+      const saved = CLEAN_TEXT.replace('vlen : Vect', '-- a note\nvlen : Vect');
+      t.doc.text = `${saved}-- typing`;
+      t.doc.version = 5;
+      t.doc.isDirty = true;
+      t.backend.index = { file: '/w/Clean.idr', text: saved, tokens: CLEAN_TOKENS.map((k) => (k.range.start.line >= 6 ? shifted(k, 1) : k)) };
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Clean.idr', rebuilt: true });
+      const hints = await t.hints();
+      assert.deepStrictEqual(t.shown(hints), cleanHints(1));
+      assert.strictEqual(t.backend.calls.length, asked);
+      assert.ok(hints[5].tooltip?.value.includes('at an earlier check'), hints[5].tooltip?.value);
+    });
+
+    test('an editor that is not the active one, whose file was saved and loaded before another file\'s load displaced it: the hints stay (fifth review of M3)', async () => {
+      // Its queries are refused, and the answers kept aside were of the index before its save.
+      const t = setup();
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Clean.idr', rebuilt: false });
+      await t.hints();
+      const saved = `-- a note\n${CLEAN_TEXT}`;
+      t.doc.text = saved;
+      t.doc.version = 4;
+      t.backend.index = { file: '/w/Clean.idr', text: saved, tokens: CLEAN_TOKENS.map((k) => shifted(k, 1)) };
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Clean.idr', rebuilt: true });
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Other.idr', rebuilt: true });
+      t.backend.answerType = REFUSED;
+      assert.deepStrictEqual(t.shown(await t.hints()), ['5:15 : Nat', '5:17 : Type', '5:27 : Nat', '7:13 : Nat', '7:15 : Type', '8:7 : Vect ?_ ?_']);
+      assert.strictEqual(t.backend.calls.length, 7, 'one query, refused');
+    });
+
+    test('a load whose index has no text (the file saved during it): the hints placed by the index before it; nothing asked (fifth review of M3)', async () => {
+      const t = setup();
+      await t.hints();
+      const asked = t.backend.calls.length;
+      t.doc.text = `-- a note\n${CLEAN_TEXT}`;
+      t.doc.version = 4;
+      t.backend.index = { file: '/w/Clean.idr', tokens: CLEAN_TOKENS.map((k) => shifted(k, 1)) };
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Clean.idr', rebuilt: true });
+      assert.deepStrictEqual(t.shown(await t.hints()), ['5:15 : Nat', '5:17 : Type', '5:27 : Nat', '7:13 : Nat', '7:15 : Type', '8:7 : Vect ?_ ?_']);
+      assert.strictEqual(t.backend.calls.length, asked);
+      // The document clean and showing exactly the text of the index before (the file saved back to
+      // it during the load): still nothing asked while the file's own index has no text — the
+      // compiler's last load read a text the extension does not know, and its answers would be kept
+      // as the older index's (seventh review of M3: no test pinned this; without the check every
+      // hinted token was asked).
+      t.doc.text = CLEAN_TEXT;
+      t.doc.version = 5;
+      const back = await t.hints();
+      assert.deepStrictEqual(t.shown(back), cleanHints());
+      assert.strictEqual(t.backend.calls.length, asked);
+      assert.ok(back[5].tooltip?.value.includes('at an earlier check'), back[5].tooltip?.value);
+      // No index at all (the root released): nothing.
+      t.backend.index = undefined;
+      assert.deepStrictEqual(await t.hints(), []);
+    });
+
+    test('the answers kept do not keep a token index the backend replaced alive: after a load that built nothing, and aside for a hidden editor (seventh review of M3)', async () => {
+      // Until that review they held the whole index they were asked with (one of 24,000 tokens is
+      // about 5 MB [unit-level, the verifier's probe]). Node gives the collector to a new context once
+      // the flag is set.
+      v8.setFlagsFromString('--expose-gc');
+      const gc = vm.runInNewContext('gc') as () => void;
+      /** Whether `ref`'s index was collected: a WeakRef keeps its target until the job that made or read it ends. */
+      const collected = async (ref: WeakRef<TokenIndex>): Promise<boolean> => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        gc();
+        return ref.deref() === undefined;
+      };
+      const indexOf = (): TokenIndex => ({ file: '/w/Clean.idr', text: CLEAN_TEXT, tokens: [...CLEAN_TOKENS] });
+      // A load that built nothing: the backend's new index has the same text; the provider runs again.
+      const t = setup();
+      let first: TokenIndex | undefined = indexOf();
+      t.backend.index = first;
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Clean.idr', rebuilt: false });
+      assert.deepStrictEqual(t.shown(await t.hints()), cleanHints());
+      const replaced = new WeakRef(first);
+      first = undefined;
+      t.backend.index = indexOf();
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Clean.idr', rebuilt: false });
+      assert.deepStrictEqual(t.shown(await t.hints()), cleanHints());
+      assert.strictEqual(t.backend.calls.length, 6, 'the answers kept');
+      assert.ok(await collected(replaced), 'the index of the load before');
+      // A hidden editor: another file's load made the answers stale (kept aside), then the file's own
+      // load replaced the index; the provider does not run for it.
+      const hidden = setup();
+      let own: TokenIndex | undefined = indexOf();
+      hidden.backend.index = own;
+      hidden.loads.fire({ root: looseRoot('/w'), file: '/w/Clean.idr', rebuilt: false });
+      await hidden.hints();
+      const aside = new WeakRef(own);
+      own = undefined;
+      hidden.loads.fire({ root: looseRoot('/w'), file: '/w/Other.idr', rebuilt: true });
+      hidden.backend.index = indexOf();
+      hidden.loads.fire({ root: looseRoot('/w'), file: '/w/Clean.idr', rebuilt: true });
+      assert.ok(await collected(aside), 'the index the answers kept aside were asked with');
+      // The answers are still there, and still shown where nothing can be asked.
+      hidden.backend.answerType = REFUSED;
+      assert.deepStrictEqual(hidden.shown(await hidden.hints()), cleanHints());
+    });
+
+    test('a load of changed text that built nothing: the answers of the text before are kept aside and carried to the new index, shown where nothing can be asked (seventh review of M3)', async () => {
+      // A load sends its highlighting also when it builds nothing [recorded, 0.8.0: the second load of
+      // `clean-lookups` has no Building line and 31 highlight frames], as when a build directory shared
+      // with the eval session or the user's own build already holds the new text's build (D5). IDE mode
+      // announces such a load as `rebuilt` since the same review (backendIde.test.ts); the provider
+      // does not rely on it: with the index replaced without a stale event, it sees that the answers
+      // are of another text itself. No test pinned that: without it they were dropped.
+      const t = setup();
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Clean.idr', rebuilt: false });
+      assert.deepStrictEqual(t.shown(await t.hints()), cleanHints());
+      const saved = `-- a note\n${CLEAN_TEXT}`;
+      t.doc.text = saved;
+      t.doc.version = 4;
+      t.backend.index = { file: '/w/Clean.idr', text: saved, tokens: CLEAN_TOKENS.map((k) => shifted(k, 1)) };
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Clean.idr', rebuilt: false });
+      t.backend.answerType = REFUSED;
+      const carried = await t.hints();
+      assert.deepStrictEqual(t.shown(carried), ['5:15 : Nat', '5:17 : Type', '5:27 : Nat', '7:13 : Nat', '7:15 : Type', '8:7 : Vect ?_ ?_']);
+      assert.ok(carried[5].tooltip?.value.includes('at an earlier check'), carried[5].tooltip?.value);
+      // With unsaved changes as well (nothing asked).
+      t.doc.text = `${saved}-- typing`;
+      t.doc.version = 5;
+      t.doc.isDirty = true;
+      assert.deepStrictEqual(t.shown(await t.hints()), t.shown(carried));
+    });
+
+    test('a fresh answer that shows nothing is not replaced by one kept aside, in a refused round or with unsaved changes; kept aside, it does not replace a type (fifth review of M3)', async () => {
+      const t = setup();
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Clean.idr', rebuilt: false });
+      await t.hints();
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Other.idr', rebuilt: true });
+      // A module it imports broke: xs gets no type now (`Undefined name xs` [live]).
+      t.backend.answerType = (_l, _c, name) => Promise.resolve(name === 'xs' ? undefined : typeInfo(RECORDED[name]));
+      assert.deepStrictEqual(t.shown(await t.hints(new FakeRange(7, 0, 7, 19))), []);
+      t.backend.answerType = REFUSED;
+      assert.deepStrictEqual(t.shown(await t.hints()), cleanHints().slice(0, 5), 'refused: xs shows nothing');
+      t.doc.text = `-- a note\n${CLEAN_TEXT}`;
+      t.doc.version = 4;
+      t.doc.isDirty = true;
+      assert.deepStrictEqual(t.shown(await t.hints()), ['5:15 : Nat', '5:17 : Type', '5:27 : Nat', '7:13 : Nat', '7:15 : Type'], 'unsaved: xs shows nothing');
+      // The module fixed: its load makes those answers stale too; where nothing can be asked, the
+      // type kept aside comes back (the answer that showed nothing did not replace it).
+      t.doc.text = CLEAN_TEXT;
+      t.doc.version = 5;
+      t.doc.isDirty = false;
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Other.idr', rebuilt: true });
+      assert.deepStrictEqual(t.shown(await t.hints()), cleanHints());
+    });
+
+    test('answers kept aside by two loads are merged: a round that asked about part of the file keeps the others (fifth review of M3)', async () => {
+      const t = setup();
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Clean.idr', rebuilt: false });
+      await t.hints(new FakeRange(4, 0, 6, 40));
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Other.idr', rebuilt: true });
+      t.backend.answerType = (_l, _c, name) => Promise.resolve(typeInfo(name === 'xs' ? 'xs : List Nat' : RECORDED[name]));
+      await t.hints(new FakeRange(7, 0, 7, 19));
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Other.idr', rebuilt: true });
+      t.backend.answerType = REFUSED;
+      assert.deepStrictEqual(t.shown(await t.hints()), [...cleanHints().slice(0, 5), '7:7 : List Nat']);
+    });
+
+    test('a line edited in place between two indexes keeps its hints when the new index cannot be asked: the same text before the variable (sixth review of M3)', async () => {
+      // A save, typing again before its load answered: the answers kept aside were carried to the
+      // new index across equal lines only, so the hint of the line being typed on went (and the text
+      // after the variable moved left) until the next save, load and query round.
+      const saved = ['module B', '', 'vlen : List a -> Nat', 'vlen xs = length xs', ''];
+      const t = setup(fakeDoc({ fileName: '/w/B.idr', text: saved.join('\n'), version: 1 }));
+      const tokens = [token(2, 14, 15, 'bound', 'a'), token(3, 5, 7, 'bound', 'xs')];
+      t.backend.index = { file: '/w/B.idr', text: saved.join('\n'), tokens };
+      t.backend.answerType = (_l, _c, name) => Promise.resolve(typeInfo(name === 'a' ? 'a : Type' : 'xs : List a'));
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/B.idr', rebuilt: true });
+      assert.deepStrictEqual(t.shown(await t.hints()), ['2:15 : Type', '3:7 : List a']);
+      const edited = saved.join('\n').replace('vlen xs = length xs', 'vlen xs = length xs + 0');
+      t.doc.text = `${edited}-- still typing`;
+      t.doc.version = 4;
+      t.doc.isDirty = true;
+      t.backend.index = { file: '/w/B.idr', text: edited, tokens };
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/B.idr', rebuilt: true });
+      const asked = t.backend.calls.length;
+      assert.deepStrictEqual(t.shown(await t.hints()), ['2:15 : Type', '3:7 : List a']);
+      assert.strictEqual(t.backend.calls.length, asked, 'nothing asked');
+      // Other text before the variable on the edited line: not the same place, no hint.
+      const moved = saved.join('\n').replace('vlen xs = length xs', 'vlen  xs = length xs');
+      t.doc.text = `${moved}-- still typing`;
+      t.doc.version = 5;
+      t.backend.index = { file: '/w/B.idr', text: moved, tokens: [tokens[0], token(3, 6, 8, 'bound', 'xs')] };
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/B.idr', rebuilt: true });
+      assert.deepStrictEqual(t.shown(await t.hints()), ['2:15 : Type']);
+    });
+
+    test('two clauses swapped and both edited, saved, the new index not asked: no hint shows the other clause\'s type (sixth review of M3)', async () => {
+      // The lines are paired as edited in place, and x is at the same columns in both: carried over
+      // by its line alone, the Left clause's answer went to the Right clause's x and back.
+      const saved = ['module M', '', 'f : Either Nat String -> Nat', 'f (Left  x) = x', 'f (Right x) = length x', ''];
+      const t = setup(fakeDoc({ fileName: '/w/M.idr', text: saved.join('\n'), version: 1 }));
+      const clauses = [token(3, 9, 10, 'bound', 'x'), token(3, 14, 15, 'bound', 'x'), token(4, 9, 10, 'bound', 'x'), token(4, 21, 22, 'bound', 'x')];
+      t.backend.index = { file: '/w/M.idr', text: saved.join('\n'), tokens: clauses };
+      const types: Record<string, string> = { '3:9': 'x : Nat', '4:9': 'x : String' };
+      t.backend.answerType = (line, character) => Promise.resolve(typeInfo(types[`${line}:${character}`] ?? 'x : ?'));
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/M.idr', rebuilt: true });
+      assert.deepStrictEqual(t.shown(await t.hints()), ['3:10 : Nat', '4:10 : String']);
+      const swapped = ['module M', '', 'f : Either Nat String -> Nat', 'f (Right x) = length x + 0', 'f (Left  x) = x + 0', ''].join('\n');
+      t.doc.text = swapped;
+      t.doc.version = 2;
+      t.backend.index = { file: '/w/M.idr', text: swapped, tokens: [token(3, 9, 10, 'bound', 'x'), token(3, 21, 22, 'bound', 'x'), token(4, 9, 10, 'bound', 'x'), token(4, 14, 15, 'bound', 'x')] };
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/M.idr', rebuilt: true });
+      t.backend.answerType = REFUSED;
+      assert.deepStrictEqual(t.shown(await t.hints()), []);
+    });
+
+    test('a saved file with mixed line breaks or a lone \\r: the hints are asked for and shown at the lines VS Code shows (sixth review of M3)', async () => {
+      // VS Code joins a document's lines with one line break and breaks a line at a lone \r too, so
+      // the document never showed the text the load read, and nothing was asked: no hints at all.
+      for (const [what, disk, shown, hint, asked] of [
+        ['a CRLF line in an LF file', 'module M\r\n\nf : Nat -> Nat\nf x = x\n', 'module M\n\nf : Nat -> Nat\nf x = x\n', '3:3 : Nat', 'typeAt 3:2 x'],
+        ['a lone \\r in a comment', 'module M\n-- a\r-- b\nf : Nat -> Nat\nf x = x\n', 'module M\n-- a\n-- b\nf : Nat -> Nat\nf x = x\n', '4:3 : Nat', 'typeAt 4:2 x'],
+        // The variable on the line that holds the \r (seventh review of M3: that line was never
+        // paired, so its hint was missing).
+        ['a lone \\r after the variable on its line', 'module M\n\nf : Nat -> Nat\nf x = x -- a\r-- b\n', 'module M\n\nf : Nat -> Nat\nf x = x -- a\n-- b\n', '3:3 : Nat', 'typeAt 3:2 x'],
+      ] as const) {
+        const t = setup(fakeDoc({ fileName: '/w/M.idr', text: shown, version: 1 }));
+        // The compiler's lines: split at \n only.
+        t.backend.index = { file: '/w/M.idr', text: disk, tokens: [token(3, 2, 3, 'bound', 'x')] };
+        t.backend.answerType = () => Promise.resolve(typeInfo('x : Nat'));
+        assert.deepStrictEqual(t.shown(await t.hints()), [hint], what);
+        assert.deepStrictEqual(t.backend.calls, [asked], `${what}: asked at the editor's position, which the backend converts`);
+        // With unsaved changes, nothing is asked, as for any other text.
+        t.doc.isDirty = true;
+        t.doc.version = 2;
+        t.doc.text = `${shown}-- typing`;
+        assert.deepStrictEqual(t.shown(await t.hints()), [hint], `${what}, typing: the kept hint`);
+        assert.strictEqual(t.backend.calls.length, 1);
+      }
+      // The declarations are read at the compiler's lines too: the use of x on f's second line gets
+      // none, g's x gets one (read at the editor's lines, the lone \r moved both into the wrong unit).
+      const disk = 'module M\n-- a\r-- b\nf : Nat -> Nat\nf x =\n  x\ng : Nat -> Nat\ng x = x\n';
+      const t = setup(fakeDoc({ fileName: '/w/M.idr', text: disk.replace('\r', '\n'), version: 1 }));
+      t.backend.index = { file: '/w/M.idr', text: disk, tokens: [token(3, 2, 3, 'bound', 'x'), token(4, 2, 3, 'bound', 'x'), token(6, 2, 3, 'bound', 'x')] };
+      t.backend.answerType = () => Promise.resolve(typeInfo('x : Nat'));
+      assert.deepStrictEqual(t.shown(await t.hints()), ['4:3 : Nat', '7:3 : Nat']);
+    });
+
+    test('a lone \\r on a hinted line, the file saved with the document\'s line break, the new index not asked: the hints are carried over (eighth review of M3)', async () => {
+      // VS Code writes a document's lines joined by its one line break, so the saved text has a line
+      // more where the lone \r was. Diffed as the compiler's lines, the line that held it was paired
+      // with neither of the two it became, and its answers were not carried over (the verifier's probe).
+      const text = 'module M\n\nf : Nat -> Nat\nf x = x -- a\r-- b\ng : Nat -> Nat\ng y = y\n';
+      const cases: Array<{ what: string; disk: string; tokens: Token[]; hints: string[]; saved: string; moved: Token[]; after: string[] }> = [
+        {
+          what: 'a variable before the \\r',
+          disk: text,
+          tokens: [token(3, 2, 3, 'bound', 'x'), token(5, 2, 3, 'bound', 'y')],
+          hints: ['3:3 : Nat', '6:3 : Nat'],
+          saved: text.replace('\r', '\n'),
+          moved: [token(3, 2, 3, 'bound', 'x'), token(6, 2, 3, 'bound', 'y')],
+          after: ['3:3 : Nat', '6:3 : Nat'],
+        },
+        // After the \r on its compiler line: the answer is kept by the compiler's column 10.
+        {
+          what: 'a variable after the \\r',
+          disk: 'module M\n\nf : Nat -> Nat\n{- a\r-} f x = x\n',
+          tokens: [token(3, 10, 11, 'bound', 'x')],
+          hints: ['4:6 : Nat'],
+          saved: 'module M\n\nf : Nat -> Nat\n{- a\n-} f x = x\n',
+          moved: [token(4, 5, 6, 'bound', 'x')],
+          after: ['4:6 : Nat'],
+        },
+        // A new text that keeps the lone \r (a line added above it outside VS Code): its tokens are
+        // moved to the editor's lines too before the diff.
+        {
+          what: 'the \\r kept, a line added above',
+          disk: text,
+          tokens: [token(3, 2, 3, 'bound', 'x'), token(5, 2, 3, 'bound', 'y')],
+          hints: ['3:3 : Nat', '6:3 : Nat'],
+          saved: `-- new\n${text}`,
+          moved: [token(4, 2, 3, 'bound', 'x'), token(6, 2, 3, 'bound', 'y')],
+          after: ['4:3 : Nat', '7:3 : Nat'],
+        },
+        // The \r kept before the variable, its line edited after it (a file saved outside VS Code):
+        // the lines are compared up to the token's end on the editor's line (column 6), not the
+        // compiler's (column 11, past the edit) (ninth review of M3, the verifier's mutant I4).
+        {
+          what: 'the \\r kept before the variable, the line edited after it',
+          disk: 'module M\n\nf : Nat -> Nat\n{- a\r-} f x = x\n',
+          tokens: [token(3, 10, 11, 'bound', 'x')],
+          hints: ['4:6 : Nat'],
+          saved: 'module M\n\nf : Nat -> Nat\n{- a\r-} f x = x + 1\n',
+          moved: [token(3, 10, 11, 'bound', 'x')],
+          after: ['4:6 : Nat'],
+        },
+      ];
+      for (const { what, disk, tokens, hints, saved, moved, after } of cases) {
+        const t = setup(fakeDoc({ fileName: '/w/M.idr', text: disk.replace('\r', '\n'), version: 1 }));
+        t.backend.index = { file: '/w/M.idr', text: disk, tokens };
+        t.backend.answerType = (_line, _character, name) => Promise.resolve(typeInfo(`${name} : Nat`));
+        t.loads.fire({ root: looseRoot('/w'), file: '/w/M.idr', rebuilt: true });
+        assert.deepStrictEqual(t.shown(await t.hints()), hints, `${what}: clean`);
+        // Saved, and typing again before the save's load answered: the new index is not asked.
+        const shown = saved.replace('\r', '\n');
+        t.doc.isDirty = true;
+        t.doc.version = 2;
+        t.doc.text = `${shown}-- typing`;
+        t.backend.index = { file: '/w/M.idr', text: saved, tokens: moved };
+        t.loads.fire({ root: looseRoot('/w'), file: '/w/M.idr', rebuilt: true });
+        const asked = t.backend.calls.length;
+        assert.deepStrictEqual(t.shown(await t.hints()), after, `${what}: typing`);
+        assert.strictEqual(t.backend.calls.length, asked, `${what}: nothing asked`);
+        // Clean, and the new index's queries refused (a visible editor that is not the active one).
+        t.doc.isDirty = false;
+        t.doc.version = 3;
+        t.doc.text = shown;
+        t.backend.answerType = REFUSED;
+        assert.deepStrictEqual(t.shown(await t.hints()), after, `${what}: refused`);
+      }
+    });
+
+    test('after a load that failed (a broken import), an answer that shows nothing does not take the place of a type kept aside; after a successful one it does (sixth review of M3)', async () => {
+      // The compiler answers `Undefined name xs` about every name of the file then [live, fifth
+      // review of M3]: the hints went while the file was active and clean, and came back once the
+      // import was fixed — two layout jumps.
+      const t = setup();
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Clean.idr', rebuilt: false });
+      assert.deepStrictEqual(t.shown(await t.hints()), cleanHints());
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Other.idr', rebuilt: true, failed: false });
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Clean.idr', rebuilt: true, failed: true });
+      t.backend.answerType = () => Promise.resolve(undefined);
+      const asked = t.backend.calls.length;
+      const kept = await t.hints();
+      assert.deepStrictEqual(t.shown(kept), cleanHints());
+      assert.ok(kept[5].tooltip?.value.includes('at an earlier check'), kept[5].tooltip?.value);
+      assert.strictEqual(t.backend.calls.length, asked + 6, 'asked (the backend keeps its answers per load)');
+      // An answer that describes the type is taken as ever.
+      t.backend.answerType = (_l, _c, name) => Promise.resolve(name === 'xs' ? typeInfo('xs : Vect 2 Nat') : undefined);
+      assert.deepStrictEqual(t.shown(await t.hints()), [...cleanHints().slice(0, 5), '7:7 : Vect 2 Nat']);
+      t.doc.text = `${CLEAN_TEXT}-`;
+      t.doc.version = 4;
+      t.doc.isDirty = true;
+      assert.deepStrictEqual(t.shown(await t.hints()), [...cleanHints().slice(0, 5), '7:7 : Vect 2 Nat'], 'typing');
+      // A load that succeeded: an answer that shows nothing is an answer again.
+      t.doc.text = CLEAN_TEXT;
+      t.doc.version = 5;
+      t.doc.isDirty = false;
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Clean.idr', rebuilt: true, failed: false });
+      t.backend.answerType = () => Promise.resolve(undefined);
+      assert.deepStrictEqual(t.shown(await t.hints()), []);
+    });
+
+    test('closing the file\'s own document forgets that its last load failed: once it is shown again, an answer that shows nothing is kept (ninth review of M3)', async () => {
+      // Until a load of it arrives (the manual trigger), such answers were otherwise asked again every
+      // round; nothing is kept aside after a close for them to protect.
+      const t = setup();
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Clean.idr', rebuilt: true, failed: true });
+      t.backend.answerType = () => Promise.resolve(undefined);
+      await t.hints();
+      const failedRound = t.backend.calls.length;
+      await t.hints();
+      assert.strictEqual(t.backend.calls.length, failedRound + 6, 'while the last load failed: asked again every round');
+      t.closed.fire(t.doc);
+      assert.deepStrictEqual(t.shown(await t.hints()), []);
+      const reopened = t.backend.calls.length;
+      await t.hints();
+      assert.strictEqual(t.backend.calls.length, reopened, 'kept: not asked again');
+    });
+
+    test('closing another document of the same path (a git: one) keeps the file\'s answers and its root (sixth review of M3)', async () => {
+      // VS Code gives a git: document the file's fileName: its close (the Source Control view's Open
+      // Changes) dropped the kept hints, and the file's root, so that a load of an import that
+      // changed no longer made its answers stale.
+      const t = setup();
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Clean.idr', rebuilt: false });
+      await t.hints();
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Other.idr', rebuilt: true });
+      t.backend.answerType = REFUSED;
+      const gitDoc = fakeDoc({ fileName: '/w/Clean.idr', text: CLEAN_TEXT, scheme: 'git' });
+      t.closed.fire(gitDoc);
+      assert.deepStrictEqual(t.shown(await t.hints()), cleanHints(), 'the answers kept aside stay');
+      t.backend.answerType = (_l, _c, name) => Promise.resolve(typeInfo(RECORDED[name]));
+      await t.hints();
+      t.closed.fire(gitDoc);
+      const asked = t.backend.calls.length;
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Other.idr', rebuilt: true });
+      await t.hints();
+      assert.strictEqual(t.backend.calls.length, asked + 6, 'a load of its root still makes its answers stale');
+    });
+
+    test('the file\'s own document closed and opened again with no load of its own: a load of its root still makes the hints asked since stale (tenth review of M3)', async () => {
+      // Under the manual trigger a reopened document is not loaded, and the session still answers
+      // about it while it is the file loaded last; the close forgot the file's root, so its hints
+      // were never asked again after a load of a changed import (the verifier's probe).
+      const t = setup();
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Clean.idr', rebuilt: true });
+      await t.hints();
+      t.closed.fire(t.doc);
+      const closed = t.backend.calls.length;
+      await t.hints();
+      await t.hints();
+      assert.strictEqual(t.backend.calls.length, closed + 6, 'asked again after the close, then kept');
+      t.loads.fire({ root: looseRoot('/w'), file: '/w/Other.idr', rebuilt: true });
+      await t.hints();
+      assert.strictEqual(t.backend.calls.length, closed + 12, 'made stale by a load of its root');
     });
 
     test('a cancelled request asks nothing more', async () => {
@@ -338,6 +760,29 @@ suite('features/intelligence/inlayHints', () => {
         t.doc.version = version;
         assert.deepStrictEqual(t.shown(await t.hints()), ['4:10 : Nat', '5:10 : String'], `version ${version}`);
       }
+    });
+
+    test('two clauses swapped and both edited: no hint on a variable kept by its text alone, with other text before it (fifth review of M3)', async () => {
+      // Each clause's line is paired with the other's as a line edited in place, and x is at the same
+      // columns in both: the kept hints showed each other's types [unit-level, the reviewer's probe].
+      const saved = ['module M', '', 'f : Either Nat String -> Nat', 'f (Left  x) = x', 'f (Right x) = length x', ''];
+      const t = setup(fakeDoc({ fileName: '/w/M.idr', text: saved.join('\n'), version: 1 }));
+      t.backend.index = {
+        file: '/w/M.idr',
+        text: saved.join('\n'),
+        tokens: [token(3, 9, 10, 'bound', 'x'), token(3, 14, 15, 'bound', 'x'), token(4, 9, 10, 'bound', 'x'), token(4, 21, 22, 'bound', 'x')],
+      };
+      const types: Record<string, string> = { '3:9': 'x : Nat', '4:9': 'x : String' };
+      t.backend.answerType = (line, character) => Promise.resolve(typeInfo(types[`${line}:${character}`] ?? 'x : ?'));
+      assert.deepStrictEqual(t.shown(await t.hints()), ['3:10 : Nat', '4:10 : String']);
+      t.doc.isDirty = true;
+      t.doc.text = ['module M', '', 'f : Either Nat String -> Nat', 'f (Right x) = length x + 0', 'f (Left  x) = x + 0', ''].join('\n');
+      t.doc.version = 2;
+      assert.deepStrictEqual(t.shown(await t.hints()), []);
+      // Typing after the variable on its line keeps its hint: the text before it is the same.
+      t.doc.text = saved.join('\n').replace('f (Left  x) = x', 'f (Left  x) = x + 0');
+      t.doc.version = 3;
+      assert.deepStrictEqual(t.shown(await t.hints()), ['3:10 : Nat', '4:10 : String']);
     });
 
     test('nothing is asked while the document has unsaved changes, shows another text than the index, or is not a file; with no kept answers nothing is shown', async () => {

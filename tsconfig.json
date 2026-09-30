@@ -12,6 +12,9 @@
     "sourceMap": true,
     "rootDir": ".",
     "strict": true,
+    // An unused import or local fails check-types: the lint did not report two unused type imports
+    // in test/ (fifth review of M3).
+    "noUnusedLocals": true,
     // vscode-oniguruma's main.d.ts names the WebAssembly namespace, which only lib.dom declares
     // (not ES2022, not @types/node 24); the grammar tests use it on Node, so library
     // declaration files are not type-checked.

@@ -219,6 +219,12 @@ export interface LoadedFileEvent {
   readonly root: Classification;
   readonly file: string;
   readonly rebuilt: boolean;
+  /**
+   * The load returned an error (`backend/ide/backend.ts` `LoadedDocument.failed`; absent: it did
+   * not). The inlay hints keep no answer that shows nothing while it is the file's last load
+   * (`inlayHints.ts`, *Answers a load made stale*).
+   */
+  readonly failed?: boolean;
 }
 
 /** What `registerIntelligence`, `registerCompletion` and `registerInlayHints` need. */
@@ -234,7 +240,10 @@ export interface IntelligenceDeps {
   readonly projects: Pick<ProjectIndex, 'classify'>;
   /** `statusOf(doc, root)`: whether the answers are `stale` (`HoverModel.stale`). */
   readonly checks: CheckStatusSource;
-  /** `inlayHints()` (`idris2.inlayHints.variableTypes`) and its change event. */
-  readonly config: Pick<Config, 'inlayHints' | 'onDidChange'>;
+  /**
+   * `inlayHints()` (`idris2.inlayHints.variableTypes`) and its change event; `checking(uri).trigger`
+   * for what checks a stale document again (`hover.ts` `HoverDeps.manual`).
+   */
+  readonly config: Pick<Config, 'inlayHints' | 'onDidChange' | 'checking'>;
   readonly log: Log;
 }

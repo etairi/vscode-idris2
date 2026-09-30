@@ -10,8 +10,9 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   placeholders for future parts are the README files in `src/` and `test/`. M0 is implemented
   and accepted (2026-09-27, `docs/as-built/M0.md`); M1 is implemented (2026-09-27,
   `docs/as-built/M1.md`, which lists its deviations from the M1 text); M2 is implemented
-  (2026-09-28, `docs/as-built/M2.md`, likewise); M3 is implemented and integrated (2026-09-29,
-  `docs/as-built/M3.md`, likewise; not committed when this was written). The one planned stub is M0's
+  (2026-09-28, `docs/as-built/M2.md`, likewise); M3 is implemented (2026-09-29, commit `04e96aa`,
+  `docs/as-built/M3.md`, likewise; the fixes of its fifth to eleventh reviews and the README split
+  were not committed when this was written). The one planned stub is M0's
   `src/webview/goalPanel.ts` (an empty second esbuild entry, ROADMAP M0 "Out"), which M7
   replaces.
 - `docs/as-built/` — what was built: one file per finished milestone (`M0.md` … `M3.md`) with
@@ -58,7 +59,16 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   parser reads as a command is refused; running programs belongs to the REPL terminal (M8) and
   Run main (M9) —; **keybindings as planned** (Q5): `idris2.keybindings.scheme` = `chords`
   (default on macOS) / `prefix` (default elsewhere) / `none`, each milestone binding only its own
-  commands, M3 the letters `t`, `d`, `e` (ARCHITECTURE §10).
+  commands, M3 the letters `t`, `d`, `e` (ARCHITECTURE §10). Decided on 2026-09-29 after M3
+  (ROADMAP §9): **Q23 accepted** (its recorded rationale corrected on 2026-09-30; whether the user
+  confirms it on the corrected reasons is [open], ROADMAP §9) — Evaluate does not refuse the
+  elaborator scripts an expression reaches (a `%macro` applied by name runs its script without
+  `ElabReflection`; `%runElab` runs where the extension is on in the compiler's context); the
+  README's *Privacy and security* discloses it and must keep doing so; no textual `%runElab` rule
+  in `replCommand.ts` (it cannot see macro applications). Whether this covers M8's Query box and
+  lenses is M8's open question.
+  **The `eval` session keeps its highlighting output**: no `(:enable-syntax :False)` (the reload
+  cost it would save is accepted; the rule "nothing but evaluations goes to it" already forbids it).
 - Test corpora (`test/corpus/corpus.json`, fetched by `scripts/fetch-corpus.mjs` into the
   git-ignored `.corpus/`): `idris-compiler-tools` (MIT, Jan Serwatka) and the Idris 2 v0.8.0
   libraries (BSD-3, Edwin Brady) may be excerpted into fixtures, each excerpt with an attribution
@@ -284,8 +294,23 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
   eviction scheduled, no slot or question awaited). The pool evicts only an `idle` session that is
   not the active root's, and none while the active root is `pending` (a file just opened is being
   classified); the checks never make the active document's check wait for a slot, mark its load
-  `urgent` while a limit is set (`LoadOptions`; the session sends it before the root's loads that
-  wait, never before the one in flight or one whose package walk runs or has passed), ask the
+  `urgent` while a limit is set (`LoadOptions`; the session sends it before the root's requests that
+  wait, queries included — a query whose answer is kept per load (`typeAt`, `docsFor`,
+  `definition`) that it passes is refused before its write (`NotLoaded`) and asked again,
+  `IdeBackend.ask`; completions and namespace listings are sent after it and answer for the new
+  load —, never before the one in flight or one whose package walk runs or has passed) — except in
+  a batch of visible documents, which leaves the active one's load not urgent when, at its handover,
+  a load of the batch in its root handed over before it has not settled (`CheckOptions.batch`,
+  decided once: it stays first-in, first-out, behind the root's requests queued before it,
+  background loads included — a documented choice, tenth review of M3; alone in its root, it stays
+  urgent); the active one is not loaded
+  last when a check of the batch in its root hands its load over after it: at activation or trust
+  grant while the gate has no verdict for that check's folder yet, and when that check is left
+  waiting for a slot, since the batch's checks that take one (not the active one's, not those whose
+  folder is refused or whose load is refused before the question; of any root) outnumber the free
+  slots (the limit less the checks that hold one, those outside the batch included) — not fixed,
+  documented (sixth to ninth reviews of M3, option (c); not a user decision), `checks.ts` *The
+  active document* —, ask the
   backend (`LoadPreflight`) before they ask a consent question themselves, and Stop Backend drops
   the checks still waiting (`DocumentChecks.cancelWaiting`) before it stops the sessions. Both
   limits count per VS Code window (each has its own extension host, pool and checks).
@@ -345,10 +370,10 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
 ## Working rules
 
 - Do not commit, tag, publish or install anything globally unless asked.
-- Claims in README/CHANGELOG must be true of the code as built; plans belong in
-  `docs/ROADMAP.md`. `CHANGELOG.md` (shown on the Marketplace) says in a few user-facing lines
-  per milestone what a user gets, in Keep-a-Changelog sections; implementation detail, test
-  counts and review history go to `docs/as-built/Mn.md`.
+- Claims in README, `docs/guide.md` (the user guide the README links to) and CHANGELOG must be true
+  of the code as built; plans belong in `docs/ROADMAP.md`. `CHANGELOG.md` (shown on the
+  Marketplace) says in a few user-facing lines per milestone what a user gets, in Keep-a-Changelog
+  sections; implementation detail, test counts and review history go to `docs/as-built/Mn.md`.
 - Run at most one `idris2` process at a time, never in the background or in parallel, and
   never on the corpora or the Idris 2 libraries (the lexer oracle compiles only
   `LexDump.idr` and runs the resulting lexer over them). The one approved exception (user,

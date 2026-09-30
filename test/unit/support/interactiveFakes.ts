@@ -3,9 +3,8 @@
 // not import `vscode`, so the classes the features construct (`Range`, `Position`,
 // `CompletionItem`, …) are stand-ins with the fields the features set and the tests read.
 import type * as vscode from 'vscode';
-import type { BackendRegistry } from '../../../src/backend/registry';
 import type { Capabilities, IdrisBackend, TokenIndex, TypeInfo, Evaluation } from '../../../src/backend/types';
-import type { ConfigurationGroup, SettingsChange } from '../../../src/core/config';
+import type { CheckingSettings, CheckingTrigger, ConfigurationGroup, SettingsChange } from '../../../src/core/config';
 import { IdrisException } from '../../../src/core/errors';
 import { Emitter } from '../../../src/core/event';
 import type { DocumentQueries, IntelligenceDeps, LoadedFileEvent, QueryMode, QueryOutcome } from '../../../src/features/intelligence/types';
@@ -200,8 +199,10 @@ export function fakeQueries(backend: () => IdrisBackend): DocumentQueries & { re
 export class FakeConfig {
   variableTypes = true;
   inlineResults = true;
+  trigger: CheckingTrigger = 'onSave';
   private readonly changed = new Emitter<ConfigurationGroup>();
   inlayHints = (): { variableTypes: boolean } => ({ variableTypes: this.variableTypes });
+  checking = (): CheckingSettings => ({ trigger: this.trigger, delayMs: 700 });
   evaluation = (): { inlineResults: boolean; timeoutMs: number } => ({ inlineResults: this.inlineResults, timeoutMs: 10000 });
   onDidChange = (group: ConfigurationGroup, listener: (change: SettingsChange) => void): { dispose(): unknown } =>
     this.changed.event((g) => {

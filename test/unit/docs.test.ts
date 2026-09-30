@@ -93,7 +93,7 @@ suite('features/intelligence/docs', () => {
         registry,
         projects,
         checks: { statusOf: () => undefined, onDidChange: new Emitter<void>().event },
-        config: { inlayHints: () => ({ variableTypes: true }), onDidChange: () => ({ dispose: () => undefined }) },
+        config: { inlayHints: () => ({ variableTypes: true }), onDidChange: () => ({ dispose: () => undefined }), checking: () => ({ trigger: 'onSave', delayMs: 700 }) },
         log: quietLog,
       }, { keepNotices: true });
       const cursor = (line: number, character: number) => (fake.state.editor = { document: doc, selection: { active: new FakePosition(line, character) } });

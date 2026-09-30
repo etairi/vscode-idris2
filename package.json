@@ -244,7 +244,7 @@
           "maximum": 2147483647,
           "scope": "window",
           "order": 25,
-          "markdownDescription": "Milliseconds the compiler has to check a file, search for a proof or generate a definition. IDE mode cannot cancel a request, so one that takes longer stops the compiler's process, and the extension starts a new one. From 1000 to 2147483647 (about 24.8 days)."
+          "markdownDescription": "Milliseconds the compiler has to check a file. IDE mode cannot cancel a request, so one that takes longer stops the compiler's process, and the extension starts a new one. From 1000 to 2147483647 (about 24.8 days)."
         },
         "idris2.ideMode.idleTimeout": {
           "type": "integer",
@@ -261,7 +261,7 @@
           "minimum": 0,
           "scope": "window",
           "order": 27,
-          "markdownDescription": "The most IDE-mode compiler processes that keep running at once in this VS Code window; `0` (the default): no limit. Each window counts its own, so with two windows open up to twice as many can run. Each project (each `.ipkg` folder, and each folder of files without one) has its own process, and a second one once you evaluate an expression there (**Idris 2: Evaluate Selection**); both count. Above the limit, idle processes are stopped — never one that is busy: first the evaluation processes, the one used least recently first, then the checking processes of projects other than the active editor's file's, likewise; a stopped process starts again when it is next needed, and then loads its modules again. On a machine with little memory, try `3`. Changing it restarts nothing."
+          "markdownDescription": "The most IDE-mode compiler processes that keep running at once in this VS Code window; `0` (the default): no limit. Each window counts its own, so with two windows open up to twice as many can run. Each project (each `.ipkg` folder, and each folder of files without one) has its own process, and a second one once you evaluate an expression there (**Idris 2: Evaluate Selection**), which counts once it has answered: starting an evaluation stops no other process. Above the limit, idle processes are stopped — never one that is busy: first the evaluation processes, the one used least recently first, then the checking processes of projects other than the active editor's file's, likewise; a stopped process starts again when it is next needed, and then loads its modules again. On a machine with little memory, try `3`. Changing it restarts nothing."
         },
         "idris2.ideMode.maxBackgroundChecks": {
           "type": "integer",
@@ -269,7 +269,7 @@
           "minimum": 0,
           "scope": "window",
           "order": 28,
-          "markdownDescription": "The most checks of files other than the active editor's that run at once in this VS Code window (each window counts its own); `0` (the default): no limit. The others wait and run in the order they were asked for; the active editor's file is checked at once and never waits for them, and a waiting file that becomes the active one is checked at once. A file whose folder waits for your permission to start the compiler takes no turn meanwhile, and **Idris 2: Stop Backend** drops the checks still waiting. Within one project the compiler answers one request at a time: the active file's check goes before the project's other checks that wait, after the one it is working on. On a machine with little memory, try `1`. Changing it restarts nothing."
+          "markdownDescription": "The most checks of files other than the active editor's that run at once in this VS Code window (each window counts its own); `0` (the default): no limit. The others wait and run in the order they were asked for; the active editor's file is checked at once and never waits for them, and a waiting file that becomes the active one is checked at once. A file whose folder waits for your permission to start the compiler takes no turn meanwhile, and **Idris 2: Stop Backend** drops the checks still waiting. Within one project the compiler answers one request at a time: the active file's check goes before the project's other checks that wait, after the one it is working on — except when several open files of its project are checked together (for example after **Idris 2: Restart Backend**) and the compiler has one of the others queued or in progress when the active file's check reaches it. Then that check is not moved ahead; it waits for the project's checks queued before it, background checks included, so that the compiler ends on it; those of the others still waiting for a turn or for their folder's first permission check (as at startup) come after it. On a machine with little memory, try `1`. Changing it restarts nothing."
         },
         "idris2.diagnostics.includeSourceExcerpt": {
           "type": "boolean",
@@ -283,14 +283,14 @@
           "default": true,
           "scope": "window",
           "order": 31,
-          "markdownDescription": "Show the type of each pattern variable after it, as the compiler infers it: `: Vect ?_ ?_` after `xs` in `vlen xs = ?vlen_rhs`. The types come from the compiler's last check of the saved file; while the file has unsaved changes the hints of that check stay with their variables. VS Code's `editor.inlayHints.enabled` also applies."
+          "markdownDescription": "Show the type of each pattern variable after it, as the compiler infers it: `: Vect ?_ ?_` after `xs` in `vlen xs = ?vlen_rhs`. The types come from the compiler's last check of the saved file; while the file has unsaved changes, or the compiler cannot be asked about it, the hints of an earlier check stay with their variables (their tooltip says so). VS Code's `editor.inlayHints.enabled` also applies."
         },
         "idris2.eval.inlineResults": {
           "type": "boolean",
           "default": true,
           "scope": "window",
           "order": 32,
-          "markdownDescription": "Show the result of **Idris 2: Evaluate Selection** in the editor, after the last line of the evaluated text, and in a hover over that text; **Idris 2: Clear Evaluation Results** removes them. Off: the result is shown in a notification instead. Evaluate evaluates expressions only, in a second compiler process of the file's project that starts at the first evaluation: an `IO` action is shown as a value, not run, and REPL commands such as `:exec` are refused."
+          "markdownDescription": "Show the result of **Idris 2: Evaluate Selection** in the editor, after the last line of the evaluated text, and in a hover over that text; **Idris 2: Clear Evaluation Results** removes them. Off: the result is shown in a notification instead. Evaluate evaluates expressions only, in a second compiler process of the file's project that starts at the first evaluation: an `IO` action is shown as a value, not run, and REPL commands such as `:exec` are refused. It can run compile-time code (elaborator scripts; see the README's *Privacy and security*)."
         },
         "idris2.eval.timeout": {
           "type": "integer",
