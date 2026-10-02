@@ -1374,7 +1374,11 @@ retiring every backend risk before UI work is preferred.
   pre-release on the Visual Studio Marketplace and Open VSX, published by the user by hand
   (`CONTRIBUTING.md`, *Releasing*). Pre-releases take odd minor versions (`0.1.x`), releases even
   ones (`0.2.0` first), as VS Code's publishing guide recommends; it supports `major.minor.patch`
-  only, and a pre-release and a release may not share a version [doc, 2026-10-01].
+  only, and a pre-release and a release may not share a version [doc, 2026-10-01]. **Published** on
+  the Marketplace by the user on 2026-10-01: `etairi.vscode-idris2` 0.1.0, listed as public, preview
+  and pre-release; the package the Marketplace serves is byte-identical to the one built from
+  `4de2082` (SHA-256 `9a4ef841…`), which is tagged `v0.1.0` [live, the gallery API]. Not on Open
+  VSX yet.
 - **Always bracket.** Every answer the extension puts in place of a hole that is more than one
   token goes in parentheses, wherever the hole is, with no reading of the code around it: Intro
   (also a single candidate applied without asking), Refine Hole… and its ambiguity alternatives,
