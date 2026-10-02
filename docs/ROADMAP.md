@@ -1377,8 +1377,9 @@ retiring every backend risk before UI work is preferred.
   only, and a pre-release and a release may not share a version [doc, 2026-10-01]. **Published** on
   the Marketplace by the user on 2026-10-01: `etairi.vscode-idris2` 0.1.0, listed as public, preview
   and pre-release; the package the Marketplace serves is byte-identical to the one built from
-  `4de2082` (SHA-256 `9a4ef841…`), which is tagged `v0.1.0` [live, the gallery API]. Not on Open
-  VSX yet.
+  `4de2082` (SHA-256 `9a4ef841…`), which is tagged `v0.1.0` [live, the gallery API]. On Open VSX
+  the same day, published by the user: the same package, listed as pre-release and preview; the
+  namespace `etairi` stays unverified until the user claims it [live, the Open VSX API].
 - **Always bracket.** Every answer the extension puts in place of a hole that is more than one
   token goes in parentheses, wherever the hole is, with no reading of the code around it: Intro
   (also a single candidate applied without asking), Refine Hole… and its ambiguity alternatives,
