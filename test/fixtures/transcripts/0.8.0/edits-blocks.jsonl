@@ -1,0 +1,41 @@
+{"kind":"meta","format":1,"scenario":"edits-blocks","description":"M4 blocks: Blocks.idr (coverage errors in bc and f4): :make-lemma in a namespace, a mutual block, an interface's default method and a parameters block; :missing of a function in a parameters block and of one with a clause in a block comment; :make-with on a let binding; then Indented.idr: :make-lemma where the top-level declarations are indented","facts":["F15"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-09-30","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build/.vscode-idris2"],"cwd":"test/fixtures/workspaces/broken","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"Blocks.idr":"832326fcc5a58b1bfd6d862340a5801d33c37294aa4bad82add08c41be74b0d3","Indented.idr":"a6d9deeb377432dac996df7339e966bb323f38a187fb75f90d7beea3c3bdc3f1"}}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"00009f","text":"((:load-file \"${ROOT}/Blocks.idr\") 1)\n"}
+{"kind":"recv","prefix":"0000b7","text":"(:write-string \"1/1: Building Blocks (${ROOT}/Blocks.idr)\" 1)\n"}
+{"kind":"recv","prefix":"00022d","text":"(:warning (\"Blocks.idr\" (32 0) (32 13) \"bc is not covering.\n\nBlocks:33:1--33:14\n 29 | \n 30 |   pw : Nat -> Nat\n 31 |   pw x = ?pw_rhs\n 32 | \n 33 | bc : T -> Nat\n      ^^^^^^^^^^^^^\n\nMissing cases:\n    bc B\n    bc C\n\" ((0 2 ((:decor :bound))) (21 18 ((:decor :type))) (41 4 ((:decor :type))) (48 4 ((:decor :type))) (72 4 ((:decor :type))) (95 4 ((:decor :type))) (102 4 ((:decor :type))) (127 13 ((:text-formatting :bold) (:decor :postulate))) (161 2 ((:decor :function))) (164 1 ((:decor :data))) (170 2 ((:decor :function))) (173 1 ((:decor :data))))) 1)\n"}
+{"kind":"recv","prefix":"000283","text":"(:warning (\"Blocks.idr\" (26 2) (26 15) \"f4 is not covering.\n\nBlocks:27:3--27:16\n 23 |   foo : a -> Nat\n 24 |   foo x = ?default_rhs\n 25 | \n 26 | parameters (k : Nat)\n 27 |   f4 : T -> Nat\n        ^^^^^^^^^^^^^\n\nMissing cases:\n    f4 _ B\n    f4 _ C\n\" ((0 2 ((:decor :bound))) (21 18 ((:decor :type))) (41 4 ((:decor :type))) (64 4 ((:decor :type))) (93 4 ((:decor :type))) (100 4 ((:decor :type))) (127 4 ((:decor :type))) (156 13 ((:text-formatting :bold) (:decor :postulate))) (190 2 ((:decor :function))) (193 1 ((:decor :bound))) (195 1 ((:decor :data))) (201 2 ((:decor :function))) (204 1 ((:decor :bound))) (206 1 ((:decor :data))))) 1)\n"}
+{"kind":"recv","prefix":"0000ba","text":"(:return (:error \"Error(s) building file ${ROOT}/Blocks.idr\") 1)\n"}
+{"kind":"send","prefix":"00001e","text":"((:make-lemma 14 \"ns_rhs\") 2)\n"}
+{"kind":"recv","prefix":"000072","text":"(:return (:ok (:metavariable-lemma (:replace-metavariable \"ns_rhs u\") (:definition-type \"ns_rhs : U -> Nat\"))) 2)\n"}
+{"kind":"send","prefix":"00001f","text":"((:make-lemma 20 \"mut_rhs\") 3)\n"}
+{"kind":"recv","prefix":"000074","text":"(:return (:ok (:metavariable-lemma (:replace-metavariable \"mut_rhs v\") (:definition-type \"mut_rhs : V -> Nat\"))) 3)\n"}
+{"kind":"send","prefix":"000023","text":"((:make-lemma 24 \"default_rhs\") 4)\n"}
+{"kind":"recv","prefix":"00008b","text":"(:return (:ok (:metavariable-lemma (:replace-metavariable \"default_rhs x __con\") (:definition-type \"default_rhs : a -> Foo a -> Nat\"))) 4)\n"}
+{"kind":"send","prefix":"00001e","text":"((:make-lemma 31 \"pw_rhs\") 5)\n"}
+{"kind":"recv","prefix":"00007d","text":"(:return (:ok (:metavariable-lemma (:replace-metavariable \"pw_rhs k x\") (:definition-type \"pw_rhs : Nat -> Nat -> Nat\"))) 5)\n"}
+{"kind":"send","prefix":"00001f","text":"((:interpret \":missing f4\") 6)\n"}
+{"kind":"recv","prefix":"00002d","text":"(:return (:ok \"Blocks.f4:\nf4 _ B\nf4 _ C\") 6)\n"}
+{"kind":"send","prefix":"00001f","text":"((:interpret \":missing bc\") 7)\n"}
+{"kind":"recv","prefix":"000029","text":"(:return (:ok \"Blocks.bc:\nbc B\nbc C\") 7)\n"}
+{"kind":"send","prefix":"00001e","text":"((:make-with 41 \"let_rhs\") 8)\n"}
+{"kind":"recv","prefix":"000049","text":"(:return (:ok \"  let y with (_)\n    let y | with_pat = ?let_rhs_rhs\") 8)\n"}
+{"kind":"send","prefix":"0000a1","text":"((:load-file \"${ROOT}/Indented.idr\") 9)\n"}
+{"kind":"recv","prefix":"0000bb","text":"(:write-string \"1/1: Building Indented (${ROOT}/Indented.idr)\" 9)\n"}
+{"kind":"recv","prefix":"0000f4","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Indented.idr\") (:start 0 0) (:end 0 6)) ((:decor :keyword)))))) 9)\n"}
+{"kind":"recv","prefix":"0000f4","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Indented.idr\") (:start 0 7) (:end 0 15)) ((:decor :module)))))) 9)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Indented.idr\") (:start 2 2) (:end 2 65)) ((:decor :comment)))))) 9)\n"}
+{"kind":"recv","prefix":"00014c","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Indented.idr\") (:start 4 2) (:end 4 3)) ((:name \"f\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 9)\n"}
+{"kind":"recv","prefix":"0000f4","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Indented.idr\") (:start 4 4) (:end 4 5)) ((:decor :keyword)))))) 9)\n"}
+{"kind":"recv","prefix":"000157","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Indented.idr\") (:start 4 6) (:end 4 9)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 9)\n"}
+{"kind":"recv","prefix":"0000f6","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Indented.idr\") (:start 4 10) (:end 4 12)) ((:decor :keyword)))))) 9)\n"}
+{"kind":"recv","prefix":"000159","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Indented.idr\") (:start 4 13) (:end 4 16)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 9)\n"}
+{"kind":"recv","prefix":"000154","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Indented.idr\") (:start 5 2) (:end 5 3)) ((:name \"f\") (:namespace \"Indented\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 9)\n"}
+{"kind":"recv","prefix":"000149","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Indented.idr\") (:start 5 4) (:end 5 5)) ((:name \"x\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 9)\n"}
+{"kind":"recv","prefix":"0000f4","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Indented.idr\") (:start 5 6) (:end 5 7)) ((:decor :keyword)))))) 9)\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok ()) 9)\n"}
+{"kind":"send","prefix":"00001d","text":"((:make-lemma 6 \"f_rhs\") 10)\n"}
+{"kind":"recv","prefix":"000073","text":"(:return (:ok (:metavariable-lemma (:replace-metavariable \"f_rhs x\") (:definition-type \"f_rhs : Nat -> Nat\"))) 10)\n"}
+{"kind":"close"}
+{"kind":"unframed","text":"Alas the file is done, aborting\n"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":["build/.vscode-idris2/ttc/2025081600/Indented.ttc","build/.vscode-idris2/ttc/2025081600/Indented.ttm"]}

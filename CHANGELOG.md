@@ -11,6 +11,26 @@ supports macOS and Linux; on Windows, use VS Code with WSL, where the extension 
 
 ### Added
 
+- **Interactive editing** (milestone M4): **Case Split**, **Add Clause**, **Make Lemma**, **Make
+  With**, **Make Case**, **Proof Search**, **Generate Definition**, **Intro** and **Refine Hole…**,
+  from the Command Palette, the light bulb or the keyboard, and **Add Missing Cases**, from the
+  Command Palette or as a quick fix, each one undo step; **Next Result** replaces a result of Proof
+  Search or Generate Definition with the next one (so does **Next Definition** after Generate
+  Definition; `↻ next (n)` in the status bar). An answer put in place of a hole is put in
+  parentheses when it is more than one token, and Make Case writes a bracketed `case`; both are
+  refused, with the reason, where the new text would shift a block that the lines below belong to
+  (a few shapes are missed, two of them silent: the guide's *Known limitations*).
+  Refine Hole… does not offer the alternatives of an ambiguous operator that the compiler prints
+  between its arguments; it says so and suggests the qualified prefix form. A file with unsaved
+  changes is saved first (`idris2.checking.saveBeforeAction`),
+  and an answer is applied only if the file has not changed meanwhile. Like Evaluate Selection,
+  Refine Hole… can run compile-time code (README, *Privacy and security*).
+- **Holes** (M4): the **Holes** view in a new **Idris 2** side bar — each hole's type and local
+  variables, a click away (`idris2.holes.showInSideBar`) —, **List Holes**, **Next Hole** and
+  **Previous Hole**.
+- **Keyboard shortcuts** (M4) for most of these commands in both schemes (`Ctrl+C Ctrl+C` or
+  `Ctrl+Alt+I C` for Case Split, and so on), and **Show Keybindings**, which lists those of your
+  scheme.
 - **Answers from the compiler** (milestone M3). Hovers show the type of the name under the
   cursor — local pattern variables included — and the first paragraph of its documentation; **Go
   to Definition** jumps to global names, also across files; **Show Documentation…** and **Docs at

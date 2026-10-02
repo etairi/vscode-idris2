@@ -33,6 +33,7 @@
  * this extension's answer (the grammar's colours, the word-based highlights).
  */
 import type { Decor, Token, TokenIndex } from '../../backend/types';
+import { OPERATOR_CHARACTERS, RESERVED_INFIX_SYMBOLS } from '../../core/idrisSyntax';
 import { editorLines, editorSplit, lineCorrespondence, type EditorPosition, type EditorRange, type EditorSplit } from '../../core/positions';
 import { literateStyleOf, type CompiledDocument } from '../../project/literate';
 import { buildSyntaxModel, isModelledStyle, type SyntaxModel } from '../syntax/selectionRangeModel';
@@ -62,16 +63,8 @@ export interface Occurrence {
   readonly namespace?: string;
 }
 
-/**
- * `reservedInfixSymbols` in `src/Parser/Lexer/Source.idr` (v0.8.0 and master 1c630e6 [src]; the
- * same list as `features/syntax/selectionRangeModel.ts`): symbols that are syntax, never a name.
- */
-const RESERVED_SYMBOLS: ReadonlySet<string> = new Set([
-  '%', '\\', ':', '=', ':=', '$=', '|', '|||', '<-', '->', '=>', '?', '!', '&', '**', '..', '~', '@',
-]);
-
-/** `isOpChar` in `src/Core/Name.idr` [src], as `features/syntax/lexer.ts` has it. */
-const OPERATOR = /^[:!#$%&*+./<=>?@\\^|\-~]+$/;
+/** Whether `s` is made of operator characters only (`isOpChar`, `core/idrisSyntax.ts` `OPERATOR_CHARACTERS`). */
+const isOperatorText = (s: string): boolean => s !== '' && [...s].every((c) => OPERATOR_CHARACTERS.includes(c));
 
 function compare(a: EditorPosition, b: EditorPosition): number {
   return a.line - b.line || a.character - b.character;
@@ -112,8 +105,8 @@ function continues(c: string, edge: string): boolean {
   if (c === '') {
     return false;
   }
-  if (OPERATOR.test(edge)) {
-    return OPERATOR.test(c);
+  if (isOperatorText(edge)) {
+    return isOperatorText(c);
   }
   return isIdentChar(edge) && isIdentChar(c);
 }
@@ -485,7 +478,7 @@ function nameOfLexToken(t: LexToken): string | undefined {
     const dot = text.lastIndexOf('.');
     return dot > 0 ? text.slice(dot + 1) : text;
   }
-  if (t.kind === 'symbol' && OPERATOR.test(t.text) && !RESERVED_SYMBOLS.has(t.text)) {
+  if (t.kind === 'symbol' && isOperatorText(t.text) && !RESERVED_INFIX_SYMBOLS.has(t.text)) {
     return t.text;
   }
   return undefined;

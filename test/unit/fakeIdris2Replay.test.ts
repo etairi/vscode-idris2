@@ -265,6 +265,51 @@ suite('test/fake-idris2: replay rules', function () {
     assert.strictEqual(second.at(-1), '(:return (:ok ()) 3)\n');
   });
 
+  test('queries between requests are left out of the matching (M4): a reload after a query is still the recorded reload (F7)', async () => {
+    const fake = await startFake('stdio', broken());
+    await fake.protocol.next();
+    fake.send(loadFile(broken('Warn.idr'), 1));
+    const first = (await readToReturn(fake)).map((item) => item.text);
+    assert.ok(first.some((t) => t.startsWith('(:write-string "1/1: Building Warn ')), first.join(''));
+    // Recorded nowhere: the fake's error, and a query all the same.
+    fake.send(requestFrame('((:docs-for "zzz") 2)\n'));
+    assert.match((await fake.protocol.next()).text, /no recorded reply for \(:docs-for \\"zzz\\"\)/);
+    fake.send(loadFile(broken('Warn.idr'), 3));
+    const second = (await readToReturn(fake)).map((item) => item.text);
+    assert.ok(!second.some((t) => t.startsWith('(:write-string') || t.startsWith('(:warning')), second.join(''));
+    assert.strictEqual(second.at(-1), '(:return (:ok ()) 3)\n');
+  });
+
+  test('queries are left out of the matching (M4): :name-at "todo" after loading holes/Main.idr and another query lists Main.todo too', async () => {
+    // Recorded: holes-loose-main asks :name-at after :metavariables; holes-loose-base (first by
+    // name) does the same after loading Base.idr, and its answer lists Base.todo only.
+    const holes = path.join(repoRoot(), 'test', 'fixtures', 'workspaces', 'holes');
+    const fake = await startFake('stdio', holes);
+    await fake.protocol.next();
+    fake.send(loadFile(path.join(holes, 'Main.idr'), 1));
+    await readToReturn(fake);
+    fake.send(requestFrame('((:name-at "size_rhs") 2)\n'));
+    await readToReturn(fake);
+    fake.send(requestFrame('((:name-at "todo") 3)\n'));
+    const [reply] = await readToReturn(fake);
+    assert.match(reply.text, /^\(:return \(:ok \(\("Base\.todo" .*\("Main\.todo" \(:filename ".*Main\.idr"\) \(:start 5 11\) \(:end 5 16\)\)\)\) 3\)\n$/);
+  });
+
+  test(':missing through :interpret is a query (M4): asked twice after loading Part.idr, both answers are load-part\'s Part.g', async () => {
+    // Recorded: load-part asks `:missing g` once after loading Part.idr; edits-same-name (first by
+    // name) asks it after loading SameName.idr and reports SameBase.g and SameName.g. Were the first
+    // `:missing g` part of the matching, the second would match neither predecessor and go to it.
+    const fake = await startFake('stdio', broken());
+    await fake.protocol.next();
+    fake.send(loadFile(broken('Part.idr'), 1));
+    await readToReturn(fake);
+    for (const id of [2, 3]) {
+      fake.send(requestFrame(`((:interpret ":missing g") ${id})\n`));
+      const [reply] = await readToReturn(fake);
+      assert.strictEqual(reply.text, `(:return (:ok "Part.g:\ng (S _)") ${id})\n`);
+    }
+  });
+
   test('a copy of the workspace elsewhere is replayed with its own paths', async () => {
     const dir = tempDir();
     try {
@@ -440,6 +485,87 @@ suite('test/fake-idris2: session roles and the request log (M3)', function () {
       fs.rmSync(dir, { recursive: true, force: true });
     }
   });
+});
+
+// M4: a compiler busy with a long request, so that an integration test can change a document
+// while an edit's answer is on its way (test/integration/editing/).
+suite('test/fake-idris2: answers held back (FAKE_IDRIS2_IDE_DELAY)', function () {
+  this.timeout(20000);
+  const DELAY_MS = 400;
+  const caseSplit = (id: number): Buffer => requestFrame(`((:case-split 8 0 "xs") ${id})\n`);
+  const SPLIT = '"vlen [] = ?vlen_rhs_0\nvlen (x :: xs) = ?vlen_rhs_1"';
+
+  test('the recorded answer comes after the delay; a request sent meanwhile is read, logged and answered only after it (over the socket too)', async () => {
+    for (const transport of ['stdio', 'socket'] as const) {
+      const dir = tempDir();
+      try {
+        const log = path.join(dir, 'requests.jsonl');
+        const fake = await startFake(transport, broken(), {
+          FAKE_IDRIS2_TRANSCRIPTS: DIR,
+          FAKE_IDRIS2_IDE_DELAY: `case-split=${DELAY_MS}`,
+          FAKE_IDRIS2_REQUEST_LOG: log,
+        });
+        await fake.protocol.next();
+        fake.send(loadFile(broken('Clean.idr'), 1));
+        await readToReturn(fake); // not delayed
+        const logged = (): string[] =>
+          fs.readFileSync(log, 'utf8').split('\n').filter((l) => l !== '').map((l) => (JSON.parse(l) as { request: string }).request);
+        const sent = Date.now();
+        fake.send(caseSplit(2));
+        fake.send(requestFrame('(:version 3)\n'));
+        await new Promise((resolve) => setTimeout(resolve, DELAY_MS / 2));
+        assert.deepStrictEqual(logged().slice(1), ['((:case-split 8 0 "xs") 2)\n'], `${transport}: the second request was read while the first was held back`);
+        const [split, version] = await read(fake, 2);
+        assert.ok(Date.now() - sent >= DELAY_MS, `${transport}: answered after ${Date.now() - sent} ms`);
+        assert.deepStrictEqual(split, frame(`(:return (:ok ${SPLIT}) 2)\n`), transport);
+        assert.deepStrictEqual(version, frame('(:return (:ok ((0 8 0) (""))) 3)\n'), transport);
+        assert.deepStrictEqual(logged().slice(1), ['((:case-split 8 0 "xs") 2)\n', '(:version 3)\n'], transport);
+        fake.check();
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    }
+  });
+
+  test('the end of input during the delay: the answer, then the end-of-input line and exit 1', async () => {
+    const fake = await startFake('stdio', broken(), { FAKE_IDRIS2_TRANSCRIPTS: DIR, FAKE_IDRIS2_IDE_DELAY: `case-split=${DELAY_MS}` });
+    await fake.protocol.next();
+    fake.send(loadFile(broken('Clean.idr'), 1));
+    await readToReturn(fake);
+    fake.send(caseSplit(2));
+    fake.end();
+    assert.deepStrictEqual(await fake.protocol.next(), frame(`(:return (:ok ${SPLIT}) 2)\n`));
+    assert.strictEqual(await fake.exit, 1);
+    assert.strictEqual(await fake.protocol.rest(), 'Alas the file is done, aborting\n');
+  });
+
+  test('a bare-symbol command is named by its symbol; other commands are not delayed', async () => {
+    const fake = await startFake('stdio', broken(), { FAKE_IDRIS2_TRANSCRIPTS: DIR, FAKE_IDRIS2_IDE_DELAY: `proof-search-next=${DELAY_MS}` });
+    await fake.protocol.next();
+    fake.send(loadFile(broken('Clean.idr'), 1));
+    await readToReturn(fake);
+    let sent = Date.now();
+    fake.send(requestFrame('((:proof-search 8 "vlen_rhs" ()) 2)\n'));
+    assert.match((await fake.protocol.next()).text, /^\(:return \(:ok "0" /);
+    assert.ok(Date.now() - sent < DELAY_MS, `the search itself was held back for ${Date.now() - sent} ms`);
+    sent = Date.now();
+    fake.send(requestFrame('(:proof-search-next 3)\n'));
+    assert.match((await fake.protocol.next()).text, /^\(:return \(:ok "1" .* 3\)\n$/);
+    assert.ok(Date.now() - sent >= DELAY_MS, `answered after ${Date.now() - sent} ms`);
+  });
+
+  for (const spec of ['case-split', 'case-split=x', ':case-split=10', 'case-split=1,case-split=2']) {
+    test(`FAKE_IDRIS2_IDE_DELAY=${spec} is a test error (exit 2)`, () => {
+      const r = spawnSync(process.execPath, [FAKE, '--ide-mode'], {
+        env: fakeEnvironment({ FAKE_IDRIS2_IDE_DELAY: spec }),
+        input: '',
+        encoding: 'utf8',
+      });
+      assert.strictEqual(r.status, 2);
+      assert.match(r.stderr, /FAKE_IDRIS2_IDE_DELAY must be/);
+      assert.strictEqual(r.stdout, '');
+    });
+  }
 });
 
 suite('test/fake-idris2: command lines', function () {

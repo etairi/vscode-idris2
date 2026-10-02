@@ -1,21 +1,22 @@
 # Continuous integration for vscode-idris2, per docs/ROADMAP.md §7.2 and docs/ARCHITECTURE.md §13
-# as they apply to M3:
+# as they apply to M4:
 #   ubuntu-latest   types, lint, unit, grammar, the §4 graph check, integration (xvfb), `vsce
 #                   package` (the .vsix is uploaded as an artifact), and the grammar corpus test,
 #                   which fetches a pinned third-party repository (needs network)
 #   macos-latest    lint, unit, grammar, integration, then with Homebrew idris2: `idris2 --check`
 #                   of every fixture and snippet expansion, and the e2e suite (`npm run
 #                   test:e2e`, test/e2e/ against the real compiler: the M1 toolchain tests,
-#                   M2's protocol facts, sessions, fake-parity and E21 tests, and M3's
-#                   intelligence and evaluation tests and protocol facts)
+#                   M2's protocol facts, sessions, fake-parity and E21 tests, M3's
+#                   intelligence and evaluation tests and protocol facts, and M4's editing and
+#                   holes tests)
 # There is no Windows job: native Windows is not supported (ROADMAP §9, decided 2026-09-28). Idris 2
 # needs MSYS2 to build there, and Windows users are pointed to WSL, where the extension runs on
 # Linux. The Windows code paths that exist are exercised only by unit tests that simulate
 # process.platform = 'win32' on macOS and Linux.
 # "Integration" is every suite of .vscode-test.mjs except e2e — M1's `integration`, `simple-ipkg`
 # and `toolchain-path`, and M2's `diagnostics` (socket transport, the opt-in), `loose-stdio`
-# (stdio, the default since ROADMAP §9 Q20) and `consent`, and M3's `intelligence` and
-# `intelligence-loose` — all driven by the fake tools of
+# (stdio, the default since ROADMAP §9 Q20) and `consent`, M3's `intelligence` and
+# `intelligence-loose`, and M4's `editing` and `holes` — all driven by the fake tools of
 # test/fake-tools; the fake compiler answers IDE
 # mode from the transcripts recorded from the real one (FAKE_IDRIS2_TRANSCRIPTS, set by
 # .vscode-test.mjs). The `diagnostics` suite exercises the extension's

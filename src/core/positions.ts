@@ -277,6 +277,17 @@ function countWhile(doubled: readonly number[], below: (i: number) => boolean): 
   return lo;
 }
 
+/**
+ * (M4) The file lines above `line` that the compiler's unlit text holds twice (`doubledLines`),
+ * ascending. Below the first of them the compiler's line of a file line (`toIdeLineRequest`) is not
+ * its number in the raw source (`toIdeSourceLineRequest`), so a command that finds its place by the
+ * one and reads the line of the other reads another line (`core/idrisSyntax.ts` `misreadBelow`).
+ */
+export function doubledLinesAbove(doc: PositionDocument, line: number): readonly number[] {
+  const doubled = doubledLines(doc);
+  return doubled.slice(0, countWhile(doubled, (i) => doubled[i] < line));
+}
+
 /** The compiler's 0-based line of file line `line` (module comment, *Literate lines*): `line` plus the doubled lines above it. */
 function compilerLine(doc: PositionDocument, line: number): number {
   const doubled = doubledLines(doc);
@@ -394,6 +405,17 @@ export function displayLine(line: number): number {
 /** The 1-based line of the commands that take a line only (`:add-clause L NAME`, …), for file line `line` (0-based) of `doc`. */
 export function toIdeLineRequest(doc: PositionDocument, line: number): number {
   return compilerLine(doc, line) + 1;
+}
+
+/**
+ * (M4) The 1-based number of editor line `line` (0-based) in the raw source text the compiler keeps
+ * at a load, which `getSourceLine` splits with `lines` — at `\r\n`, `\r` and `\n`, as the editor
+ * does — without the unlit step (`Idris/REPL/Opts.idr` 119–133 on v0.8.0 [src]). It differs from
+ * `toIdeLineRequest` below a bird-track line that counts twice (F11 addendum): `:make-lemma`,
+ * `:make-case` and `:make-with` read only that source line (`backend/ide/edits.ts`).
+ */
+export function toIdeSourceLineRequest(line: number): number {
+  return line + 1;
 }
 
 /**

@@ -2,12 +2,12 @@
 
 This is the `src/` part of the repository tree in `docs/ARCHITECTURE.md` §2, annotated with the
 milestone (`docs/ROADMAP.md` §5) that creates each part. Only the files marked **skeleton**,
-**M0**, **M1**, **M2** or **M3** exist today. Nothing else is stubbed: a folder appears when its milestone
+**M0**, **M1**, **M2**, **M3** or **M4** exist today. Nothing else is stubbed: a folder appears when its milestone
 lands, never as an empty module.
 
 ```
 src/
-├─ extension.ts               M0–M3     activate(): log channel, Help commands, the
+├─ extension.ts               M0–M4     activate(): log channel, Help commands, the
 │                                       idris2.isIdrisDocument context key, selection ranges
 │                                       (M0); then Config → workspace trust → process runner →
 │                                       toolchain service → project index → backend registry
@@ -15,8 +15,10 @@ src/
 │                                       pool, IDE-mode backend (the registry's provider),
 │                                       checks and backend commands (M2); then the providers
 │                                       and commands of intelligence/ and eval/ over one
-│                                       DocumentQueries (M3); then the status item, Setup
-│                                       Information, install commands, notifications.
+│                                       DocumentQueries (M3); then editing/, holes/ with the
+│                                       idris2.isIdrisWorkspace key, Show Keybindings (M4);
+│                                       then the status item, Setup Information, install
+│                                       commands, notifications.
 │                                       Waits for no process; returns a test API only in
 │                                       ExtensionMode.Test. deactivate() disposes everything in
 │                                       reverse order, which kills every session process.
@@ -29,10 +31,12 @@ src/
 │  │                                    IdrisException (the thrown form), unsupported(reason),
 │  │                                    errorText; M3 adds NotLoaded (a query about a file the
 │  │                                    check session has not loaded last: load, then ask again)
-│  ├─ config.ts               M1–M3     typed, validated idris2.toolchain.* (M1),
+│  ├─ config.ts               M1–M4     typed, validated idris2.toolchain.* (M1),
 │  │                                    idris2.checking.*, ideMode.*, diagnostics.*, trace.*
-│  │                                    (M2), inlayHints.*, eval.* (M3) + change events per
-│  │                                    group (keybindings.scheme is read by VS Code only)
+│  │                                    (M2), inlayHints.*, eval.* (M3), checking.
+│  │                                    saveBeforeAction and keybindings.scheme (M4, for Show
+│  │                                    Keybindings) + change events per group
+│  │                                    (holes.showInSideBar is read by VS Code only)
 │  ├─ event.ts                M1        Event/Emitter without vscode (unit-tested services)
 │  ├─ trust.ts                M1, M2    WorkspaceTrust: isTrusted, onDidGrant (Restricted Mode);
 │  │                                    M2: SessionGate, the consent contract of the sessions
@@ -42,22 +46,41 @@ src/
 │  │                                    time-out, 1 MiB output limit, dispose at deactivation;
 │  │                                    M2: startLongRunningProcess for session processes (the
 │  │                                    same rules without the queue and the output limit)
-│  ├─ positions.ts            M0, M3    the ONLY module converting between the coordinate
+│  ├─ positions.ts            M0–M4     the ONLY module converting between the coordinate
 │  │                                    conventions of ARCHITECTURE §7, incl. the .lidr offset;
 │  │                                    M3: the compiler's columns count code points, the
 │  │                                    editor's UTF-16 units (E14: codePointsBefore,
 │  │                                    utf16Length, with each line's text); the literate
 │  │                                    line map (a marker followed only by white space is
-│  │                                    two lines of the unlit text, F11 addendum)
+│  │                                    two lines of the unlit text, F11 addendum); M4:
+│  │                                    toIdeSourceLineRequest (the raw source line that
+│  │                                    make-lemma/-case/-with read)
 │  ├─ notificationText.ts     M2        plainText: every notification message, input-box and
 │  │                                    progress text and the status item's detail as text (VS
 │  │                                    Code makes links of [label](command:…) in them);
 │  │                                    shownPath: a quoted, visible, bounded path
-│  └─ untrustedText.ts        M3        compiler text as text: codeBlock (a fence no line of the
-│                                       text can close), visible and editorLabel (control and
-│                                       format characters and the other default-ignorable
-│                                       ones written out as \u{…}; one line for
-│                                       labels drawn in the editor), quickPickText (no $(icon))
+│  ├─ untrustedText.ts        M3        compiler text as text: codeBlock (a fence no line of the
+│  │                                    text can close), visible and editorLabel (control and
+│  │                                    format characters and the other default-ignorable
+│  │                                    ones written out as \u{…}; one line for
+│  │                                    labels drawn in the editor), quickPickText (no $(icon))
+│  ├─ idrisLexer.ts           M4        the compiler's lexer ported rule by rule (tables, rules,
+│  │                                    the stack of what is open), resumable at line breaks;
+│  │                                    lexText runs it on a whole text (lex) or a line (the
+│  │                                    line reader); no vscode import
+│  └─ idrisSyntax.ts          M4        Idris 2 source without the compiler: the parser's tables
+│                                       (reserved symbols, modifiers, pragmas, block openers)
+│                                       and the lexer's (re-exported) that the modules reading
+│                                       its tokens share, and the edits' line reader, run a
+│                                       line at a time on the lexer of core/idrisLexer.ts
+│                                       (levelTokens, clauseName, withClauseStart,
+│                                       misreadBelow, caseSplitLineProblem, which the light
+│                                       bulb uses too); isOneToken (answers not one token go
+│                                       in parentheses); opensBlockOnLine (a block entry the
+│                                       rest of a hole's line starts, from the blocks of
+│                                       Idris/Parser.idr); holdsBlockHeader (a parameters,
+│                                       using or with header before the hole);
+│                                       firstTokenColumn (a line's column for the layout)
 ├─ toolchain/                 M1
 │  ├─ types.ts                          the contracts (snapshot, tool states, verdict, runner,
 │  │                                    service); types only
@@ -106,14 +129,16 @@ src/
 │  │                                    LoadResult.packageError; M3: the queries' contract
 │  │                                    (answered in the context of the file loaded last,
 │  │                                    NotLoaded otherwise), completions, tokens (Token,
-│  │                                    TokenIndex), TypeInfo.lookup, Evaluation
+│  │                                    TokenIndex), TypeInfo.lookup, Evaluation; M4: Hole
+│  │                                    (qualifiedName), EditRequest by kind (version, token),
+│  │                                    EditResult (edit, choices, failed, exhausted)
 │  ├─ null.ts                 M0        NullBackend: every capability false, every call rejects
 │  │                                    with Unsupported
 │  ├─ registry.ts             M1, M2    one BackendProvider serving every root (M2: IDE mode;
 │  │                                    none → NullBackend, "syntax only"), the per-root
 │  │                                    BackendState and status label, rootKey; per-root routing
 │  │                                    and per-feature fallback arrive with M5
-│  ├─ ide/                    M2, M3    (M3 adds highlight, replCommand; M4 holes)
+│  ├─ ide/                    M2–M4     (M3 adds highlight, replCommand; M4 edits, holes)
 │  │  ├─ types.ts                       the contracts of the layer (types only): s-expressions,
 │  │  │                                 frames, messages, IdeCodec, Transport, IdeSession,
 │  │  │                                 SessionPool, and who may import whom
@@ -144,7 +169,8 @@ src/
 │  │  │                                 consent before every spawn, restarts on changes,
 │  │  │                                 idris2.ideMode.maxSessions (evicts idle sessions: eval
 │  │  │                                 sessions first, then check sessions of other roots,
-│  │  │                                 least recently used first)
+│  │  │                                 least recently used first); M4: restartCheck (a
+│  │  │                                 cancelled edit request)
 │  │  ├─ diagnostics.ts                 a load's reply → diagnostic records: files, ranges,
 │  │  │                                 messages, severity (known-warning table), .ipkg error
 │  │  ├─ highlight.ts       M3          a load's :highlight-source frames → the token index
@@ -152,22 +178,32 @@ src/
 │  │  ├─ replCommand.ts     M3          whether the REPL parser could read a text as a command:
 │  │  │                                 the refusal of Evaluate Selection (at least as strict
 │  │  │                                 as the parser; the argument is in the module comment)
+│  │  ├─ edits.ts           M4          per EditKind: the request, the refusals before sending
+│  │  │                                 (names that are not Idris names, lines the compiler
+│  │  │                                 numbers otherwise, F16), where the reply goes (E15),
+│  │  │                                 the parentheses and Make Case's bracketed form,
+│  │  │                                 refine's ambiguity, the literate repairs; pure
+│  │  ├─ holes.ts           M4          :metavariables + :name-at → Hole (declarations left
+│  │  │                                 out, the entry of the qualified name, E16); pure
 │  │  └─ backend.ts                     IdeBackend (load, with the compiler's package walk done
 │  │                                    again right before every load is sent; M3: the queries,
-│  │                                    the token index, evaluation in the eval session; holes
-│  │                                    and edit Unsupported until M4) and IdeMode, the
+│  │                                    the token index, evaluation in the eval session; M4:
+│  │                                    holes, edit with the version check and the searches'
+│  │                                    state, cancel after the write → restartCheck) and IdeMode, the
 │  │                                    registry's provider and the commands' control surface
 │  │                                    (M3: onDidLoad, warmUpCompletions)
 │  ├─ lsp/                    M5        client, commands, backend (vscode-languageclient 10.x)
 │  └─ cli/                    M9, M11   runner, diagnostics (text-format parser)
 ├─ features/                  one folder per feature area
-│  ├─ help/                   M0
-│  │  └─ commands.ts                    Show Output, Open Settings (@ext:<id>), Open Idris 2
-│  │                                    Documentation (static URL via env.openExternal)
+│  ├─ help/                   M0, M4
+│  │  ├─ commands.ts                    Show Output, Open Settings (@ext:<id>), Open Idris 2
+│  │  │                                 Documentation (static URL via env.openExternal)
+│  │  ├─ keybindings.ts         M4      Show Keybindings: a plain-text document generated from
+│  │  │                                 the manifest's keybindings for the scheme in effect
+│  │  └─ types.ts               M4      its contract (ShowKeybindingsDeps)
 │  ├─ syntax/                 M0        syntactic features that need no backend
-│  │  ├─ lexer.ts                       tolerant port of the compiler's lexer (tokens, comments,
-│  │  │                                 strings, bracket groups); no vscode import; KEYWORDS
-│  │  │                                 exported for M3's completion
+│  │  ├─ lexer.ts                       lex: the tokens and bracket groups of the lexer of
+│  │  │                                 core/idrisLexer.ts; no vscode import
 │  │  ├─ selectionRangeModel.ts         token → groups → layout blocks → declaration group →
 │  │  │                                 document; plain and bird-track text only (the fenced
 │  │  │                                 styles wait for M12); no vscode import
@@ -232,8 +268,30 @@ src/
 │  │  └─ register.ts                    Evaluate Selection and Clear Evaluation Results; the
 │  │                                    decorations and their lifecycle; the notification
 │  │                                    when inline results are off; Cancel after a second
-│  ├─ editing/                M4
-│  ├─ holes/                  M4
+│  ├─ editing/                M4        the interactive editing commands (types.ts: the
+│  │  │                                 contracts)
+│  │  ├─ commands.ts                    each command from its target to the applied answer;
+│  │  │                                 Next Result (either cycle) / Next Definition
+│  │  ├─ longRunning.ts                 a long request under the window's progress, Cancel
+│  │  │                                 after a second; also List Holes
+│  │  ├─ targets.ts                     what is at the cursor (hole, pattern variable,
+│  │  │                                 declaration, coverage error), from M0's lexer
+│  │  ├─ apply.ts                       the replacements as one WorkspaceEdit of the request's
+│  │  │                                 document, at the request's version, one undo step
+│  │  ├─ cycling.ts                     CyclingController and the ↻ next (n) status item
+│  │  ├─ codeActions.ts                 the light bulb, from the text alone (F34 kinds)
+│  │  ├─ saveBeforeAction.ts            idris2.checking.saveBeforeAction
+│  │  ├─ messages.ts                    titles, needs, rephrasings, refusal texts
+│  │  └─ register.ts                    registerEditing
+│  ├─ holes/                  M4        (types.ts: the contracts)
+│  │  ├─ model.ts                       HoleModel: the holes after each load, per file (per
+│  │  │                                 module when the compiler gives no source location)
+│  │  ├─ tree.ts                        the Holes view (file → hole → premises, badge)
+│  │  ├─ navigation.ts                  Next / Previous Hole over the lexer's ?name tokens;
+│  │  │                                 finding a reported hole in the text shown
+│  │  ├─ workspaceContext.ts            the idris2.isIdrisWorkspace context key
+│  │  └─ register.ts                    registerHoles: the view, List Holes, Next / Previous
+│  │                                    Hole, the internal idris2.revealHole
 │  ├─ goalPanel/              M7
 │  ├─ shadow/                 M6
 │  ├─ repl/                   M8

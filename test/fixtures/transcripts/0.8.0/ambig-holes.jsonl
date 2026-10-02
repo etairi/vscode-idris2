@@ -1,0 +1,49 @@
+{"kind":"meta","format":1,"scenario":"ambig-holes","description":"Ambig.idr: :metavariables, :name-at of the hole g_rhs, and :refine with a partly and a fully qualified name of the ambiguous foo","facts":["F2","F29"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-09-30","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build/.vscode-idris2"],"cwd":"test/fixtures/workspaces/broken","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"Ambig.idr":"fa9a31920d8c3a1bfd1d7d5b639270f8a5e0d8bad6447022615b3e752477a768"}}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"00009e","text":"((:load-file \"${ROOT}/Ambig.idr\") 1)\n"}
+{"kind":"recv","prefix":"0000b5","text":"(:write-string \"1/1: Building Ambig (${ROOT}/Ambig.idr)\" 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 0 0) (:end 0 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 0 7) (:end 0 12)) ((:decor :module)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 2 0) (:end 2 9)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 2 10) (:end 2 11)) ((:decor :namespace)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 3 2) (:end 3 8)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00014b","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 4 2) (:end 4 5)) ((:name \"foo\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 4 6) (:end 4 7)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000155","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 4 8) (:end 4 11)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 4 12) (:end 4 14)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000156","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 4 15) (:end 4 18)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000152","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 5 2) (:end 5 5)) ((:name \"foo\") (:namespace \"Ambig.A\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000146","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 5 6) (:end 5 7)) ((:name \"n\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 5 8) (:end 5 9)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000148","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 5 10) (:end 5 11)) ((:name \"n\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 7 0) (:end 7 9)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 7 10) (:end 7 11)) ((:decor :namespace)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 8 2) (:end 8 8)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00014b","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 9 2) (:end 9 5)) ((:name \"foo\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 9 6) (:end 9 7)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000155","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 9 8) (:end 9 11)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 9 12) (:end 9 14)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000156","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 9 15) (:end 9 18)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000154","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 10 2) (:end 10 5)) ((:name \"foo\") (:namespace \"Ambig.B\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000148","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 10 6) (:end 10 7)) ((:name \"n\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 10 8) (:end 10 9)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000156","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 10 10) (:end 10 11)) ((:name \"S\") (:namespace \"Prelude.Types\") (:decor :data) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00014a","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 10 12) (:end 10 13)) ((:name \"n\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00014b","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 12 0) (:end 12 1)) ((:name \"g\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 12 2) (:end 12 3)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000156","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 12 4) (:end 12 7)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000150","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 13 0) (:end 13 1)) ((:name \"g\") (:namespace \"Ambig\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Ambig.idr\") (:start 13 2) (:end 13 3)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok ()) 1)\n"}
+{"kind":"send","prefix":"000018","text":"((:metavariables 80) 2)\n"}
+{"kind":"recv","prefix":"000036","text":"(:return (:ok ((\"\\\"Ambig.g_rhs\\\"\" () (\"Nat\" ())))) 2)\n"}
+{"kind":"send","prefix":"000017","text":"((:name-at \"g_rhs\") 3)\n"}
+{"kind":"recv","prefix":"0000d8","text":"(:return (:ok ((\"Ambig.g_rhs\" (:filename \"${ROOT}/Ambig.idr\") (:start 13 4) (:end 13 10)))) 3)\n"}
+{"kind":"send","prefix":"000021","text":"((:refine 14 \"g_rhs\" \"A.foo\") 4)\n"}
+{"kind":"recv","prefix":"000021","text":"(:return (:ok \"foo ?g_rhs_0\") 4)\n"}
+{"kind":"send","prefix":"000027","text":"((:refine 14 \"g_rhs\" \"Ambig.B.foo\") 5)\n"}
+{"kind":"recv","prefix":"000021","text":"(:return (:ok \"foo ?g_rhs_1\") 5)\n"}
+{"kind":"close"}
+{"kind":"unframed","text":"Alas the file is done, aborting\n"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":["build/.vscode-idris2/ttc/2025081600/Ambig.ttc","build/.vscode-idris2/ttc/2025081600/Ambig.ttm"]}

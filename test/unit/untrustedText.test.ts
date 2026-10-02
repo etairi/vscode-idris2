@@ -156,6 +156,28 @@ suite('core/untrustedText', () => {
       assert.strictEqual(editorLabel('= a\u000C;}b'), '= a\\u{C};}b');
     });
 
+    test('the same lines as the regular expression it replaced, on every string of up to 6 characters of spaces, tabs, breaks and a letter', () => {
+      const before = (text: string): string => text.trim().replace(/[ \t]*(?:\r\n|[\n\r\u0085\u2028\u2029])[ \t]*/g, ' ');
+      const alphabet = [' ', '\t', '\n', '\r', '\u2028', 'a'];
+      let strings = [''];
+      for (let length = 1; length <= 6; length++) {
+        strings = strings.flatMap((s) => alphabet.map((c) => s + c));
+        for (const text of strings) {
+          // `before` leaves no line break, so `editorLabel` only writes out its invisible characters.
+          assert.strictEqual(editorLabel(text), editorLabel(before(text)), JSON.stringify(text));
+        }
+      }
+    });
+
+    test('linear: a type holding a string of 200,000 spaces (security review of M4: quadratic, seconds per label)', () => {
+      for (const text of [`p : "a${' '.repeat(200_000)}b"`, `x${' \t'.repeat(100_000)}\n y`]) {
+        const started = process.hrtime.bigint();
+        editorLabel(text, 500);
+        editorLabel(text);
+        assert.ok(process.hrtime.bigint() - started < 200_000_000n, 'more than 200 ms');
+      }
+    });
+
     test('cut at a character boundary with an ellipsis', () => {
       assert.strictEqual(editorLabel('abcdef', 4), 'abc…');
       assert.strictEqual(editorLabel('abcd', 4), 'abcd');

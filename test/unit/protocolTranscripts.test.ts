@@ -32,6 +32,8 @@ import {
   interpret,
   intro,
   isEndOfInputLine,
+  isIdentifierName,
+  isOperatorInParentheses,
   loadFile,
   makeCase,
   makeLemma,
@@ -48,6 +50,7 @@ import {
   version,
   type CommandResult,
 } from '../../src/backend/ide/protocol';
+import { isHoleSpan } from '../../src/backend/ide/holes';
 import { int, list, str, sym } from '../../src/backend/ide/sexp';
 import type { IdeCommand, IdeMessage, IncomingFrame, ReplyPayload } from '../../src/backend/ide/types';
 import { encodeFrame } from '../../src/backend/ide/wire';
@@ -146,12 +149,139 @@ const browse = (ns: string): Request => text(browseNamespace(ns));
 const complete = (prefix: string): Request => ({ command: replCompletions(prefix), decode: decodeCompletions });
 const evaluate = (input: string): Request => text(interpret(input));
 
+/** The M4 requests, as `scripts/record-transcripts.mjs` sends them. */
+const meta = (): Request => ({ command: metavariables(), decode: decodeMetavariables });
+const split = (line: number, column: number, name: string): Request => text(caseSplit({ line, column }, name));
+const splits = (line: number, from: number, to: number, name: string): Request[] =>
+  Array.from({ length: to - from + 1 }, (_, i) => split(line, from + i, name));
+const lemma = (line: number, hole: string): Request => ({ command: makeLemma(line, hole), decode: decodeLemma });
+const introR = (line: number, hole: string): Request => ({ command: intro(line, hole), decode: decodeIntro });
+const nextSearch = (n: number): Request[] => Array.from({ length: n }, () => text(proofSearchNext()));
+const nextDef = (n: number): Request[] => Array.from({ length: n }, () => text(generateDefNext()));
+/**
+ * `:missing NAME`: through the builder when it takes the name (an identifier or an operator in
+ * parentheses); the recorder's other probes (`Edits.both`, a bare operator, text after the name) as
+ * the same `:interpret` text, which the builder refuses (the test `missing refuses`).
+ */
+const miss = (name: string): Request => ({
+  command: isIdentifierName(name) || isOperatorInParentheses(name) ? missingCases(name) : interpret(`:missing ${name}`),
+  decode: decodeMissingCases,
+});
+
 /** A stub command (F3): its answer is `(:ok "…")`, or `(:ok ())` for the name lists. */
 const stub = (name: string, ...args: (string | number)[]): IdeCommand =>
   list(sym(name), ...args.map((a) => (typeof a === 'number' ? int(a) : str(a))));
 
 const REQUESTS: Readonly<Record<string, readonly Request[]>> = {
+  'ambig-holes': [load1('Ambig.idr'), meta(), where('g_rhs'), text(refine(14, 'g_rhs', 'A.foo')), text(refine(14, 'g_rhs', 'Ambig.B.foo'))],
   'ambig-refine': [load1('Ambig.idr'), text(refine(14, 'g_rhs', 'foo'))],
+  'clean-split-columns': [load1('Clean.idr'), ...splits(8, 2, 7, 'xs')],
+  'edits-layout': [
+    load1('Layout.idr'),
+    lemma(11, 'and_true'), lemma(10, 'and_false'), lemma(15, 'or_true'), lemma(19, 'plus2_rhs'), lemma(24, 'twice_rhs'), miss('isOdd'),
+    text(addClause(30, 'isOdd')), text(addClause(37, 'inl')), text(generateDef(37, 'inl')), text(addClause(39, '(<->)')), text(generateDef(39, '(<->)')),
+    text(addClause(41, 'pair')), text(addClause(41, 'other')), text(generateDef(41, 'pair')), text(makeWith(44, 'note_rhs')), split(48, 3, 'y'),
+    text(makeWith(48, 'above_rhs')),
+  ],
+  'edits-blocks': [
+    load1('Blocks.idr'),
+    lemma(14, 'ns_rhs'), lemma(20, 'mut_rhs'), lemma(24, 'default_rhs'), lemma(31, 'pw_rhs'), miss('f4'), miss('bc'), text(makeWith(41, 'let_rhs')),
+    load1('Indented.idr'), lemma(6, 'f_rhs'),
+  ],
+  'edits-names': [
+    load1('Edits.idr'),
+    meta(),
+    ...['count_rhs', 'step_rhs', 'go_rhs', 'classify_big', 'classify_small', 'op_rhs', 'let_rhs', 'case_nothing', 'case_just', 'inline_rhs',
+      'under_rhs', 'choose_rhs', 'check_rhs', 'label_rhs', 'pair_rhs', 'fun_rhs', "h'", 'ε', 'zip3', 'swap', '<||>', '(<||>)', 'nope'].map(where),
+    split(85, 8, "x'"), lemma(85, "h'"), text(makeCase(85, "h'")), text(makeWith(85, "h'")), introR(85, "h'"), text(refine(85, "h'", 'S')),
+    text(proofSearch(85, "h'")),
+    split(88, 3, 'x₁'), lemma(88, 'ε'), text(makeCase(88, 'ε')), text(makeWith(88, 'ε')), introR(88, 'ε'), text(proofSearch(88, 'ε')),
+    text(addClause(87, 'δ')),
+    ...['both', 'Edits.both', 'count', 'zip3', '(<&&>)', '<&&>', 'primed', 'δ', 'nope', 'go', 'both :t id', 'both\n:t id', 'both -- c'].map(miss),
+    lemma(27, 'nope'), text(makeCase(27, 'nope')), text(makeWith(27, 'nope')), introR(27, 'nope'), text(refine(27, 'nope', 'S')),
+    text(proofSearch(27, 'nope')), split(27, 12, 'nope'),
+    text(generateDef(27, 'go')), text(generateDef(13, 'count')), text(generateDef(12, 'count')),
+  ],
+  'edits-searches': [
+    load1('Edits.idr'),
+    text(proofSearch(61, 'choose_rhs')), ...nextSearch(5),
+    text(proofSearch(70, 'check_rhs')), ...nextSearch(2),
+    text(proofSearch(70, 'check_rhs', ['isBig'])), ...nextSearch(3),
+    text(proofSearch(70, 'check_rhs', ['nope'])),
+    text(proofSearch(70, 'check_rhs', ['"; :t id'])),
+    text(proofSearch(73, 'label_rhs')), ...nextSearch(1),
+    text(proofSearch(73, 'label_rhs', ['describe'])),
+    text(proofSearch(78, 'pair_rhs')), ...nextSearch(1),
+    text(proofSearch(81, 'fun_rhs')), ...nextSearch(2),
+    text(generateDef(75, 'swap')), ...nextDef(3),
+    text(generateDef(41, '(<||>)')), ...nextDef(2),
+    text(generateDef(8, 'zip3')), ...nextDef(3),
+    introR(78, 'pair_rhs'), introR(81, 'fun_rhs'), introR(61, 'choose_rhs'), introR(73, 'label_rhs'),
+    text(refine(61, 'choose_rhs', 'not')), text(refine(73, 'label_rhs', 'describe')), text(refine(27, 'go_rhs', 'plus')),
+    text(refine(27, 'go_rhs', 'acc')), text(refine(78, 'pair_rhs', 'MkPair')), text(refine(27, 'go_rhs', 'length')),
+    text(refine(27, 'go_rhs', 'foldr')), text(refine(27, 'go_rhs', 'S (S')), text(refine(27, 'go_rhs', 'True')), text(refine(27, 'go_rhs', 'nope')),
+    text(refine(73, 'label_rhs', '"a\\"b\\\\c"')), text(refine(73, 'label_rhs', ':t id')), text(refine(73, 'label_rhs', 'describe 1\n:t id')),
+  ],
+  'edits-shapes': [
+    load1('Edits.idr'),
+    text(addClause(8, 'zip3')), text(addClause(9, 'zip3')), text(addClause(10, 'zip3')), text(addClause(11, 'zip3')), text(addClause(8, 'whatever')),
+    text(generateDef(8, 'zip3')), text(generateDef(9, 'zip3')), text(generateDef(10, 'zip3')),
+    split(14, 7, 'xs'), split(14, 0, 'xs'), lemma(15, 'count_rhs'), text(makeCase(15, 'count_rhs')), text(makeWith(15, 'count_rhs')),
+    text(makeCase(14, 'count_rhs')), text(makeWith(14, 'count_rhs')),
+    split(18, 6, 'm'), split(19, 6, 'n'), split(19, 6, 'm'), split(20, 3, 'n'), text(makeWith(18, 'step_rhs')), text(makeWith(20, 'step_rhs')),
+    text(makeCase(20, 'step_rhs')), text(addClause(17, 'step')),
+    split(27, 12, 'ys'), split(27, 0, 'ys'), text(addClause(26, 'go')), lemma(27, 'go_rhs'), text(makeCase(27, 'go_rhs')), text(makeWith(27, 'go_rhs')),
+    split(32, 12, 'n'), split(31, 10, 'n'), text(addClause(30, 'classify')), lemma(32, 'classify_big'), text(makeCase(32, 'classify_big')),
+    text(makeWith(32, 'classify_big')),
+    split(39, 1, 'x'), split(39, 8, 'y'), text(addClause(38, '(<&&>)')), text(addClause(41, '(<||>)')), lemma(39, 'op_rhs'), text(makeCase(39, 'op_rhs')),
+    text(makeWith(39, 'op_rhs')),
+    split(45, 9, 'n'), lemma(45, 'let_rhs'), text(makeCase(45, 'let_rhs')), text(makeWith(45, 'let_rhs')),
+    split(50, 8, 'k'), split(48, 10, 'mn'), lemma(50, 'case_just'), text(makeCase(50, 'case_just')), text(makeWith(50, 'case_just')),
+    split(53, 22, 'm'), text(makeCase(53, 'inline_rhs')),
+    split(57, 7, 'n'), lemma(57, 'under_rhs'), text(makeCase(57, 'under_rhs')), text(makeWith(57, 'under_rhs')),
+  ],
+  'edits-impossible': [load1('Absurd.lidr'), split(9, 10, 'p'), split(12, 20, 'x'), load1('ImposTab.idr'), split(12, 18, 'x'), split(14, 4, 'x')],
+  'edits-case-words': [
+    load1('CaseWords.idr'), split(10, 6, 'xs'), split(13, 6, 'xs'), split(17, 7, 'xs'), split(20, 7, 'xs'), split(25, 8, 'y'),
+    split(30, 16, 'case_val'), split(34, 16, 'case_val'),
+  ],
+  'edits-shadowing': [
+    load1('Shadow.idr'), split(11, 14, 'xs'), split(11, 11, 'n'), split(14, 11, 'xs'), split(22, 25, 'y'),
+    text(addClause(24, 'f')), text(addClause(26, 'j')), text(generateDef(26, 'j')), text(makeWith(29, 'mw_h')), introR(32, 'g'),
+  ],
+  'edits-same-name': [load1('SameName.idr'), miss('g'), miss('f'), miss('go')],
+  'dup-holes': [load1('DupHole.idr'), meta(), where('h'), where('g'), text(proofSearch(6, 'h')), text(proofSearch(9, 'h')), lemma(9, 'h')],
+  'hole-errors': [
+    load1('HoleErr.idr'), meta(), where('before_rhs'), where('after_rhs'), where('bad'),
+    split(6, 8, 'n'), split(12, 7, 'xs'), text(addClause(5, 'before')), text(addClause(14, 'cover')), text(generateDef(8, 'bad')), at('xs', 12, 6),
+    lemma(12, 'after_rhs'), text(makeCase(12, 'after_rhs')), text(makeWith(12, 'after_rhs')), introR(6, 'before_rhs'), text(refine(6, 'before_rhs', 'S')),
+    text(proofSearch(12, 'after_rhs')), ...nextSearch(1), miss('cover'), miss('bad'),
+  ],
+  'holes-ipkg-base': [load1('src/Holes/Base.idr'), meta(), where('todo'), where('secret_rhs'), introR(7, 'todo')],
+  'holes-ipkg-main': [
+    load1('src/Holes/Main.idr'), meta(), ...['todo', 'util_rhs', 'secret_rhs', 'size_rhs'].map(where),
+    introR(8, 'todo'), lemma(8, 'todo'), text(proofSearch(8, 'todo')), text(refine(8, 'todo', 'S')), introR(8, 'Holes.Main.todo'),
+    text(makeCase(8, 'todo')), text(makeWith(8, 'todo')), split(8, 7, 'ns'), introR(11, 'size_rhs'),
+    load1('src/Holes/Other.idr'), meta(), where('todo'),
+    load1('src/Holes/Main.idr'), meta(), where('todo'),
+  ],
+  'holes-ipkg-other': [load1('src/Holes/Other.idr'), meta(), where('todo'), introR(6, 'todo')],
+  'holes-ipkg-util': [load1('src/Holes/Util.idr'), meta(), where('todo'), where('util_rhs'), where('secret_rhs')],
+  'holes-loose-base': [load1('Base.idr'), meta(), where('todo')],
+  'holes-loose-main': [load1('Main.idr'), meta(), where('todo'), where('size_rhs'), introR(6, 'todo'), introR(9, 'size_rhs'), load1('Base.idr'), meta(), where('todo')],
+  'lit-indent-editing': [load1('LitIndent.lidr'), text(addClause(9, 'go')), text(addClause(12, 'isEven')), text(generateDef(12, 'isEven'))],
+  'lit2-editing': [
+    load1('Lit2.lidr'), meta(), where('vlen_rhs'), where('half_rhs'), where('vapp'),
+    ...splits(9, 0, 10, 'xs'),
+    text(addClause(8, 'vlen')), text(addClause(11, 'vapp')), lemma(9, 'vlen_rhs'), text(makeCase(9, 'vlen_rhs')), text(makeWith(9, 'vlen_rhs')),
+    text(proofSearch(9, 'vlen_rhs')), ...nextSearch(2), text(generateDef(11, 'vapp')), ...nextDef(2), introR(9, 'vlen_rhs'), text(refine(9, 'vlen_rhs', 'S')),
+    miss('both'),
+    split(19, 6, 'n'), split(19, 0, 'n'), split(18, 6, 'n'), lemma(19, 'half_rhs'), text(makeCase(19, 'half_rhs')), text(makeWith(19, 'half_rhs')),
+    lemma(18, 'half_rhs'), text(makeCase(18, 'half_rhs')), text(makeWith(18, 'half_rhs')), text(addClause(18, 'half')), text(addClause(17, 'half')),
+    introR(19, 'half_rhs'), text(refine(19, 'half_rhs', 'S')), text(proofSearch(19, 'half_rhs')),
+  ],
+  'part-editing': [load1('Part.idr'), meta(), text(addClause(3, 'g')), text(generateDef(3, 'g')), text(addClause(6, 'main')), miss('main')],
+  'plain-split-columns': [load1('Plain.idr'), meta(), ...splits(5, 1, 5, 'n')],
   'clean-editing': [
     load1('Clean.idr'),
     text(caseSplit({ line: 8, column: 0 }, 'xs')),
@@ -202,6 +332,7 @@ const REQUESTS: Readonly<Record<string, readonly Request[]>> = {
     { command: metavariables(), decode: decodeMetavariables },
     // F31: the line after the path is dropped; the builder has none.
     { command: list(sym('load-file'), str(`${ROOT}/Clean.idr`), int(3)) },
+    { command: nameAt('append'), decode: decodeNameAt },
   ],
   'enable-syntax': [text(list(sym('enable-syntax'), { kind: 'bool', value: false })), load1('Clean.idr')],
   'eval-command-forms': [
@@ -396,8 +527,8 @@ function prng(seed: number): () => number {
 // -------------------------------------------------------------------------------------------
 
 suite('backend/ide protocol against the 0.8.0 transcripts', () => {
-  test('the recordings are the 42 scenarios of format 1 from idris2 0.8.0, and each has a request table', () => {
-    assert.strictEqual(SCENARIOS.length, 42);
+  test('the recordings are the 65 scenarios of format 1 from idris2 0.8.0, and each has a request table', () => {
+    assert.strictEqual(SCENARIOS.length, 65);
     for (const [scenario, t] of TRANSCRIPTS) {
       assert.strictEqual(t.meta.format, 1, scenario);
       assert.strictEqual(t.meta.idris2.version, '0.8.0', scenario);
@@ -749,6 +880,14 @@ suite('backend/ide protocol against the 0.8.0 transcripts', () => {
       ]);
     });
 
+    test('M4: :metavariables lists append, a declaration without clauses; its :name-at span is the declaration line, not a ?name (holes.ts leaves it out)', () => {
+      const [append] = ok(decodeNameAt(exchange('clean-lookups', 13).payload));
+      assert.deepStrictEqual(append, { name: 'Clean.append', file: `${ROOT}/Clean.idr`, span: { start: { line: 4, column: 0 }, end: { line: 4, column: 47 } } });
+      assert.strictEqual(isHoleSpan(append.span, 'append'), false);
+      const [vlenRhs] = ok(decodeNameAt(exchange('clean-lookups', 9).payload));
+      assert.strictEqual(isHoleSpan(vlenRhs.span, 'vlen_rhs'), true);
+    });
+
     test('a path through a symbolic link to the session directory is refused; the real path loads', () => {
       const [viaLink, real, relative] = exchanges('load-symlink');
       assert.strictEqual(errorMessage(viaLink.payload), `Source file "${LINK}/Clean.idr" is not in the source directory "${ROOT}"`);
@@ -842,6 +981,49 @@ suite('backend/ide protocol against the 0.8.0 transcripts', () => {
         assert.deepStrictEqual(eventsOf(scenario, 'unframed', 'stdout').map((e) => e.text).filter((t) => !isEndOfInputLine(t) && t !== '${PORT}\n'), [], scenario);
       }
       assert.strictEqual(ok(decodeText(exchange('eval-socket', 1).payload)).text, 'MkIO (prim__putStr "hi\\n")');
+    });
+
+    test('M4, F16 revised: after a load that returned an error, the requests that find their place by line fail; the others answer', () => {
+      const answer = (scenario: string, request: string): ReplyPayload =>
+        exchanges(scenario).find((x) => x.sent.includes(request))?.payload ?? assert.fail(request);
+      assert.deepStrictEqual(
+        ['(:case-split 6 8 "n")', '(:case-split 12 7 "xs")', '(:add-clause 5 "before")', '(:generate-def 8 "bad")'].map((r) => errorMessage(answer('hole-errors', r))),
+        ['No clause to split here', 'No clause to split here', 'before not defined here', "Can't find declaration for bad on line 8"],
+      );
+      for (const request of ['(:make-lemma 12', '(:make-case 12', '(:make-with 12', '(:intro 6', '(:refine 6', '(:proof-search 12', ':missing cover']) {
+        assert.strictEqual(answer('hole-errors', request).kind, 'ok', request);
+      }
+      assert.deepStrictEqual([2, 3].map((i) => errorMessage(exchange('part-editing', i).payload)), ['g not defined here', "Can't find declaration for g on line 3"]);
+    });
+
+    test('M4, F11 revised: literate markers in the edit answers of a bird-track file', () => {
+      const lit = (request: string): string => ok(decodeText(exchanges('lit2-editing').find((x) => x.sent.includes(request))?.payload ?? assert.fail(request))).text;
+      assert.strictEqual(lit('(:case-split 9 0 "xs")'), '> vlen [] = ?vlen_rhs_0\n> vlen (x :: xs) = ?vlen_rhs_1');
+      assert.strictEqual(lit('(:make-case 9 "vlen_rhs")').split('\n')[0], '> > vlen xs = case _ of');
+      assert.deepStrictEqual(lit('(:make-with 9 "vlen_rhs")').split('\n').map((l) => l.slice(0, 8)), ['> > > vl', '> >   > ']);
+      assert.strictEqual(lit('(:interpret ":missing both")'), 'Lit2.both:\nboth True False\nboth False _');
+      // Below the `> ` line (file line 16), at half's compiler lines: the source line read is the next one.
+      assert.strictEqual(lit('(:case-split 19 6 "n")'), '>\n>');
+      assert.strictEqual(lit('(:make-case 19 "half_rhs")'), '>');
+    });
+
+    test('M4, E16: :name-at answers every hole of the name with its file; the commands that look a hole up by name fail on two', () => {
+      const main = exchanges('holes-ipkg-main');
+      const todo = ok(decodeNameAt(main.find((x) => x.sent.includes('(:name-at "todo")'))?.payload ?? assert.fail()));
+      assert.deepStrictEqual(todo.map((e) => [e.name, e.file]), [['Holes.Base.todo', `${ROOT}/src/Holes/Base.idr`], ['Holes.Main.todo', `${ROOT}/src/Holes/Main.idr`]]);
+      assert.deepStrictEqual(
+        ['(:intro 8 "todo")', '(:make-lemma 8 "todo")', '(:proof-search 8 "todo" ())', '(:intro 8 "Holes.Main.todo")'].map((r) => errorMessage(main.find((x) => x.sent.includes(r))?.payload ?? assert.fail(r))),
+        ['Could not find hole named todo', "Can't make lifted definition", 'Not a searchable hole', 'Could not find hole named Holes.Main.todo'],
+      );
+      const names = ok(decodeMetavariables(exchange('edits-names', 1).payload)).map((m) => m.name);
+      assert.ok(['Edits.(<||>)', 'Edits.zip3', 'Edits.swap', 'Edits.ε'].every((n) => names.includes(n)), 'declarations without clauses are listed; non-ASCII names read back');
+    });
+
+    test('M4: :missing takes one name and nothing after it; a bare operator is not a name to it', () => {
+      const missing = (name: string): ReplyPayload => exchanges('edits-names').find((x) => x.sent.includes(`":missing ${name}"`))?.payload ?? assert.fail(name);
+      assert.match(errorMessage(missing('both :t id')), /Expected end of input/);
+      assert.match(errorMessage(missing('<&&>')), /Expected namespaced name/);
+      assert.deepStrictEqual(ok(decodeMissingCases(missing('(<&&>)'))), [{ kind: 'covered', name: 'Edits.(<&&>)' }]);
     });
 
     test('E5: each warning kind arrives as :warning of a load that returns :ok', () => {

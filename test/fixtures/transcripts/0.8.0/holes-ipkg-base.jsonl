@@ -1,0 +1,34 @@
+{"kind":"meta","format":1,"scenario":"holes-ipkg-base","description":"E16: holes-ipkg, Holes.Base loaded first: :metavariables and :name-at of todo, secret_rhs, and :intro on its todo","facts":["F2"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-09-30","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build/.vscode-idris2"],"cwd":"test/fixtures/workspaces/holes-ipkg","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"holes.ipkg":"861a1312fa2fe2b72e028e93f16d984edf839c87199d6ecc4d369581a84d3473","src/Holes/Base.idr":"1b9a25a0ade7c7e326a98794929ce2f08fc53ca248c6f019098e4f4ea7a500d0"}}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"0000a7","text":"((:load-file \"${ROOT}/src/Holes/Base.idr\") 1)\n"}
+{"kind":"recv","prefix":"0000c3","text":"(:write-string \"1/1: Building Holes.Base (${ROOT}/src/Holes/Base.idr)\" 1)\n"}
+{"kind":"recv","prefix":"0000fa","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Holes/Base.idr\") (:start 0 0) (:end 0 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fa","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Holes/Base.idr\") (:start 0 7) (:end 0 17)) ((:decor :module)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fb","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Holes/Base.idr\") (:start 2 0) (:end 2 91)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"0000fa","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Holes/Base.idr\") (:start 4 0) (:end 4 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000156","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Holes/Base.idr\") (:start 5 0) (:end 5 5)) ((:name \"twice\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fa","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Holes/Base.idr\") (:start 5 6) (:end 5 7)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00015e","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Holes/Base.idr\") (:start 5 8) (:end 5 11)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fc","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Holes/Base.idr\") (:start 5 12) (:end 5 14)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00015f","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Holes/Base.idr\") (:start 5 15) (:end 5 18)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000160","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Holes/Base.idr\") (:start 6 0) (:end 6 5)) ((:name \"twice\") (:namespace \"Holes.Base\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00014f","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Holes/Base.idr\") (:start 6 6) (:end 6 7)) ((:name \"n\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fa","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Holes/Base.idr\") (:start 6 8) (:end 6 9)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000157","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Holes/Base.idr\") (:start 8 0) (:end 8 6)) ((:name \"secret\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fa","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Holes/Base.idr\") (:start 8 7) (:end 8 8)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00015e","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Holes/Base.idr\") (:start 8 9) (:end 8 12)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000161","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Holes/Base.idr\") (:start 9 0) (:end 9 6)) ((:name \"secret\") (:namespace \"Holes.Base\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fa","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/src/Holes/Base.idr\") (:start 9 7) (:end 9 8)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok ()) 1)\n"}
+{"kind":"send","prefix":"000018","text":"((:metavariables 80) 2)\n"}
+{"kind":"recv","prefix":"000076","text":"(:return (:ok ((\"\\\"Holes.Base.secret_rhs\\\"\" () (\"Nat\" ())) (\"\\\"Holes.Base.todo\\\"\" ((\"  n\" \"Nat\" ())) (\"Nat\" ())))) 2)\n"}
+{"kind":"send","prefix":"000016","text":"((:name-at \"todo\") 3)\n"}
+{"kind":"recv","prefix":"0000e4","text":"(:return (:ok ((\"Holes.Base.todo\" (:filename \"${ROOT}/src/Holes/Base.idr\") (:start 6 10) (:end 6 15)))) 3)\n"}
+{"kind":"send","prefix":"00001c","text":"((:name-at \"secret_rhs\") 4)\n"}
+{"kind":"recv","prefix":"0000e9","text":"(:return (:ok ((\"Holes.Base.secret_rhs\" (:filename \"${ROOT}/src/Holes/Base.idr\") (:start 9 9) (:end 9 20)))) 4)\n"}
+{"kind":"send","prefix":"000016","text":"((:intro 7 \"todo\") 5)\n"}
+{"kind":"recv","prefix":"000024","text":"(:return (:ok (\"0\" \"S ?todo_0\")) 5)\n"}
+{"kind":"close"}
+{"kind":"unframed","text":"Alas the file is done, aborting\n"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":["build/.vscode-idris2/ttc/2025081600/Holes/Base.ttc","build/.vscode-idris2/ttc/2025081600/Holes/Base.ttm"]}

@@ -41,7 +41,7 @@ suite('backend/null NullBackend', () => {
 
   test('every method rejects with Unsupported and a reason', async () => {
     const backend: IdrisBackend = new NullBackend();
-    const edit: EditRequest = { kind: 'caseSplit', doc: anyDoc, pos: anyPos, name: 'xs' };
+    const edit: EditRequest = { kind: 'caseSplit', doc: anyDoc, version: 1, pos: anyPos, name: 'xs' };
     const reasons = [
       await rejectsUnsupported(backend.load(anyDoc)),
       await rejectsUnsupported(backend.typeAt(anyDoc, anyPos, 'xs')),

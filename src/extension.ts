@@ -7,15 +7,19 @@
  * pool and IDE-mode backend (the registry's provider for every root), the checks with their
  * diagnostic collection, and the backend and trace commands; then M3's providers and commands
  * (hover, definition, documentation, namespaces, semantic tokens, symbols, highlights, completion,
- * inlay hints — all asking through one `DocumentQueries` — and Evaluate Selection); then the
- * toolchain UI (status item and QuickPick, Setup Information, install commands, notifications).
- * deactivate() disposes all of it in reverse order, which kills every session process.
+ * inlay hints — all asking through one `DocumentQueries` — and Evaluate Selection); then M4's
+ * interactive editing (commands, code actions, cycling), the holes (model, Holes view, Next /
+ * Previous Hole, List Holes) with the `idris2.isIdrisWorkspace` context key, and Show Keybindings;
+ * then the toolchain UI (status item and QuickPick, Setup Information, install commands,
+ * notifications). deactivate() disposes all of it in reverse order, which kills every session
+ * process.
  *
  * Activation stays cheap: nothing here waits for a process or the file system. The toolchain
  * service starts its first scan when it is created and the UI follows its change events; no
  * session process starts before an Idris document is checked (the pool starts a session with its
  * first request). M3's providers ask only when VS Code calls them, and the `eval` session starts
- * at the first evaluation. Every process goes through `core/process.ts`, which starts nothing in an
+ * at the first evaluation. M4's commands ask when they are run, and the holes model asks after the
+ * loads the checks make. Every process goes through `core/process.ts`, which starts nothing in an
  * untrusted workspace (Restricted Mode, package.json `capabilities.untrustedWorkspaces`).
  */
 import * as fs from 'fs';
@@ -38,8 +42,14 @@ import { registerConsent } from './features/consent/register';
 import { DocumentChecks } from './features/diagnostics/checks';
 import { registerBackendCommands, type BackendNotice } from './features/diagnostics/commands';
 import { ProtocolTraceChannel, registerTraceCommands } from './features/diagnostics/trace';
+import { registerEditing } from './features/editing/register';
 import { registerEvaluation, type EvaluationOutcome, type DrawnEvaluation } from './features/eval/register';
 import { registerHelpCommands } from './features/help/commands';
+import { registerShowKeybindings } from './features/help/keybindings';
+import { registerHoles } from './features/holes/register';
+import type { HoleNode } from './features/holes/tree';
+import type { HoleModel } from './features/holes/types';
+import { trackIsIdrisWorkspace } from './features/holes/workspaceContext';
 import { registerCompletion } from './features/intelligence/completion';
 import { registerInlayHints } from './features/intelligence/inlayHints';
 import { createDocumentQueries } from './features/intelligence/queries';
@@ -87,6 +97,17 @@ export interface TestApi {
   readonly evaluations: readonly EvaluationOutcome[];
   /** M3: the evaluation results drawn in the document of `uri` (VS Code's API cannot read decorations). */
   evaluationResults(uri: vscode.Uri): readonly DrawnEvaluation[];
+  /**
+   * M4: the editing commands (`features/editing/register.ts`): every run's outcome, in order
+   * (`outcomes`), and each document's Proof Search or Generate Definition cycle (`cycleOf`).
+   */
+  readonly editing: ReturnType<typeof registerEditing>;
+  /** M4: the holes of the files the compiler checked (`features/holes/types.ts` `HoleModel`). */
+  readonly holes: HoleModel;
+  /** M4: the Holes view's tree data (its items, as VS Code gets them). */
+  readonly holesTree: vscode.TreeDataProvider<HoleNode>;
+  /** M4: the Holes view (its badge). */
+  readonly holesView: vscode.TreeView<HoleNode>;
 }
 
 let store: DisposableStore | undefined;
@@ -178,9 +199,8 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
       processEnv: process.env,
     }),
   );
-  const projects = store.add(
-    createProjectIndex({ workspace: projectWorkspace(store), toolchain, runner, trust, log }),
-  );
+  const workspaceSurface = projectWorkspace(store);
+  const projects = store.add(createProjectIndex({ workspace: workspaceSurface, toolchain, runner, trust, log }));
   const registry = store.add(new BackendRegistry());
 
   // M2: IDE mode. Nothing here starts a process: a session starts with its first request.
@@ -277,6 +297,33 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
       { keepOutcomes: context.extensionMode === vscode.ExtensionMode.Test },
     ),
   );
+
+  // M4: interactive editing and holes. Registering starts nothing: the commands ask when they are
+  // run (through the same DocumentQueries), the holes model after the loads the checks make.
+  const editing = store.add(
+    registerEditing(
+      vscode,
+      { queries: intelligenceDeps.queries, loads: ideMode, registry, projects, checks, config, trust, log },
+      { keepOutcomes: context.extensionMode === vscode.ExtensionMode.Test },
+    ),
+  );
+  const holes = store.add(registerHoles(vscode, { queries: intelligenceDeps.queries, loads: ideMode, releases: ideMode, registry, log }));
+  store.add(
+    trackIsIdrisWorkspace({
+      // One result is enough (`maxResults`): the project index lists them all itself.
+      hasIpkgFile: async () => (await vscode.workspace.findFiles('**/*.ipkg', undefined, 1)).some((uri) => uri.scheme === 'file'),
+      onDidCreateOrDeleteIpkgFile: workspaceSurface.onDidCreateOrDeleteIpkgFile,
+      onDidChangeFolders: workspaceSurface.onDidChangeFolders,
+      openDocuments: () => vscode.workspace.textDocuments,
+      onDidOpenDocument: (listener) => vscode.workspace.onDidOpenTextDocument(listener),
+      setContext: (key, value) => {
+        void vscode.commands.executeCommand('setContext', key, value);
+      },
+      log,
+    }),
+  );
+  store.add(registerShowKeybindings(vscode, { config, manifest: context.extension.packageJSON, platform: process.platform }));
+
   store.add(
     registerTraceCommands(vscode, {
       acceptArgument: context.extensionMode === vscode.ExtensionMode.Test,
@@ -327,6 +374,10 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
     intelligenceNotices: intelligence.notices,
     evaluations: evaluation.outcomes,
     evaluationResults: (uri) => evaluation.drawn(uri.toString()),
+    editing,
+    holes: holes.model,
+    holesTree: holes.tree,
+    holesView: holes.view,
   };
 }
 

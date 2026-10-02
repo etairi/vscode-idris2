@@ -1,0 +1,158 @@
+{"kind":"meta","format":1,"scenario":"lit2-editing","description":"F11: Lit2.lidr (bird tracks): :metavariables, :name-at; :case-split on xs at columns 0 to 10; :add-clause, :make-lemma/-case/-with, :proof-search, :generate-def, :intro, :refine and :missing above the line `> ` (file line 16, two lines of the unlit text); below it, the commands at the compiler's line of half and at its file line","facts":["F2","F11","F15","F29","F30"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-09-30","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build/.vscode-idris2"],"cwd":"test/fixtures/workspaces/broken","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"Lit2.lidr":"fb9dc12ae6685cd8ad848daa3756bdb9db65824b0fdd9ecfd3016bf7ac1bc927"}}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"00009e","text":"((:load-file \"${ROOT}/Lit2.lidr\") 1)\n"}
+{"kind":"recv","prefix":"0000b4","text":"(:write-string \"1/1: Building Lit2 (${ROOT}/Lit2.lidr)\" 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 0 0) (:end 0 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 0 7) (:end 0 11)) ((:decor :module)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 2 0) (:end 2 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 2 7) (:end 2 16)) ((:decor :module)))))) 1)\n"}
+{"kind":"recv","prefix":"00014c","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 7 0) (:end 7 4)) ((:name \"vlen\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 7 5) (:end 7 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000152","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 7 7) (:end 7 11)) ((:name \"Vect\") (:namespace \"Data.Vect\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000148","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 7 12) (:end 7 13)) ((:name \"n\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000148","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 7 14) (:end 7 15)) ((:name \"a\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 7 16) (:end 7 18)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000156","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 7 19) (:end 7 22)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000150","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 8 0) (:end 8 4)) ((:name \"vlen\") (:namespace \"Lit2\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000147","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 8 5) (:end 8 7)) ((:name \"xs\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 8 8) (:end 8 9)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00014e","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 10 0) (:end 10 4)) ((:name \"vapp\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 10 5) (:end 10 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000154","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 10 7) (:end 10 11)) ((:name \"Vect\") (:namespace \"Data.Vect\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00014a","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 10 12) (:end 10 13)) ((:name \"n\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00014a","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 10 14) (:end 10 15)) ((:name \"a\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 10 16) (:end 10 18)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000155","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 10 19) (:end 10 23)) ((:name \"Vect\") (:namespace \"Data.Vect\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00014a","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 10 24) (:end 10 25)) ((:name \"m\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00014a","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 10 26) (:end 10 27)) ((:name \"a\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 10 28) (:end 10 30)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000155","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 10 31) (:end 10 35)) ((:name \"Vect\") (:namespace \"Data.Vect\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 10 36) (:end 10 37)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00014a","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 10 37) (:end 10 38)) ((:name \"n\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000158","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 10 39) (:end 10 40)) ((:name \"+\") (:namespace \"Prelude.Num\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00014a","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 10 41) (:end 10 42)) ((:name \"m\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 10 42) (:end 10 43)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00014a","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 10 44) (:end 10 45)) ((:name \"a\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 12 0) (:end 12 7)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00014e","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 13 0) (:end 13 4)) ((:name \"both\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 13 5) (:end 13 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000159","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 13 7) (:end 13 11)) ((:name \"Bool\") (:namespace \"Prelude.Basics\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 13 12) (:end 13 14)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00015a","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 13 15) (:end 13 19)) ((:name \"Bool\") (:namespace \"Prelude.Basics\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 13 20) (:end 13 22)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000158","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 13 23) (:end 13 26)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000152","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 14 0) (:end 14 4)) ((:name \"both\") (:namespace \"Lit2\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000158","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 14 5) (:end 14 9)) ((:name \"True\") (:namespace \"Prelude.Basics\") (:decor :data) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00015a","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 14 10) (:end 14 14)) ((:name \"True\") (:namespace \"Prelude.Basics\") (:decor :data) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 14 15) (:end 14 16)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f2","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 14 17) (:end 14 18)) ((:decor :data)))))) 1)\n"}
+{"kind":"recv","prefix":"00014e","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 17 0) (:end 17 4)) ((:name \"half\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 17 5) (:end 17 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000157","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 17 7) (:end 17 10)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 17 11) (:end 17 13)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000158","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 17 14) (:end 17 17)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000152","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 18 0) (:end 18 4)) ((:name \"half\") (:namespace \"Lit2\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000148","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 18 5) (:end 18 6)) ((:name \"n\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 18 7) (:end 18 8)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00014f","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 20 0) (:end 20 5)) ((:name \"twice\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 20 6) (:end 20 7)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000157","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 20 8) (:end 20 11)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 20 12) (:end 20 14)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000158","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 20 15) (:end 20 18)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 21 0) (:end 21 5)) ((:name \"twice\") (:namespace \"Lit2\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000148","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 21 6) (:end 21 7)) ((:name \"n\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 21 8) (:end 21 9)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00014a","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 21 10) (:end 21 11)) ((:name \"n\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000158","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 21 12) (:end 21 13)) ((:name \"+\") (:namespace \"Prelude.Num\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00014a","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Lit2.lidr\") (:start 21 14) (:end 21 15)) ((:name \"n\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok ()) 1)\n"}
+{"kind":"send","prefix":"000018","text":"((:metavariables 80) 2)\n"}
+{"kind":"recv","prefix":"0000ef","text":"(:return (:ok ((\"\\\"Lit2.half_rhs\\\"\" ((\"  n\" \"Nat\" ())) (\"Nat\" ())) (\"\\\"Lit2.vapp\\\"\" () (\"Vect n a -> Vect m a -> Vect (plus n m) a\" ())) (\"\\\"Lit2.vlen_rhs\\\"\" ((\" 0  a\" \"Type\" ()) (\" 0  n\" \"Nat\" ()) (\"  xs\" \"Vect n a\" ())) (\"Nat\" ())))) 2)\n"}
+{"kind":"send","prefix":"00001a","text":"((:name-at \"vlen_rhs\") 3)\n"}
+{"kind":"recv","prefix":"0000d9","text":"(:return (:ok ((\"Lit2.vlen_rhs\" (:filename \"${ROOT}/Lit2.lidr\") (:start 8 10) (:end 8 19)))) 3)\n"}
+{"kind":"send","prefix":"00001a","text":"((:name-at \"half_rhs\") 4)\n"}
+{"kind":"recv","prefix":"0000da","text":"(:return (:ok ((\"Lit2.half_rhs\" (:filename \"${ROOT}/Lit2.lidr\") (:start 18 9) (:end 18 18)))) 4)\n"}
+{"kind":"send","prefix":"000016","text":"((:name-at \"vapp\") 5)\n"}
+{"kind":"recv","prefix":"0000d6","text":"(:return (:ok ((\"Lit2.vapp\" (:filename \"${ROOT}/Lit2.lidr\") (:start 10 0) (:end 10 45)))) 5)\n"}
+{"kind":"send","prefix":"00001b","text":"((:case-split 9 0 \"xs\") 6)\n"}
+{"kind":"recv","prefix":"00004b","text":"(:return (:ok \"> vlen [] = ?vlen_rhs_0\n> vlen (x :: xs) = ?vlen_rhs_1\") 6)\n"}
+{"kind":"send","prefix":"00001b","text":"((:case-split 9 1 \"xs\") 7)\n"}
+{"kind":"recv","prefix":"00004b","text":"(:return (:ok \"> vlen [] = ?vlen_rhs_0\n> vlen (x :: xs) = ?vlen_rhs_1\") 7)\n"}
+{"kind":"send","prefix":"00001b","text":"((:case-split 9 2 \"xs\") 8)\n"}
+{"kind":"recv","prefix":"00004b","text":"(:return (:ok \"> vlen [] = ?vlen_rhs_0\n> vlen (x :: xs) = ?vlen_rhs_1\") 8)\n"}
+{"kind":"send","prefix":"00001b","text":"((:case-split 9 3 \"xs\") 9)\n"}
+{"kind":"recv","prefix":"00004b","text":"(:return (:ok \"> vlen [] = ?vlen_rhs_0\n> vlen (x :: xs) = ?vlen_rhs_1\") 9)\n"}
+{"kind":"send","prefix":"00001c","text":"((:case-split 9 4 \"xs\") 10)\n"}
+{"kind":"recv","prefix":"00004c","text":"(:return (:ok \"> vlen [] = ?vlen_rhs_0\n> vlen (x :: xs) = ?vlen_rhs_1\") 10)\n"}
+{"kind":"send","prefix":"00001c","text":"((:case-split 9 5 \"xs\") 11)\n"}
+{"kind":"recv","prefix":"00004c","text":"(:return (:ok \"> vlen [] = ?vlen_rhs_0\n> vlen (x :: xs) = ?vlen_rhs_1\") 11)\n"}
+{"kind":"send","prefix":"00001c","text":"((:case-split 9 6 \"xs\") 12)\n"}
+{"kind":"recv","prefix":"00004c","text":"(:return (:ok \"> vlen [] = ?vlen_rhs_0\n> vlen (x :: xs) = ?vlen_rhs_1\") 12)\n"}
+{"kind":"send","prefix":"00001c","text":"((:case-split 9 7 \"xs\") 13)\n"}
+{"kind":"recv","prefix":"00004c","text":"(:return (:ok \"> vlen [] = ?vlen_rhs_0\n> vlen (x :: xs) = ?vlen_rhs_1\") 13)\n"}
+{"kind":"send","prefix":"00001c","text":"((:case-split 9 8 \"xs\") 14)\n"}
+{"kind":"recv","prefix":"00004c","text":"(:return (:ok \"> vlen [] = ?vlen_rhs_0\n> vlen (x :: xs) = ?vlen_rhs_1\") 14)\n"}
+{"kind":"send","prefix":"00001c","text":"((:case-split 9 9 \"xs\") 15)\n"}
+{"kind":"recv","prefix":"000030","text":"(:return (:error \"No clause to split here\") 15)\n"}
+{"kind":"send","prefix":"00001d","text":"((:case-split 9 10 \"xs\") 16)\n"}
+{"kind":"recv","prefix":"000030","text":"(:return (:error \"No clause to split here\") 16)\n"}
+{"kind":"send","prefix":"00001c","text":"((:add-clause 8 \"vlen\") 17)\n"}
+{"kind":"recv","prefix":"00002b","text":"(:return (:ok \"> vlen xs = ?vlen_rhs\") 17)\n"}
+{"kind":"send","prefix":"00001d","text":"((:add-clause 11 \"vapp\") 18)\n"}
+{"kind":"recv","prefix":"00002e","text":"(:return (:ok \"> vapp xs ys = ?vapp_rhs\") 18)\n"}
+{"kind":"send","prefix":"000020","text":"((:make-lemma 9 \"vlen_rhs\") 19)\n"}
+{"kind":"recv","prefix":"000081","text":"(:return (:ok (:metavariable-lemma (:replace-metavariable \"vlen_rhs xs\") (:definition-type \"> vlen_rhs : Vect n a -> Nat\"))) 19)\n"}
+{"kind":"send","prefix":"00001f","text":"((:make-case 9 \"vlen_rhs\") 20)\n"}
+{"kind":"recv","prefix":"000056","text":"(:return (:ok \"> > vlen xs = case _ of\n>                  case_val => ?vlen_rhs\") 20)\n"}
+{"kind":"send","prefix":"00001f","text":"((:make-with 9 \"vlen_rhs\") 21)\n"}
+{"kind":"recv","prefix":"000057","text":"(:return (:ok \"> > > vlen xs with (_)\n> >   > vlen xs | with_pat = ?vlen_rhs_rhs\") 21)\n"}
+{"kind":"send","prefix":"000025","text":"((:proof-search 9 \"vlen_rhs\" ()) 22)\n"}
+{"kind":"recv","prefix":"000030","text":"(:return (:ok \"0\" ((0 1 ((:decor :data))))) 22)\n"}
+{"kind":"send","prefix":"000018","text":"(:proof-search-next 23)\n"}
+{"kind":"recv","prefix":"000030","text":"(:return (:ok \"1\" ((0 1 ((:decor :data))))) 23)\n"}
+{"kind":"send","prefix":"000018","text":"(:proof-search-next 24)\n"}
+{"kind":"recv","prefix":"000030","text":"(:return (:ok \"2\" ((0 1 ((:decor :data))))) 24)\n"}
+{"kind":"send","prefix":"00001f","text":"((:generate-def 11 \"vapp\") 25)\n"}
+{"kind":"recv","prefix":"00004d","text":"(:return (:ok \"> vapp [] ys = ys\n> vapp (x :: xs) ys = x :: vapp xs ys\") 25)\n"}
+{"kind":"send","prefix":"000018","text":"(:generate-def-next 26)\n"}
+{"kind":"recv","prefix":"000081","text":"(:return (:ok \"> vapp [] ys = ys\n> vapp (x :: xs) [] = x :: vapp xs []\n> vapp (x :: xs) (y :: ys) = x :: vapp xs (y :: ys)\") 26)\n"}
+{"kind":"send","prefix":"000018","text":"(:generate-def-next 27)\n"}
+{"kind":"recv","prefix":"000081","text":"(:return (:ok \"> vapp [] ys = ys\n> vapp (x :: xs) [] = x :: vapp xs []\n> vapp (x :: xs) (y :: ys) = y :: vapp xs (x :: ys)\") 27)\n"}
+{"kind":"send","prefix":"00001b","text":"((:intro 9 \"vlen_rhs\") 28)\n"}
+{"kind":"recv","prefix":"000029","text":"(:return (:ok (\"0\" \"S ?vlen_rhs_0\")) 28)\n"}
+{"kind":"send","prefix":"000020","text":"((:refine 9 \"vlen_rhs\" \"S\") 29)\n"}
+{"kind":"recv","prefix":"000023","text":"(:return (:ok \"S ?vlen_rhs_0\") 29)\n"}
+{"kind":"send","prefix":"000022","text":"((:interpret \":missing both\") 30)\n"}
+{"kind":"recv","prefix":"00003d","text":"(:return (:ok \"Lit2.both:\nboth True False\nboth False _\") 30)\n"}
+{"kind":"send","prefix":"00001c","text":"((:case-split 19 6 \"n\") 31)\n"}
+{"kind":"recv","prefix":"000019","text":"(:return (:ok \">\n>\") 31)\n"}
+{"kind":"send","prefix":"00001c","text":"((:case-split 19 0 \"n\") 32)\n"}
+{"kind":"recv","prefix":"000019","text":"(:return (:ok \">\n>\") 32)\n"}
+{"kind":"send","prefix":"00001c","text":"((:case-split 18 6 \"n\") 33)\n"}
+{"kind":"recv","prefix":"000030","text":"(:return (:error \"No clause to split here\") 33)\n"}
+{"kind":"send","prefix":"000021","text":"((:make-lemma 19 \"half_rhs\") 34)\n"}
+{"kind":"recv","prefix":"000079","text":"(:return (:ok (:metavariable-lemma (:replace-metavariable \"half_rhs n\") (:definition-type \"half_rhs : Nat -> Nat\"))) 34)\n"}
+{"kind":"send","prefix":"000020","text":"((:make-case 19 \"half_rhs\") 35)\n"}
+{"kind":"recv","prefix":"000017","text":"(:return (:ok \">\") 35)\n"}
+{"kind":"send","prefix":"000020","text":"((:make-with 19 \"half_rhs\") 36)\n"}
+{"kind":"recv","prefix":"00003d","text":"(:return (:ok \">with (_)\n  >| with_pat = ?half_rhs_rhs\") 36)\n"}
+{"kind":"send","prefix":"000021","text":"((:make-lemma 18 \"half_rhs\") 37)\n"}
+{"kind":"recv","prefix":"00007b","text":"(:return (:ok (:metavariable-lemma (:replace-metavariable \"half_rhs n\") (:definition-type \"> half_rhs : Nat -> Nat\"))) 37)\n"}
+{"kind":"send","prefix":"000020","text":"((:make-case 18 \"half_rhs\") 38)\n"}
+{"kind":"recv","prefix":"000054","text":"(:return (:ok \"> > half n = case _ of\n>                 case_val => ?half_rhs\") 38)\n"}
+{"kind":"send","prefix":"000020","text":"((:make-with 18 \"half_rhs\") 39)\n"}
+{"kind":"recv","prefix":"000055","text":"(:return (:ok \"> > > half n with (_)\n> >   > half n | with_pat = ?half_rhs_rhs\") 39)\n"}
+{"kind":"send","prefix":"00001d","text":"((:add-clause 18 \"half\") 40)\n"}
+{"kind":"recv","prefix":"00002a","text":"(:return (:ok \"> half k = ?half_rhs\") 40)\n"}
+{"kind":"send","prefix":"00001d","text":"((:add-clause 17 \"half\") 41)\n"}
+{"kind":"recv","prefix":"00002e","text":"(:return (:error \"half not defined here\") 41)\n"}
+{"kind":"send","prefix":"00001c","text":"((:intro 19 \"half_rhs\") 42)\n"}
+{"kind":"recv","prefix":"000029","text":"(:return (:ok (\"0\" \"S ?half_rhs_0\")) 42)\n"}
+{"kind":"send","prefix":"000021","text":"((:refine 19 \"half_rhs\" \"S\") 43)\n"}
+{"kind":"recv","prefix":"000023","text":"(:return (:ok \"S ?half_rhs_0\") 43)\n"}
+{"kind":"send","prefix":"000026","text":"((:proof-search 19 \"half_rhs\" ()) 44)\n"}
+{"kind":"recv","prefix":"000017","text":"(:return (:ok \"n\") 44)\n"}
+{"kind":"close"}
+{"kind":"unframed","text":"Alas the file is done, aborting\n"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":["build/.vscode-idris2/ttc/2025081600/Lit2.ttc","build/.vscode-idris2/ttc/2025081600/Lit2.ttm"]}

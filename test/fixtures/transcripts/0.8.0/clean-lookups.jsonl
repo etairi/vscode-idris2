@@ -1,4 +1,4 @@
-{"kind":"meta","format":1,"scenario":"clean-lookups","description":"Clean.idr: positional :type-of at the column bounds of xs, :type-of by name, :docs-for with and without a mode, :name-at unqualified and qualified, :metavariables, and a reload with the ignored line argument","facts":["F2","F7","F30","F31","F33"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-09-27","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build/.vscode-idris2"],"cwd":"test/fixtures/workspaces/broken","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"Clean.idr":"4f802b8f59f48e473ab27910d428c50c4eff75c7e103766c1de6c0ae80ffea19"}}
+{"kind":"meta","format":1,"scenario":"clean-lookups","description":"Clean.idr: positional :type-of at the column bounds of xs, :type-of by name, :docs-for with and without a mode, :name-at unqualified and qualified, :metavariables, a reload with the ignored line argument, and :name-at of append, a declaration without clauses that :metavariables lists (M4)","facts":["F2","F7","F30","F31","F33"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-09-30","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build/.vscode-idris2"],"cwd":"test/fixtures/workspaces/broken","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"Clean.idr":"4f802b8f59f48e473ab27910d428c50c4eff75c7e103766c1de6c0ae80ffea19"}}
 {"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
 {"kind":"send","prefix":"00009e","text":"((:load-file \"${ROOT}/Clean.idr\") 1)\n"}
 {"kind":"recv","prefix":"0000b5","text":"(:write-string \"1/1: Building Clean (${ROOT}/Clean.idr)\" 1)\n"}
@@ -89,6 +89,8 @@
 {"kind":"recv","prefix":"000148","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 7 5) (:end 7 7)) ((:name \"xs\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 13)\n"}
 {"kind":"recv","prefix":"0000f2","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Clean.idr\") (:start 7 8) (:end 7 9)) ((:decor :keyword)))))) 13)\n"}
 {"kind":"recv","prefix":"000016","text":"(:return (:ok ()) 13)\n"}
+{"kind":"send","prefix":"000019","text":"((:name-at \"append\") 14)\n"}
+{"kind":"recv","prefix":"0000d8","text":"(:return (:ok ((\"Clean.append\" (:filename \"${ROOT}/Clean.idr\") (:start 4 0) (:end 4 47)))) 14)\n"}
 {"kind":"close"}
 {"kind":"unframed","text":"Alas the file is done, aborting\n"}
 {"kind":"exit","code":1,"signal":null}

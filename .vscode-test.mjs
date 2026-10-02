@@ -30,7 +30,14 @@
 //                   fixture); out/test/integration/intelligence-loose/*; fake tools, stdio: types
 //                   of pattern variables, inlay hints, completion, evaluation (the eval session,
 //                   the refusal of REPL commands) and the keybinding schemes
-//   e2e             test/fixtures/workspaces/simple-ipkg; out/test/e2e/** (M1, M2 and M3 files);
+//   editing         (M4) test/fixtures/workspaces/broken (loose files: Clean.idr, the F30 editing
+//                   fixture; Ambig.idr, F29; Part.idr, F15; Plain.idr, F15; Lit2.lidr, F11);
+//                   out/test/integration/editing/*; fake tools, stdio: the editing commands, their
+//                   code actions and cycling, save before an action
+//   holes           (M4) test/fixtures/workspaces/holes: loose files, Main.idr importing Base.idr,
+//                   a hole `todo` in each (E16); out/test/integration/holes/*; fake tools, stdio:
+//                   the Holes view, Next/Previous Hole, List Holes, Show Keybindings
+//   e2e             test/fixtures/workspaces/simple-ipkg; out/test/e2e/** (M1–M4 files);
 //                   the real toolchain (no toolchain settings, the runner's PATH). Only part of the
 //                   configuration when IDRIS2_E2E=1 or when run as `npm run test:e2e`, so
 //                   `npm test` needs no compiler; the suite's own environment has IDRIS2_E2E=1.
@@ -213,6 +220,22 @@ export default defineConfig([
     workspaceFolder: 'test/fixtures/workspaces/broken',
     env: FAKE_ENV,
     launchArgs: launchArgs(profile('user-data-intel-loose', { ...BASE_SETTINGS, ...FAKE_TOOL_SETTINGS })),
+    mocha,
+  },
+  {
+    label: 'editing',
+    files: 'out/test/integration/editing/*.test.js',
+    workspaceFolder: 'test/fixtures/workspaces/broken',
+    env: FAKE_ENV,
+    launchArgs: launchArgs(profile('user-data-editing', { ...BASE_SETTINGS, ...FAKE_TOOL_SETTINGS })),
+    mocha,
+  },
+  {
+    label: 'holes',
+    files: 'out/test/integration/holes/*.test.js',
+    workspaceFolder: 'test/fixtures/workspaces/holes',
+    env: FAKE_ENV,
+    launchArgs: launchArgs(profile('user-data-holes', { ...BASE_SETTINGS, ...FAKE_TOOL_SETTINGS })),
     mocha,
   },
   ...(e2eEnabled

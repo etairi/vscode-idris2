@@ -31,6 +31,7 @@
  * is the nearest); idris2-lsp reports every name as a `Function` (`DocumentSymbol.idr`, `9a2f0ad`
  * [src]), so the two backends' outlines differ.
  */
+import { MODIFIER_KEYWORDS } from '../../core/idrisSyntax';
 import type { SyntaxModel } from '../syntax/selectionRangeModel';
 import type { Token as LexToken } from '../syntax/lexer';
 
@@ -54,9 +55,6 @@ export interface DocumentSymbolModel {
 }
 
 type Block = NonNullable<SyntaxModel['blockAtLine'][number]>;
-
-/** Visibility and totality keywords (`visOption`, `totalityOpt` in Parser.idr [src]). */
-const MODIFIERS: ReadonlySet<string> = new Set(['public', 'export', 'private', 'total', 'partial', 'covering']);
 
 /** The top-level blocks of `model`, in order. */
 function rootBlocks(model: SyntaxModel): Block[] {
@@ -123,7 +121,7 @@ function nameAt(model: SyntaxModel, level: readonly LexToken[], i: number): { na
 
 /** `i` past visibility and totality keywords and pragmas. */
 function skipModifiers(level: readonly LexToken[], i: number): number {
-  while (i < level.length && ((level[i].kind === 'keyword' && MODIFIERS.has(level[i].text)) || level[i].kind === 'pragma')) {
+  while (i < level.length && ((level[i].kind === 'keyword' && MODIFIER_KEYWORDS.has(level[i].text)) || level[i].kind === 'pragma')) {
     i++;
   }
   return i;

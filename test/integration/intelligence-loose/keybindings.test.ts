@@ -1,13 +1,14 @@
-// Suite `intelligence-loose`: the keyboard shortcuts of M3 (ROADMAP §9 Q5, decided 2026-09-28;
-// ARCHITECTURE §10): the letters t, d and e under `idris2.keybindings.scheme`. What is checked is
-// what VS Code made of package.json's contributions in this running instance — its Default
-// Keybindings document (`workbench.action.openDefaultKeybindingsFile`, the core's and every
-// extension's bindings with the key resolved for this OS and the `when` clause as VS Code parsed
-// it: `getDefaultKeybindingsContent` / `writeKeybindingItem` in VS Code 1.139.1's workbench bundle
+// Suite `intelligence-loose`: the keyboard shortcuts (ROADMAP §9 Q5, decided 2026-09-28;
+// ARCHITECTURE §10's letter table): M3's letters t, d and e and M4's c, a, l, w, m, s, n, g, i, r,
+// [ and ] under `idris2.keybindings.scheme`. What is checked is what VS Code made of package.json's
+// contributions in this running instance — its Default Keybindings document
+// (`workbench.action.openDefaultKeybindingsFile`, the core's and every extension's bindings with
+// the key resolved for this OS and the `when` clause as VS Code parsed it:
+// `getDefaultKeybindingsContent` / `writeKeybindingItem` in VS Code 1.139.1's workbench bundle
 // [src]) — and that the commands the letters run are registered. The `when` clauses are then
 // evaluated for each value of the setting. That VS Code evaluates `config.idris2.keybindings.scheme`
 // in a key press from the user settings is VS Code's own behaviour and is not simulated here: no
-// API dispatches a key (docs/checklists/M3.md presses them).
+// API dispatches a key (docs/checklists/M3.md and M4.md press them).
 import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -20,12 +21,29 @@ interface Binding {
   readonly when?: string;
 }
 
-const LETTERS = { t: 'idris2.typeAtCursor', d: 'idris2.docsAtCursor', e: 'idris2.evaluateSelection' } as const;
+/** Each letter and the command it runs (ARCHITECTURE §10); M4's `g` also runs the next definition, inside the command. */
+const LETTERS = {
+  t: 'idris2.typeAtCursor',
+  d: 'idris2.docsAtCursor',
+  e: 'idris2.evaluateSelection',
+  c: 'idris2.caseSplit',
+  a: 'idris2.addClause',
+  l: 'idris2.makeLemma',
+  w: 'idris2.makeWith',
+  m: 'idris2.makeCase',
+  s: 'idris2.proofSearch',
+  n: 'idris2.nextResult',
+  g: 'idris2.generateDefinition',
+  i: 'idris2.intro',
+  r: 'idris2.refineHole',
+  '[': 'idris2.previousHole',
+  ']': 'idris2.nextHole',
+} as const;
 const SCHEMES = ['auto', 'chords', 'prefix', 'none'] as const;
 /**
- * E23 on macOS [live, VS Code 1.139.1, this suite]: the bindings whose first key is `ctrl+c` (the
- * `chords` scheme, the default there) or `ctrl+alt+i` (`prefix`) in the Default Keybindings
- * document, other than this extension's.
+ * E23 on macOS [live, this suite: VS Code 1.139.1 in M3, 1.140.0 since M4's integration]: the
+ * bindings whose first key is `ctrl+c` (the `chords` scheme, the default there) or `ctrl+alt+i`
+ * (`prefix`) in the Default Keybindings document, other than this extension's.
  */
 const E23_DARWIN: Record<string, string[]> = { 'ctrl+c': [], 'ctrl+alt+i': [] };
 
@@ -66,7 +84,7 @@ function schemeOf(when: string | undefined): string | undefined {
     : undefined;
 }
 
-suite('M3 keybindings: t, d, e under idris2.keybindings.scheme', () => {
+suite('keybindings: the letters of M3 and M4 under idris2.keybindings.scheme', () => {
   let bindings: Binding[];
   let ours: Binding[];
 
@@ -75,8 +93,8 @@ suite('M3 keybindings: t, d, e under idris2.keybindings.scheme', () => {
     ours = bindings.filter((b) => b.command.startsWith('idris2.'));
   });
 
-  test('VS Code accepted exactly the nine bindings: one per letter and scheme (auto, chords, prefix), none for `none`', () => {
-    assert.strictEqual(ours.length, 9, JSON.stringify(ours, null, 1));
+  test('VS Code accepted exactly 45 bindings: one per letter and scheme (auto, chords, prefix), none for `none`', () => {
+    assert.strictEqual(ours.length, 3 * Object.keys(LETTERS).length, JSON.stringify(ours, null, 1));
     for (const b of ours) {
       assert.ok(schemeOf(b.when) !== undefined, `unexpected when clause: ${JSON.stringify(b)}`);
     }
@@ -97,7 +115,7 @@ suite('M3 keybindings: t, d, e under idris2.keybindings.scheme', () => {
     });
   }
 
-  test('the three commands are registered, and no other idris2 command is bound', async () => {
+  test('the fifteen commands are registered, and no other idris2 command is bound', async () => {
     const registered = new Set(await vscode.commands.getCommands(true));
     for (const command of Object.values(LETTERS)) {
       assert.ok(registered.has(command), `${command} is not registered`);
@@ -126,6 +144,17 @@ suite('M3 keybindings: t, d, e under idris2.keybindings.scheme', () => {
     if (process.platform === 'darwin') {
       assert.deepStrictEqual(collisions, E23_DARWIN);
     }
+  });
+
+  test('E23 for every letter, on every OS: no binding of VS Code or of another extension is one of our chords or starts with one', () => {
+    // The first keys alone are the collisions listed above (on Linux, copy and Open Chat); a whole
+    // chord of ours — `ctrl+c ctrl+[` — must not be anyone else's, nor the start of a longer one.
+    const clashes = ours.flatMap((mine) =>
+      bindings
+        .filter((b) => !b.command.startsWith('idris2.') && (b.key === mine.key || b.key.startsWith(`${mine.key} `)))
+        .map((b) => `${mine.key} (${mine.command}) ↔ ${b.command}${b.when === undefined ? '' : ` when ${b.when}`}`),
+    );
+    assert.deepStrictEqual(clashes, []);
   });
 
   test('the setting is read from the user settings only: writing it to the workspace is refused', async () => {

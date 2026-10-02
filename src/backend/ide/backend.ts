@@ -6,8 +6,8 @@
  * root's session serving again after an automatic restart, `onDidRestart`; the active document's
  * root, which `idris2.ideMode.maxSessions` never stops).
  *
- * M2 implements `load` (`caps.diagnostics`); M3 the queries, the token index and evaluation
- * (below); `holes` and `edit` reject with `Unsupported` until M4, which owns them.
+ * M2 implements `load` (`caps.diagnostics`); M3 the queries, the token index and evaluation;
+ * M4 `holes` and `edit` (below).
  *
  * **Queries** (M3; `IdrisBackend`, *Queries*, in `backend/types.ts`). `typeAt`, `docsFor`,
  * `definition`, `completions` and `browseNamespace` ask the root's `check` session, in the context
@@ -117,6 +117,54 @@
  * may fail with a module-name mismatch — until a later walk finds a change and stops it, or the
  * session is restarted.
  *
+ * **Holes** (M4, `holes.ts`). When a `check` load is answered, its reply hook
+ * (`RequestOptions.onReply`) asks `(:metavariables 80)`, and that reply's hook `(:name-at "NAME")`
+ * for each unqualified name that may be a hole's (at most `MAX_LOCATED_NAMES`, the loaded file's
+ * first), all `urgent`, so that they are sent before a load that was waiting, which would change the
+ * compiler's context (UX review of M4: in a batch of visible documents the holes of all but the
+ * last were refused), and all `longAction`s: on large types they take seconds (`listHoles`). When
+ * they take longer than `idris2.ideMode.longActionTimeout` (the process restarts), they are not asked
+ * after a load of the same text of the file again, nor for `HolesOptions.kept` (`slowHoles`), until a
+ * listing of it succeeds (List Holes asks, with Cancel: `HolesOptions.token` restarts the session
+ * while the listing runs, `untilCancelled`). The answer is kept per load; `holes` returns the one of the session's last
+ * load of the document's file, also after another file was loaded, and asks again only while that
+ * file is the one loaded last (`NotLoaded` when neither holds). An urgent load already waiting when
+ * the reply arrives (`maxBackgroundChecks`) still goes first; that load's holes are then known at
+ * its file's next load. A hole's range is converted
+ * with the text its file had: the loaded file's as the load read it (`LoadRecord.textBefore`), another
+ * file's as read from disk (kept per load, as for `definition`, and off when that file changed on
+ * disk since the compiler built it).
+ *
+ * **Edits** (M4, `edits.ts`). `edit` is answered like a query and never loads. A request that names
+ * a place is sent only while the session's last load is of the document's file and read exactly the
+ * lines the document shows at `EditRequest.version` — the text read right before the load was
+ * written and again when its reply arrived, both the same (`LoadRecord.loadedText`) — since the
+ * compiler edits the text it loaded; otherwise it rejects with `NotLoaded`, having sent nothing.
+ * `edits.ts` plans the request and its replacement ranges from those lines; its refusals, and names
+ * that are not Idris names, are `Unsupported`, sent nothing. Right before the write the load must
+ * still be the session's last, and for `:case-split`, which reads its line from the file on disk when
+ * it is asked, the file must still hold that text. The requests that find a hole by its name in the
+ * compiler's whole context (`EditPlan.hole`: Intro, Refine Hole, Proof Search, Make Lemma) are sent
+ * only when that load's holes hold one hole of the name, at the cursor (`holeRefusal`). Proof
+ * Search, Generate Definition (and their `-Next`), Refine Hole, Intro, Make Lemma and Add Missing
+ * Cases run under `idris2.ideMode.longActionTimeout` (`EditPlan.long`); a cancellation before the write drops the
+ * request, one after it restarts the root's `check` session only (`restartCheck`: the protocol has
+ * no cancel). That costs the loaded file, the answers kept per load and the running search: the
+ * queries waiting in the session are refused before their write (`NotLoaded`) and asked again after
+ * a load, and the file is loaded again, in a new process on the build directory the old one left,
+ * which took
+ * 0.22–0.31 s to start and 0.10–0.24 s to load on `contrib` modules (docs/measurements/first-load.md,
+ * *Headline numbers* [live]).
+ *
+ * **Searches** (`-Next`). The compiler keeps one proof search and one definition search per process
+ * (`psResult`, `gdResult`, `Idris/REPL/Opts.idr` [src]); a load resets both (`resetProofState`,
+ * `Idris/REPL.idr` 833–845 [src]), a new one of the same kind replaces it. So a `-Next` is sent only
+ * while the search it continues is the session's: started by this backend for the same document,
+ * answered, and not followed by a load (the load record changed), a search of its kind or a raw
+ * request (`SearchState`), nor by a restart of the process; otherwise it is refused with
+ * `Unsupported`, sending nothing, so that no next result of a stale search is applied. Queries and
+ * the other edits in between do not touch the search [src] and are allowed.
+ *
  * Only type imports from `vscode`: the diagnostic objects are built with the `api` passed in, so
  * the module is unit-tested on Node.
  */
@@ -127,7 +175,9 @@ import { DisposableStore, type IDisposable } from '../../core/disposable';
 import { cancelled, errorText, IdrisException, unsupported } from '../../core/errors';
 import { Emitter, type Event } from '../../core/event';
 import type { Config } from '../../core/config';
+import { holeTokenNames } from '../../core/idrisSyntax';
 import {
+  editorLines,
   fromIdeReplySpan,
   textMap,
   toIdeTypeOfRequest,
@@ -148,39 +198,47 @@ import type {
   BackendKind,
   Capabilities,
   Decor,
+  EditRequest,
   EditResult,
   Evaluation,
   Hole,
+  HolesOptions,
   IdrisBackend,
   LoadOptions,
   LoadResult,
   NamespaceEntry,
+  NextRequest,
   RichText,
   TokenIndex,
   TypeInfo,
 } from '../types';
 import { loadDiagnostics, type DiagnosticRecord, type LoadDiagnostics } from './diagnostics';
+import { editText, holeRefusal, nameProblem, planEdit, planNext, type EditPlan } from './edits';
 import { tokenIndexOf } from './highlight';
+import { holeEntries, holesOf, namesToLocate } from './holes';
 import {
   browseNamespace,
   decodeBuildingLine,
   decodeCompletions,
+  decodeMetavariables,
   decodeNameAt,
   decodeText,
   docsFor,
   interpret,
   loadFile,
+  metavariables,
   nameAt,
   replCompletions,
   toRichText,
   typeOf,
+  type Metavariable,
   type NameLocation,
 } from './protocol';
 import { replCommandRefusal } from './replCommand';
 import { duration, type Clock } from './session';
-import type { IdeCommand, IdeSession, LoadedFile, Reply, SessionLaunch, SessionPool, SessionStateChange } from './types';
+import type { IdeCommand, IdeSession, LoadedFile, LookupRequestOptions, Reply, SessionLaunch, SessionPool, SessionStateChange } from './types';
 
-/** IDE mode since M3: diagnostics (M2) and the read-only intelligence of ROADMAP M3. */
+/** IDE mode since M4: diagnostics (M2), the read-only intelligence of ROADMAP M3, the holes and edits of M4. */
 export const IDE_MODE_CAPABILITIES: Readonly<Capabilities> = Object.freeze({
   ...NO_CAPABILITIES,
   diagnostics: true,
@@ -190,6 +248,13 @@ export const IDE_MODE_CAPABILITIES: Readonly<Capabilities> = Object.freeze({
   semanticTokens: true,
   documentSymbols: true,
   documentHighlights: true,
+  holes: true,
+  holeLocations: true,
+  editing: true,
+  editingNext: true,
+  intro: true,
+  refine: true,
+  missingCases: true,
   docs: true,
   evaluate: true,
   browseNamespace: true,
@@ -374,7 +439,12 @@ export interface LoadedDocument {
   readonly failed: boolean;
 }
 
-/** The causes of a crash (the session restarts) as `SessionStateChange` reports them. */
+/**
+ * The causes of a crash (the session restarts) as `SessionStateChange` reports them: not
+ * `longActionTimeout`, a long request that ran past its limit — an edit, which its command reports
+ * (`onDidFail` would add a second warning, "stopped unexpectedly", for a limit the user waited on),
+ * or the holes of a load, which the Holes view logs (`features/holes/model.ts`).
+ */
 const CRASH_CAUSES = new Set(['exit', 'timeout', 'protocolError']);
 
 /**
@@ -390,6 +460,7 @@ export class IdeMode implements BackendProvider, IDisposable {
   private readonly failed = this.store.add(new Emitter<BackendFailure>());
   private readonly restarted = this.store.add(new Emitter<BackendRestart>());
   private readonly loaded = this.store.add(new Emitter<LoadedDocument>());
+  private readonly released = this.store.add(new Emitter<Classification>());
   /** The last state change of each root's `check` session, by `rootKey`. */
   private readonly lastChange = new Map<string, SessionStateChange>();
   /** Why a root's `check` session is being restarted, until its next handshake (`onDidRestart`). */
@@ -414,6 +485,8 @@ export class IdeMode implements BackendProvider, IDisposable {
    * whose loads were merged share it. Loads of the `eval` session are not reported.
    */
   readonly onDidLoad: Event<LoadedDocument> = this.loaded.event;
+  /** A root was released (`release`): what its loads answered no longer describes an open file. */
+  readonly onDidRelease: Event<Classification> = this.released.event;
 
   constructor(private readonly deps: IdeModeDeps) {
     this.backend = new IdeBackend(deps, (loaded) => this.loaded.fire(loaded));
@@ -465,7 +538,7 @@ export class IdeMode implements BackendProvider, IDisposable {
       if (pending !== 'reconfigure') {
         this.pendingRestarts.set(key, 'crash');
       }
-    } else if (change.state === 'restarting' && change.cause === 'timeout') {
+    } else if (change.state === 'restarting' && (change.cause === 'timeout' || change.cause === 'longActionTimeout')) {
       if (pending === 'crash') {
         this.pendingRestarts.delete(key);
       }
@@ -533,11 +606,12 @@ export class IdeMode implements BackendProvider, IDisposable {
 
   /**
    * Stops the sessions of `root` because its last open document was closed (`SessionPool.release`),
-   * and forgets the token indexes of its files.
+   * forgets the token indexes of its files, and announces it (`onDidRelease`).
    */
   release(root: Classification): void {
     this.deps.pool.release(root);
     this.backend.forget(root);
+    this.released.fire(root);
   }
 
   /**
@@ -591,7 +665,17 @@ export class IdeMode implements BackendProvider, IDisposable {
    * a `:load-file`, a `:proof-search` — so it runs under `idris2.ideMode.longActionTimeout`.
    */
   async sendRaw(root: Classification, text: string): Promise<string> {
-    const reply = await this.deps.pool.sessionFor(root, 'check').request({ kind: 'raw', text }, { kind: 'longAction' });
+    const session = this.deps.pool.sessionFor(root, 'check');
+    const reply = await session.request(
+      { kind: 'raw', text },
+      {
+        kind: 'longAction',
+        beforeSend: () => {
+          this.backend.rawRequest(session);
+          return Promise.resolve();
+        },
+      },
+    );
     return describeReturn(reply);
   }
 
@@ -608,9 +692,15 @@ function describeReturn(reply: Reply): string {
   return payload.kind === 'error' ? `id ${id}: error: ${payload.message.split('\n', 1)[0]}` : `id ${id}: ${payload.kind}`;
 }
 
-/** Not in M3: each names the milestone's feature, not the milestone. */
-function notYet(what: string): Promise<never> {
-  return Promise.reject(unsupported(`${what} is not available with the IDE-mode backend in this version.`));
+/** Whether `req` continues a search. */
+function isNextRequest(req: EditRequest): req is NextRequest {
+  return req.kind === 'exprSearchNext' || req.kind === 'generateDefNext';
+}
+
+/** Whether `doc` shows the lines of `loaded`, a text a load read (its line breaks aside: VS Code joins a document's lines with one). */
+function showsLines(doc: vscode.TextDocument, loaded: string): boolean {
+  const lines = editorLines(loaded.replace(/^\uFEFF/, ''));
+  return lines.length === doc.lineCount && lines.every((line, i) => doc.lineAt(i).text === line);
 }
 
 /**
@@ -620,6 +710,8 @@ function notYet(what: string): Promise<never> {
 interface LoadRecord {
   /** The loaded document's `fileName`. */
   readonly fileName: string;
+  /** The `rootKey` of the session's root. */
+  readonly root: string;
   /** The load returned `(:ok …)`; `undefined` until it has returned. */
   ok: boolean | undefined;
   /**
@@ -629,6 +721,14 @@ interface LoadRecord {
    * reply alone, a save during the load made the index describe the newer text).
    */
   textBefore: string | undefined;
+  /**
+   * A `check` load: the text the compiler read, known when the file read the same right before the
+   * load was written (`textBefore`) and when its reply arrived; else `undefined`. Edits are asked
+   * only while the document shows its lines (module comment, *Edits*).
+   */
+  loadedText: string | undefined;
+  /** `holes`' answer for this load. */
+  holes: Promise<Hole[]> | undefined;
   /** `typeAt` answers of this load, by request (`at L C NAME` positional, `name NAME` by name). */
   readonly types: Map<string, Promise<TypeInfo | undefined>>;
   /** `definition`'s `:name-at` answers of this load, by the name asked (`undefined`: an error). */
@@ -693,6 +793,48 @@ function reloaded(doc: vscode.TextDocument): IdrisException {
     file: doc.fileName,
   });
 }
+
+/**
+ * The rejection (`NotLoaded`) of an edit of a document that does not show the lines the compiler
+ * loaded (module comment, *Edits*): the caller saves, loads it and asks again.
+ */
+function notAsLoaded(doc: vscode.TextDocument): IdrisException {
+  return new IdrisException({
+    kind: 'NotLoaded',
+    message:
+      `${path.basename(doc.fileName)} does not show the text the compiler loaded (it has unsaved changes, or changed since it ` +
+      'was checked), and the compiler edits the text it loaded: save the file and check it again.',
+    file: doc.fileName,
+  });
+}
+
+/** The two searches the compiler keeps per process (module comment, *Searches*). */
+type SearchKind = 'exprSearch' | 'generateDef';
+
+/** A search this backend started and the compiler answered (module comment, *Searches*). */
+interface SearchState {
+  /**
+   * The load that was the session's last when it was sent, of the file of the document it was
+   * started for (`LoadRecord.fileName`; `recordOf` gives a document only a record of its own file).
+   */
+  readonly record: LoadRecord;
+  /** The process that answered it. */
+  readonly launch: SessionLaunch | undefined;
+  /** `SessionSearches.sent[kind]` right after it was sent. */
+  readonly sent: number;
+}
+
+/** Per `check` session: how many requests that replace a search of each kind were sent, and the searches that are current. */
+interface SessionSearches {
+  readonly sent: Record<SearchKind, number>;
+  readonly current: Partial<Record<SearchKind, SearchState>>;
+}
+
+/** What each `-Next` continues and is called. */
+const NEXT: Readonly<Record<NextRequest['kind'], { readonly kind: SearchKind; readonly title: string; readonly search: string }>> = {
+  exprSearchNext: { kind: 'exprSearch', title: 'Next Result', search: 'Proof Search' },
+  generateDefNext: { kind: 'generateDef', title: 'Next Definition', search: 'Generate Definition' },
+};
 
 /**
  * An `eval` session whose `:interpret` took longer than this is stopped once it has answered
@@ -850,6 +992,21 @@ export class IdeBackend implements IdrisBackend {
    * when they differ.
    */
   private readonly comparisons = new WeakMap<LoadRecord, { readonly doc: vscode.TextDocument; readonly version: number; readonly lines: ComparedLines | undefined }>();
+  /** Per `check` session, its searches (module comment, *Searches*). */
+  private readonly searches = new WeakMap<IdeSession, SessionSearches>();
+  /**
+   * Per root (`rootKey`) and file (`fileName`), the holes of the file's load answered last (module
+   * comment, *Holes*): kept for the files with an open document (`IdeModeDeps.isOpen`) and the file
+   * kept last, and forgotten with the root (`forget`).
+   */
+  private readonly keptHoles = new Map<string, Map<string, Promise<Hole[]>>>();
+  /**
+   * Per root (`rootKey`) and file, the SHA-256 of the text of the load whose holes took longer than
+   * `idris2.ideMode.longActionTimeout` (module comment, *Holes*): they are not asked for after a load
+   * of that text again, nor for `HolesOptions.kept`, so that each load does not cost that time and a
+   * restart.
+   */
+  private readonly slowHoles = new Map<string, Map<string, string>>();
 
   constructor(
     private readonly deps: IdeModeDeps,
@@ -1079,7 +1236,7 @@ export class IdeBackend implements IdrisBackend {
     root: Classification,
     session: IdeSession,
     doc: vscode.TextDocument,
-    options: { readonly load?: LoadOptions; readonly readBefore?: boolean } = {},
+    options: { readonly load?: LoadOptions; readonly readBefore?: boolean; readonly holes?: boolean; readonly superseded?: () => boolean } = {},
   ): Promise<QueuedLoad> {
     const cwd = session.cwd;
     // Checked once now, so that nothing is started (or asked) for a load that would be refused …
@@ -1091,7 +1248,19 @@ export class IdeBackend implements IdrisBackend {
     const realCwd = early;
     const sent = this.loadPath(cwd, realCwd, doc.fileName);
     const file: LoadedFile = doc.isDirty ? { path: sent } : { path: sent, version: doc.version };
-    const own: LoadRecord = { fileName: doc.fileName, ok: undefined, textBefore: undefined, types: new Map(), names: new Map(), sources: new Map(), docs: new Map(), warm: false };
+    const own: LoadRecord = {
+      fileName: doc.fileName,
+      root: rootKey(root),
+      ok: undefined,
+      textBefore: undefined,
+      loadedText: undefined,
+      holes: undefined,
+      types: new Map(),
+      names: new Map(),
+      sources: new Map(),
+      docs: new Map(),
+      warm: false,
+    };
     // … and again when the load is the next to be sent, to a process that has started and answered
     // (module comment): until then a first load waits for the toolchain scan, the consent question
     // and the start, and any load for the requests before it.
@@ -1107,7 +1276,27 @@ export class IdeBackend implements IdrisBackend {
     };
     this.records.set(file, own);
     const urgent = options.load?.urgent;
-    const request = session.request(loadFile(sent), { kind: 'load', file, beforeSend, ...(urgent === undefined ? {} : { urgent }) });
+    // A `check` load: its holes are asked for as soon as it is answered (module comment, *Holes*),
+    // unless a newer load of the file is pending: they would only delay it, which answers for itself
+    // (and `holes`, `edit` wait for it, or ask themselves when it is refused before it is sent).
+    const onReply = (): void => {
+      if (options.superseded?.() === true) {
+        return;
+      }
+      const recorded = session.loadedFile;
+      const record = (recorded?.path === sent ? this.records.get(recorded) : undefined) ?? own;
+      if (record.holes === undefined && this.holesTooSlow(record)) {
+        return;
+      }
+      this.keepHoles(record, record.holes ?? this.noteSlowHoles(record, this.listHoles(session, doc, record, true)));
+    };
+    const request = session.request(loadFile(sent), {
+      kind: 'load',
+      file,
+      beforeSend,
+      ...(urgent === undefined ? {} : { urgent }),
+      ...(options.holes === true ? { onReply } : {}),
+    });
     const done = request.then(
       (reply): SentLoad => {
         // Merged loads send the newest caller's `LoadedFile`, which the session has just recorded.
@@ -1148,19 +1337,25 @@ export class IdeBackend implements IdrisBackend {
     this.requireFile(doc, 'Only a file saved on disk can be checked: the compiler reads the file, not the editor.');
     const root = await this.deps.projects.classify(doc.fileName);
     const session = this.deps.pool.sessionFor(root, 'check');
-    const result = this.loadIn(root, session, doc, options);
+    // `result` is noted as the file's pending load before any reply can come (`queueLoad` awaits first).
+    const superseded = (): boolean => {
+      const pending = this.pendingLoads.get(session)?.get(doc.fileName);
+      return pending !== undefined && pending !== result;
+    };
+    const result = this.loadIn(root, session, doc, options, superseded);
     this.notePending(session, doc.fileName, result);
     return result;
   }
 
-  /** `load` in `session`, the `check` session of `root`. */
-  private async loadIn(root: Classification, session: IdeSession, doc: vscode.TextDocument, options?: LoadOptions): Promise<LoadResult> {
-    const { reply, sent, cwd, record } = await (await this.queueLoad(root, session, doc, { load: options, readBefore: true })).done;
+  /** `load` in `session`, the `check` session of `root`; `superseded`: whether a newer load of the file is pending. */
+  private async loadIn(root: Classification, session: IdeSession, doc: vscode.TextDocument, options: LoadOptions | undefined, superseded: () => boolean): Promise<LoadResult> {
+    const { reply, sent, cwd, record } = await (await this.queueLoad(root, session, doc, { load: options, readBefore: true, holes: true, superseded })).done;
     const ipkgPath = root.kind === 'project' ? root.ipkgPath : undefined;
     const { documentFor, textOf } = await this.documents(reply, cwd, doc.fileName, ipkgPath);
     if (!this.answered.has(reply)) {
       this.answered.add(reply);
       const text = textOf(doc.fileName);
+      record.loadedText = text !== undefined && text === record.textBefore ? text : undefined;
       const index = tokenIndexOf(reply.messages, {
         file: doc.fileName,
         isLoadedFile: (name) => name === sent || path.resolve(cwd, name) === doc.fileName,
@@ -1291,9 +1486,16 @@ export class IdeBackend implements IdrisBackend {
    * reload with the position converted for the load before, and the compiler answered about another
    * line [unit-level, the verifier's probe on the real session]).
    */
-  private ask(session: IdeSession, doc: vscode.TextDocument, command: IdeCommand, record?: LoadRecord): Promise<Reply> {
+  private ask(
+    session: IdeSession,
+    doc: vscode.TextDocument,
+    command: IdeCommand,
+    record?: LoadRecord,
+    options: Partial<Pick<LookupRequestOptions, 'kind' | 'urgent' | 'onReply'>> = {},
+  ): Promise<Reply> {
     return session.request(command, {
       kind: 'lookup',
+      ...options,
       beforeSend: () => {
         const loaded = this.recordOf(session, doc);
         if (loaded === undefined) {
@@ -1497,11 +1699,7 @@ export class IdeBackend implements IdrisBackend {
     );
     const inNamespace = namespace === undefined || namespace === '' ? [] : named.filter((entry) => entry.name === `${namespace}.${root}` || entry.name === `${namespace}.(${root})`);
     const found = inNamespace.length > 0 ? inNamespace : named;
-    const realCwd = session.launch?.realCwd;
-    const spelled = (file: string): string => {
-      const inside = realCwd === undefined ? undefined : path.relative(realCwd, file);
-      return inside === undefined || inside.startsWith('..') || path.isAbsolute(inside) ? file : path.join(session.cwd, inside);
-    };
+    const spelled = (file: string): string => this.spelledPath(session, file);
     const textOf = (file: string): Promise<string | undefined> => this.cached(record.sources, file, () => this.deps.readFile(file).catch(() => undefined));
     const shown = new Map<string, RangeMove | undefined>();
     // The loaded file's spans describe the text the load read (*The loaded file*, above).
@@ -1548,12 +1746,354 @@ export class IdeBackend implements IdrisBackend {
     return readable;
   }
 
-  holes(): Promise<Hole[]> {
-    return notYet('Listing holes');
+  /** `file`, a path in a reply, as the editor spells it when it lies inside the session directory's real path. */
+  private spelledPath(session: IdeSession, file: string): string {
+    const realCwd = session.launch?.realCwd;
+    const inside = realCwd === undefined ? undefined : path.relative(realCwd, file);
+    return inside === undefined || inside.startsWith('..') || path.isAbsolute(inside) ? file : path.join(session.cwd, inside);
   }
 
-  edit(): Promise<EditResult> {
-    return notYet('Editing with the compiler');
+  /**
+   * The holes of `doc`'s file as the root's `check` session's last load of it found them (module
+   * comment, *Holes*; `holes.ts`): asked for when that load was answered, or now when it is the load
+   * answered last; `[]` when the compiler answers `:metavariables` with an error. Waits for a reload
+   * of the file being made (`loadedCheckSession`). `NotLoaded` when the session has not loaded the
+   * file, or loaded another since and has no holes of this one.
+   */
+  async holes(doc: vscode.TextDocument, options: HolesOptions = {}): Promise<Hole[]> {
+    let found: { readonly session: IdeSession; readonly record: LoadRecord };
+    try {
+      found = await this.loadedCheckSession(doc, true);
+    } catch (error) {
+      const kept = options.kept === true ? this.keptHoles.get(rootKey(await this.deps.projects.classify(doc.fileName)))?.get(doc.fileName) : undefined;
+      if (kept === undefined || !(error instanceof IdrisException) || error.error.kind !== 'NotLoaded') {
+        throw error;
+      }
+      return kept;
+    }
+    const { session, record } = found;
+    if (record.holes === undefined && options.kept === true && this.holesTooSlow(record)) {
+      throw new IdrisException({
+        kind: 'RequestTimeout',
+        message: `The holes of ${path.basename(doc.fileName)} are not asked for again: listing them took longer than idris2.ideMode.longActionTimeout at a load of the same text.`,
+      });
+    }
+    const token = options.token;
+    if (token?.isCancellationRequested === true) {
+      throw cancelled('Cancelled before the holes were asked for.');
+    }
+    const listing = record.holes ?? this.keepHoles(record, this.listHoles(session, doc, record, false));
+    return token === undefined ? listing : this.untilCancelled(listing, token, session.root);
+  }
+
+  /**
+   * `listing` until `token` is cancelled (`HolesOptions.token`): a cancellation before `listing`
+   * settles rejects with `Cancelled` at once and restarts the `check` session of `root`
+   * (`restartCheck`), which ends the request in flight — the listing's, or the one it waits behind;
+   * the listing's other waiters then get its error, and the next load asks again.
+   */
+  private untilCancelled(listing: Promise<Hole[]>, token: vscode.CancellationToken, root: Classification): Promise<Hole[]> {
+    return new Promise((resolve, reject) => {
+      const subscription = token.onCancellationRequested(() => {
+        subscription.dispose();
+        this.deps.pool.restartCheck(root, 'a listing of holes the user cancelled was running');
+        reject(cancelled('Cancelled: the compiler was restarted, since it cannot stop a request it is answering.'));
+      });
+      listing.then(
+        (holes) => {
+          subscription.dispose();
+          resolve(holes);
+        },
+        (error: unknown) => {
+          subscription.dispose();
+          reject(error instanceof Error ? error : new Error(String(error)));
+        },
+      );
+    });
+  }
+
+  /** Whether listing the holes of `record`'s text took too long before (`slowHoles`). */
+  private holesTooSlow(record: LoadRecord): boolean {
+    const slow = this.slowHoles.get(record.root)?.get(record.fileName);
+    return slow !== undefined && record.textBefore !== undefined && slow === createHash('sha256').update(record.textBefore).digest('hex');
+  }
+
+  /**
+   * Keeps `holes` as `record`'s (`LoadRecord.holes`) and as its file's (`keptHoles`) until it
+   * fails; drops the kept holes of the root's other files without an open document.
+   */
+  private keepHoles(record: LoadRecord, holes: Promise<Hole[]>): Promise<Hole[]> {
+    record.holes = holes;
+    let kept = this.keptHoles.get(record.root);
+    if (kept === undefined) {
+      kept = new Map();
+      this.keptHoles.set(record.root, kept);
+    }
+    kept.set(record.fileName, holes);
+    for (const file of [...kept.keys()]) {
+      if (file !== record.fileName && !this.deps.isOpen(file)) {
+        kept.delete(file);
+      }
+    }
+    holes.then(
+      () => this.slowHoles.get(record.root)?.delete(record.fileName),
+      () => {
+        if (record.holes === holes) {
+          record.holes = undefined;
+        }
+        if (this.keptHoles.get(record.root)?.get(record.fileName) === holes) {
+          this.keptHoles.get(record.root)?.delete(record.fileName);
+        }
+      },
+    );
+    return holes;
+  }
+
+  /**
+   * `holes`, the listing asked right after `record`'s load (`listHoles`' `first`), noting in
+   * `slowHoles` when it times out. Only that listing: its requests are sent one right after the
+   * other after the load, so a time-out it gets is its own, not that of a request before it (whose
+   * time-out rejects the requests queued behind it too, `session.ts`).
+   */
+  private noteSlowHoles(record: LoadRecord, holes: Promise<Hole[]>): Promise<Hole[]> {
+    holes.catch((error: unknown) => {
+      if (error instanceof IdrisException && error.error.kind === 'RequestTimeout' && record.textBefore !== undefined) {
+        let slow = this.slowHoles.get(record.root);
+        if (slow === undefined) {
+          slow = new Map();
+          this.slowHoles.set(record.root, slow);
+        }
+        slow.set(record.fileName, createHash('sha256').update(record.textBefore).digest('hex'));
+      }
+    });
+    return holes;
+  }
+
+  /**
+   * `(:metavariables 80)` and the `:name-at` of each name to locate, for the load `record`. `first`:
+   * right after the load's reply (`queueLoad`), the requests are `urgent` and each is made in the
+   * reply hook of the one before (`RequestOptions.onReply`), so that they are all sent before a
+   * request that was waiting — another file's load would change the compiler's context. They are
+   * `longAction`s (`idris2.ideMode.longActionTimeout`; past it the process restarts without counting
+   * towards giving up, `session.ts`): the compiler normalises each hole's type and premises, which
+   * took 6.55 s for `:metavariables` with four holes of `Vect 65536 Bits8` [live, the UX review of
+   * M4] — under `requestTimeout` (5 s) each such load restarted the process, and the fourth within
+   * five minutes gave the backend up [unit-level, the same review].
+   */
+  private async listHoles(session: IdeSession, doc: vscode.TextDocument, record: LoadRecord, first: boolean): Promise<Hole[]> {
+    const asked = { kind: 'longAction', ...(first ? { urgent: () => true } : {}) } as const;
+    const own = holeTokenNames(record.textBefore ?? '');
+    const locate = (metavariables: readonly Metavariable[]): Promise<Array<[string, readonly NameLocation[] | undefined]>> =>
+      Promise.all(
+        namesToLocate(metavariables, own).map(async (name) => {
+          const entry = await this.cached(record.names, name, async () => {
+            const located = decodeNameAt((await this.ask(session, doc, nameAt(name), record, asked)).payload);
+            return located.kind === 'ok' ? located.value : undefined;
+          });
+          return [name, entry] as [string, readonly NameLocation[] | undefined];
+        }),
+      );
+    let locating: ReturnType<typeof locate> | undefined;
+    const reply = await this.ask(session, doc, metavariables(), record, {
+      ...asked,
+      onReply: (r) => {
+        const listed = decodeMetavariables(r.payload);
+        if (listed.kind === 'ok') {
+          locating = locate(listed.value);
+        }
+      },
+    });
+    const answer = decodeMetavariables(reply.payload);
+    if (answer.kind === 'error') {
+      return [];
+    }
+    const entries = new Map(await (locating ?? locate(answer.value)));
+    // One document per file, not per hole: its lines (and a literate file's line map) are made once.
+    const documents = new Map<string, PositionDocument>();
+    for (const file of new Set(holeEntries(answer.value, entries).map((e) => e.file).filter((f) => path.isAbsolute(f)))) {
+      const spelled = this.spelledPath(session, file);
+      const text =
+        spelled === doc.fileName && record.textBefore !== undefined
+          ? record.textBefore
+          : await this.cached(record.sources, file, () => this.deps.readFile(file).catch(() => undefined));
+      if (text !== undefined) {
+        documents.set(file, textDocument(file, text));
+      }
+    }
+    const { api } = this.deps;
+    return holesOf(answer.value, entries, own, (entry) => {
+      // Not absolute (`(Interactive)`), or not readable: no location.
+      const document = documents.get(entry.file);
+      return document === undefined ? undefined : new api.Location(api.Uri.file(this.spelledPath(session, entry.file)), this.range(fromIdeReplySpan(document, entry.span)));
+    });
+  }
+
+  /**
+   * The edit `req` asks for (module comment, *Edits*; `edits.ts`). Refuses, before anything is
+   * classified or sent, a name that is not an Idris name; then, with `NotLoaded`, a document whose
+   * file is not the one its root's `check` session loaded last or that does not show the lines that
+   * load read (at `req.version`); then what `planEdit` refuses, and the requests that need a clean load
+   * after a load that returned an error (F16).
+   */
+  async edit(req: EditRequest): Promise<EditResult> {
+    const doc = req.doc;
+    this.requireFile(doc, 'Only a file saved on disk can be edited with the compiler: it reads the file, not the editor.');
+    if (isNextRequest(req)) {
+      return this.editNext(req);
+    }
+    const problem = nameProblem(req);
+    if (problem !== undefined) {
+      throw unsupported(problem);
+    }
+    const { session, record } = await this.loadedCheckSession(doc, true);
+    const loaded = record.loadedText;
+    if (doc.version !== req.version || loaded === undefined || !showsLines(doc, loaded)) {
+      throw notAsLoaded(doc);
+    }
+    const plan = planEdit(req, editText(doc, loaded));
+    if (plan.afterFailedLoad !== undefined && record.ok !== true) {
+      throw unsupported(plan.afterFailedLoad);
+    }
+    if (plan.hole !== undefined) {
+      const holes = await (record.holes ?? this.keepHoles(record, this.listHoles(session, doc, record, false)));
+      const refusal = holeRefusal(req, plan.hole, holes, record.ok === true);
+      if (refusal !== undefined) {
+        throw unsupported(refusal);
+      }
+    }
+    const starts = plan.starts;
+    let sent = 0;
+    const reply = await this.sendEdit(session, plan, req.token, async () => {
+      if (this.recordOf(session, doc) !== record) {
+        throw reloaded(doc);
+      }
+      if (plan.readsDisk) {
+        const disk = await this.deps.readFile(doc.fileName).catch(() => undefined);
+        if (disk === undefined || disk.replace(/^\uFEFF/, '') !== loaded.replace(/^\uFEFF/, '')) {
+          throw notAsLoaded(doc);
+        }
+      }
+      if (starts !== undefined) {
+        sent = this.searchesOf(session).sent[starts] += 1;
+      }
+    });
+    if (starts !== undefined && reply.payload.kind === 'ok') {
+      this.searchesOf(session).current[starts] = { record, launch: session.launch, sent };
+    }
+    return plan.decode(reply.payload);
+  }
+
+  /**
+   * A `-Next` (module comment, *Searches*): sent only while the search it continues is current, in
+   * the document it was started for, whose text at `req.version` holds the previous result at
+   * `req.previous`.
+   */
+  private async editNext(req: NextRequest): Promise<EditResult> {
+    const doc = req.doc;
+    const next = NEXT[req.kind];
+    const root = await this.deps.projects.classify(doc.fileName);
+    const session = this.deps.pool.sessionFor(root, 'check');
+    const ended = (): IdrisException =>
+      unsupported(
+        `${next.title}: the ${next.search} it would continue has ended — the file was loaded again, another ${next.search} was ` +
+          `started, or the compiler was restarted since. Run ${next.search} again.`,
+      );
+    if (!this.isCurrentSearch(session, next.kind, doc)) {
+      throw ended();
+    }
+    if (doc.version !== req.version) {
+      throw unsupported(`${next.title}: ${path.basename(doc.fileName)} changed since the previous result was applied.`);
+    }
+    const plan = planNext(req.kind, editText(doc, ''), req.previous);
+    const reply = await this.sendEdit(session, plan, req.token, () =>
+      this.isCurrentSearch(session, next.kind, doc) ? Promise.resolve() : Promise.reject(ended()),
+    );
+    return plan.decode(reply.payload);
+  }
+
+  /** The searches of `session` (module comment, *Searches*). */
+  private searchesOf(session: IdeSession): SessionSearches {
+    let searches = this.searches.get(session);
+    if (searches === undefined) {
+      searches = { sent: { exprSearch: 0, generateDef: 0 }, current: {} };
+      this.searches.set(session, searches);
+    }
+    return searches;
+  }
+
+  /**
+   * Whether the search of `kind` that `session` answered last was started for `doc`'s file and is
+   * still the compiler's (module comment, *Searches*): its load is still the session's last, and of
+   * `doc`'s file (`recordOf`).
+   */
+  private isCurrentSearch(session: IdeSession, kind: SearchKind, doc: vscode.TextDocument): boolean {
+    const searches = this.searchesOf(session);
+    const search = searches.current[kind];
+    return (
+      search !== undefined &&
+      search.sent === searches.sent[kind] &&
+      search.launch === session.launch &&
+      this.recordOf(session, doc) === search.record
+    );
+  }
+
+  /**
+   * A raw request is being written to `session` (`IdeMode.sendRaw`): it may be a search or a load,
+   * so no search of the session is continued after it (module comment, *Searches*).
+   */
+  rawRequest(session: IdeSession): void {
+    const searches = this.searchesOf(session);
+    searches.sent.exprSearch += 1;
+    searches.sent.generateDef += 1;
+  }
+
+  /**
+   * Sends an edit request of `plan` to the `check` session `session`, `check` running right before
+   * the write. `token`: a cancellation before the write drops it; one after it restarts the session
+   * (module comment, *Edits*). Either rejects with the `Cancelled` error. A request the encoder
+   * refuses (above 16 MiB) is `Unsupported`.
+   */
+  private async sendEdit(
+    session: IdeSession,
+    plan: EditPlan,
+    token: vscode.CancellationToken | undefined,
+    check: () => Promise<void>,
+  ): Promise<Reply> {
+    // A function: the token changes under the awaits below.
+    const isCancelled = (): boolean => token?.isCancellationRequested === true;
+    if (isCancelled()) {
+      throw cancelled('Cancelled before the request was sent to the compiler.');
+    }
+    let written = false;
+    const subscription = token?.onCancellationRequested(() => {
+      if (written) {
+        this.deps.pool.restartCheck(session.root, 'a request the user cancelled was running');
+      }
+    });
+    try {
+      return await session.request(plan.command, {
+        kind: plan.long ? 'longAction' : 'lookup',
+        ...(token === undefined ? {} : { token }),
+        beforeSend: async () => {
+          await check();
+          written = true;
+        },
+      });
+    } catch (error) {
+      if (isCancelled()) {
+        throw cancelled(
+          written
+            ? 'Cancelled: the compiler was restarted, since it cannot stop a request it is answering; the file is loaded again when it is needed.'
+            : 'Cancelled before the request was sent to the compiler.',
+        );
+      }
+      if (error instanceof RangeError) {
+        throw unsupported(`Not sent: ${error.message}`);
+      }
+      throw error;
+    } finally {
+      subscription?.dispose();
+    }
   }
 
   /**
@@ -1643,7 +2183,7 @@ export class IdeBackend implements IdrisBackend {
     }
   }
 
-  /** Forgets the token indexes of the files of `root`, its last announced process and texts (its last document was closed). */
+  /** Forgets the token indexes of the files of `root`, its last announced process and texts and its kept holes (its last document was closed). */
   forget(root: Classification): void {
     const key = rootKey(root);
     for (const [file, entry] of this.indexes) {
@@ -1653,6 +2193,8 @@ export class IdeBackend implements IdrisBackend {
     }
     this.announcedLaunch.delete(key);
     this.announcedTexts.delete(key);
+    this.keptHoles.delete(key);
+    this.slowHoles.delete(key);
   }
 
   // -----------------------------------------------------------------------------------------

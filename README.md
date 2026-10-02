@@ -7,8 +7,8 @@
 Language support for [Idris 2](https://www.idris-lang.org/), a purely functional programming
 language with first-class dependent types.
 
-> **Preview.** Early development, not yet on the Marketplace. Holes, case splitting and proof
-> search come next — see the [roadmap](docs/ROADMAP.md).
+> **Preview.** Early development, not yet on the Marketplace. A goal panel and checking while
+> you type come next — see the [roadmap](docs/ROADMAP.md).
 
 ## Features
 
@@ -25,6 +25,14 @@ language with first-class dependent types.
 - Inlay hints with the types of pattern variables
 - **Show Documentation…** and **Browse Namespace…**
 - **Evaluate Selection**: the value of the selected expression, after the line and on hover
+
+**Holes and interactive editing**
+- Case Split, Add Clause, Make Lemma / With / Case, Proof Search, Generate Definition, Intro,
+  Refine Hole… (light bulb or keyboard, one undo step each); Add Missing Cases as a quick fix
+- An answer put in place of a hole is bracketed when it is more than one token: `vlen xs = (S ?vlen_rhs_0)`
+- **Next Result** / **Next Definition**: further results (`↻ next (n)` in the status bar)
+- A **Holes** view in the **Idris 2** side bar: each hole's type and local variables, a click away;
+  **List Holes**, **Next Hole**, **Previous Hole**
 
 **Editing**
 - Syntax highlighting for `.idr`, `.lidr` (bird style) and `.ipkg`, following the compiler's lexer
@@ -69,15 +77,23 @@ The **Get Started with Idris 2** walkthrough on the Welcome page covers the same
 
 ## Keybindings
 
-| Command | `chords` (default on macOS) | `prefix` (default elsewhere) |
-|---|---|---|
-| Type at Cursor | `Ctrl+C Ctrl+T` | `Ctrl+Alt+I T` |
-| Docs at Cursor | `Ctrl+C Ctrl+D` | `Ctrl+Alt+I D` |
-| Evaluate Selection | `Ctrl+C Ctrl+E` | `Ctrl+Alt+I E` |
+In Idris editors, `Ctrl+C Ctrl+<key>` (`chords`, default on macOS) or `Ctrl+Alt+I <key>`
+(`prefix`, default elsewhere), e.g. `Ctrl+C Ctrl+C` for Case Split:
 
-Choose with `idris2.keybindings.scheme` (`none` turns them off); on macOS `Ctrl` is the Control
-key. Outside macOS, in Idris editors, `chords` takes over copy and `prefix` the Chat view shortcut.
-A keymap extension that binds `Ctrl+C` itself, such as VSCodeVim, wins over `chords`: use `prefix`.
+| Key | Command | Key | Command |
+|---|---|---|---|
+| `T` | Type at Cursor | `S` | Proof Search |
+| `D` | Docs at Cursor | `N` | Next Result (also after Generate Definition) |
+| `E` | Evaluate Selection | `G` | Generate Definition (on its declaration or result: the next one) |
+| `C` | Case Split | `I` | Intro |
+| `A` | Add Clause | `R` | Refine Hole… |
+| `L` / `W` / `M` | Make Lemma / With / Case | `[` / `]` | Previous / Next Hole |
+
+Choose with `idris2.keybindings.scheme` (`none` turns them off); **Show Keybindings** lists your
+scheme's keys. The letters follow the Vim bindings in the Idris docs, not Emacs idris-mode.
+
+On macOS `Ctrl` is the Control key. Elsewhere, in Idris editors, `chords` takes over copy and
+`prefix` the Chat view shortcut. With VSCodeVim, or another keymap that binds `Ctrl+C`, use `prefix`.
 
 ## Commands
 
@@ -86,11 +102,14 @@ title bar of an Idris file.
 
 | Command | What it does |
 |---|---|
-| Show Commands… | List the commands (also the language status's link) |
+| Show Commands…, Show Keybindings | List the commands (also the language status's link); your scheme's keys |
 | Check File | Check the current file now |
 | Type at Cursor, Docs at Cursor | The type or documentation of the name at the cursor |
 | Show Documentation…, Browse Namespace… | Documentation of a name you type; a namespace's names and types |
 | Evaluate Selection, Clear Evaluation Results | Evaluate the selected expression; remove the results |
+| Case Split, Add Clause, Make Lemma, Make With, Make Case, Intro, Refine Hole…, Add Missing Cases | Edit at the hole, variable or declaration under the cursor |
+| Proof Search, Next Result, Generate Definition, Next Definition | Fill a hole or write a definition; the next candidate |
+| Next Hole, Previous Hole, List Holes | Move between the holes of the file; list the compiler's holes |
 | Restart Backend, Stop Backend | Restart or stop the compiler of this project or of all projects |
 | Show Setup Information, Rescan Toolchain | What was found and how; search again |
 | Install Idris 2…, Install pack…, Install or Update idris2-lsp with pack | Type the install command into a terminal, or open the instructions |
@@ -107,35 +126,42 @@ The ones you are most likely to change; all of them are in the Settings UI (sear
 |---|---|---|
 | `idris2.toolchain.idris2Path` | `""` | Path to `idris2`; empty: search `PATH`, pack's directories and the usual places |
 | `idris2.checking.trigger` | `"onSave"` | `onSave`, `afterDelay` (also saves your files after a pause in typing), `manual` |
+| `idris2.checking.saveBeforeAction` | `"always"` | An editing command saves the file first; `prompt` asks, `never` asks you to save |
 | `idris2.ideMode.loosePackages` | `[]` | Packages for files without an `.ipkg`, e.g. `["contrib"]` |
 | `idris2.ideMode.maxSessions` | `0` | Most compiler processes per window (`0`: no limit); try `3` on a small machine |
 | `idris2.ideMode.maxBackgroundChecks` | `0` | Most files besides the active one checked at once (`0`: no limit); try `1` |
 | `idris2.inlayHints.variableTypes` | `true` | Types of pattern variables as inlay hints |
 | `idris2.eval.inlineResults` | `true` | Evaluation results in the editor; off: in a notification |
-| `idris2.eval.timeout` | `10000` | Milliseconds an evaluation may take |
 | `idris2.keybindings.scheme` | `"auto"` | `chords`, `prefix` or `none`; `auto` picks by platform |
+| `idris2.holes.showInSideBar` | `true` | The Holes view in the Idris 2 side bar |
 
 ## Privacy and security
 
 - No telemetry; the extension itself makes no network requests.
-- In Restricted Mode (an untrusted workspace) it runs no program; highlighting and editing work.
+- In Restricted Mode (an untrusted workspace) it runs no program: the **Editing** features and
+  Next / Previous Hole work; interactive editing and the Holes view need a trusted workspace.
 - It starts the compiler in the project's folder, and asks first when that folder is outside
   your trusted workspace folders (**Allow**, **Always Allow for This Folder**, **Don't Allow**).
 - It talks to the compiler over standard input and output: no network port. The opt-in `socket`
   transport opens a local port another program could use first — not for shared computers.
 - **Evaluate Selection** evaluates expressions only, in a second compiler process with the same
   permission and transport: `IO` is shown, not run, and REPL commands (`:exec`, …) are refused.
-- **Evaluating can run compile-time code**: elaborator scripts of the file and its imports when
-  rebuilt, a `%macro` in scope that the expression applies, a `%runElab` where `ElabReflection` is
-  on. They can write in the project's folders, and beyond via a symlink ([details](docs/guide.md#compile-time-code)).
+- **Evaluating can run compile-time code** (elaborator scripts, a `%macro` the expression applies,
+  `%runElab`), which can write files ([details](docs/guide.md#compile-time-code)).
+- **Refine Hole…** checks the expression you type the same way, so it can run such code too.
+- Interactive editing sends a name from the file only if it is an Idris name, and applies an
+  answer only to the file it asked about, only if that file has not changed since.
 
 What runs where, and how compiler text is shown: [guide](docs/guide.md#privacy-and-security).
 
 ## Known limitations
 
-- Answers refer to the **saved** file: types, definitions and completion come from its last check
-  (inlay hints may keep an earlier one's, as their tooltip says), and evaluation checks it again
-  first. Checking while you type, holes and interactive editing come later.
+- Answers refer to the **saved** file: hover, completion and the Holes view come from its last
+  check; evaluation checks it again first, and most editing commands save it first.
+  Checking while you type comes later.
+- After a check with errors, Case Split, Add Clause and Generate Definition are refused until the
+  file loads cleanly, and an answer in place of a hole is refused where it would shift a block that
+  the lines below belong to, but for a few shapes (two of them silent): see the [guide](docs/guide.md#known-limitations).
 - The compiler answers about one file per project at a time: another editor of the same project
   answers once you click into it (with `manual` checking, once you run Check File there).
 - Go to Definition finds global names only. After a qualifier (`Data.Vect.fil`), completion
@@ -149,8 +175,8 @@ The full list is in the [guide](docs/guide.md#known-limitations).
 
 ## Roadmap
 
-Holes and interactive editing, a goal panel, check-as-you-type, REPL and build integration,
-literate Markdown and LaTeX, Unicode input: see [docs/ROADMAP.md](docs/ROADMAP.md).
+A goal panel, check-as-you-type, idris2-lsp, REPL and build integration, literate Markdown and
+LaTeX, Unicode input: see [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Contributing
 

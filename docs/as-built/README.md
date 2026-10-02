@@ -12,7 +12,8 @@ entry pointing here.
 | [`M0.md`](M0.md) | Language foundation and engineering harness | 2026-09-27 | `90ce347`, `eb29a8f`, `0cb58b0` | 36327566094 (ubuntu, macOS, Windows) |
 | [`M1.md`](M1.md) | Toolchain and project discovery | 2026-09-27 | `8de65af`, `3643ba7`, `6334a30` | 36349376366 (ubuntu, macOS, Windows) |
 | [`M2.md`](M2.md) | IDE-mode core: transport, session, diagnostics | 2026-09-28 | `09a3809`, `2486530` | 36483316082 (ubuntu, macOS) |
-| [`M3.md`](M3.md) | Read-only intelligence over IDE mode | 2026-09-29 (integrated) | not committed yet | — |
+| [`M3.md`](M3.md) | Read-only intelligence over IDE mode | 2026-09-29 | `04e96aa`, `263f38f` | 36674477234 (ubuntu, macOS; on `04e96aa`) |
+| [`M4.md`](M4.md) | Interactive editing and holes (IDE mode) | 2026-09-30 (integrated) | not committed yet | — |
 
 ## How these files were made
 

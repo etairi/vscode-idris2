@@ -3,9 +3,9 @@
 Status: design document, 2026-09-23. Companion to `ROADMAP.md` (what to build, in which
 increments) and `landscape.md` (the verified survey this design rests on). This file is the
 specification the skeleton and every milestone are built to; `src/README.md` and
-`test/README.md` mark which parts exist (as of M3, 2026-09-29: the parts tagged M0, M1, M2 or M3
-below; `docs/as-built/M0.md` … `M3.md` record where the code departs from this text, with the
-evidence).
+`test/README.md` mark which parts exist (as of M4, 2026-09-30: the parts tagged M0, M1, M2, M3 or
+M4 below, M4 for IDE mode only; `docs/as-built/M0.md` … `M4.md` record where the code departs from
+this text, with the evidence).
 
 Evidence tags follow `landscape.md`: **[live]** run on this machine (macOS arm64, Homebrew
 `idris2` 0.8.0) during the planning session, **[src]** read in the named checkout (`idris2-lsp`
@@ -118,6 +118,15 @@ vscode-idris2/
 │  │  ├─ untrustedText.ts        (as built, M3) compiler text shown as text: a code fence no line
 │  │  │                          of it can close, control and format characters written out,
 │  │  │                          one-line labels, QuickPick texts without theme icons
+│  │  ├─ idrisLexer.ts           (as built, M4) the compiler's lexer ported rule by rule,
+│  │  │                          resumable at line breaks (lexText): M0's lex runs it on a
+│  │  │                          whole text, the edits' line reader a line at a time
+│  │  ├─ idrisSyntax.ts          (as built, M4) Idris 2 source read without the compiler: the
+│  │  │                          parser's tables and the lexer's (re-exported), the edits' line
+│  │  │                          reader on idrisLexer.ts (Make With's clause and Case Split's
+│  │  │                          line for the backend and the light bulb), isOneToken,
+│  │  │                          opensBlockOnLine (the blocks of Idris/Parser.idr),
+│  │  │                          holdsBlockHeader and firstTokenColumn
 │  │  ├─ async.ts                debounce, AsyncQueue, withTimeout, CancellationToken helpers
 │  │  │                          (as built: not created in M2 — the queue, time limits and
 │  │  │                          cancellation are in backend/ide/session.ts, the afterDelay
@@ -209,8 +218,10 @@ vscode-idris2/
 │  │  │  │                       document symbols come from M0's syntax model instead
 │  │  │  ├─ replCommand.ts       (as built, M3) whether the REPL parser could read a text as a
 │  │  │  │                       command: Evaluate Selection's refusal (ROADMAP §9, 2026-09-28)
-│  │  │  ├─ holes.ts             :metavariables decoding (unquote, multiplicity prefix) +
-│  │  │  │                       :name-at location resolution
+│  │  │  ├─ holes.ts             (as built, M4) the :metavariables answer → Hole, located by
+│  │  │  │                       the :name-at entry of its qualified name
+│  │  │  ├─ edits.ts             (as built, M4) per EditKind: the request, the refusals before
+│  │  │  │                       sending, where the reply goes (E15), the literate repairs
 │  │  │  └─ backend.ts           IdeBackend implements IdrisBackend over a SessionPool
 │  │  ├─ lsp/                                                                        (M5)
 │  │  │  ├─ client.ts            LanguageClient (vscode-languageclient/node 10.x) factory,
@@ -227,8 +238,10 @@ vscode-idris2/
 │  ├─ features/                  one folder per feature area; each exports a register…(…)
 │  │  │                          function returning a Disposable, taking only what it needs
 │  │  │                          (ctx, deps once a feature needs them)
-│  │  ├─ help/                   Show Output, Open Settings, Open Idris 2 Documentation (M0)
-│  │  ├─ syntax/                 lexer.ts (tolerant port of the compiler's lexer),
+│  │  ├─ help/                   Show Output, Open Settings, Open Idris 2 Documentation (M0);
+│  │  │                          Show Keybindings (M4, keybindings.ts, types.ts)
+│  │  ├─ syntax/                 lexer.ts (lex: the tokens and bracket groups of
+│  │  │                          core/idrisLexer.ts),
 │  │  │                          selectionRangeModel.ts (token → groups → layout blocks →
 │  │  │                          declaration → document), selectionRanges.ts (provider)  (M0)
 │  │  ├─ consent/                (as built, M2) the consent gate of sessions outside the
@@ -248,7 +261,13 @@ vscode-idris2/
 │  │  │                          as built: evaluation.ts, register.ts
 │  │  ├─ editing/                commands, CodeActionProvider, CyclingController,
 │  │  │                          save-before-action, keybinding schemes                (M4)
+│  │  │                          as built: types.ts, commands.ts, targets.ts, apply.ts,
+│  │  │                          cycling.ts, codeActions.ts, saveBeforeAction.ts,
+│  │  │                          longRunning.ts, messages.ts, register.ts (the schemes
+│  │  │                          are package.json's)
 │  │  ├─ holes/                  HoleModel, tree view, next/previous, QuickPick       (M4)
+│  │  │                          as built: types.ts, model.ts, tree.ts, navigation.ts,
+│  │  │                          workspaceContext.ts (idris2.isIdrisWorkspace), register.ts
 │  │  ├─ goalPanel/              WebviewPanel host + message protocol (§9)            (M7)
 │  │  ├─ shadow/                 shadow typecheck of dirty buffers (§6.3)             (M6)
 │  │  ├─ repl/                   terminal REPL, send-to-REPL, `-- >>>` code lens      (M8)
@@ -330,7 +349,7 @@ export interface IdrisBackend {
   typeAt(doc, pos: vscode.Position, name: string): Promise<TypeInfo | undefined>;
   docsFor(name: string, mode: 'overview' | 'full'): Promise<RichText | undefined>;
   definition(doc, pos, name): Promise<vscode.Location[]>;
-  holes(doc): Promise<Hole[]>;
+  holes(doc, options?: HolesOptions): Promise<Hole[]>;                  // as built (M4): `kept` for the view, `token` for List Holes
   edit(req: EditRequest): Promise<EditResult>;                          // §3.3
   evaluate(expr: string): Promise<RichText>;
   browseNamespace(ns: string): Promise<NamespaceEntry[]>;
@@ -474,6 +493,30 @@ of its action modules honours `context.only` for its own key or the generic one.
 The contract suite (§12) asserts that both backends produce the same text for the same
 fixture; it is switched on by whichever of M4/M5 ships second.
 
+**As built (M4).** M4 shipped first, so the LSP rows above, `LspBackend.edit()`/`holes()` and the
+contract suite are M5's. The contract M4 built (`backend/types.ts`) is backend-neutral and
+refines this section: `EditRequest` is a union by kind carrying `version` (the document version
+the answer is computed for) and a cancellation `token`; `EditResult` is `edit` (replacements of
+the request's document only — §3.3's `replaceLines`, `replaceRange`, `lemma` and `workspaceEdit` in
+one form, so that no result can change another document and the E15 range rules live in the
+backend), `choices` (Intro's candidates and Refine's ambiguity), `failed` (the compiler's answer
+without an edit) or `exhausted`. An expression put in place of a hole (Intro, Refine Hole and its
+alternatives, Proof Search and its next results, Make Lemma's call) goes in parentheses unless it is
+one token (`core/idrisSyntax.ts` `isOneToken`; a postfix projection `.x` counts as more, since it
+attaches to the expression before it) that would not run into a name right before the hole,
+a `.` right after it or a `"` on either side, wherever the hole is; after a backtick a space goes
+before an answer that starts with a bracket; at the head of an idiom bracket on the hole's line only
+a name, a hole or a lambda is put, anything else refused. Refine's ambiguity alternatives are
+offered only in prefix form (the qualified name followed by its arguments). Make Case always applies
+the bracketed case, rewriting an unbracketed answer into it and refusing any other (ROADMAP §9,
+2026-10-01). Make Case and the answers in place are refused when the rest of the hole's line, read
+from what is open at the hole, starts an entry of a layout block (the block calls of
+`Idris/Parser.idr`), or the hole is in a `parameters`, `using` or `with` header (read from the nearest line above whose first token is left of the hole line's), and
+the first token below is right of the hole (`edits.ts` `layoutProblem`; kept and made to converge,
+ROADMAP §9, 2026-10-01): the line reader behind it runs M0's lexer (`core/idrisLexer.ts`). The
+shapes it misses or over-refuses: `docs/as-built/M4.md`, *Open issues*.
+`docs/as-built/M4.md`, *Edits*.
+
 ---
 
 ## 4. The three engines
@@ -540,7 +583,10 @@ stopped ─spawn─▶ starting ─(:protocol-version 2 1 within 10 s)─▶ rea
 - **Timeouts.** `idris2.ideMode.requestTimeout` (default 5 s) for lookups;
   `idris2.ideMode.longActionTimeout` (default 60 s) for `:load-file`, `:proof-search`,
   `:generate-def`. The protocol has no cancel: a timeout kills the process, rejects the queue
-  with `RequestTimeout`, and re-spawns.
+  with `RequestTimeout`, and re-spawns. (As built, M4: a user's cancel of an edit request already
+  written restarts the root's `check` session alone, `SessionPool.restartCheck`; `:refine`, `:intro`,
+  `:make-lemma`, `:missing` and the holes' requests after a load are long actions too, and a long action's
+  timeout is not counted towards giving up.)
 - **Id attribution.** A `:return` whose id ≠ the in-flight id is attributed to the in-flight
   request **only** when its text starts with `Unrecognised command` or `Parse error` (the
   compiler tags unparseable requests with the *previous* id — landscape §4.3, F4); any other
@@ -818,7 +864,11 @@ columns: `docs/as-built/M3.md`, *E14*.
 **Edit replies in `.lidr`** come back *with* the `> ` prefix (`> f 0 = ?f_rhs_0`,
 `> h k = ?h_rhs`, and even the make-lemma `definition-type` `> f_rhs : Nat -> Nat`, while
 `replace-metavariable` is unprefixed) [live, F11]; `.md` replies are plain. `features/editing`
-must not add a second prefix.
+must not add a second prefix. **As built (M4):** make-case and make-with replies carry the marker
+twice or three times (`> > `), since IDE mode leaves the compiler's literate style unset [src];
+`backend/ide/edits.ts` repairs exactly that shape, and the replacements it returns are final. The
+raw source line that make-lemma, make-case and make-with read is `toIdeSourceLineRequest`, not the
+unlit line (`docs/as-built/M4.md`, *Literate files*).
 
 ---
 
@@ -863,7 +913,12 @@ to map module stems to files.
 Two views over one `HoleModel`:
 
 - **Holes tree view** (`idris2.holes`, side-bar container "Idris 2", M4): file → hole →
-  premises; click jumps; badge = count. Cheap, keyboard-navigable.
+  premises; click jumps; badge = count. Cheap, keyboard-navigable. As built (M4): the model asks
+  `holes()` after every load of an open file, also while the view is hidden (the badge shows on
+  the activity-bar icon); IDE mode asks the compiler right after each `check` load, before a load
+  queued behind it, unless a newer load of the file is queued; a hole without a location that is
+  not a `?name` of the loaded text is listed under its module (a package whose source the compiler
+  does not find); `idris2.holes.showInSideBar` only hides the view; `docs/as-built/M4.md`, *Holes*.
 - **Goal panel** (`WebviewPanel`, `ViewColumn.Beside`, `retainContextWhenHidden`, M7): the
   Lean-InfoView analogue. Chosen over a tree because premises need multi-line, highlighted,
   monospace rendering and per-item buttons; over a `WebviewView` because users keep it beside
@@ -874,6 +929,11 @@ double-quoted inside the string and premises `(" 0  a" "Type" ())` carrying a mu
 prefix (`0`, `1`, blank = ω) and **no locations** (F2); locations via `(:name-at "<unqualified>")`
 (qualified names return `()`), one request per hole, cached per load. LSP `metavars` →
 `Metavar[]` with `location`, `premises[].isImplicit` and `multiplicity` [src `Metavars.idr`].
+As built (M4): one `:name-at` per unqualified name — it answers every hole of that name, and the
+entry of the hole's qualified name is its location (E16) —, at most 2,000 names per load, the
+loaded file's first;
+`:metavariables` also lists declarations without clauses and failed definitions, whose `:name-at`
+span is the declaration, and they are left out [live].
 
 Webview contract (`src/webview/goalPanel.ts` ↔ `features/goalPanel/host.ts`), all over
 `postMessage`, CSP `default-src 'none'; style-src ${cspSource} 'nonce-…'; script-src 'nonce-…'`:
@@ -936,7 +996,8 @@ mutable) or to LSP `didChangeConfiguration`.
   bare message). `:add-missing` itself is a stub (F3).
 - **Keybindings**: two schemes selected by `idris2.keybindings.scheme` via `when:
   config.idris2.keybindings.scheme == '…'`: `chords` (`ctrl+c ctrl+<x>`, Emacs/Agda style,
-  default on macOS) and `prefix` (`ctrl+alt+i <x>`, default elsewhere, avoiding GNOME's
+  default on macOS; its letters are those of the Idris docs' Vim bindings, not Emacs idris-mode's
+  — kept by the user's decision, ROADMAP §9 Q25) and `prefix` (`ctrl+alt+i <x>`, default elsewhere, avoiding GNOME's
   `ctrl+alt+<letter>` bindings), plus `none`. **Each milestone contributes only the bindings of
   commands it registers** (a binding to an unregistered command shows "command … not found"),
   all under `idris2.isIdrisDocument && editorTextFocus`. The schemes and the table below were
@@ -946,7 +1007,7 @@ mutable) or to LSP `didChangeConfiguration`.
 | letter | command | owner |
 |---|---|---|
 | `c` `a` `l` `w` `m` | case split, add clause, make lemma, make with, make case | M4 |
-| `s` `n` `g` `i` `r` | proof search, next result, generate def (also next), intro, refine | M4 |
+| `s` `n` `g` `i` `r` | proof search, next result (of either cycle), generate def (also next), intro, refine | M4 |
 | `[` `]` | previous / next hole | M4 |
 | `t` `d` `e` | type at cursor, docs at cursor, evaluate selection | M3 |
 | `,` | toggle goal panel (also `ctrl+shift+enter` / `cmd+shift+enter`, Lean's binding — deliberately shadows VS Code's "Insert Line Above" inside Idris editors, listed as an accepted collision) | M7 |
@@ -954,7 +1015,9 @@ mutable) or to LSP `didChangeConfiguration`.
   Collisions with VS Code's default keymap are checked by an integration test or a diff
   against a checked-in snapshot of "Open Default Keyboard Shortcuts (JSON)" from VS Code 1.139
   (the default keymap is not an npm artefact); deliberate, editor-scoped collisions are
-  listed in the table.
+  listed in the table. (`ctrl+shift+enter` is VS Code's **Insert Line Above**,
+  `editor.action.insertLineBefore`, `primary: 3075` = CtrlCmd+Shift+Enter under `editorTextFocus`
+  [src, the workbench bundles of 1.139.1 and 1.140.0].)
 
   **As built (M3).** VS Code has no per-platform setting default, so the setting's default is
   `auto`, which binds `chords` on macOS and `prefix` elsewhere (a `mac` key on the `auto`
@@ -965,11 +1028,58 @@ mutable) or to LSP `didChangeConfiguration`.
   warns that `ctrl+c` (copy) and `ctrl+alt+i` (the Chat view) are shadowed in Idris editors under
   the scheme that uses them. The Chat binding is VS Code 1.139.1's **Open Chat**, `primary: 2599`
   (CtrlCmd+Alt+I: Ctrl+Alt+I on Linux and Windows) with `mac: 2343` (Cmd+Ctrl+I) and no `when`
-  [src, the workbench bundle]; the rest of the Linux list is [open]: the test prints it, but no
-  Linux run of it was recorded. The check covers VS Code's own bindings only: a keymap
+  [src, the workbench bundle]; the Linux list of VS Code 1.139.1 is nine `ctrl+c` copy bindings and
+  the two `ctrl+alt+i` Chat bindings, each a single chord [live, CI run 36715864881, ubuntu job, at
+  `263f38f`], so only the first key is shadowed. The check covers VS Code's own bindings only: a keymap
   extension's binding of `ctrl+c` (VSCodeVim's, active with its defaults) outranks the `chords`
   bindings, which the README and the setting's description say [src and doc, not run].
   `docs/as-built/M3.md`, *Keybindings*.
+
+  **As built (M4).** The letters `c a l w m s n g i r [ ]` under the same three schemes (45
+  bindings with M3's); `n` continues the document's cycle of either kind (`:proof-search-next` or
+  `:generate-def-next`, ROADMAP §9 Q26); `g` runs Next Definition inside the command when the cursor
+  is on the declaration or the result of the document's Generate Definition cycle; Next Definition, Add
+  Missing Cases, List Holes and Show Keybindings have no key. E23 for every letter: on macOS no
+  other binding of VS Code 1.140.0 is one of these chords or starts with one [live]; on Linux M3's
+  list (above) holds single chords only, and the check of these letters runs at the first CI run of
+  the M4 commit. **Idris 2: Show
+  Keybindings** is generated from the manifest. `docs/as-built/M4.md`, *Keybindings*.
+
+**As built (M4), the rest of this section.** Availability: the light bulb reads the text only
+(nothing is sent); Case Split is offered on a variable (not starting with a capital) of a
+one-line clause whose right-hand side is a bare hole and that has no `where` block below, Add Clause
+and Generate Definition on a declaration no clause follows and not `%foreign` or `%extern`, Make
+With only where the backend sends it (`core/idrisSyntax.ts` `withClauseStart`, shared); an action
+the backend refuses unsent for its line (`misreadBelow`, a CRLF literate file, Make Case after the
+same `?name`, Case Split on a line whose answer the compiler garbles, `caseSplitLineProblem`, a NUL)
+is shown disabled with the reason. Make Case: the compiler replaces the first `?h` of the line by
+`case _ of` and puts `case_val => ?h`, followed by the rest of the line, on a new line; only for a
+prefix argument does it bracket `case _ of` … `?h`, so that the rest of the line follows the `)`
+(`makeCase` [src]); the backend always applies the bracketed form (ROADMAP §9, 2026-10-01). Case Split: the compiler answers line L alone, rewritten, so the backend asks only
+when line L holds a hole and replaces that line. F16 does not hold for the commands that find
+their place by line: after a load with an error, `:case-split`, `:add-clause` and `:generate-def`
+answer misleading errors [live], so they are refused unsent ("the file did not load cleanly — fix
+the first error and save"); the other commands are sent, and their failures show that advice
+before the compiler's text. Make Lemma inserts the type above the type declaration of the
+function holding the hole (with its doc comments and modifier and pragma lines; for an infix,
+prefix-form or backticked clause too; inside a `namespace` or `mutual` block, above the
+declaration in that block), not at the nearest blank line above the hole (the compiler's REPL and
+idris2-lsp), which can be inside a `where` block; it is not applied when the application passes a
+name the compiler made (`conArg`, `lcase`). Add Clause goes after the function's clauses when it
+has some (its catch-all above them would make them unreachable). Intro, Refine, Proof Search and Make Lemma are
+sent only when the load's holes put the one hole of the name at the cursor (the compiler looks it
+up by name). Add Missing Cases inserts
+after the function's clauses (also when they come later in the block than the declaration, as in
+a `mutual` block), not at the first blank line after the declaration. The `CyclingController`
+ends a cycle on any change of its document (an undo and a change inside the result included, not
+only an edit outside it), also on any load of its root and on another search there (the compiler
+keeps `psResult` and `gdResult` apart [src], so this is conservative) — a search's first result
+starts no cycle when another search started in its root after it —, and holds the document's
+save checks while it runs (auto-save would load the file and end it). The editing commands run one
+at a time per document (a second one says which one runs and sends nothing). A cancel after the request
+was written restarts the root's `check` session only (`SessionPool.restartCheck`). `.lidr` edit replies: the compiler's literate style is unset in
+IDE mode, so make-case and make-with answers carry a doubled marker (`> > `) that the backend
+repairs; `:missing` answers carry none (F11 addendum of M4). `docs/as-built/M4.md`, *Edits*.
 
 ---
 
@@ -1017,7 +1127,10 @@ wrong type reads are recorded in `docs/as-built/M1.md` and `docs/as-built/M2.md`
 §11*. **As built (M3):** `inlayHints.variableTypes`, `eval.inlineResults` (both `window` scope,
 on unless `false`), `eval.timeout` (`window`, 1000 ms to 2^31 − 1 ms, added by the review of M3)
 and `keybindings.scheme` (`application` scope, read by VS Code's `when` clauses only) exist;
-`docs/as-built/M3.md`, *Settings*.
+`docs/as-built/M3.md`, *Settings*. **As built (M4):** `checking.saveBeforeAction` (`resource`
+scope, like the rest of `checking.*`; Next Result and Next Definition never save) and
+`holes.showInSideBar` (`window` scope; read by the view's `when` clause only) exist, and
+**Show Keybindings** reads `keybindings.scheme` through `Config.keybindingScheme`.
 
 Migration (M5): on first activation, if bamboo's `idris2-lsp.*` settings exist, offer to copy
 them with this key map (F36): `idris2-lsp.loglevel → idris2.lsp.logSeverity` (bamboo's key
@@ -1044,7 +1157,12 @@ run record:transcripts`, in place of `IDRIS2_RECORD=1`), the fake compiler's fau
 suite's run time are recorded in `docs/as-built/M1.md` and `docs/as-built/M2.md`, *ARCHITECTURE
 §12*; `test/README.md` describes every suite. M3 adds the integration suites `intelligence`
 (`simple-ipkg`) and `intelligence-loose` (`broken`), the fake compiler's replay by session role
-and its request log, and the e2e file `intelligence.test.ts` (`docs/as-built/M3.md`, *Tests*).
+and its request log, and the e2e file `intelligence.test.ts` (`docs/as-built/M3.md`, *Tests*). M4
+adds the integration suites `editing` (`broken`) and `holes` (`holes`), the fake compiler's
+held-back answers and its replay matching without queries, the e2e file `editing.test.ts`, and a
+differential test of the edits' line reader against M0's lexer (unit, and the corpus suite in CI)
+beside the lexer oracle's check of that lexer (local); the contract suite is M5's
+(`docs/as-built/M4.md`, *Tests*).
 
 Fixture workspaces: `loose-file/` (no ipkg, `import Data.Vect`), `simple-ipkg/` (`sourcedir =
 "src"`, `depends = contrib`, two modules), `multi-module/` (one error in a sub-module),

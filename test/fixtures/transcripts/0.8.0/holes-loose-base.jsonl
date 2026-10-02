@@ -1,0 +1,42 @@
+{"kind":"meta","format":1,"scenario":"holes-loose-base","description":"E16: the loose files of the holes workspace, Base.idr loaded first: :metavariables (premises of multiplicity 0, 1 and unrestricted) and :name-at of todo","facts":["F2"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-09-30","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build/.vscode-idris2"],"cwd":"test/fixtures/workspaces/holes","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"Base.idr":"6f3faa9c0aa212cc1cb382c6834eb1ccbd6fa0a7cc0a9d28a6bccecd914c9f52"}}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"00009d","text":"((:load-file \"${ROOT}/Base.idr\") 1)\n"}
+{"kind":"recv","prefix":"0000b3","text":"(:write-string \"1/1: Building Base (${ROOT}/Base.idr)\" 1)\n"}
+{"kind":"recv","prefix":"0000f0","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 0 0) (:end 0 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f0","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 0 7) (:end 0 11)) ((:decor :module)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f0","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 2 0) (:end 2 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f0","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 2 7) (:end 2 16)) ((:decor :module)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 4 0) (:end 4 88)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f0","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 5 0) (:end 5 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00014e","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 6 0) (:end 6 7)) ((:name \"consume\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f0","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 6 8) (:end 6 9)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f2","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 6 10) (:end 6 11)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f2","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 6 11) (:end 6 12)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000147","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 6 13) (:end 6 14)) ((:name \"x\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f2","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 6 15) (:end 6 16)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000147","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 6 17) (:end 6 18)) ((:name \"a\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f2","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 6 18) (:end 6 19)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f2","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 6 20) (:end 6 22)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000152","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 6 23) (:end 6 27)) ((:name \"Vect\") (:namespace \"Data.Vect\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000147","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 6 28) (:end 6 29)) ((:name \"n\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000147","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 6 30) (:end 6 31)) ((:name \"a\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f2","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 6 32) (:end 6 34)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000152","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 6 35) (:end 6 39)) ((:name \"Vect\") (:namespace \"Data.Vect\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f2","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 6 40) (:end 6 41)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 6 41) (:end 6 42)) ((:name \"S\") (:namespace \"Prelude.Types\") (:decor :data) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000147","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 6 43) (:end 6 44)) ((:name \"n\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f2","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 6 44) (:end 6 45)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000147","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 6 46) (:end 6 47)) ((:name \"a\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000152","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 7 0) (:end 7 7)) ((:name \"consume\") (:namespace \"Base\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000145","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 7 8) (:end 7 9)) ((:name \"x\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000148","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 7 10) (:end 7 12)) ((:name \"xs\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f2","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Base.idr\") (:start 7 13) (:end 7 14)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok ()) 1)\n"}
+{"kind":"send","prefix":"000018","text":"((:metavariables 80) 2)\n"}
+{"kind":"recv","prefix":"00008b","text":"(:return (:ok ((\"\\\"Base.todo\\\"\" ((\" 0  n\" \"Nat\" ()) (\" 0  a\" \"Type\" ()) (\" 1  x\" \"a\" ()) (\"  xs\" \"Vect n a\" ())) (\"Vect (S n) a\" ())))) 2)\n"}
+{"kind":"send","prefix":"000016","text":"((:name-at \"todo\") 3)\n"}
+{"kind":"recv","prefix":"0000d4","text":"(:return (:ok ((\"Base.todo\" (:filename \"${ROOT}/Base.idr\") (:start 7 15) (:end 7 20)))) 3)\n"}
+{"kind":"close"}
+{"kind":"unframed","text":"Alas the file is done, aborting\n"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":["build/.vscode-idris2/ttc/2025081600/Base.ttc","build/.vscode-idris2/ttc/2025081600/Base.ttm"]}

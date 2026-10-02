@@ -20,11 +20,10 @@
  */
 
 /**
- * A line break (CR LF, LF, CR, U+0085, U+2028, U+2029) with the spaces and tabs around it: the
- * compiler breaks a long type or value over lines and indents the continuation, which one line
- * shows as one space. Other runs of spaces are kept, since they may be the content of a string.
+ * A line break (CR LF, LF, CR, U+0085, U+2028, U+2029): the compiler breaks a long type or value
+ * over lines and indents the continuation, which one line shows as one space (`oneLine`).
  */
-const LINE_BREAK = /[ \t]*(?:\r\n|[\n\r\u0085\u2028\u2029])[ \t]*/g;
+const LINE_BREAK = /\r\n|[\n\r\u0085\u2028\u2029]/;
 
 /**
  * The characters `editorLabel` and `visible` write out: controls (`\p{Cc}`, C0 and C1, the tab
@@ -52,6 +51,32 @@ const INVISIBLE = new RegExp(`[${INVISIBLE_CLASS}]`, 'gu');
 /** A character of `INVISIBLE` as `\u{XXXX}`. */
 const writtenOut = (c: string): string => `\\u{${(c.codePointAt(0) ?? 0).toString(16).toUpperCase()}}`;
 
+const isSpaceOrTab = (c: string): boolean => c === ' ' || c === '\t';
+
+/**
+ * `text`, trimmed, with each line break (`LINE_BREAK`), together with the spaces and tabs around
+ * it, made one space; other runs of spaces are kept, since they may be the content of a string.
+ * Linear in the length of `text`: a regular expression that matches the spaces before a break
+ * backtracks over every run of spaces without one, which took seconds on a hole's type that quoted
+ * a string of 80,000 spaces (security review of M4 [unit-level]).
+ */
+function oneLine(text: string): string {
+  return text
+    .split(LINE_BREAK)
+    .map((piece) => {
+      let start = 0;
+      let end = piece.length;
+      while (start < end && isSpaceOrTab(piece[start])) {
+        start++;
+      }
+      while (end > start && isSpaceOrTab(piece[end - 1])) {
+        end--;
+      }
+      return piece.slice(start, end);
+    })
+    .join(' ');
+}
+
 /**
  * `text` as one line for a label the editor draws: the ends are trimmed, each line break with the
  * spaces and tabs around it becomes one space, and each remaining character of `INVISIBLE` (a
@@ -60,10 +85,7 @@ const writtenOut = (c: string): string => `\\u{${(c.codePointAt(0) ?? 0).toStrin
  * units it is cut at a character boundary and ends with `…`.
  */
 export function editorLabel(text: string, maxLength = Number.POSITIVE_INFINITY): string {
-  const line = text
-    .trim()
-    .replace(LINE_BREAK, ' ')
-    .replace(INVISIBLE, writtenOut);
+  const line = oneLine(text.trim()).replace(INVISIBLE, writtenOut);
   if (line.length <= maxLength) {
     return line;
   }

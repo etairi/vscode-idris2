@@ -15,7 +15,9 @@
  * | `diagnostics.ts` | `Reply` of a `:load-file` → diagnostics (ARCHITECTURE §8) | `types.ts`, `protocol.ts` (`decodeBuildingLine`) |
  * | `highlight.ts` (M3) | the `:highlight-source` frames of a load's `Reply` → `TokenIndex` (`backend/types.ts`), positions through `core/positions.ts` | `types.ts`, `protocol.ts` (`asDecor`, `decodeSourceHighlights`, `SourceHighlight`), `../types`, `../../core/errors`, `../../core/positions` |
  * | `replCommand.ts` (M3) | whether the compiler's REPL parser would read a text as a command rather than an expression — the refusal of `IdrisBackend.evaluate` (ROADMAP §9, 2026-09-28) | none |
- * | `backend.ts` | `IdeBackend implements IdrisBackend` over a `SessionPool`, and `IdeMode`, the registry's provider | `types.ts`, `protocol.ts`, `diagnostics.ts`, `highlight.ts`, `replCommand.ts` (and `../registry` for `rootKey`, `BackendProvider`) |
+ * | `holes.ts` (M4) | the `:metavariables` reply → `Hole`s (`backend/types.ts`: the quoted qualified name, the multiplicity prefix of each premise, ARCHITECTURE §9), and the choice of a hole's `:name-at` entry by its qualified name (E16) | `protocol.ts`, `../types` and `../../core/positions` (types only) |
+ * | `edits.ts` (M4) | for each `EditKind` the request, the refusals made before sending (names that are not Idris names; lines the compiler numbers otherwise; the F16 rule), and where the reply goes (E15), with the ambiguity alternatives of `:refine` (F29) and the literate repairs | `types.ts`, `protocol.ts`, `../types`, `../../core/errors`, `../../core/positions`, `../../project/literate` |
+ * | `backend.ts` | `IdeBackend implements IdrisBackend` over a `SessionPool`, and `IdeMode`, the registry's provider | `types.ts`, `protocol.ts`, `diagnostics.ts`, `highlight.ts`, `replCommand.ts`, `holes.ts`, `edits.ts` (and `../registry` for `rootKey`, `BackendProvider`) |
  *
  * The session layer (`transport.ts`, `session.ts`, `pool.ts`) never imports `sexp.ts` or
  * `wire.ts`: it gets the codec as `SessionPoolDeps.codec`, and the composition root passes
@@ -458,6 +460,7 @@ export type SessionCause =
   | 'exit'
   | 'spawnError'
   | 'timeout'
+  | 'longActionTimeout'
   | 'protocolError'
   | 'backoff'
   | 'gaveUp'
@@ -490,8 +493,11 @@ export interface CancellationToken {
 
 /**
  * Which time limit applies (ARCHITECTURE §5.1): `lookup` → `idris2.ideMode.requestTimeout`;
- * `longAction` (`:proof-search`, `:generate-def`) and `load` (`:load-file`) →
- * `idris2.ideMode.longActionTimeout`. The limit counts from the moment the request is sent.
+ * `longAction` (`:proof-search`, `:generate-def` and their `-next`, `:refine`, `:intro`, `:make-lemma`,
+ * and the holes' `:metavariables` and `:name-at` after a load, M4; a raw request) and `load`
+ * (`:load-file`) → `idris2.ideMode.longActionTimeout`. The limit counts from the moment the request
+ * is sent. (An evaluation's `:interpret` is a `longAction` with `idris2.eval.timeout` as its
+ * `timeoutMs`, M3.)
  */
 export type RequestKind = 'lookup' | 'longAction' | 'load';
 
@@ -536,6 +542,14 @@ interface RequestOptionsBase {
    * `idris2.ideMode.maxBackgroundChecks`).
    */
   readonly urgent?: () => boolean;
+  /**
+   * Called with the reply when it arrives, before the session chooses the next request to send, so
+   * that the requests it makes (`urgent` ones) are sent before those that waited: M4's holes of a
+   * load (`IdeBackend.holes`), which a load queued behind would otherwise replace. Not called when
+   * the request fails. When loads are merged, every caller's is called. A function that throws is
+   * ignored.
+   */
+  readonly onReply?: (reply: Reply) => void;
 }
 
 /** A request that is not a `:load-file`. */
@@ -685,6 +699,13 @@ export interface SessionPool extends IDisposable {
    * session, which starts again at the next evaluation.
    */
   restartAll(): void;
+  /**
+   * (M4) Restarts the `check` session of `root` alone, when it is `busy` — a long edit request the
+   * user cancelled after it was written (`backend.ts`, *Edits*: the protocol has no cancel); its
+   * `eval` session is left as it is. Cause `restart`, `detail` says why. Does nothing otherwise, so
+   * that no process is started for it.
+   */
+  restartCheck(root: Classification, detail: string): void;
   /**
    * Stops the `eval` session of `root` because its evaluation was cancelled (`IdrisBackend.evaluate`):
    * the protocol has no cancel, so only stopping the process ends an evaluation that runs. Cause

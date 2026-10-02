@@ -1,0 +1,49 @@
+{"kind":"meta","format":1,"scenario":"hole-errors","description":"F16: HoleErr.idr (a type error in bad, a coverage error in cover): after the failed load :metavariables and :name-at of the holes before and after the error; the commands that find their place by position (:case-split, :add-clause, :generate-def, a positional :type-of of a local) and the others (:make-lemma/-case/-with, :intro, :refine, :proof-search, :missing)","facts":["F15","F16"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-09-30","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build/.vscode-idris2"],"cwd":"test/fixtures/workspaces/broken","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"HoleErr.idr":"df8edbab36ed9292c6168fced0b2197590efb47c3999e713b454797e089a2103"}}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"0000a0","text":"((:load-file \"${ROOT}/HoleErr.idr\") 1)\n"}
+{"kind":"recv","prefix":"0000b9","text":"(:write-string \"1/1: Building HoleErr (${ROOT}/HoleErr.idr)\" 1)\n"}
+{"kind":"recv","prefix":"0002d2","text":"(:warning (\"HoleErr.idr\" (8 8) (8 9) \"While processing right hand side of bad. When unifying:\n    Nat\nand:\n    String\nMismatch between: Nat and String.\n\nHoleErr:9:9--9:10\n 5 | before : Nat -> Nat\n 6 | before n = ?before_rhs\n 7 | \n 8 | bad : Nat -> String\n 9 | bad x = x\n             ^\n\" ((36 3 ((:decor :bound))) (60 3 ((:decor :type))) (60 3 ((:decor :bound))) (73 6 ((:decor :type))) (73 6 ((:decor :bound))) (98 3 ((:decor :type))) (98 3 ((:decor :bound))) (106 6 ((:decor :type))) (106 6 ((:decor :bound))) (115 17 ((:decor :type))) (134 3 ((:decor :type))) (159 3 ((:decor :type))) (187 3 ((:decor :type))) (193 3 ((:decor :type))) (218 3 ((:decor :type))) (245 1 ((:text-formatting :bold) (:decor :postulate))))) 1)\n"}
+{"kind":"recv","prefix":"0002a2","text":"(:warning (\"HoleErr.idr\" (13 0) (13 27) \"cover is not covering.\n\nHoleErr:14:1--14:28\n 10 | \n 11 | after : List Nat -> Nat\n 12 | after xs = ?after_rhs\n 13 | \n 14 | cover : Bool -> Bool -> Nat\n      ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nMissing cases:\n    cover True False\n    cover False _\n\" ((0 5 ((:decor :bound))) (24 19 ((:decor :type))) (45 4 ((:decor :type))) (52 4 ((:decor :type))) (82 4 ((:decor :type))) (110 4 ((:decor :type))) (117 4 ((:decor :type))) (156 27 ((:text-formatting :bold) (:decor :postulate))) (204 5 ((:decor :function))) (210 4 ((:decor :data))) (215 5 ((:decor :data))) (225 5 ((:decor :function))) (231 5 ((:decor :data))) (237 1 ((:decor :bound))))) 1)\n"}
+{"kind":"recv","prefix":"0000bb","text":"(:return (:error \"Error(s) building file ${ROOT}/HoleErr.idr\") 1)\n"}
+{"kind":"send","prefix":"000018","text":"((:metavariables 80) 2)\n"}
+{"kind":"recv","prefix":"0000b7","text":"(:return (:ok ((\"\\\"HoleErr.after_rhs\\\"\" ((\"  xs\" \"List Nat\" ())) (\"Nat\" ())) (\"\\\"HoleErr.bad\\\"\" () (\"Nat -> String\" ())) (\"\\\"HoleErr.before_rhs\\\"\" ((\"  n\" \"Nat\" ())) (\"Nat\" ())))) 2)\n"}
+{"kind":"send","prefix":"00001c","text":"((:name-at \"before_rhs\") 3)\n"}
+{"kind":"recv","prefix":"0000e0","text":"(:return (:ok ((\"HoleErr.before_rhs\" (:filename \"${ROOT}/HoleErr.idr\") (:start 5 11) (:end 5 22)))) 3)\n"}
+{"kind":"send","prefix":"00001b","text":"((:name-at \"after_rhs\") 4)\n"}
+{"kind":"recv","prefix":"0000e1","text":"(:return (:ok ((\"HoleErr.after_rhs\" (:filename \"${ROOT}/HoleErr.idr\") (:start 11 11) (:end 11 21)))) 4)\n"}
+{"kind":"send","prefix":"000015","text":"((:name-at \"bad\") 5)\n"}
+{"kind":"recv","prefix":"0000d8","text":"(:return (:ok ((\"HoleErr.bad\" (:filename \"${ROOT}/HoleErr.idr\") (:start 7 0) (:end 7 19)))) 5)\n"}
+{"kind":"send","prefix":"00001a","text":"((:case-split 6 8 \"n\") 6)\n"}
+{"kind":"recv","prefix":"00002f","text":"(:return (:error \"No clause to split here\") 6)\n"}
+{"kind":"send","prefix":"00001c","text":"((:case-split 12 7 \"xs\") 7)\n"}
+{"kind":"recv","prefix":"00002f","text":"(:return (:error \"No clause to split here\") 7)\n"}
+{"kind":"send","prefix":"00001d","text":"((:add-clause 5 \"before\") 8)\n"}
+{"kind":"recv","prefix":"00002f","text":"(:return (:error \"before not defined here\") 8)\n"}
+{"kind":"send","prefix":"00001d","text":"((:add-clause 14 \"cover\") 9)\n"}
+{"kind":"recv","prefix":"00002e","text":"(:return (:error \"cover not defined here\") 9)\n"}
+{"kind":"send","prefix":"00001d","text":"((:generate-def 8 \"bad\") 10)\n"}
+{"kind":"recv","prefix":"000041","text":"(:return (:error \"Can't find declaration for bad on line 8\") 10)\n"}
+{"kind":"send","prefix":"00001a","text":"((:type-of \"xs\" 12 6) 11)\n"}
+{"kind":"recv","prefix":"0000e1","text":"(:return (:error \"Undefined name xs. \n\n(Interactive):1:1--1:1\n 1 | module HoleErr\n     \n\" ((15 2 ((:decor :bound))) (21 22 ((:decor :type))) (45 3 ((:decor :type))) (69 0 ((:text-formatting :bold) (:decor :postulate))))) 11)\n"}
+{"kind":"send","prefix":"000022","text":"((:make-lemma 12 \"after_rhs\") 12)\n"}
+{"kind":"recv","prefix":"000081","text":"(:return (:ok (:metavariable-lemma (:replace-metavariable \"after_rhs xs\") (:definition-type \"after_rhs : List Nat -> Nat\"))) 12)\n"}
+{"kind":"send","prefix":"000021","text":"((:make-case 12 \"after_rhs\") 13)\n"}
+{"kind":"recv","prefix":"000051","text":"(:return (:ok \"after xs = case _ of\n                case_val => ?after_rhs\") 13)\n"}
+{"kind":"send","prefix":"000021","text":"((:make-with 12 \"after_rhs\") 14)\n"}
+{"kind":"recv","prefix":"00004e","text":"(:return (:ok \"after xs with (_)\n  after xs | with_pat = ?after_rhs_rhs\") 14)\n"}
+{"kind":"send","prefix":"00001d","text":"((:intro 6 \"before_rhs\") 15)\n"}
+{"kind":"recv","prefix":"00002b","text":"(:return (:ok (\"0\" \"S ?before_rhs_0\")) 15)\n"}
+{"kind":"send","prefix":"000022","text":"((:refine 6 \"before_rhs\" \"S\") 16)\n"}
+{"kind":"recv","prefix":"000025","text":"(:return (:ok \"S ?before_rhs_0\") 16)\n"}
+{"kind":"send","prefix":"000027","text":"((:proof-search 12 \"after_rhs\" ()) 17)\n"}
+{"kind":"recv","prefix":"000030","text":"(:return (:ok \"0\" ((0 1 ((:decor :data))))) 17)\n"}
+{"kind":"send","prefix":"000018","text":"(:proof-search-next 18)\n"}
+{"kind":"recv","prefix":"000030","text":"(:return (:ok \"1\" ((0 1 ((:decor :data))))) 18)\n"}
+{"kind":"send","prefix":"000023","text":"((:interpret \":missing cover\") 19)\n"}
+{"kind":"recv","prefix":"000043","text":"(:return (:ok \"HoleErr.cover:\ncover True False\ncover False _\") 19)\n"}
+{"kind":"send","prefix":"000021","text":"((:interpret \":missing bad\") 20)\n"}
+{"kind":"recv","prefix":"000034","text":"(:return (:ok \"HoleErr.bad: All cases covered\") 20)\n"}
+{"kind":"close"}
+{"kind":"unframed","text":"Alas the file is done, aborting\n"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":[]}

@@ -1,5 +1,6 @@
 import * as assert from 'assert';
 import { IdrisException } from '../../src/core/errors';
+import { isKeyword } from '../../src/core/idrisSyntax';
 import {
   addClause,
   answersWithPreviousId,
@@ -21,6 +22,9 @@ import {
   interpret,
   intro,
   isEndOfInputLine,
+  isHoleName,
+  isIdentifierName,
+  isOperatorInParentheses,
   loadFile,
   makeCase,
   makeLemma,
@@ -234,6 +238,30 @@ suite('backend/ide/protocol', () => {
         assert.strictEqual(serializeSexp(command), text);
       });
     }
+
+    test(':missing takes an identifier or an operator in parentheses only: nothing else reaches the REPL parser (M4 hard requirement)', () => {
+      assert.strictEqual(serializeSexp(missingCases('(<&&>)')), '(:interpret ":missing (<&&>)")');
+      assert.strictEqual(serializeSexp(missingCases('δ')), '(:interpret ":missing \\948")');
+      for (const name of ['both :t id', 'both\n:t id', 'both -- c', 'Edits.both', '<&&>', '(a b)', '()', 'where', '_', '', 'x"', 'x\u2028y', '(<&&>) :exec main', '(<&&>', '(<&&>x', '(<&&>\n']) {
+        assert.throws(() => missingCases(name), RangeError, JSON.stringify(name));
+      }
+    });
+
+    test('the names of the lexer: identifiers above U+00A0 but no invisible characters or spaces; keywords are not names; operator characters', () => {
+      for (const name of ["x'", 'x₁', 'α', 'ℕ', '_x', 'vlen_rhs', 'case']) {
+        assert.ok(isHoleName(name), name);
+      }
+      for (const name of ['', '_', '1x', "'x", 'x y', 'x\u00a0y', 'x\u200by', 'x\u202ey', 'x\u3000y', 'x.y', '?x', 'x\ud800']) {
+        assert.ok(!isHoleName(name), JSON.stringify(name));
+      }
+      assert.ok(!isIdentifierName('case') && !isIdentifierName('where') && isIdentifierName('cases'));
+      assert.ok(isKeyword('covering') && !isKeyword('Nat'));
+      assert.ok(isOperatorInParentheses('(<&&>)') && isOperatorInParentheses('(.)') && isOperatorInParentheses('(::)'));
+      assert.ok(!isOperatorInParentheses('<&&>') && !isOperatorInParentheses('()') && !isOperatorInParentheses('(a)') && !isOperatorInParentheses('(< >)'));
+      for (const text of ['(<&&>', '(<&&>x', '(<&&>\n', '<&&>)']) {
+        assert.ok(!isOperatorInParentheses(text), JSON.stringify(text));
+      }
+    });
   });
 
   suite('reply decoders', () => {
@@ -333,8 +361,27 @@ suite('backend/ide/protocol', () => {
         ],
       });
       assertProtocolError(() => decodeMissingCases(payload('(:ok "g (S _)")')));
+      // A generated function's name holds spaces [live, idris2 0.8.0: `partial` functions with an incomplete case or with].
+      for (const [answer, name, called] of [
+        ['CB.f: Calls non covering function CB.case block in f', 'CB.f', 'CB.case block in f'],
+        ['MW.f: Calls non covering function MW.with block in f', 'MW.f', 'MW.with block in f'],
+      ]) {
+        assert.deepStrictEqual(decodeMissingCases(payload(`(:ok ${serializeSexp(str(answer))})`)), {
+          kind: 'ok',
+          value: [{ kind: 'callsNonCovering', name, functions: [called] }],
+        });
+      }
       assert.deepStrictEqual(decodeMissingCases(payload('(:error "Undefined name nope.")')),
         { kind: 'error', message: 'Undefined name nope.', highlighting: [] });
+    });
+
+    test('decodeMissingCases: linear in the number of clauses (50,000, as a type of that many constructors gives)', () => {
+      const clauses = Array.from({ length: 50_000 }, (_, i) => `f C${i + 1}`);
+      const reply = payload(`(:ok ${serializeSexp(str(`W.f:\n${clauses.join('\n')}`))})`);
+      const started = process.hrtime.bigint();
+      const decoded = decodeMissingCases(reply);
+      assert.ok(process.hrtime.bigint() - started < 200_000_000n, 'more than 200 ms');
+      assert.deepStrictEqual(decoded, { kind: 'ok', value: [{ kind: 'missing', name: 'W.f', clauses }] });
     });
 
     test('decodeAmbiguity: the indented lines between the header and the blank line (F29)', () => {

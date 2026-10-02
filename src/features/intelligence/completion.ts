@@ -5,7 +5,7 @@
  * **What is offered where.** At an identifier (letters, digits, `_`, `'` and every character above
  * U+00A0, starting with a letter, `_` or such a character — `isIdentStart`/`isIdentTrailing`,
  * `src/Parser/Lexer/Common.idr` 73–82 on v0.8.0 [src]) the keywords of the compiler's lexer
- * (`KEYWORDS`, `features/syntax/lexer.ts`) and the names in scope that start with what was typed,
+ * (`KEYWORDS`, `core/idrisSyntax.ts`) and the names in scope that start with what was typed,
  * from the backend (`IdrisBackend.completions`: the compiler's `:repl-completions`); after a `.`
  * (a qualified name, a projection) or a `?` (a hole) the names only, completing the last part —
  * of every namespace: `:repl-completions` ignores namespaces [live: `Data.V` gives `Vect`, `Void`,
@@ -56,7 +56,7 @@ import type * as vscode from 'vscode';
 import { DisposableStore, type IDisposable } from '../../core/disposable';
 import { editorLabel, quickPickText } from '../../core/untrustedText';
 import { birdPrefixWidth, compilerLiterateStyleOf, idrisDocumentSelector, isIdrisDocument } from '../../project/literate';
-import { KEYWORDS } from '../syntax/lexer';
+import { KEYWORDS } from '../../core/idrisSyntax';
 import { isFileDocument, StaleAnswers } from './queries';
 import type { IntelligenceDeps, LoadedFileEvent, QueryOutcome } from './types';
 

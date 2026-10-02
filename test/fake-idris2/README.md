@@ -30,6 +30,7 @@ through the launchers in `test/fake-tools/bin`, and its fault modes (`FAKE_IDRIS
 |---|---|
 | `FAKE_IDRIS2_TRANSCRIPTS=<dir>` | IDE mode replays the transcripts in `<dir>` ("Transcript replay" below); `.vscode-test.mjs` sets it to `test/fixtures/transcripts/0.8.0` for every fake-tool suite. Unset: the M0 behaviour below |
 | `FAKE_IDRIS2_IDE_FAULT=<fault>@<n>[,…]` | injects a protocol fault at the n-th request ("Injected protocol faults" below) |
+| `FAKE_IDRIS2_IDE_DELAY=<command>=<ms>[,…]` | (M4) holds back the answer to every request of `<command>` for `<ms>` milliseconds ("Answers held back" below) |
 | `FAKE_IDRIS2_LOG=<file>` | every invocation first appends `{"pid", "args", "cwd"}` as one JSON line to `<file>` (like `FAKE_PACK_LOG`), so a test can see which command lines were started, and how often |
 | `FAKE_IDRIS2_REQUEST_LOG=<file>` | (M3) IDE mode appends every request it reads as one JSON line `{"pid", "request"}` to `<file>` — the frame's payload (or the unframed line) as UTF-8 text, before it is answered (a `hang` fault stops the reading, so nothing after it is logged). Joined with `FAKE_IDRIS2_LOG` by `pid`, a test sees which session received what — and that a refused evaluation sent nothing at all |
 
@@ -183,12 +184,23 @@ rules above stay the fake's own; everything else is replayed:
   scenarios), and the `eval` session's first load of a file gets a recording in which that load
   built the file, as its own build directory makes it do. An `eval` session can therefore load
   only what the `eval-*` scenarios loaded (`broken/Clean.idr`). Among the recorded requests that match, the one whose recorded predecessors equal the
-  longest run of this session's latest requests wins; ties go to a request whose whole recorded
-  prefix matched (a session replayed from its start), then to the first scenario by name, then
-  to the earlier request. So a session that repeats a recording gets exactly the recording, and
+  longest run of this session's latest requests wins — queries (`:type-of`, `:name-at`,
+  `:docs-for`, `:metavariables`, `:repl-completions`, `:browse-namespace`, `:who-calls`,
+  `:calls-who`, `:apropos`, `:print-definition`, `:version`, and `:missing` through `:interpret`,
+  which only reads the context [src]) left out on both sides (M4), as
+  approximately changing nothing that later answers depend on, so that the holes' `:metavariables`
+  and `:name-at` after every load do not hide a reload's recorded predecessor; ties go to a
+  request whose whole recorded prefix matched (a session replayed from its start), then to the
+  first scenario by name, then to the earlier request. So a session that repeats a recording gets exactly the recording, and
   one that does not gets the reply recorded after the most similar history: loading `Bad`,
   `Warn`, `Warn` (never recorded together) gives the third load `load-warn`'s reload — no
-  `Building` line, no `:warning` (F7). Compiler state that no transcript recorded (a file built
+  `Building` line, no `:warning` (F7), also with queries between the loads; and after a load of
+  `holes/Main.idr`, `:name-at "todo"` gets `holes-loose-main`'s answer, which lists `Main.todo` and
+  `Base.todo`, not `holes-loose-base`'s, recorded after a load of `Base.idr`, which lists only
+  `Base.todo`; and a second `:missing g` after a load of `broken/Part.idr` still gets
+  `load-part`'s `Part.g`, not `edits-same-name`'s (first by name). A query never recorded after a load of the loaded file is answered from another
+  file's recording when one matches (`:metavariables` after a load of `Warn.idr` gets
+  `ambig-holes`'s, the first by name). Compiler state that no transcript recorded (a file built
   in another order, `:enable-syntax` followed by another file) is therefore approximated, not
   modelled.
 - **Replies.** The recorded group — every frame and the program output up to the next recorded
@@ -219,7 +231,8 @@ scenarios over both transports and for `load-logging` over stdio, and requires i
 streams, prefixes included.
 
 Not replayed: `stderr` events (none in the 0.8.0 recordings), timing (replies are written at once;
-use `FAKE_IDRIS2_IDE_FAULT=hang@n` for a request that never returns), and the files the compiler
+use `FAKE_IDRIS2_IDE_DELAY` for a slow answer and `FAKE_IDRIS2_IDE_FAULT=hang@n` for a request that
+never returns), and the files the compiler
 writes (`files` events; no TTCs appear).
 
 ## Injected protocol faults
@@ -236,3 +249,16 @@ give-up rule). With or without transcripts. Any other value exits 2 before the h
 | `hang` | no reply and no further reading, not even of the end of input; exits 1 after `FAKE_TOOL_HANG_LIMIT_MS` (default 60,000 ms) like `FAKE_IDRIS2_MODE=hang`, so a process a test failed to kill does not outlive the run |
 | `noise` | the unframed line `fake-idris2: injected noise (FAKE_IDRIS2_IDE_FAULT)` in the protocol stream (over the socket too) before the replies; the extension logs it as the process's output over stdio and treats it as a protocol error on the socket, where the compiler writes only frames |
 | `id-mismatch` | the request's `:return` carries its id plus 1000000 (the other frames keep theirs) |
+
+## Answers held back (M4)
+
+`FAKE_IDRIS2_IDE_DELAY` is a comma-separated list of `<command>=<ms>`: every request of that
+command is answered `<ms>` milliseconds after it is read, with the answer it would get at once.
+The command is the name of the request's head symbol: `case-split` for `((:case-split 8 6 "xs")
+ID)`, `proof-search-next` for the bare symbol of `(:proof-search-next ID)`. As the compiler answers
+one request at a time (`loop`, `IDEMode/REPL.idr`), nothing that arrives meanwhile is read before
+the answer is out: it is read afterwards, in order (and only then logged by
+`FAKE_IDRIS2_REQUEST_LOG`), and the end of input is noticed after it. An integration test uses it to
+change a document while an edit's answer is on its way (`test/integration/editing/`). Only the
+timing is simulated; how long the real compiler takes is not modelled. Any other value exits 2
+before the handshake. `test/unit/fakeIdris2Replay.test.ts` checks it over both transports.

@@ -1,17 +1,17 @@
 # `test/` layout
 
 The testing layers of `docs/ARCHITECTURE.md` §12 and the `test/` tree of §2, annotated with the
-milestone (`docs/ROADMAP.md` §5) that adds each part. Parts marked **M0**, **M1**, **M2**, **M3**
-or **skeleton** exist.
+milestone (`docs/ROADMAP.md` §5) that adds each part. Parts marked **M0**, **M1**, **M2**, **M3**,
+**M4** or **skeleton** exist.
 
 | Layer | Runner | Needs | Exists | Added by |
 |---|---|---|---|---|
-| Unit | mocha on Node, `npm run test:unit` | nothing (Node spawns the fake tools and `/bin/sh`) | **M0**, **M1**, **M2**, **M3** (lists below) | M9 (CLI parser), M11, M13 |
+| Unit | mocha on Node, `npm run test:unit` | nothing (Node spawns the fake tools and `/bin/sh`) | **M0**, **M1**, **M2**, **M3**, **M4** (lists below) | M9 (CLI parser), M11, M13 |
 | Grammar | `vscode-textmate` + `vscode-oniguruma` snapshots, `npm run test:grammar` | nothing | **M0** (`grammar/`, harness `grammar/harness.ts`) | injections: M12 |
-| Integration | `@vscode/test-cli` (Electron), `npm test`, one suite per fixture workspace | VS Code download | **M0** (suite `integration` on `fixtures/workspaces/loose-file`), **M1** (the same suite with the fake tools; suites `simple-ipkg` and `toolchain-path`), **M2** (suites `diagnostics`, `loose-stdio`, `consent`; the fake compiler replays the transcripts), **M3** (suites `intelligence`, `intelligence-loose`; tests in `integration` and `diagnostics`) | fake LSP driven suites: M5; every UI milestone |
-| E2E | same runner, `npm run test:e2e` (suite `e2e`, only with `IDRIS2_E2E=1` or that script) | real `idris2` (+ `idris2-lsp`) | **M1** (`e2e/`, on `fixtures/workspaces/simple-ipkg`), **M2** (protocol facts, sessions, fake parity, E21), **M3** (the M3 acceptance, E14, the IO rendering, the REPL parser's commands) | every milestone adds at least one |
-| Contract | mocha suite parameterised over backends | as above | no | whichever of M4/M5 ships second |
-| Manual | `docs/checklists/Mn.md` | — | **M0**, **M1**, **M2**, **M3** (`docs/checklists/M0.md` … `M3.md`) | each milestone |
+| Integration | `@vscode/test-cli` (Electron), `npm test`, one suite per fixture workspace | VS Code download | **M0** (suite `integration` on `fixtures/workspaces/loose-file`), **M1** (the same suite with the fake tools; suites `simple-ipkg` and `toolchain-path`), **M2** (suites `diagnostics`, `loose-stdio`, `consent`; the fake compiler replays the transcripts), **M3** (suites `intelligence`, `intelligence-loose`; tests in `integration` and `diagnostics`), **M4** (suites `editing`, `holes`; the M4 letters in `intelligence-loose`) | fake LSP driven suites: M5; every UI milestone |
+| E2E | same runner, `npm run test:e2e` (suite `e2e`, only with `IDRIS2_E2E=1` or that script) | real `idris2` (+ `idris2-lsp`) | **M1** (`e2e/`, on `fixtures/workspaces/simple-ipkg`), **M2** (protocol facts, sessions, fake parity, E21), **M3** (the M3 acceptance, E14, the IO rendering, the REPL parser's commands), **M4** (the IDE-mode acceptance of M4) | every milestone adds at least one |
+| Contract | mocha suite parameterised over backends | as above | no | M5 (whichever of M4/M5 ships second; M4 shipped first) |
+| Manual | `docs/checklists/Mn.md` | — | **M0**, **M1**, **M2**, **M3**, **M4** (`docs/checklists/M0.md` … `M4.md`) | each milestone |
 
 ```
 test/
@@ -21,24 +21,26 @@ test/
 │                                       idris2-scopes.md (scope inventory + limits, kept in sync by a test)
 ├─ corpus/                    M0        corpus.json (pinned repositories, fetched into .corpus/),
 │                                       lexer-oracle/LexDump.idr (the 0.8.0 lexer as reference)
-├─ integration/               M0–M3     @vscode/test-cli suites per fixture workspace: the top-level
+├─ integration/               M0–M4     @vscode/test-cli suites per fixture workspace: the top-level
 │                                       *.test.ts (suite integration), simple-ipkg/, path/
 │                                       (suite toolchain-path), diagnostics/, loose-stdio/,
-│                                       consent/ (M2), intelligence/, intelligence-loose/ (M3);
-│                                       support.ts is their shared helper
-├─ e2e/                       M1–M3     real idris2 (IDRIS2_E2E=1); ideDriver.ts drives IDE-mode
+│                                       consent/ (M2), intelligence/, intelligence-loose/ (M3),
+│                                       editing/, holes/ (M4); support.ts is their shared helper
+├─ e2e/                       M1–M4     real idris2 (IDRIS2_E2E=1); ideDriver.ts drives IDE-mode
 │                                       sessions of it (M2)
 ├─ fake-idris2/               M0 (handshake + :version), M1 (recorded --ttc-version, --paths,
 │                                       --list-packages, --dump-ipkg-json), M2 (transcript replay
 │                                       over stdio + socket, injected faults, a command-line log;
 │                                       client.ts, the byte-level client its tests share), M3
 │                                       (replay by session role, told by the build directory; a
-│                                       log of the requests each process read)
+│                                       log of the requests each process read), M4 (queries and
+│                                       :missing left out of the replay's matching;
+│                                       FAKE_IDRIS2_IDE_DELAY)
 ├─ fake-tools/                M1        launchers (sh + .cmd) of the fake idris2, idris2-lsp
 │                                       (--version) and pack; fault modes; simulated pack layouts
 ├─ fake-lsp/                  M5        Node script (vscode-languageserver) replaying JSON-RPC
 └─ fixtures/
-   ├─ transcripts/<idris2-version>/*.jsonl   M2   recorded IDE-mode sessions (42 for 0.8.0), by
+   ├─ transcripts/<idris2-version>/*.jsonl   M2   recorded IDE-mode sessions (65 for 0.8.0), by
    │                                                scripts/record-transcripts.mjs; format and
    │                                                scenarios in transcripts/README.md
    ├─ cli/<idris2-version>/*.txt              M9   recorded --check/--build output
@@ -74,10 +76,22 @@ test/
       │                                 Clean.idr, Plain.idr, Ambig.idr (the editing facts F2, F15,
       │                                 F29, F30; M4 edits them), warnings/ (one file per warning
       │                                 kind, E5), Unicode.idr (M3: E14, characters outside the
-      │                                 BMP, combining marks, comments); the broken ones are in
-      │                                 check:fixtures' EXPECTED_PROBLEMS
-      ├─ literate/            M4 (Lit2.lidr), M12 (Lit3.lidr and the .md, .tex, .org, .typ hosts); M3's
-      │                                 acceptance names literate/Lit.lidr, and uses loose-file/Lit.lidr
+      │                                 BMP, combining marks, comments); M4: Edits.idr (the E15
+      │                                 shapes: where blocks, operators, with, let, several missing
+      │                                 cases), HoleErr.idr (holes around a type error, F16),
+      │                                 Lit2.lidr (bird tracks with a `> ` line, F11), Layout.idr,
+      │                                 LitIndent.lidr, Blocks.idr and Indented.idr (where the edits
+      │                                 put their text), DupHole.idr (two ?h, E16), SameName.idr
+      │                                 and SameBase.idr (a name defined twice, :missing),
+      │                                 Absurd.lidr and ImposTab.idr (impossible clauses, one-line
+      │                                 case shapes), CaseWords.idr (Case Split shapes the compiler
+      │                                 garbles), Shadow.idr (names a clause or a type reuses); the
+      │                                 broken ones are in check:fixtures' EXPECTED_PROBLEMS
+      ├─ holes/               M4        loose files: Main.idr imports Base.idr, a hole todo in each (E16)
+      ├─ holes-ipkg/          M4        the same as a package (holes.ipkg, src/Holes/*), for E16
+      ├─ literate/            M12 (Lit3.lidr and the .md, .tex, .org, .typ hosts); M3's acceptance
+      │                                 names literate/Lit.lidr and uses loose-file/Lit.lidr; M4's
+      │                                 names literate/Lit2.lidr and uses broken/Lit2.lidr
       └─ golden-tests/        M10       Test.Golden layout
 ```
 
@@ -93,8 +107,10 @@ milestones given for them above are inferred from the first suite that needs eac
   `idris2.isIdrisDocument` tracker against a fake editor surface (including that disposing it
   resets a true key to false once).
 - `nullBackend.test.ts`, `errors.test.ts` — `backend/null.ts`, `core/errors.ts`.
-- `syntaxLexer.test.ts`, `selectionRangeModel.test.ts` — `features/syntax/`: lexer rules (each
-  surprising one was confirmed with `idris2 --check`), selection chains (including empty,
+- `syntaxLexer.test.ts`, `selectionRangeModel.test.ts` — `features/syntax/` and
+  `core/idrisLexer.ts`: lexer rules (each surprising one was confirmed with `idris2 --check`), the
+  line-by-line reading of `core/idrisLexer.ts` (M4: what goes on over a line break, and its
+  documented deviations), selection chains (including empty,
   whitespace-only and CRLF texts, where the chain is never empty), and a check over every
   offset of several texts that each range contains the previous one.
 - `disposable.test.ts` — `core/disposable.ts`.
@@ -124,8 +140,8 @@ No compiler runs in them; recorded compiler output comes from `fixtures/transcri
   single cut and pair of cuts, byte at a time, seeded property tests with mulberry32: sexp seed
   1, wire seeds 5, 7 and 11), a 7-digit prefix whose six-digit reading does not end a reply;
   every builder and decoder, and the handshake of another shape marked as such.
-- `protocolTranscripts.test.ts` — every frame of the recordings (34 in M2, 42 since M3) cut and
-  decoded under 20 random chunkings each (seeds 1–34 in M2; the socket recordings with the socket's decoder,
+- `protocolTranscripts.test.ts` — every frame of the recordings (34 in M2, 42 since M3, 65 since
+  M4) cut and decoded under 20 random chunkings each (seeds 1–34 in M2; the socket recordings with the socket's decoder,
   `framesOnly`), and again with every `\n` of the stream written as `\r\n`
   (4 chunkings each, seeds 101–134), every request rebuilt byte for byte by a builder, every
   reply decoded by its command's decoder, and the facts each scenario pins (F1–F7, F10, F11,
@@ -417,6 +433,119 @@ the backend.
   shows changed), `fakeIdris2Replay.test.ts` (each
   recording replayed with its own command line, so in its session role).
 
+## Unit tests of the M4 code (`unit/`)
+
+No compiler runs in them; M4 added 23 recordings to `fixtures/transcripts/0.8.0`
+(`clean-split-columns`, `plain-split-columns`, `ambig-holes`, `part-editing`, `hole-errors`,
+`dup-holes`, `edits-shapes`, `edits-searches`, `edits-names`, `edits-layout`, `edits-blocks`,
+`edits-same-name`, `edits-impossible`, `edits-case-words`, `edits-shadowing`,
+`lit2-editing`, `lit-indent-editing`, `holes-ipkg-{main,base,other,util}`,
+`holes-loose-{main,base}`) and `(:name-at "append")` to `clean-lookups`.
+
+- `edits.test.ts` — `backend/ide/edits.ts`: where a test uses a recording, the plan's request is
+  one the recorder sent, byte for byte, and the recorded answer, decoded and applied to the fixture
+  text, gives the expected lines (Case Split, Generate Definition and its next, Make Lemma / Case / With, Intro, Proof
+  Search and its next, Refine and its ambiguity on `Clean.idr`; the E15 shapes of `Edits.idr`;
+  `Part.idr`, `HoleErr.idr`, `Lit2.lidr` above and below its `> ` line, the E16 collision; where
+  the text goes in `Layout.idr`, `LitIndent.lidr`, `Blocks.idr` and `Indented.idr`; Case Split's
+  impossible and one-line `case` shapes in `Absurd.lidr` and `ImposTab.idr`; the `:missing`
+  report of the declaration's own module and namespace in `SameName.idr`); the refusals (names, hole
+  tokens, the F16 rule, lines the compiler numbers otherwise, literate answers of another shape,
+  declarations of several names, clauses in two places, local functions, `;` alternatives); the
+  parentheses (`inPlace` / `isOneToken` in both directions — `-1`, `(a) + (b)`, `[1, 2]`, `(+)` — in
+  every position, `.lidr` and `.md` included, for Intro, Refine and its alternatives, Proof Search
+  and its next results, Make Lemma's call; a token that would join a name before the hole or a `.`
+  after it, a string next to a `"`; an answer without a token refused); Make Case's three outcomes (the bracketed answer as
+  it is, the unbracketed one rewritten, anything else refused; tabs, `.lidr`, code points, `(?h)`);
+  the refusal when the rest of the hole's line starts a block entry (each opener of the parser, an
+  empty group as the entry, openers in a string's interpolation and after raw strings, the rest read
+  from what is open at a hole inside an interpolation) or a `parameters`/`using` header holds it (on
+  the hole's line or continued over lines, the old comma syntax too), and the first token below, after white space and comments, is right of the hole, and the
+  tokens at the hole's column or left of it that end such a block; Case Split on a clause that a
+  comment-led line continues; Refine's alternatives only in prefix form (the infix operator and
+  backticked forms refused, prefix forms with and without a fixity offered); the idiom-head refusal
+  on every route, and its limits; the backtick space, Next Result's included; the hole after a raw
+  string's `"#` not found (a known false refusal); Add Missing Cases, Add Clause and Make Lemma
+  where lines are led by a block comment, U+00A0, `\f` or `\v`. The tests from the fourth and
+  fifth reviews and from the convergence pass decode answers typed into the test (`lemmaReply`,
+  `textReply`, Refine's ambiguity errors, among them the operator alternatives copied from live
+  runs): seen live and not recorded, each test says where from.
+- `idrisSyntax.test.ts` — `core/idrisSyntax.ts`, the line reader: one test per group of block
+  openers of `Idris/Parser.idr` (the test names cite the lines), the `parameters`/`using`/`with`
+  header, what is open after a line, `isOneToken`, Case Split's raw string, `withoutLineComment`
+  and `holeTokenNames`.
+- `idrisSyntaxLines.test.ts` (with `support/lineReading.ts`) — the line reader against M0's
+  `lex()` on every line of every fixture (`.lidr` and `.md` read raw too), curated texts and 20,000
+  generated ones (fixed seed): token pieces, what is open at each break, `firstTokenColumn`,
+  `levelTokens`, `withoutLineComment`. Both run one lexer, so a rule broken the same way in both is
+  for `syntaxLexer.test.ts` and the lexer oracle to catch.
+- `holes.test.ts` — `backend/ide/holes.ts`: the recorded `:metavariables` and `:name-at` answers
+  turned into holes (declarations left out, the entry of the qualified name, E16; a name with an
+  invisible character kept).
+- `backendIde.test.ts` (M4 part) — `holes` and `edit` over the fake pool: the version and text
+  checks before sending, the check right before the write, Case Split's check of the file on disk,
+  the F16 refusal, the searches (`-Next` refused after a load, a search of its kind or a raw
+  request), a cancel before the call, while queued and after the write (`restartCheck` of the
+  real pool restarts a busy `check` session only), the hole commands in a bird-track file, the
+  holes asked in a load's reply hook (not when a newer load of the file is pending) and kept after
+  another load, a root's release announced, a `-Next` without a search refused before the session
+  is asked.
+  `session.test.ts` (M4 part): reply hooks run before the next request is chosen; a long action's
+  time-out is not counted towards giving up.
+- `protocol.test.ts`, `protocolTranscripts.test.ts` (M4 parts) — the name grammar (`isHoleName`,
+  `isIdentifierName`, operators; `missingCases` refuses anything else), request tables for the new
+  recordings, and the facts they pin (literate replies, `:missing` without a marker, F16, the
+  declaration span of `append`).
+- `editing.test.ts`, `cycling.test.ts`, `codeActions.test.ts`, `saveBeforeAction.test.ts` —
+  `features/editing` against fakes of the VS Code API and the backend (`support/editingFakes.ts`):
+  targets, the one-step apply at the request's version (ranges, overlaps, line breaks), messages
+  (rephrasings, the advice after a failed load, `refusalText`), the cycle (its own change counted,
+  loads, outside edits, the epoch, the hold of the save checks; Next Result continuing either
+  kind, Next Definition a Generate Definition cycle only), one command at a time per
+  document (and what a Next command is told while another one runs), the target read again after a
+  save only while its line has its text, but for white space at its end, the light bulb from the text alone (disabled after a check with errors), the three
+  settings; `diagnosticsChecks.test.ts`: the held save checks (a save with no reason is the user's).
+- `holeNavigation.test.ts`, `holesView.test.ts`, `showKeybindings.test.ts` — `features/holes`
+  and `features/help/keybindings.ts`: Next / Previous Hole over the lexer's tokens, locating a
+  reported hole in changed text, the model (late answers dropped, deleted files forgotten, holes
+  without a source location under their module), the tree, badge and tooltips on hover, List Holes
+  (under the window's progress), the context key, the module a fenced literate file declares (its
+  code blocks only, as the compiler's unlit reads them), and the Show Keybindings document against
+  ARCHITECTURE §10's letter table for each scheme and platform.
+- `keybindings.test.ts` — now the fifteen bound commands; a command id typed as a union of string
+  literals counts each member (the editing commands are registered in a loop), pinned to
+  `features/editing/register.ts`.
+- `positions.test.ts` (M4 part) — `toIdeSourceLineRequest`, the raw source line below doubled lines.
+- M2/M3 files extended in M4: `config.test.ts` (`saveBeforeAction`, `keybindingScheme`),
+  `manifest.test.ts` (the M4 commands, menus, views, settings and keybindings),
+  `fakeIdris2Replay.test.ts` (held-back answers; queries, `:missing` among them, left out of the
+  replay's matching),
+  `statusItem.test.ts`, `nullBackend.test.ts`.
+
+## Integration suites of M4 (`integration/`)
+
+- `editing/` (suite `editing`, workspace `broken`) — `commands.test.ts`: each command on
+  `Clean.idr` from the Command Palette and from its light bulb (the recorded text, one undo step),
+  the code actions offered without a request, Intro's and Refine's QuickPicks, Refine's text only
+  in its string slot, Add Missing Cases on `Part.idr`, the refusals on `Plain.idr` and `HoleErr.idr`
+  with nothing sent, `Lit2.lidr`; `cycling.test.ts`: Proof Search and Next Result with the status
+  item, no more results, Generate Definition again as Next Definition, an outside edit ending the
+  cycle; `nextResult.test.ts`: Next Result continuing a Generate Definition cycle (`append`'s
+  alternatives, each one undo step, `swap`'s next definition and its end); `safety.test.ts`: an answer to a changed file discarded (`FAKE_IDRIS2_IDE_DELAY`), a code
+  action's name that is not the one at its position (here, not an Idris name) refused with nothing
+  sent (the backend's name check is unit-tested), a code action's argument confined to its
+  document, `saveBeforeAction` always / prompt / never, Next Result never saving. Each file's
+  setup loads `Clean.idr` through `fixture.ts` `showLoaded`, which starts the check itself when
+  showing the file starts none: a document still open from an earlier file of the suite is not
+  checked again when shown (M2), and the restart that the file's environment setting causes
+  checks only the documents visible at its handshake.
+- `holes/` (suite `holes`, workspace `holes`) — the model after loading `Main.idr` (its holes and
+  `Base.idr`'s, E16), the view and its badge, revealing in a changed file, Next / Previous Hole,
+  List Holes, Show Keybindings following the setting.
+- `intelligence-loose/keybindings.test.ts` — all fifteen letters (45 bindings, none under `none`)
+  and E23 for each; `diagnostics/diagnostics.test.ts` — `idris2.revealHole` is the second internal
+  command, and the commands VS Code registers for the view (`idris2.holes.focus`, …) are left out.
+
 ## Integration suites of M3 (`integration/`)
 
 The fake compiler replays the M3 recordings; `FAKE_IDRIS2_REQUEST_LOG` shows which process read
@@ -517,7 +646,7 @@ snapshots and project roots and a fake `ToolchainService` for them.
   pack; the fault modes; and the simulated pack layouts (skipped on Windows), including that
   running pack's `idris2` wrapper runs pack.
 
-## E2E suite (`e2e/`, M1–M3)
+## E2E suite (`e2e/`, M1–M4)
 
 Runs with `npm run test:e2e` (the `e2e` suite of `.vscode-test.mjs`, workspace
 `fixtures/workspaces/simple-ipkg`, no toolchain settings) against the `idris2` on `PATH`; the
@@ -578,6 +707,11 @@ what the real compiler prints **in the same run** (shapes, not the literal 0.8.0
   given to `:interpret` normalised and not run over both transports, and which spellings of `:t id`
   the REPL parser reads as a command; `fakeParity.test.ts` adds `eval-values` over both
   transports.
+- `editing.test.ts` (M4) — the IDE-mode acceptance of ROADMAP §5 M4 on a copy of `broken/`: Case
+  Split, Generate Definition and Next Definition, Intro's candidates, Proof Search and Next Result,
+  Make Lemma on `Clean.idr`; the Holes view's `vlen_rhs` and its reveal; Refine's ambiguity on
+  `Ambig.idr`; Add Missing Cases on `Part.idr`; the refusal on `Plain.idr`; `Lit2.lidr`'s single
+  `> `.
 
 ## Grammar tests (`grammar/`)
 
@@ -600,8 +734,12 @@ what the real compiler prints **in the same run** (shapes, not the literal 0.8.0
 - `corpus.test.ts` — not part of `test:grammar`; `npm run test:corpus` fetches the corpora and
   tokenises every file (no `invalid` scope, root end state except the files listed in
   `corpus.json`), then checks that every corpus `.idr` file tokenises the same as bird-track
-  code (`birdTrackDifferences`). With `IDRIS2_LEXER_ORACLE=1` it builds `corpus/lexer-oracle/LexDump.idr`
-  against the installed compiler and checks each lexer token's scope.
+  code (`birdTrackDifferences`), and (M4) the suite *line reader against lex*: every line of every
+  corpus file read by the edits' line reader, compared with `lex()` (CI runs `npm run
+  test:corpus`). With `IDRIS2_LEXER_ORACLE=1` (local only; one `idris2` process, for the build) it
+  builds `corpus/lexer-oracle/LexDump.idr` against the installed compiler and checks each lexer
+  token's scope, and that `lex()` reads exactly the compiler's tokens (bounds and kinds) in the
+  corpora and in every `.idr` file under `fixtures/`.
 - Snapshots: `UPDATE_SNAPSHOTS=1 npm run test:grammar` rewrites them; review the diff before
   committing, never regenerate blindly.
 

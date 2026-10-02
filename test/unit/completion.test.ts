@@ -14,7 +14,7 @@ import {
   registerCompletion,
   type CompletionApi,
 } from '../../src/features/intelligence/completion';
-import { KEYWORDS } from '../../src/features/syntax/lexer';
+import { KEYWORDS } from '../../src/core/idrisSyntax';
 import { repoRoot } from '../fake-tools/paths';
 import {
   asDoc,

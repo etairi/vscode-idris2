@@ -269,10 +269,18 @@ function* snippetChecks(dir) {
  */
 const EXPECTED_PROBLEMS = {
   'workspaces/broken/Bad.idr': ['Error: While processing right hand side of f. When unifying:', 'Bad:4:7--4:12'],
+  'workspaces/broken/Blocks.idr': ['Error: bc is not covering.', 'Blocks:33:1--33:14', 'Error: f4 is not covering.', 'Blocks:27:3--27:16'],
+  'workspaces/broken/DupHole.idr': ['Error: While processing right hand side of g. DupHole.h is already defined.', 'DupHole:9:9--9:11'],
   'workspaces/broken/Err.lidr': ["Error: While processing right hand side of g. Can't find an implementation for FromString Nat.", 'Err:9:5--9:8'],
   'workspaces/broken/ErrMd.idr.md': [
     "Error: While processing right hand side of g. Can't find an implementation for FromString Nat.",
     'ErrMd:9:5--9:8',
+  ],
+  'workspaces/broken/HoleErr.idr': [
+    'Error: While processing right hand side of bad. When unifying:',
+    'HoleErr:9:9--9:10',
+    'Error: cover is not covering.',
+    'HoleErr:14:1--14:28',
   ],
   'workspaces/broken/Mixed.idr': [
     'Warning: Unreachable clause: f n',

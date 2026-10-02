@@ -8,7 +8,8 @@
 // replay of the IDE-mode transcripts recorded from the real compiler (FAKE_IDRIS2_TRANSCRIPTS),
 // injected protocol faults (FAKE_IDRIS2_IDE_FAULT) and an invocation log (FAKE_IDRIS2_LOG). M3:
 // replay by session role (the build directory tells a `check` session from an `eval` one) and a
-// log of the requests received (FAKE_IDRIS2_REQUEST_LOG). The
+// log of the requests received (FAKE_IDRIS2_REQUEST_LOG). M4: replies held back per command
+// (FAKE_IDRIS2_IDE_DELAY), a compiler busy with a long request. The
 // behaviour mirrors Idris 2 0.8.0 (15a3e4e); each rule cites the compiler source it follows.
 // README.md says what was compared byte for byte with the real binary and what is not mirrored.
 import { createHash } from 'node:crypto';
@@ -211,17 +212,26 @@ const isMessage = (sexp) => sexp !== undefined && sexp.t === 'list' && sexp.item
  * bytes into the protocol stream without a frame (then calls `done`, once they are written); `io.output(text)` writes program output to the
  * process stdout, which over stdio is the protocol stream itself (F5). `replayer` (transcript
  * replay, or undefined) answers every request the built-in commands do not; `faults` maps a
- * request's 1-based number in this process to an injected fault (FAKE_IDRIS2_IDE_FAULT).
+ * request's 1-based number in this process to an injected fault (FAKE_IDRIS2_IDE_FAULT); `delays`
+ * maps a command's name to the milliseconds its answer is held back (FAKE_IDRIS2_IDE_DELAY).
+ *
+ * The compiler answers one request at a time (`loop`, IDEMode/REPL.idr): while an answer is held
+ * back, what arrives is not read — it is kept, and read in order once the answer is out.
  *
  * The id of an error that is not attributable to a request is the id of the last *recognised*
  * request, 0 before the first (`printIDEError outf idx …`; `updateOutput i` runs only when
  * `getMsg` succeeds; the output is created as `IDEMode 0 …` in Idris/Driver.idr).
  */
-function createSession(io, replayer, faults) {
+function createSession(io, replayer, faults, delays) {
   let lastId = 0n;
   let received = 0;
   let hung = false;
   let fault;
+  /** Requests that arrived while an answer was held back, oldest first. */
+  const unread = [];
+  let busy = false;
+  /** Called once nothing is held back or unread (`whenIdle`). */
+  let onIdle;
   const reply = (sexp) => {
     let out = sexp;
     if (fault === 'id-mismatch' && out.items[0].t === 'sym' && out.items[0].name === 'return') {
@@ -234,84 +244,120 @@ function createSession(io, replayer, faults) {
     start() { reply(list(sym('protocol-version'), int(2), int(1))); },
     /** A `hang` fault fired: the compiler is busy for good and no longer reads its input. */
     get hung() { return hung; },
+    /**
+     * Runs `callback` once no answer is held back and nothing is unread (at once when that is
+     * so already): the end of input is noticed only after the requests before it are answered.
+     */
+    whenIdle(callback) {
+      if (busy) { onIdle = callback; } else { callback(); }
+    },
     /** `input` is the frame payload as the compiler sees it: one character per byte. */
     receive(input) {
-      if (hung) { return; }
-      logRequest(input);
-      received += 1;
-      fault = faults.get(received);
-      if (fault === 'crash') {
-        process.stderr.write(`${TOOL}: simulated crash at request ${received} (FAKE_IDRIS2_IDE_FAULT)\n`);
-        process.exit(3);
-      }
-      if (fault === 'crash-in-reply') {
-        // Exits only once both writes are done, so that neither is lost at the exit.
-        io.raw(PARTIAL_FRAME, () => process.stderr.write(
-          `${TOOL}: simulated crash inside a reply at request ${received} (FAKE_IDRIS2_IDE_FAULT)\n`, () => process.exit(3)));
-        hung = true; // reads nothing more
-        return;
-      }
-      if (fault === 'hang') {
-        hung = true;
-        exitAfterHangLimit();
-        return;
-      }
-      if (fault === 'noise') { io.raw(NOISE); }
-      let sexp;
-      let parseError;
-      try {
-        sexp = parseSExp(input);
-      } catch (e) {
-        if (!(e instanceof SExpError)) { throw e; }
-        parseError = e;
-      }
-      const handler = isMessage(sexp) ? COMMANDS.get(show(sexp.items[0])) : undefined;
-      if (handler !== undefined) {
-        replayer?.remember(input, sexp);
-        lastId = sexp.items[1].value;
-        reply(list(sym('return'), handler(), int(lastId)));
-        return;
-      }
-      if (replayer !== undefined) {
-        const answer = replayer.answer(input, sexp);
-        if (answer === undefined) {
-          // Not a compiler behaviour: the request has no recording, so the test cannot know
-          // what the compiler would say. Answered with the request's own id when it has one,
-          // so that the client's pending request ends with this error instead of hanging.
-          const id = isMessage(sexp) ? sexp.items[1].value : lastId;
-          const what = replayer.describe(input, sexp);
-          process.stderr.write(`${TOOL}: no recorded reply for ${what}\n`);
-          error(`${TOOL}: no recorded reply for ${what}`, id);
-          lastId = id;
-          return;
-        }
-        // Recorded replies carry the recorded request's id or, for a request the compiler did
-        // not recognise, the previous recognised one (F4); both are mapped to this session's.
-        const liveId = isMessage(sexp) ? sexp.items[1].value : undefined;
-        const previous = lastId;
-        for (const item of answer.replies) {
-          if (item.output !== undefined) {
-            io.output(item.output);
-            continue;
-          }
-          const recordedId = item.sexp.items.at(-1).value;
-          const id = recordedId === answer.recordedId && liveId !== undefined ? liveId : previous;
-          reply(list(...item.sexp.items.slice(0, -1), int(id)));
-        }
-        if (answer.recognised && liveId !== undefined) { lastId = liveId; }
-        return;
-      }
-      if (parseError !== undefined) {
-        // The real message is the compiler's rendered parse error; only its prefix is mirrored.
-        error(`Parse error: ${parseError.message} (fake-idris2)`);
-        return;
-      }
-      // `reflow "Unrecognised command:" <++> pretty0 (show sexp)`: `Pretty String` splits
-      // with Data.String.lines (\r\n, \r, \n) and rejoins with newlines, so a CR from a
-      // `\r` escape comes back as LF.
-      error(`Unrecognised command: ${show(sexp).replace(/\r\n|\r|\n/g, '\n')}`);
+      if (busy) { unread.push(input); return; }
+      handle(input);
     },
   };
+
+  /** Reads the next unread request, if any, now that no answer is held back. */
+  function readUnread() {
+    while (!busy && !hung && unread.length > 0) { handle(unread.shift()); }
+    if (!busy && onIdle !== undefined) {
+      const callback = onIdle;
+      onIdle = undefined;
+      callback();
+    }
+  }
+
+  function handle(input) {
+    if (hung) { return; }
+    logRequest(input);
+    received += 1;
+    fault = faults.get(received);
+    if (fault === 'crash') {
+      process.stderr.write(`${TOOL}: simulated crash at request ${received} (FAKE_IDRIS2_IDE_FAULT)\n`);
+      process.exit(3);
+    }
+    if (fault === 'crash-in-reply') {
+      // Exits only once both writes are done, so that neither is lost at the exit.
+      io.raw(PARTIAL_FRAME, () => process.stderr.write(
+        `${TOOL}: simulated crash inside a reply at request ${received} (FAKE_IDRIS2_IDE_FAULT)\n`, () => process.exit(3)));
+      hung = true; // reads nothing more
+      return;
+    }
+    if (fault === 'hang') {
+      hung = true;
+      exitAfterHangLimit();
+      return;
+    }
+    if (fault === 'noise') { io.raw(NOISE); }
+    let sexp;
+    let parseError;
+    try {
+      sexp = parseSExp(input);
+    } catch (e) {
+      if (!(e instanceof SExpError)) { throw e; }
+      parseError = e;
+    }
+    const delay = delays.get(commandName(sexp));
+    if (delay !== undefined) {
+      busy = true;
+      setTimeout(() => {
+        busy = false;
+        answer(input, sexp, parseError);
+        readUnread();
+      }, delay);
+      return;
+    }
+    answer(input, sexp, parseError);
+  }
+
+  function answer(input, sexp, parseError) {
+    const handler = isMessage(sexp) ? COMMANDS.get(show(sexp.items[0])) : undefined;
+    if (handler !== undefined) {
+      replayer?.remember(input, sexp);
+      lastId = sexp.items[1].value;
+      reply(list(sym('return'), handler(), int(lastId)));
+      return;
+    }
+    if (replayer !== undefined) {
+      const recorded = replayer.answer(input, sexp);
+      if (recorded === undefined) {
+        // Not a compiler behaviour: the request has no recording, so the test cannot know
+        // what the compiler would say. Answered with the request's own id when it has one,
+        // so that the client's pending request ends with this error instead of hanging.
+        const id = isMessage(sexp) ? sexp.items[1].value : lastId;
+        const what = replayer.describe(input, sexp);
+        process.stderr.write(`${TOOL}: no recorded reply for ${what}\n`);
+        error(`${TOOL}: no recorded reply for ${what}`, id);
+        lastId = id;
+        return;
+      }
+      // Recorded replies carry the recorded request's id or, for a request the compiler did
+      // not recognise, the previous recognised one (F4); both are mapped to this session's.
+      const liveId = isMessage(sexp) ? sexp.items[1].value : undefined;
+      const previous = lastId;
+      for (const item of recorded.replies) {
+        if (item.output !== undefined) {
+          io.output(item.output);
+          continue;
+        }
+        const recordedId = item.sexp.items.at(-1).value;
+        const id = recordedId === recorded.recordedId && liveId !== undefined ? liveId : previous;
+        reply(list(...item.sexp.items.slice(0, -1), int(id)));
+      }
+      if (recorded.recognised && liveId !== undefined) { lastId = liveId; }
+      return;
+    }
+    if (parseError !== undefined) {
+      // The real message is the compiler's rendered parse error; only its prefix is mirrored.
+      error(`Parse error: ${parseError.message} (fake-idris2)`);
+      return;
+    }
+    // `reflow "Unrecognised command:" <++> pretty0 (show sexp)`: `Pretty String` splits
+    // with Data.String.lines (\r\n, \r, \n) and rejoins with newlines, so a CR from a
+    // `\r` escape comes back as LF.
+    error(`Unrecognised command: ${show(sexp).replace(/\r\n|\r|\n/g, '\n')}`);
+  }
 }
 
 /** The `hang` fault: like FAKE_IDRIS2_MODE=hang, exit 1 after FAKE_TOOL_HANG_LIMIT_MS. */
@@ -357,6 +403,38 @@ function ideFaults() {
   return faults;
 }
 
+/**
+ * The name of a request's command, for FAKE_IDRIS2_IDE_DELAY: `case-split` for `((:case-split …)
+ * ID)`, `proof-search-next` for the bare symbol of `(:proof-search-next ID)` (F4); undefined for
+ * anything else.
+ */
+function commandName(sexp) {
+  if (!isMessage(sexp)) { return undefined; }
+  const command = sexp.items[0];
+  const head = command.t === 'list' ? command.items[0] : command;
+  return head?.t === 'sym' ? head.name : undefined;
+}
+
+/**
+ * FAKE_IDRIS2_IDE_DELAY = comma-separated `<command>=<ms>`: the answer to every request of that
+ * command (`commandName`) is written only after `ms` milliseconds, and nothing after it is read
+ * before then (`createSession`) — a compiler busy with a long request. Not a compiler behaviour to
+ * mirror, only its timing: the answer itself is unchanged. With or without transcripts.
+ */
+function ideDelays() {
+  const text = process.env.FAKE_IDRIS2_IDE_DELAY ?? '';
+  const delays = new Map();
+  for (const item of text === '' ? [] : text.split(',')) {
+    const m = /^([a-z][a-z-]*)=([0-9]+)$/.exec(item.trim());
+    if (m === null || delays.has(m[1])) {
+      misconfigured(`FAKE_IDRIS2_IDE_DELAY must be a comma-separated list of <command>=<ms> with distinct `
+        + `commands (e.g. case-split=2000), not ${JSON.stringify(text)}`);
+    }
+    delays.set(m[1], Number(m[2]));
+  }
+  return delays;
+}
+
 // ---------------------------------------------------------------------------------------------
 // Transcript replay (FAKE_IDRIS2_TRANSCRIPTS; README.md "Transcript replay"; the format is in
 // test/fixtures/transcripts/README.md)
@@ -373,6 +451,24 @@ function requestKey(input, sexp) {
   if (sexp === undefined) { return `raw ${input}`; }
   return isMessage(sexp) ? `command ${show(sexp.items[0])}` : `sexp ${show(sexp)}`;
 }
+
+/**
+ * The commands that ask about the loaded code (`process` in IDEMode/REPL.idr on v0.8.0: names,
+ * types, documentation, holes, completions): the matching treats them as changing nothing that
+ * later answers depend on — an approximation, like the rest of the matching, not checked for each
+ * command. Every other request — a load, an edit, a search and its `-next`, `:interpret`,
+ * `:enable-syntax`, one that is not a command — counts.
+ */
+const QUERIES = new Set(['type-of', 'name-at', 'docs-for', 'metavariables', 'repl-completions', 'browse-namespace',
+  'who-calls', 'calls-who', 'apropos', 'print-definition', 'version']);
+
+/**
+ * Whether a request key (`requestKey`) is a query: a command of `QUERIES`, or `:missing` through
+ * `:interpret` (M4's Add Missing Cases), which only reads the context (`process (Missing n)` in
+ * Idris/REPL.idr on v0.8.0 [src]) — so a second `:missing g` after the first still follows the
+ * load it answers for.
+ */
+const isQuery = (key) => QUERIES.has(/^command \(?:([a-z-]+)/.exec(key)?.[1]) || key.startsWith('command (:interpret ":missing ');
 
 /** Applies `f` to every string atom of `sexp`. */
 function mapStrings(sexp, f) {
@@ -444,9 +540,13 @@ function loadScenarios(dir) {
         refuse(`cannot replay a ${JSON.stringify(event.kind)} event before the end of input`);
       }
     }
+    const stateful = [];
     for (const step of steps) {
       step.recognised = step.id !== undefined && step.replies.some((r) => r.sexp !== undefined
         && r.sexp.items[0].name === 'return' && r.sexp.items.at(-1).value === step.id);
+      // What `createReplayer` compares (M4): the requests before this one that are not queries.
+      step.before = [...stateful];
+      if (!isQuery(step.key)) { stateful.push(step.key); }
     }
     return { name: name.slice(0, -'.jsonl'.length), role: roleOf(meta.args ?? []), fixtures: meta.fixtures ?? {}, steps };
   });
@@ -460,8 +560,12 @@ function loadScenarios(dir) {
  * now. Among the recorded requests that match, the one whose recorded predecessors match the
  * longest run of this session's latest requests wins, so that the compiler state the replies
  * depend on (a file already built, F7; `:enable-syntax`, F14) is the recorded one as far as
- * the transcripts allow. Ties go to a request whose whole recorded prefix matched (a session
- * replayed from its start), then to the first scenario by name, then to the earlier request.
+ * the transcripts allow. Queries (`isQuery`) are left out on both sides (M4): the holes model
+ * sends `:metavariables` and `:name-at` after every load, which would otherwise hide a reload's
+ * recorded predecessor, and a query's answer depends on the file loaded (`:name-at "todo"` after a
+ * load of `Main.idr` lists `Main.todo` too, after one of `Base.idr` not), which the load before it
+ * decides. Ties go to a request whose whole recorded prefix matched (a session replayed from its
+ * start), then to the first scenario by name, then to the earlier request.
  * The replies are the recorded group with the paths spelled as this session spells them.
  * `role` (`roleOf` this process's command line) restricts the scenarios to those recorded in the
  * same role, when both are known: an `eval` session is answered from `eval` recordings and a
@@ -478,8 +582,11 @@ function createReplayer(dir, role) {
   // How this session spells the placeholders (learnt from its requests; Latin-1 views, F1).
   const spelling = { ROOT: latin1View(cwd), LINK: undefined };
   let sep = path.sep;
-  /** The keys of every request of this session so far, oldest first. */
+  /** The keys of this session's requests that are not queries (`isQuery`), oldest first. */
   const history = [];
+  const remember = (key) => {
+    if (!isQuery(key)) { history.push(key); }
+  };
 
   /** `v` (a string of a request) with a leading path to the working directory replaced. */
   const normalise = (v) => {
@@ -522,7 +629,7 @@ function createReplayer(dir, role) {
   return {
     /** Records a request answered without the transcripts (`:version`), for the matching above. */
     remember(input, sexp) {
-      history.push(requestKey(input, sexp));
+      remember(requestKey(input, sexp));
     },
     /** The request as matched, for messages: its normalised command, or its text. */
     describe(input, sexp) {
@@ -534,19 +641,20 @@ function createReplayer(dir, role) {
       hashes.clear(); // files may have changed since the last request
       let best;
       for (const scenario of scenarios.filter(eligible)) {
-        scenario.steps.forEach((step, index) => {
-          if (step.key !== key) { return; }
-          let run = 0; // recorded predecessors that equal this session's latest requests
-          while (run < index && run < history.length && scenario.steps[index - 1 - run].key === history[history.length - 1 - run]) {
+        for (const step of scenario.steps) {
+          if (step.key !== key) { continue; }
+          const { before } = step;
+          let run = 0; // recorded predecessors that equal this session's latest requests, queries left out
+          while (run < before.length && run < history.length && before[before.length - 1 - run] === history[history.length - 1 - run]) {
             run += 1;
           }
-          const whole = run === index;
+          const whole = run === before.length;
           if (best === undefined || run > best.run || (run === best.run && whole && !best.whole)) {
             best = { step, run, whole };
           }
-        });
+        }
       }
-      history.push(key);
+      remember(key);
       if (best === undefined) { return undefined; }
       const { step } = best;
       return {
@@ -654,15 +762,16 @@ function connectionFailed() {
 // Transports and command line
 // ---------------------------------------------------------------------------------------------
 
-function serveStdio(replayer, faults) {
+function serveStdio(replayer, faults, delays) {
   const toStdout = (text, done) => process.stdout.write(text, done);
   const session = createSession({ frame: (text) => process.stdout.write(encodeFrame(text)), raw: toStdout, output: toStdout },
-    replayer, faults);
+    replayer, faults, delays);
   const reader = createReader((input) => session.receive(input));
   session.start();
   process.stdin.on('data', (chunk) => reader.push(chunk));
-  // A hung compiler is not reading, so it does not see the end of its input either.
-  process.stdin.on('end', () => { if (!session.hung) { inputEnded(reader); } });
+  // A hung compiler is not reading, so it does not see the end of its input either; a busy one
+  // sees it once it has answered what came before it.
+  process.stdin.on('end', () => session.whenIdle(() => { if (!session.hung) { inputEnded(reader); } }));
 }
 
 /**
@@ -671,7 +780,7 @@ function serveStdio(replayer, faults) {
  * in decimal plus a newline on stdout, accept one connection and speak the protocol on it.
  * Program output would go to the process stdout (F5); the handshake is sent after `accept`.
  */
-function serveSocket(address, replayer, faults) {
+function serveSocket(address, replayer, faults, delays) {
   const colon = address.indexOf(':');
   const hostPart = colon < 0 ? address : address.slice(0, colon);
   const portPart = colon < 0 ? '' : address.slice(colon + 1);
@@ -686,11 +795,11 @@ function serveSocket(address, replayer, faults) {
       frame: (text) => conn.write(encodeFrame(text)),
       raw: (text, done) => conn.write(text, done),
       output: (text) => process.stdout.write(text), // F5: program output goes to the process stdout
-    }, replayer, faults);
+    }, replayer, faults, delays);
     const reader = createReader((input) => session.receive(input));
     session.start();
     conn.on('data', (chunk) => reader.push(chunk));
-    conn.on('end', () => { if (!session.hung) { inputEnded(reader); } });
+    conn.on('end', () => session.whenIdle(() => { if (!session.hung) { inputEnded(reader); } }));
     conn.on('error', () => { if (!session.hung) { connectionFailed(); } });
   });
   server.listen({ host, port }, () => {
@@ -851,12 +960,13 @@ async function main(argv) {
   if (ide !== undefined) {
     ideVersion(); // reject an unusable FAKE_IDRIS2_VERSION before the handshake
     const faults = ideFaults();
+    const delays = ideDelays();
     const dir = process.env.FAKE_IDRIS2_TRANSCRIPTS;
     const replayer = dir === undefined || dir === '' ? undefined : createReplayer(dir, ide.role);
     if (ide.socket === undefined) {
-      serveStdio(replayer, faults);
+      serveStdio(replayer, faults, delays);
     } else {
-      serveSocket(ide.socket, replayer, faults);
+      serveSocket(ide.socket, replayer, faults, delays);
     }
     return;
   }

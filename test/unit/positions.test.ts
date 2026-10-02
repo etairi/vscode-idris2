@@ -16,6 +16,7 @@ import {
   toCompilerColumn,
   toIdeCaseSplitRequest,
   toIdeLineRequest,
+  toIdeSourceLineRequest,
   toIdeTypeOfRequest,
   toIdeTypeOfRequestPastStart,
   toLoadedPosition,
@@ -153,6 +154,12 @@ suite('core/positions', () => {
     test('F11 addendum: each `> ` or `>   ` line above adds one — `> k : Nat` (file line 13) is line 16', () => {
       assert.strictEqual(toIdeLineRequest(drift, 13), 16);
       assert.strictEqual(toIdeLineRequest(drift, 6), 7, 'the doubled line itself keeps its number');
+    });
+
+    test('M4: the raw source line (make-lemma, make-case, make-with) is the file line, also below doubled lines', () => {
+      assert.strictEqual(toIdeSourceLineRequest(13), 14);
+      assert.notStrictEqual(toIdeSourceLineRequest(13), toIdeLineRequest(drift, 13));
+      assert.strictEqual(toIdeSourceLineRequest(4), toIdeLineRequest(clean, 4));
     });
   });
 

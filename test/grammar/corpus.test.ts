@@ -16,12 +16,19 @@
  * Per-corpus statistics (files, lines, time) are logged. The corpora are never copied into the
  * repository; several declare no licence that would allow it.
  *
- * With IDRIS2_LEXER_ORACLE=1 a second suite compares the grammar with the compiler's own lexer:
- * it builds test/corpus/lexer-oracle/LexDump.idr against the `idris2` API package installed with
- * the compiler (IDRIS2 names the binary; default `idris2`), and for every token the lexer
- * produces in the corpora's .idr files and the grammar fixtures it checks the scope the grammar
- * gives the token's first and last character, and that comment scopes cover exactly the lexer's
- * comments. It needs the compiler, so it is not part of CI.
+ * A third suite reads every line of every .idr and .lidr file of the corpora with the line reader of
+ * the edits (`src/core/idrisSyntax.ts`, a line at a time) and compares it with M0's `lex` (the whole
+ * file at once): `test/unit/support/lineReading.ts` says what must agree.
+ *
+ * With IDRIS2_LEXER_ORACLE=1 two more tests compare with the compiler's own lexer: they build
+ * test/corpus/lexer-oracle/LexDump.idr (once) against the `idris2` API package installed with the
+ * compiler (IDRIS2 names the binary; default `idris2`). For every token the lexer produces in the
+ * corpora's .idr files and the grammar fixtures, the first checks the scope the grammar gives the
+ * token's first and last character, and that comment scopes cover exactly the lexer's comments; the
+ * second checks that `lex` (`src/features/syntax/lexer.ts`) reads, in the corpora's .idr files and
+ * every .idr file under test/fixtures, exactly the lexer's tokens — each with its bounds and a kind
+ * that corresponds to the lexer's (comments, doc comments, string delimiters and text,
+ * interpolations, character literals included). They need the compiler, so they are not part of CI.
  */
 import * as assert from 'assert';
 import { spawnSync } from 'child_process';
@@ -29,6 +36,8 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import * as vsctm from 'vscode-textmate';
+import { lex, type TokenKind } from '../../src/features/syntax/lexer';
+import { lineDifferences } from '../unit/support/lineReading';
 import { birdTrackDifferences, grammarFor, LITERATE_BASE_DEPTH, repoRoot, scopeForFile } from './harness';
 
 interface Corpus {
@@ -165,8 +174,72 @@ suite('grammar corpus as bird-track code', () => {
   }
 });
 
+suite('line reader against lex (src/core/idrisSyntax.ts)', () => {
+  for (const corpus of corpora) {
+    test(`${corpus.name}: every line, read a line at a time, as lex reads the whole file`, function () {
+      this.timeout(0);
+      const dir = path.join(repoRoot, '.corpus', corpus.name);
+      assert.ok(fs.existsSync(dir), `${dir} is missing: run node scripts/fetch-corpus.mjs`);
+      const problems: string[] = [];
+      let files = 0;
+      let lines = 0;
+      let cutChars = 0;
+      for (const p of corpus.paths) {
+        for (const file of idrisFiles(path.join(dir, p))) {
+          const r = lineDifferences(fs.readFileSync(file, 'utf8'), path.relative(dir, file).split(path.sep).join('/'), 3);
+          files++;
+          lines += r.lines;
+          cutChars += r.cutChars;
+          problems.push(...r.problems);
+        }
+      }
+      console.log(`      ${corpus.name}: ${files} files, ${lines} lines, ${cutChars} character literals a line break cuts and the next line does not close`);
+      assert.ok(files > 0, 'no .idr or .lidr files found');
+      assert.deepStrictEqual(problems.slice(0, 20), []);
+    });
+  }
+});
+
 // ---------------------------------------------------------------------------------------------
 // Comparison with the compiler's lexer (opt-in)
+
+/** LexDump.idr built into a temporary directory (once per run), and the compiler's version. */
+let oracle: { readonly dir: string; readonly version: string } | undefined;
+
+function lexDumpOracle(): { readonly dir: string; readonly version: string } {
+  if (oracle === undefined) {
+    const idris2 = process.env.IDRIS2 || 'idris2';
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vi2-lexer-'));
+    const build = spawnSync(
+      idris2,
+      ['-p', 'idris2', '-p', 'contrib', '--build-dir', path.join(tmp, 'build'), '--output-dir', tmp, '-o', 'lexdump', 'LexDump.idr'],
+      { cwd: path.join(repoRoot, 'test', 'corpus', 'lexer-oracle'), encoding: 'utf8' },
+    );
+    assert.strictEqual(build.status, 0, `building LexDump.idr failed:\n${build.stdout}${build.stderr}`);
+    oracle = { dir: tmp, version: spawnSync(idris2, ['--version'], { encoding: 'utf8' }).stdout.trim() };
+  }
+  return oracle;
+}
+
+/** The rows LexDump prints for `file` (kind, start line and column, end line and column, payload), or the lexer's error. */
+function lexDump(file: string): string[][] | { readonly error: string } {
+  const dump = spawnSync(path.join(lexDumpOracle().dir, 'lexdump'), [file], { encoding: 'utf8', maxBuffer: 1 << 28 });
+  assert.strictEqual(dump.status, 0, `lexdump ${file}: ${dump.stderr}`);
+  const rows = dump.stdout.split('\n').filter((l) => l !== '').map((l) => l.split('\t'));
+  return rows[0]?.[0] === 'ERROR' ? { error: rows[0].slice(1).join(' ') } : rows;
+}
+
+/** The .idr files under test/fixtures. */
+function* fixtureFiles(dir: string): Generator<string> {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    const p = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      yield* fixtureFiles(p);
+    } else if (entry.name.endsWith('.idr')) {
+      yield p;
+    }
+  }
+}
 
 /** What the grammar must say about the first (and last) character of each lexer token kind. */
 const RESERVED: Readonly<Record<string, string>> = {
@@ -265,15 +338,7 @@ suite('grammar vs the Idris 2 lexer (IDRIS2_LEXER_ORACLE=1)', () => {
       this.skip();
     }
     this.timeout(0);
-    const idris2 = process.env.IDRIS2 || 'idris2';
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vi2-lexer-'));
-    const build = spawnSync(
-      idris2,
-      ['-p', 'idris2', '-p', 'contrib', '--build-dir', path.join(tmp, 'build'), '--output-dir', tmp, '-o', 'lexdump', 'LexDump.idr'],
-      { cwd: path.join(repoRoot, 'test', 'corpus', 'lexer-oracle'), encoding: 'utf8' },
-    );
-    assert.strictEqual(build.status, 0, `building LexDump.idr failed:\n${build.stdout}${build.stderr}`);
-    const version = spawnSync(idris2, ['--version'], { encoding: 'utf8' }).stdout.trim();
+    const { version } = lexDumpOracle();
 
     const files: string[] = [];
     const fixtures = path.join(repoRoot, 'test', 'fixtures', 'grammar');
@@ -299,11 +364,9 @@ suite('grammar vs the Idris 2 lexer (IDRIS2_LEXER_ORACLE=1)', () => {
     let tokens = 0;
     const lexerErrors: string[] = [];
     for (const file of files) {
-      const dump = spawnSync(path.join(tmp, 'lexdump'), [file], { encoding: 'utf8', maxBuffer: 1 << 28 });
-      assert.strictEqual(dump.status, 0, `lexdump ${file}: ${dump.stderr}`);
-      const rows = dump.stdout.split('\n').filter((l) => l !== '').map((l) => l.split('\t'));
-      if (rows[0]?.[0] === 'ERROR') {
-        lexerErrors.push(`${file}: ${rows[0].slice(1).join(' ')}`);
+      const rows = lexDump(file);
+      if (!Array.isArray(rows)) {
+        lexerErrors.push(`${file}: ${rows.error}`);
         continue;
       }
       // The lexer counts \r as part of a line and columns in code points; the grammar sees lines
@@ -367,10 +430,101 @@ suite('grammar vs the Idris 2 lexer (IDRIS2_LEXER_ORACLE=1)', () => {
         }
       });
     }
-    fs.rmSync(tmp, { recursive: true, force: true });
     console.log(`      ${version}: ${files.length} files, ${tokens} lexer tokens, ${lexerErrors.length} files rejected by the lexer`);
     const report = [...mismatches.entries()].map(([key, m]) => `${m.n}× ${key}\n    ${m.examples.join('\n    ')}`);
     assert.deepStrictEqual(report, []);
     assert.deepStrictEqual(lexerErrors, []);
   });
+
+  test('lex reads the tokens the lexer reads: each with its bounds and a corresponding kind', function () {
+    if (process.env.IDRIS2_LEXER_ORACLE !== '1') {
+      this.skip();
+    }
+    this.timeout(0);
+    const { version } = lexDumpOracle();
+    const files: string[] = [...fixtureFiles(path.join(repoRoot, 'test', 'fixtures'))];
+    for (const corpus of corpora) {
+      for (const p of corpus.paths) {
+        files.push(...[...idrisFiles(path.join(repoRoot, '.corpus', corpus.name, p))].filter((f) => f.endsWith('.idr')));
+      }
+    }
+    const mismatches = new Map<string, { n: number; examples: string[] }>();
+    const note = (key: string, where: string): void => {
+      const m = mismatches.get(key) ?? { n: 0, examples: [] };
+      m.n++;
+      if (m.examples.length < 3) {
+        m.examples.push(where);
+      }
+      mismatches.set(key, m);
+    };
+    let compared = 0;
+    const rejected: string[] = [];
+    for (const file of files) {
+      const rows = lexDump(file);
+      const rel = path.relative(repoRoot, file);
+      if (!Array.isArray(rows)) {
+        rejected.push(`${rel}: ${rows.error}`);
+        continue;
+      }
+      const text = fs.readFileSync(file, 'utf8');
+      // The lexer's lines end at \n and its columns count code points; `lex` counts UTF-16 units from the text's start.
+      const lineStarts = [0];
+      const utf16 = text.split('\n').map((l) => {
+        lineStarts.push(lineStarts[lineStarts.length - 1] + l.length + 1);
+        const at = [0];
+        let u = 0;
+        for (const ch of l) {
+          u += ch.length;
+          at.push(u);
+        }
+        return at;
+      });
+      const offset = (line: string, column: string): number => lineStarts[Number(line)] + (utf16[Number(line)]?.[Number(column)] ?? Number(column));
+      const theirs = new Map<string, string>();
+      for (const [kind, sl, sc, el, ec] of rows) {
+        if (kind !== 'EndInput') {
+          theirs.set(`${offset(sl, sc)}-${offset(el, ec)}`, ORACLE_KINDS[kind] ?? `unknown ${kind}`);
+        }
+      }
+      const ours = new Map(lex(text).tokens.map((t) => [`${t.start}-${t.end}`, t.kind === 'groupOpen' || t.kind === 'groupClose' ? 'symbol' : t.kind]));
+      const where = (range: string): string => {
+        const start = Number(range.split('-')[0]);
+        const line = lineStarts.findIndex((s, i) => s <= start && start < (lineStarts[i + 1] ?? Infinity));
+        return `${rel}:${line + 1} ${JSON.stringify(text.slice(start, start + 60).split('\n')[0])}`;
+      };
+      for (const [range, kind] of theirs) {
+        compared++;
+        const mine = ours.get(range);
+        if (mine === undefined) {
+          note(`a lexer token ${kind} that lex does not read`, where(range));
+        } else if (mine !== kind) {
+          note(`lex reads a lexer token ${kind} as ${mine}`, where(range));
+        }
+      }
+      for (const [range, kind] of ours) {
+        if (!theirs.has(range)) {
+          note(`a token ${kind} of lex that the lexer does not read`, where(range));
+        }
+      }
+    }
+    console.log(`      ${version}: ${files.length} files, ${compared} lexer tokens compared with lex; rejected by the lexer: ${rejected.length ? rejected.join('; ') : 'none'}`);
+    const report = [...mismatches.entries()].map(([key, m]) => `${m.n}× ${key}\n    ${m.examples.join('\n    ')}`);
+    assert.deepStrictEqual(report, []);
+    assert.deepStrictEqual(rejected.filter((r) => !r.startsWith(path.join('test', 'fixtures', 'workspaces', 'broken'))), []);
+  });
+
+  suiteTeardown(() => {
+    if (oracle !== undefined) {
+      fs.rmSync(oracle.dir, { recursive: true, force: true });
+      oracle = undefined;
+    }
+  });
 });
+
+/** `lex`'s token kind for each kind LexDump prints (a `Symbol` is any of `lex`'s `symbol`, `groupOpen` and `groupClose`). */
+const ORACLE_KINDS: Readonly<Record<string, TokenKind>> = {
+  Comment: 'comment', DocComment: 'docComment', CGDirective: 'cgDirective', HoleIdent: 'hole', Ident: 'ident',
+  DotSepIdent: 'ident', DotIdent: 'ident', MagicDebugInfo: 'ident', Keyword: 'keyword', Pragma: 'pragma', Symbol: 'symbol',
+  IntegerLit: 'number', DoubleLit: 'number', CharLit: 'char', StringBegin: 'stringOpen', MultiBegin: 'stringOpen',
+  StringLit: 'stringText', StringEnd: 'stringClose', InterpBegin: 'interpOpen', InterpEnd: 'interpClose', Unrecognised: 'unrecognised',
+};

@@ -18,6 +18,7 @@
  * another shape throws an `IdrisException` of kind `ProtocolError`.
  */
 import { IdrisException } from '../../core/errors';
+import { isKeyword, OPERATOR_CHARACTERS } from '../../core/idrisSyntax';
 import { utf16Length, type IdeReplyPoint, type IdeReplySpan, type IdeRequestPoint } from '../../core/positions';
 import type { Decor, Multiplicity, RichText, RichTextSpan } from '../types';
 import { int, list, parseSexp, serializeSexp, SexpSyntaxError, str, sym } from './sexp';
@@ -367,9 +368,67 @@ export function browseNamespace(ns: string): Sexp {
   return list(sym('browse-namespace'), str(ns));
 }
 
-/** `(:interpret ":missing NAME")` (F15). Answer: `decodeMissingCases`. */
+/**
+ * `(:interpret ":missing NAME")` (F15). Answer: `decodeMissingCases`. `NAME` is the one name the
+ * compiler parses with the REPL's command parser (`nameArgCmd`, `src/Idris/Parser.idr` 2706 on
+ * v0.8.0 [src]; Refine's expression is parsed too, but as a term, `IDEMode/REPL.idr` 179–181), so
+ * it must be an identifier or an operator in parentheses (`isIdentifierName`,
+ * `isOperatorInParentheses`): made of such characters only, it holds no space, quote or line break
+ * that could start another REPL command, and the parser requires the end of the input after it
+ * (`:missing both :t id` → `Expected end of input` [live, transcript `edits-names`]). A bare operator
+ * is not a name to this parser (`:missing <&&>` → `Expected namespaced name` [live, the same]).
+ * Throws a `RangeError` for anything else.
+ */
 export function missingCases(name: string): Sexp {
+  if (!isIdentifierName(name) && !isOperatorInParentheses(name)) {
+    throw new RangeError(`not an Idris name the :missing command can take: ${JSON.stringify(name)}`);
+  }
   return interpret(`:missing ${name}`);
+}
+
+// -------------------------------------------------------------------------------------------
+// Names in requests (M4)
+// -------------------------------------------------------------------------------------------
+
+/**
+ * `identNormal` (`src/Parser/Lexer/Common.idr` 73–103 on v0.8.0 [src]): `_`, an ASCII letter or a
+ * character above U+00A0 (`isAlpha` is ASCII only, `Prelude/Types.idr` 904–925), then also ASCII
+ * digits and `'`.
+ */
+const IDENT_NORMAL = /^[A-Za-z_\u{A1}-\u{10FFFF}][A-Za-z0-9_'\u{A1}-\u{10FFFF}]*$/u;
+
+/**
+ * Characters above U+00A0 that the lexer takes into an identifier but no name here may hold: those
+ * that are not drawn or not drawn as themselves — controls, format characters, the other default
+ * ignorable code points, U+2800 (as `core/untrustedText.ts` writes them out) — spaces and line
+ * separators, private-use, unassigned and surrogate code points.
+ */
+const NOT_IN_NAMES = /[\p{C}\p{Z}\p{Default_Ignorable_Code_Point}\u2800]/u;
+
+/**
+ * Whether `text` is one identifier of the lexer (`?` + `identNormal` is a hole, `holeIdent`,
+ * `Source.idr` 146–147 [src]; keywords included), not `_` alone (which the lexer reads as the symbol
+ * `_` before it tries names): the test of the hole names the compiler reports (`holes.ts`), which
+ * leaves out operators. Such a name goes back to the compiler only in the string slot of `:name-at`
+ * (`sexp.ts` escapes it) and is shown written out (`core/untrustedText.ts`).
+ */
+export function isIdentifierToken(text: string): boolean {
+  return IDENT_NORMAL.test(text) && text !== '_';
+}
+
+/** Whether `text`, taken from a document, is a hole's name: `isIdentifierToken`, without a character of `NOT_IN_NAMES`. */
+export function isHoleName(text: string): boolean {
+  return isIdentifierToken(text) && !NOT_IN_NAMES.test(text);
+}
+
+/** Whether `text` is an identifier that names a variable or a function: `isHoleName`, and not a keyword (`core/idrisSyntax.ts`). */
+export function isIdentifierName(text: string): boolean {
+  return isHoleName(text) && !isKeyword(text);
+}
+
+/** Whether `text` is an operator in parentheses, `(<&&>)`: `(`, one or more `OPERATOR_CHARACTERS`, `)`. */
+export function isOperatorInParentheses(text: string): boolean {
+  return text.length > 2 && text.startsWith('(') && text.endsWith(')') && [...text.slice(1, -1)].every((c) => OPERATOR_CHARACTERS.includes(c));
 }
 
 /** The bare symbol `:version` (F4). Answer: `decodeVersion`. */
@@ -607,13 +666,16 @@ export function decodeVersion(payload: ReplyPayload): CommandResult<IdrisVersion
 export type MissingCases =
   /** `NAME:` and one missing clause per line, e.g. `Part.g:\ng (S _)` (F15). */
   | { readonly kind: 'missing'; readonly name: string; readonly clauses: readonly string[] }
-  /** `NAME: Calls non covering function F` / `…functions: F, G` [src]. */
+  /**
+   * `NAME: Calls non covering function F` / `…functions: F, G` [src]; a generated function's name
+   * holds spaces (`CB.f: Calls non covering function CB.case block in f` [live, M4 edit review]).
+   */
   | { readonly kind: 'callsNonCovering'; readonly name: string; readonly functions: readonly string[] }
   /** `NAME: All cases covered` [src]. */
   | { readonly kind: 'covered'; readonly name: string };
 
 const MISSING_HEADER = /^(\S+):$/;
-const CALLS_NON_COVERING = /^(\S+): Calls non covering function(?: (\S+)|s: (.+))$/;
+const CALLS_NON_COVERING = /^(\S+): Calls non covering function(?:s: (.+)| (.+))$/;
 const ALL_COVERED = /^(\S+): All cases covered$/;
 
 /** `(:ok "TEXT")` of `(:interpret ":missing NAME")`: the reports joined by newlines. */
@@ -624,21 +686,25 @@ export function decodeMissingCases(payload: ReplyPayload): CommandResult<Missing
       return undefined;
     }
     const reports: MissingCases[] = [];
+    // The clauses of the last report when it is a `missing` one, filled in place (linear in the answer).
+    let clauses: string[] | undefined;
     // An empty line can only come from a report without clauses (`showSep "\n" []`).
     for (const line of text.split('\n').filter((l) => l !== '')) {
       const covered = ALL_COVERED.exec(line);
       const calls = CALLS_NON_COVERING.exec(line);
       const header = MISSING_HEADER.exec(line);
-      const last = reports[reports.length - 1];
       if (covered !== null) {
         reports.push({ kind: 'covered', name: covered[1] });
+        clauses = undefined;
       } else if (calls !== null) {
-        const functions = calls[2] !== undefined ? [calls[2]] : calls[3].split(', ');
+        const functions = calls[2] !== undefined ? calls[2].split(', ') : [calls[3]];
         reports.push({ kind: 'callsNonCovering', name: calls[1], functions });
+        clauses = undefined;
       } else if (header !== null) {
-        reports.push({ kind: 'missing', name: header[1], clauses: [] });
-      } else if (last?.kind === 'missing') {
-        reports[reports.length - 1] = { ...last, clauses: [...last.clauses, line] };
+        clauses = [];
+        reports.push({ kind: 'missing', name: header[1], clauses });
+      } else if (clauses !== undefined) {
+        clauses.push(line);
       } else {
         return undefined;
       }

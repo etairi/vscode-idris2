@@ -13,9 +13,9 @@ focused work by one developer with an AI assistant. Dependencies are the *minimu
 "M2 or M5" means either backend suffices. **The user chooses the implementation order; any
 order that respects the dependency graph in §4 is valid.**
 
-Milestones that are done (M0–M3) have a short **Status** entry in §5; how each was built —
-where it departs from its text here, its measurements and its review history — is recorded in
-`docs/as-built/` (`M0.md` … `M3.md`; moved there from this file on 2026-09-28).
+Milestones that are done (M0–M3, and M4 for IDE mode) have a short **Status** entry in §5; how
+each was built — where it departs from its text here, its measurements and its review history — is
+recorded in `docs/as-built/` (`M0.md` … `M4.md`; moved there from this file on 2026-09-28).
 
 Evidence tags, as in `landscape.md`: **[live]** run on this machine (macOS arm64, Homebrew
 `idris2` 0.8.0, Node 24) during the planning session; **[src]** read in the named checkout
@@ -49,12 +49,12 @@ document (the reviewers' runs were reproduced independently before being recorde
 | F8 | **Shadow typecheck of an unsaved copy.** Copy `Foo/B.idr` (with a new `?arg`) to `<shadow>/Foo/B.idr` where no `.ipkg` exists above; spawn with cwd `<shadow>`, env `IDRIS2_PATH=<proj>/build/ttc` (the directory *containing* the TTC-version directory), `--build-dir <shadow>/build`; `:load-file "Foo/B.idr"` → `Building Foo.B`, `(:ok ())`, `:metavariables` lists `Foo.B.arg`, and every file under `<proj>/build/ttc` keeps its mtime. Without `IDRIS2_PATH`, or with it pointing at the version subdirectory, → `Module Foo.A not found`. | [live] |
 | F9 | `idris2 --check` exit codes: 1 for a type error and for a coverage error, **0 for `Module Nope.Thing not found`**; `--typecheck`/`--build` of a clean ipkg exit 0. Qualifies landscape §4.2. | [live] |
 | F10 | `.ipkg` parse errors: `idris2 --dump-ipkg-json bad.ipkg` prints `Error: Unrecognised property "pkgs".` then `"bad.ipkg":3:1--3:5` and a snippet, exit 1 (same shape for a trailing comma: `Expected end of file.`). In IDE mode a malformed `.ipkg` in the cwd chain turns `:load-file` into `(:return (:error "<the same text>"))` with **no** `:warning` frame. With several `.ipkg` files in one directory the compiler picks one of them. **Addendum (M1, 2026-09-27): which one.** `findIpkgFile` lists each directory with `listDir` and takes `find (\f => extension f == Just "ipkg")` of the names, unsorted, stopping (with nothing) at a directory it cannot list [src v0.8.0 `Core/Directory.idr` 333–349]; so the first `.ipkg` in the order the file system lists the directory wins. On APFS, in a directory whose `ls -f` order was `c.ipkg b.ipkg d.ipkg X.idr a.ipkg`, `idris2 --find-ipkg --check X.idr` read `c.ipkg` [live, M1 project work]; other file systems and Windows not tried. Node's `fs.readdir` sorts names, `fs.opendir` keeps that order (`project/ipkg.ts`). | [live] + [src] |
-| F11 | **Literate positions.** `.lidr` (bird tracks): all reply columns are *unlit* columns (`> module Lit` reports `module` at (0 0)–(0 6); an error under `> g = "x"` reports (5 4)–(5 7) for file columns 6–9), and requests expect unlit columns too (`(:type-of "n" 6 2)` succeeds for `n` at file column 4). Lines are file lines even with prose lines in between (but see the addendum of the second review of M3 below: not after a marker followed only by white space). Edit replies come back **with** `> ` (`> f 0 = ?f_rhs_0`, `> h k = ?h_rhs`, make-lemma `definition-type` `> f_rhs : Nat -> Nat`; `replace-metavariable` unprefixed). `.md` (fenced): lines and columns exact in a file with LF line breaks (not with CRLF: the addendum of the third review of M3 below), replies plain. Added in M0 (2026-09-27): `:case-split` in a `.lidr` takes 1-based *unlit* columns (`> f n = ?f_rhs` on line 6: C = 1–4 succeed, 5–6 fail), and the CLI text of `idris2 --check` is unlit too (an error under `> g = "x"`, file columns 6–9, is reported `Err:6:5--6:8`). Added in M0 review: **the compiler picks the literate style by file name, and a CRLF break in a `.lidr` joins two lines.** `isLitFile` is a case-sensitive suffix test (`src/Parser/Unlit.idr`): a bird-track `Up.LIDR` fails at its first `>` (1:1). `reduce` in `src/Libraries/Text/Literate.idr` (same on master) keeps a newline token only when it is exactly `"\n"`: `> g : Nat\r\n> g = 1` fails with `Undefined name Natg`, an all-CRLF `.lidr` with `Couldn't parse declaration` at 1:14; the same text with LF, and a CRLF `.idr`, pass. Hence `"files.eol": "\n"` in the `[lidr]` defaults (`files.eol` is language-overridable: `scope: 6` in VS Code 1.139.1's workbench bundle, the `language-overridable` value). **Addendum (M1 review, 2026-09-27): case folding.** On the development machine's case-insensitive APFS volume, `idris2 --check Main.idr` with `import Up` and only a file `Up.IDR` beside it printed `1/2: Building Up (Up.idr)` and exited 0: the compiler opens `<dir>/Up.idr`, and the file system resolves that name to `Up.IDR`. `project/index.ts` compares names case-sensitively, as the compiler's name tests do, so `pathToModule` gives `Up.IDR` no module name (`docs/as-built/M1.md`, *Modules ↔ paths*). **Addendum (second review of M3, 2026-09-29): lines are not always file lines.** A marker followed only by white space (`> `, `>   `, `<\t`; Org's `#+IDRIS: `) is **two** lines of the unlit text: `reduce` (`src/Libraries/Text/Literate.idr`, the same on master) emits `"\n"` for a code line whose `trim` is the marker, and the line break, which `space <+> untilEOL` did not consume, is a token of its own that emits a second one; a marker alone (`>`) consumes its line break and is one line. So the compiler's line of a file line is the file line plus the number of such lines above it, in requests, replies and CLI text: after `> ` on file line 6 and `>   ` on file line 12 (0-based), `(:name-at "g")` answered line 8 for file line 7 and `(:name-at "k")` line 15 for file line 13; `idris2 --check` reported an error on file line 7 (1-based) below a `> ` line as `E:8:5--8:8` [live, idris2 0.8.0, one `--ide-mode` session and one `--check`; transcript `lit-lookups`, re-recorded]. M0's `.lidr` Enter rule makes such lines (a new line after a code line starts with `> `). `core/positions.ts` maps them (`compilerLine`, `fileLine`). Org's `#+IDRIS:` lines are line markers with offset 9 [live, the same review]. **Addendum (third review of M3, 2026-09-29): CRLF in every literate style.** `reduce` keeps a line break only when it is exactly `"\n"`, so every CRLF break outside code — of a prose line, a blank line, a closing fence — is lost, not only in `.lidr`: a CRLF `X.md` with four lines of prose and blank lines before its block compiled, and an error on file line 9 was reported as `X:5:5--5:8`, the same file with LF as `X:9:5--9:8` [live, idris2 0.8.0, two `timeout 60 idris2 --check` runs]. So a CRLF fenced file compiles with every compiler line after prose smaller than its file line; `core/positions.ts` does not map that (the fenced styles are M12's, E19), and README *Known limitations* asks for LF. | [live] + [src] |
+| F11 | **Literate positions.** `.lidr` (bird tracks): all reply columns are *unlit* columns (`> module Lit` reports `module` at (0 0)–(0 6); an error under `> g = "x"` reports (5 4)–(5 7) for file columns 6–9), and requests expect unlit columns too (`(:type-of "n" 6 2)` succeeds for `n` at file column 4). Lines are file lines even with prose lines in between (but see the addendum of the second review of M3 below: not after a marker followed only by white space). Edit replies come back **with** `> ` (`> f 0 = ?f_rhs_0`, `> h k = ?h_rhs`, make-lemma `definition-type` `> f_rhs : Nat -> Nat`; `replace-metavariable` unprefixed). `.md` (fenced): lines and columns exact in a file with LF line breaks (not with CRLF: the addendum of the third review of M3 below), replies plain. Added in M0 (2026-09-27): `:case-split` in a `.lidr` takes 1-based *unlit* columns (`> f n = ?f_rhs` on line 6: C = 1–4 succeed, 5–6 fail), and the CLI text of `idris2 --check` is unlit too (an error under `> g = "x"`, file columns 6–9, is reported `Err:6:5--6:8`). Added in M0 review: **the compiler picks the literate style by file name, and a CRLF break in a `.lidr` joins two lines.** `isLitFile` is a case-sensitive suffix test (`src/Parser/Unlit.idr`): a bird-track `Up.LIDR` fails at its first `>` (1:1). `reduce` in `src/Libraries/Text/Literate.idr` (same on master) keeps a newline token only when it is exactly `"\n"`: `> g : Nat\r\n> g = 1` fails with `Undefined name Natg`, an all-CRLF `.lidr` with `Couldn't parse declaration` at 1:14; the same text with LF, and a CRLF `.idr`, pass. Hence `"files.eol": "\n"` in the `[lidr]` defaults (`files.eol` is language-overridable: `scope: 6` in VS Code 1.139.1's workbench bundle, the `language-overridable` value). **Addendum (M1 review, 2026-09-27): case folding.** On the development machine's case-insensitive APFS volume, `idris2 --check Main.idr` with `import Up` and only a file `Up.IDR` beside it printed `1/2: Building Up (Up.idr)` and exited 0: the compiler opens `<dir>/Up.idr`, and the file system resolves that name to `Up.IDR`. `project/index.ts` compares names case-sensitively, as the compiler's name tests do, so `pathToModule` gives `Up.IDR` no module name (`docs/as-built/M1.md`, *Modules ↔ paths*). **Addendum (second review of M3, 2026-09-29): lines are not always file lines.** A marker followed only by white space (`> `, `>   `, `<\t`; Org's `#+IDRIS: `) is **two** lines of the unlit text: `reduce` (`src/Libraries/Text/Literate.idr`, the same on master) emits `"\n"` for a code line whose `trim` is the marker, and the line break, which `space <+> untilEOL` did not consume, is a token of its own that emits a second one; a marker alone (`>`) consumes its line break and is one line. So the compiler's line of a file line is the file line plus the number of such lines above it, in requests, replies and CLI text: after `> ` on file line 6 and `>   ` on file line 12 (0-based), `(:name-at "g")` answered line 8 for file line 7 and `(:name-at "k")` line 15 for file line 13; `idris2 --check` reported an error on file line 7 (1-based) below a `> ` line as `E:8:5--8:8` [live, idris2 0.8.0, one `--ide-mode` session and one `--check`; transcript `lit-lookups`, re-recorded]. M0's `.lidr` Enter rule makes such lines (a new line after a code line starts with `> `). `core/positions.ts` maps them (`compilerLine`, `fileLine`). Org's `#+IDRIS:` lines are line markers with offset 9 [live, the same review]. **Addendum (third review of M3, 2026-09-29): CRLF in every literate style.** `reduce` keeps a line break only when it is exactly `"\n"`, so every CRLF break outside code — of a prose line, a blank line, a closing fence — is lost, not only in `.lidr`: a CRLF `X.md` with four lines of prose and blank lines before its block compiled, and an error on file line 9 was reported as `X:5:5--5:8`, the same file with LF as `X:9:5--9:8` [live, idris2 0.8.0, two `timeout 60 idris2 --check` runs]. So a CRLF fenced file compiles with every compiler line after prose smaller than its file line; `core/positions.ts` does not map that (the fenced styles are M12's, E19), and README *Known limitations* asks for LF. **Addendum (M4, 2026-09-30): edit replies in bird-track files.** IDE mode leaves the compiler's literate style unset (`process (Load f)` sets `mainfile` only, `Idris/REPL.idr` 960–963 on v0.8.0 [src]), so `:make-case` and `:make-with` rewrite the raw line with its marker and IDE mode prefixes each of their lines with it again: `> > vlen xs = case _ of`, `> > > vlen xs with (_)` [live, transcript `lit2-editing`]. `:make-lemma`, `:make-case` and `:make-with` find the hole by name and read the source line by its number in the raw text (`getSourceLine` [src]), not the unlit line: below a `> ` line they answer correctly when sent the file line [live, `lit2-editing`], while `:case-split` there rewrites the wrong line (`">\n>"`). `:missing` answers carry no marker. | [live] + [src] |
 | F12 | `--build-dir build/.vscode-idris2` with an auto-discovered ipkg writes TTCs under that directory — **unless the ipkg has a `builddir` field, which overrides the flag** (TTC went to `out/`). **Addendum (M2 second review, 2026-09-27): `opts`.** A `--build-dir` in the ipkg's `opts` overrides both: at every load `findIpkg` applies `builddir` and then `processOptions (options pkg)` (`getOpts (words opts)`, `src/Idris/Package.idr` 460–467, 1093–1110 on v0.8.0 [src]). With `opts = "--build-dir build"` and the command line's `--build-dir <root>/build/.vscode-idris2`, the TTCs went to `build/ttc/…`; with `builddir = "bd"` and `opts = "--build-dir od"`, to `od/ttc/…` [live, one `timeout 60 idris2 --ide-mode` each; e2e `F12 addendum`]. | [live] |
 | F13 | `:load-file` calls `findIpkg`, which walks **up from the process cwd**, `changeDir`s to the ipkg directory and applies `sourcedir`/`depends`/`builddir`/`opts`. From the ipkg directory both `src/Foo/B.idr` and its absolute path load; from a foreign cwd both fail (`Module Foo.A not found`), also with `--find-ipkg`; from `src/Foo`, `B.idr` loads without `--find-ipkg` but fails with it (`Source file "B.idr" is not in the source directory`). **Addendum (M2, 2026-09-27):** from an empty sibling directory with no `.ipkg` above it, the absolute path of `src/Foo/B.idr` is refused with `(:error "Source file \"…/B.idr\" is not in the source directory \"…/foreign\"")`, not `Module Foo.A not found` [live, `test/e2e/protocolFacts.test.ts`]; which foreign directory gave the text above is not recorded. From the ipkg directory `src/Foo/B.idr` and from `src/Foo` `B.idr` (without `--find-ipkg`) loaded, as stated [live, same test]. A session started in a directory spelled through a symbolic link refuses the file's absolute path through the link, since the compiler compares it with `getcwd()` [live, transcript `load-symlink`]. | [live] + [src `Idris/Package.idr` 1093–1110, `IDEMode/REPL.idr` 143–147] |
 | F14 | `((:enable-syntax :False) 1)` → `"Syntax highlight option changed to False"`; the following load emits **zero** `:highlight-source` frames (31 without it for an 8-line file). | [live] |
-| F15 | `(:interpret ":missing g")` → `"Part.g:\ng (S _)"`; `(:interpret ":printdef g")` works; `:case-split` on a clause whose right-hand side is **not a hole** (`f n = n`) answers `No clause to split here` on a plain `.idr` too. | [live] |
-| F16 | After a load that ended in `(:return (:error …))` (coverage error in `g`), `(:type-of "main" 7 0)` and `(:type-of "main")` still answer `Part.main : IO ()`. Plan-proof-ux's report that position-based commands fail with misleading messages after an errored load was **not reproduced** on this fixture; it is kept only as a fallback rephrasing rule. | [live, one fixture] |
+| F15 | `(:interpret ":missing g")` → `"Part.g:\ng (S _)"`; `(:interpret ":printdef g")` works; `:case-split` on a clause whose right-hand side is **not a hole** (`f n = n`) answers `No clause to split here` on a plain `.idr` too. **Addendum (M4, 2026-09-30):** `:missing` answers its clauses without a literate marker, and without an edit when there is none to add: `HoleErr.bad: All cases covered`, `Part.main: Calls non covering function Part.g` [live, transcripts `hole-errors`, `part-editing`]. `:case-split L C x` answers line L alone, rewritten (`updateCase`, `IDEMode/CaseSplit.idr` 319–363 [src]), so a clause whose hole is on the next line loses it (`count [] =`) [live, transcript `edits-shapes`]. `:missing f` reports every function named `f` in scope under its module and namespace (`SameBase.g:` / `g (S _)` / `SameName.g: All cases covered`; `SameName.B.f:`), and for a function local to a `where` block the top-level one of its name [live, transcript `edits-same-name`]. The function it names as not covering can be a generated one whose name holds spaces (`CB.f: Calls non covering function CB.case block in f`, likewise `with block in f`) [live, M4 fourth review, not recorded]. | [live] + [src] |
+| F16 | After a load that ended in `(:return (:error …))` (coverage error in `g`), `(:type-of "main" 7 0)` and `(:type-of "main")` still answer `Part.main : IO ()`. Plan-proof-ux's report that position-based commands fail with misleading messages after an errored load was **not reproduced** on this fixture; it is kept only as a fallback rephrasing rule. **Contradicted for the commands that find their place by line (M4, 2026-09-30).** After a load that returned an error — a type error, or a coverage error alone — `:case-split` on a clause whose right-hand side is a hole answers `No clause to split here`, `:add-clause` `before not defined here`, `:generate-def` `Can't find declaration for bad on line 8`, also for declarations above the error, and a positional `:type-of "xs" 12 6` of a local `Undefined name xs`; `:make-lemma`, `:make-case`, `:make-with`, `:intro`, `:refine`, `:proof-search` (and `-next`) and `:missing` answer as after a clean load [live, 0.8.0, transcripts `hole-errors` (`HoleErr.idr`), `part-editing` (`Part.idr`); `:case-split` after a coverage error alone, which neither recording holds, checked live in M4's ninth review]. M4 therefore refuses the first three after such a load (`docs/as-built/M4.md`, *Edits*). | [live, two fixtures and one live check] |
 | F17 | `@vscode/test-cli` 0.0.15 failed with `listen EINVAL … .vscode-test/user-data/1.13-main.sock` when the user-data-dir path exceeded the Unix socket limit (103 characters) — run tests from a short path or with a short `--user-data-dir`. | [live: `gen-test.log`] |
 | F18 | **Unicode in source.** `--check` accepts identifiers `α`, `x₁`, `ℕ` (exit 0) and rejects `→` as arrow, `λ` as lambda and a Unicode operator `∘∘` (exit 1). | [live] |
 | F19 | `idris2 --mkdoc proj.ipkg` writes `build/docs/index.html`, `build/docs/docs/<Module>.html` with anchors `id="Foo.A.shout"` / `href="Foo.A.html#Foo.A.shout"`. | [live] |
@@ -724,7 +724,7 @@ M0 → M1 → M2 → M3 → M14).
   Proof Search yields `0`, Next yields `1` (F30); Refine with `foo` on `broken/Ambig.idr`
   (the F29 fixture: `foo` in namespaces `A` and `B`, `g n = ?g_rhs`) offers `Ambig.A.foo
   ?g_rhs_0` / `Ambig.B.foo ?g_rhs_0` (F29); Make Lemma inserts `vlen_rhs :
-  Vect n a -> Nat` and replaces the hole with `vlen_rhs xs`; the tree lists `vlen_rhs` with `0 a
+  Vect n a -> Nat` and replaces the hole with `(vlen_rhs xs)` (parentheses: §9, 2026-10-01); the tree lists `vlen_rhs` with `0 a
   : Type`, `0 n : Nat`, `xs : Vect n a` and clicking jumps to 0-based (7,10); Add Missing
   Cases on `broken/Part.idr` inserts `g (S _) = ?g_missing_case_1` at the first blank line
   after `g`'s declaration; Case Split on `f n = n` (`broken/Plain.idr`) shows the rephrased
@@ -755,6 +755,18 @@ M0 → M1 → M2 → M3 → M14).
   keymap snapshot), E24 (LSP action semantics and VS Code's kind filter).
 - **Upstream.** U2.3 (`add-missing`), U2.4 (hole locations), U2.2 (positional `name-at`);
   U1.3 (README kind table).
+- **Status: implemented for IDE mode** (2026-09-30; the user's decisions of 2026-10-01, §9,
+  implemented the same day, every gate green after them; then the convergence pass of the layout
+  refusal, §9, 2026-10-01, `docs/as-built/M4.md`, *Convergence pass*), not committed when this was written. M5 has not shipped, so by the
+  ownership rule above `LspBackend.edit()`/`holes()`, the LSP acceptance and the contract suite are
+  M5's; the goal panel stays M7's. The IDE-mode acceptance was tested with these corrections of its
+  text: Case Split on `f n = n` is refused before the compiler is asked ("this line has no hole to
+  split on"), not rephrased from its answer; the `.lidr` fixture is `broken/Lit2.lidr`;
+  `Ambig.idr`'s clause is `g = ?g_rhs` (the chosen alternative makes it `g = (Ambig.A.foo
+  ?g_rhs_0)`); Add Missing Cases inserts after the function's clauses (on `Part.idr` the same place
+  as the first blank line); F16 does not hold for Case Split, Add Clause and Generate Definition,
+  which are refused after a load with errors. Gates, the edit contract, E15, E16, the literate
+  replies, the keybindings, the tests and the open issues: `docs/as-built/M4.md`.
 
 ### M5 — idris2-lsp backend and routing (M)
 
@@ -1349,6 +1361,59 @@ retiring every backend risk before UI work is preferred.
 
 ## 9. Open questions and decisions needed from the user
 
+**Decided by the user on 2026-10-01 (M4)**
+
+- **Always bracket.** Every answer the extension puts in place of a hole that is more than one
+  token goes in parentheses, wherever the hole is, with no reading of the code around it: Intro
+  (also a single candidate applied without asking), Refine Hole… and its ambiguity alternatives,
+  Proof Search and Next Result, and Make Lemma's call. One token is one token of the extension's
+  lexer (a name, qualified or not, a literal, a hole, an operator in parentheses) or one bracket
+  group spanning the whole answer (`(a) + (b)` is not one); a postfix projection `.x` counts as
+  more, since it attaches to the expression before it. **Make Case** always applies the
+  bracketed case, the compiler's own form for a prefix argument (`(case _ of` … `case_val => ?h)`,
+  `makeCase`, `Idris/IDEMode/MakeClause.idr` 57–81 on v0.8.0 [src]): an unbracketed answer is
+  rewritten into it, any other answer is refused. A hole already in parentheses gets two pairs.
+  Reason: the analysis that left the parentheses out where the hole "stands alone" missed a case in
+  every review round of M4 (5, 8 and 9 medium findings in the last three), each a silent change of
+  the user's program; extra parentheses only cost looks (`vlen xs = (S ?vlen_rhs_0)` accepted).
+  In a matrix of 27 hole positions (lane `brackets`), Make Case's text (its `_` filled) and Intro's
+  and Proof Search's answers, where the compiler gave one, checked with `idris2 --check`; Make
+  Lemma's call in six of them (`docs/as-built/M4.md`, *Edits*) [live].
+- **Keep the layout refusal and make it converge.** Any answer wider than the hole moves the rest
+  of the hole's line; when that rest starts a layout block continued below, the program can change
+  silently: `f x = 2 * case x of _ => 2` with `+ 3` on the next line, 22 spaces in, gives `f 0 =
+  10`, and the same with `(S 1)` in place of `2` gives 7; both compile [live, idris2 0.8.0]. M4
+  therefore refuses such edits (`docs/as-built/M4.md`, *Blocks after the hole*). Review rounds kept
+  finding gaps in the extension's simplified line reader, while M0's lexer is a rule-by-rule port of
+  the compiler's. Decided: keep the refusal; the line reader reads lexemes with the rules it shares
+  with M0's lexer (no copy), a differential test (unit and corpus, in CI) checks that the two agree,
+  the lexer oracle checks M0's lexer against the compiler's, and the block openers are exactly the
+  layout blocks of `src/Idris/Parser.idr`, cited. After that pass, **one final review**: medium and
+  low findings are recorded as known limitations and only a high finding stops the commit; as
+  applied, a regression of the pass that can change a program was fixed and re-checked too, while
+  its two false refusals (low) were recorded (`docs/as-built/M4.md`, *Open issues*).
+- **Q25 — keep the letters.** The `chords` and `prefix` letters stay those of the Vim bindings in
+  the Idris 2 docs (`\s`, `\a`, `\l`, `\c`, `\t`), not Emacs idris-mode's, which the docs give as
+  `C-c C-a` proof search, `C-c C-s` add a definition and `C-c C-e` make lemma
+  (`docs/source/proofs/patterns.rst` 15–25 on v0.8.0 [doc]). The setting's description, the README
+  and the guide say whose letters they are.
+- **Q26 — `n` continues either cycle.** **Next Result** continues the document's active cycle,
+  whatever its kind: after Proof Search the next result, after Generate Definition the next
+  definition. **Next Definition** stays a command for a Generate Definition cycle, Generate
+  Definition (`g`) on the declaration or its result still continues that cycle, and the status-bar
+  `↻ next (n)` item stays.
+
+**Decided by the user on 2026-09-30**
+
+- **Q24 accepted under the Q23 decision**: **Refine Hole…** may run the elaborator scripts its
+  expression reaches, as Evaluate may; documented, not refused. The compiler parses the expression
+  as an expression (`aPTerm`, `IDEMode/REPL.idr` 179 [src]) and checks it against the hole's type
+  (`checkTerm` in `processEdit (Refine …)`, `Idris/REPL.idr` 525–607 on v0.8.0 [src]): a `%macro`
+  applied in it (without `ElabReflection`) and a `%runElab` in it (where `ElabReflection` was on)
+  each wrote a file [live, idris2 0.8.0, the fixer of M4's fifth review; rechecked in later rounds:
+  a `%macro` calling `writeFile` ran through `:refine`]. The README's *Privacy and security* and the
+  guide say so.
+
 **Decided by the user on 2026-09-29 (after M3)**
 
 - **Q23 — accept**: Evaluate may run elaborator scripts that the expression reaches: a `%macro`
@@ -1378,8 +1443,9 @@ retiring every backend risk before UI work is preferred.
   2026-09-29, when the user accepted Q23, included that the same macro application written into
   the file and saved would run the same script during checking; the sixth review refuted that for
   a macro whose module imports `Language.Reflection` privately (above), and the seventh reordered
-  this entry so that only the reasons that hold are given as reasons. Whether the user confirms Q23
-  again on these reasons was not asked when this was written [open].
+  this entry so that only the reasons that hold are given as reasons. The user was told the
+  corrected rationale on 2026-09-30, did not change the decision, and the same day accepted Q24
+  "under the Q23 decision".
 - **The `eval` session keeps its highlighting output**: it does not send `(:enable-syntax :False)`,
   although that would make each evaluation's reload faster (about 0.3 s → 0.14 s on the
   2,000-line module); the `eval` session sends evaluations and their loads only.
@@ -1432,8 +1498,9 @@ retiring every backend risk before UI work is preferred.
   rest of the reservation table — M4's letters, M7's `,` and `ctrl+shift+enter` — stays as
   planned; E23 (the collision check against VS Code's default keymap) still comes before the
   first binding ships. (M3, 2026-09-29: the integration suite lists the collisions from VS Code's
-  resolved keymap — none on macOS for `ctrl+c` or `ctrl+alt+i` [live]; the Linux list is printed
-  there, not recorded; `docs/as-built/M3.md`, *Keybindings*.)
+  resolved keymap — none on macOS for `ctrl+c` or `ctrl+alt+i` [live]; on Linux single-chord
+  copy and Chat bindings only [live, CI run 36715864881, recorded 2026-09-30]; `docs/as-built/M3.md`,
+  *Keybindings*.)
 
 **Decided by the user on 2026-09-28 (platforms)**
 
@@ -1636,6 +1703,12 @@ retiring every backend risk before UI work is preferred.
   scripts from running would take the compiler's cooperation (no option of 0.8.0 turns off macro
   expansion [open: not searched beyond `RunElab.idr` and `Ambiguity.idr`]) or refusing Evaluate
   wherever a macro is in scope. Accepted by the user (2026-09-29); nothing was changed.
+- **Q24** (raised by M4, 2026-09-30; **decided by the user on 2026-09-30**: Q23's acceptance covers
+  Refine Hole…; documented, not refused) See the block at the top of this section.
+- **Q25** (raised by the review of M4, 2026-09-30; **decided by the user on 2026-10-01**: keep the
+  Idris docs' Vim letters) See the block at the top of this section.
+- **Q26** (raised by the sixth review of M4, 2026-09-30; **decided by the user on 2026-10-01**: `n`
+  continues the cycle of either kind) See the block at the top of this section.
 
 **Verification experiments** (each ≤ 1 h, at the start of the named milestone)
 
@@ -1709,9 +1782,32 @@ retiring every backend risk before UI work is preferred.
   `:warning`, `:case-split` and the CLI text by the same lexer counts [src, not recorded on such a
   line]. `core/positions.ts` converts with each line's text (ARCHITECTURE §7).
 - **E15** (M4) Exact replacement-range rules for `make-with`, `make-case`, `make-lemma` insertion
-  point, and multi-line signatures.
+  point, and multi-line signatures. **Answered in M4 (2026-09-30)** [live, transcripts
+  `edits-shapes`, `edits-searches`, `edits-names`; src `updateCase`, `makeWith`, `addMadeLemma`]:
+  the rules are `backend/ide/edits.ts`'s module comment — Case Split replaces line L (the compiler
+  answers that line alone); Add Clause and Generate Definition insert after the declaration's last
+  line (its `f :` line and the more indented lines after it, multi-line signatures included), Add
+  Clause after the function's clauses when it has some (its clause, a catch-all, would make them
+  unreachable above them); on `a, b : …` both
+  answer for `b` whatever the name sent, so such a declaration is refused [live, `edits-layout`];
+  Make Case replaces the hole's line with the bracketed case (an unbracketed answer rewritten into
+  it, any other refused; §9, 2026-10-01); Make With replaces the clause's lines, only in the shapes
+  the compiler rewrites correctly (elsewhere it answers garbage, which is refused); Make Lemma's type
+  goes above the enclosing top-level declaration — in a `namespace` or `mutual` block above the
+  enclosing declaration in that block, indented as it; refused in an `interface` [live,
+  `edits-blocks`]; Intro, Refine and Proof Search replace the `?h` token, as does Make Lemma's
+  call, in parentheses when more than one token (§9, 2026-10-01) (`docs/as-built/M4.md`, *Edits*).
 - **E16** (M4/M7) `:metavariables` across a dependency closure and `:name-at` collisions for
-  same-named holes in two modules.
+  same-named holes in two modules. **Answered in M4 (2026-09-30)** [live, transcripts
+  `holes-ipkg-*`, `holes-loose-*`]: `:metavariables` lists the holes of the loaded module and of
+  every module it imports, directly or not, exported or not; `(:name-at "todo")` answers every hole
+  of that name with its qualified name and absolute path, so the hole's entry is the one of its
+  qualified name. Two same-named holes in one loaded context cannot be edited: the commands that
+  look the hole up by name answer `Could not find hole named todo`, `Can't make lifted definition`
+  or `Not a searchable hole`, also given the qualified name (`holes-ipkg-main`). After a load
+  with an error the compiler may answer for another hole of the name — the first of two `?h` of a
+  module [live, `dup-holes`], or an imported module's — so the extension sends those commands only
+  when the load's holes put the one hole of the name at the cursor (`docs/as-built/M4.md`).
 - **E17** (M9) `pack` CLI sub-commands and output format for tasks.
 - **E19** (M12) Positions inside `\begin{code}` (LaTeX), `#+BEGIN_SRC` (Org) and Typst fences in
   `:warning`/`:highlight-source` replies; edit replies for those styles. Org also has a line
@@ -1739,18 +1835,25 @@ retiring every backend risk before UI work is preferred.
   (no checked-in snapshot) and lists the bindings whose first key is a scheme's first key — on
   macOS none in VS Code 1.139.1 [live], so "no collision" holds of VS Code's built-in bindings
   only; on Linux `auto` = `prefix` shadows **Open Chat** (`Ctrl+Alt+I`) in Idris editors [src,
-  the workbench bundle], and the rest of the Linux list is **open** (the ubuntu CI job prints it;
-  to be recorded before a release). Keymap extensions are not covered: VSCodeVim's `ctrl+c`
+  the workbench bundle], and the Linux list — recorded on 2026-09-30 from the ubuntu job of CI run
+  36715864881 (`263f38f`, VS Code 1.139.1) [live] — is nine `ctrl+c` copy bindings and the two
+  `ctrl+alt+i` Chat bindings, each a single chord: only the first key is shadowed. Keymap extensions are not covered: VSCodeVim's `ctrl+c`
   (when `vim.overrideCtrlC`, true with its defaults) outranks `chords`, since VS Code weighs a
   later extension contribution higher and takes the last binding whose `when` holds [src: VS
   Code 1.139.1 `_asCommandRule`, `_findCommand`; doc: VSCodeVim 1.32.4's manifest, fetched
   2026-09-29; not run] (`docs/as-built/M3.md`, *Keybindings*). The `ctrl+shift+enter` part stays
-  M4's.
+  M4's. **M4 (2026-09-30):** the same check for all fifteen letters, each chord's whole sequence:
+  on macOS no other binding of VS Code 1.140.0 is one of them or starts with one [live]; on Linux
+  M3's list holds single chords only [live, CI run 36715864881], and the check of the fifteen
+  letters runs at the first CI run of the M4 commit. `ctrl+shift+enter` is **Insert Line Above** (`editor.action.insertLineBefore`,
+  CtrlCmd+Shift+Enter under `editorTextFocus`) in VS Code 1.139.1 and 1.140.0 [src, the workbench
+  bundles]; binding it is M7's.
 - **E24** (M4/M5) LSP editing semantics against a real server: does VS Code's
   `editor.action.codeAction` with `kind: refactor.rewrite.CaseSplit` drop the server's
   generic `refactor.rewrite` action (expected from VS Code's kind-prefix filter; not
   verified)? Do the server's `Intro …` actions and `Expression search …` order match the IDE
-  mode replies of F29/F30 on the same file? Needs Q2.
+  mode replies of F29/F30 on the same file? Needs Q2. Moved to M5 with the LSP half of M4
+  (2026-09-30).
 - **E25** (M11) Author `schemas/pack.toml.schema.json`: enumerate every key and table in the
   pack README (`[custom.all.<pkg>]`, `[idris2]`, collection fields) and validate the schema
   against pack's own example files.

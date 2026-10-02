@@ -34,6 +34,8 @@ class FakeDocument {
   isDirty = false;
   isClosed = false;
   saves = 0;
+  /** What `save()` resolves: `false` for a save that failed (a conflict, a read-only file). */
+  saveSucceeds = true;
   version = 1;
   text = '';
   readonly uri: FakeUri;
@@ -46,7 +48,7 @@ class FakeDocument {
   }
   save(): Promise<boolean> {
     this.saves++;
-    return Promise.resolve(true);
+    return Promise.resolve(this.saveSucceeds);
   }
   getText(): string {
     return this.text;
@@ -130,6 +132,7 @@ function setup(
   const opened = new Emitter<FakeDocument>();
   const closed = new Emitter<FakeDocument>();
   const saved = new Emitter<FakeDocument>();
+  const willSave = new Emitter<{ document: FakeDocument; reason: number }>();
   /** A change of `document`: of its text when `contentChanges` is non-empty, else of its dirty state only. */
   const edited = new Emitter<{ document: FakeDocument; contentChanges?: unknown[] }>();
   const deleted = new Emitter<FakeUri>();
@@ -194,6 +197,7 @@ function setup(
       onDidOpenTextDocument: opened.event,
       onDidCloseTextDocument: closed.event,
       onDidSaveTextDocument: saved.event,
+      onWillSaveTextDocument: willSave.event,
       onDidChangeTextDocument: (listener: (e: { document: FakeDocument; contentChanges: unknown[] }) => void) =>
         edited.event((e) => listener({ contentChanges: [], ...e })),
       createFileSystemWatcher: () => ({ onDidDelete: deleted.event, onDidCreate: created.event, dispose: () => undefined }),
@@ -202,6 +206,7 @@ function setup(
       },
     },
     DiagnosticSeverity: { Error: ERROR, Warning: WARNING, Information: 2, Hint: 3 },
+    TextDocumentSaveReason: { Manual: 1, AfterDelay: 2, FocusOut: 3 },
   } as unknown as ChecksApi;
   const backend = new ScriptedBackend();
   const timers = new ManualTimers();
@@ -314,6 +319,7 @@ function setup(
     opened,
     closed,
     saved,
+    willSave,
     edited,
     deleted,
     created,
@@ -348,6 +354,100 @@ suite('features/diagnostics/checks', () => {
       }
       await settle();
       assert.strictEqual(t.backend.loads.length, 3);
+    });
+
+    test('held save checks (M4 cycling): an auto-save checks nothing; the release checks a document saved meanwhile and clean, once', async () => {
+      const a = new FakeDocument('/w/a/A.idr');
+      const t = setup({ visible: [a] });
+      await settle();
+      assert.strictEqual(t.backend.loads.length, 1);
+      const uri = t.asDoc(a).uri.toString();
+      const autoSave = (): void => {
+        t.willSave.fire({ document: a, reason: 2 }); // files.autoSave: afterDelay
+        t.saved.fire(a);
+      };
+      let hold = t.checks.holdSaveChecks(uri);
+      autoSave();
+      autoSave();
+      await settle();
+      assert.strictEqual(t.backend.loads.length, 1, 'held');
+      hold.dispose();
+      hold.dispose();
+      await settle();
+      assert.strictEqual(t.backend.loads.length, 2, 'checked once at the release');
+      t.saved.fire(a);
+      await settle();
+      assert.strictEqual(t.backend.loads.length, 3, 'released: a save checks again');
+      // Not saved while held, or dirty again at the release: nothing.
+      t.checks.holdSaveChecks(uri).dispose();
+      hold = t.checks.holdSaveChecks(uri);
+      autoSave();
+      a.isDirty = true;
+      hold.dispose();
+      await settle();
+      assert.strictEqual(t.backend.loads.length, 3);
+    });
+
+    test('held save checks: the user\'s save (Manual) checks as always; auto-saves and the checks\' own afterDelay save (Manual too) are held; no second load at the release after a check', async () => {
+      const a = new FakeDocument('/w/a/A.idr');
+      const t = setup({ visible: [a], trigger: 'afterDelay' });
+      await settle();
+      assert.strictEqual(t.backend.loads.length, 1);
+      const hold = t.checks.holdSaveChecks(t.asDoc(a).uri.toString());
+      const save = (reason: number): void => {
+        t.willSave.fire({ document: a, reason });
+        t.saved.fire(a);
+      };
+      save(2); // files.autoSave: afterDelay
+      save(3); // files.autoSave: onFocusChange
+      await settle();
+      assert.strictEqual(t.backend.loads.length, 1, 'automatic saves are held');
+      a.isDirty = true;
+      t.edited.fire({ document: a });
+      t.timers.fireAll();
+      assert.strictEqual(a.saves, 1, 'the afterDelay save');
+      a.isDirty = false;
+      save(1); // an extension's save is reported as Manual [doc]
+      await settle();
+      assert.strictEqual(t.backend.loads.length, 1, 'the checks\' own save is held');
+      save(1);
+      await settle();
+      assert.strictEqual(t.backend.loads.length, 2, 'the user\'s save checks (its load ends the cycle)');
+      hold.dispose();
+      await settle();
+      assert.strictEqual(t.backend.loads.length, 2, 'released after that check: the same text is not loaded again');
+    });
+
+    test('held save checks: a save with no reason (Save without Formatting runs no save participants, so no willSave event) is the user\'s: checked', async () => {
+      const a = new FakeDocument('/w/a/A.idr');
+      const t = setup({ visible: [a] });
+      await settle();
+      assert.strictEqual(t.backend.loads.length, 1);
+      const hold = t.checks.holdSaveChecks(t.asDoc(a).uri.toString());
+      t.saved.fire(a);
+      await settle();
+      assert.strictEqual(t.backend.loads.length, 2, 'checked during the hold');
+      hold.dispose();
+    });
+
+    test('held save checks: when the checks\' own afterDelay save fails (no save event), the user\'s next save is checked, not held', async () => {
+      const a = new FakeDocument('/w/a/A.idr');
+      const t = setup({ visible: [a], trigger: 'afterDelay' });
+      await settle();
+      assert.strictEqual(t.backend.loads.length, 1);
+      const hold = t.checks.holdSaveChecks(t.asDoc(a).uri.toString());
+      a.isDirty = true;
+      a.saveSucceeds = false;
+      t.edited.fire({ document: a });
+      t.timers.fireAll();
+      assert.strictEqual(a.saves, 1, 'the afterDelay save, which fails');
+      await settle();
+      a.isDirty = false;
+      t.willSave.fire({ document: a, reason: 1 });
+      t.saved.fire(a);
+      await settle();
+      assert.strictEqual(t.backend.loads.length, 2, 'the user\'s save checks');
+      hold.dispose();
     });
 
     test('a document whose language mode changes to Idris 2 while visible (close + open, no visibility event) is checked', async () => {

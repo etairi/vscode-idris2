@@ -16,6 +16,12 @@
  * `completions`, `tokens` and the document argument of `docsFor`, `evaluate` and
  * `browseNamespace`: in IDE mode every answer comes from a session of the document's root, in
  * the context of the file that session loaded (`IdrisBackend`, *Queries*).
+ *
+ * M4 (ROADMAP §5 M4) refines `Hole`, `holes` and the edit contract of ARCHITECTURE §3.3
+ * (`EditRequest`, `EditResult`, `IdrisBackend.edit`; the departures from §3.3 and their reasons are
+ * in the comments of the two types). The contract is backend-neutral: M4 implements it for IDE
+ * mode; `LspBackend.edit()` and `LspBackend.holes()` and the contract suite are owned by M5, which
+ * ships second (ROADMAP M4 *Scope*, ownership rule).
  */
 import type * as vscode from 'vscode';
 import type { EditorRange } from '../core/positions';
@@ -124,21 +130,60 @@ export interface TypeInfo extends RichText {
 /** 0 or 1, or unrestricted (no annotation). */
 export type Multiplicity = 0 | 1 | 'unrestricted';
 
-/** One hypothesis in a hole's context. */
+/** One hypothesis in a hole's context: a local variable in scope at the hole. */
 export interface Premise {
   readonly name: string;
   readonly type: RichText;
-  /** Reported by idris2-lsp's `metavars` (F26); absent when the backend does not report it. */
+  /**
+   * IDE mode: the prefix of the premise in `:metavariables` — `" 0  n"`, `" 1  x"`, `"  xs"`
+   * (unrestricted) [live, prep of M4: `consume x xs = ?todo` of `consume : (1 x : a) -> Vect n a ->
+   * Vect (S n) a`]; idris2-lsp's `metavars` reports it too (F26). Absent when the backend does not
+   * report it.
+   */
   readonly multiplicity?: Multiplicity;
-  /** Reported by idris2-lsp's `metavars` (F26); absent when the backend does not report it. */
+  /** Reported by idris2-lsp's `metavars` (F26); IDE mode does not say (the implicit `n` and `a` above look like `x`). */
   readonly implicit?: boolean;
 }
 
+/** How `IdrisBackend.holes` answers. */
+export interface HolesOptions {
+  /**
+   * Also the holes the backend kept from the file's last answered load when the session has loaded
+   * another file since, instead of `NotLoaded`: for the holes view, which refreshes after each load
+   * and must not lose a file's holes because another file of a batch of visible documents was loaded
+   * before it asked (IDE mode: kept while the file has an open document). A caller that shows the
+   * holes of the text on disk now (List Holes) leaves it out, loads the file and asks again.
+   */
+  readonly kept?: boolean;
+  /**
+   * List Holes' Cancel: a cancellation rejects with the `Cancelled` error at once and, while the
+   * listing has not answered, restarts the `check` session of the file's root (IDE mode cannot stop a
+   * request in flight; `backend/ide/backend.ts`, *Holes*).
+   */
+  readonly token?: vscode.CancellationToken;
+}
+
+/** A hole (`?name`) the compiler knows, with its goal and context (ARCHITECTURE §9). */
 export interface Hole {
+  /** The name after `?`, unqualified: `vlen_rhs`. */
   readonly name: string;
+  /**
+   * The name as the compiler qualifies it: `Clean.vlen_rhs` (IDE mode: the quoted name of a
+   * `:metavariables` entry, ARCHITECTURE §9). Holes of one name in two modules differ here (E16).
+   */
+  readonly qualifiedName: string;
+  /** The goal: the type the hole must have. */
   readonly type: RichText;
+  /** The local variables in scope at the hole, in the compiler's order. */
   readonly premises: readonly Premise[];
-  /** Absent when the backend cannot locate the hole (`holeLocations` false). */
+  /**
+   * Where the hole is: the file, and the range of its `?name` token in that file's editor
+   * coordinates as the load that reported it read the file (IDE mode: the `:name-at` span, which
+   * covers the `?` [live, F2 and prep of M4]). It is not moved to the text an editor shows now: a
+   * consumer that shows it in a document changed since finds the `?name` there itself
+   * (`features/holes/types.ts`). Absent when the backend cannot locate the hole (`holeLocations`
+   * false, or IDE mode's `:name-at` has no entry of this `qualifiedName`).
+   */
   readonly location?: vscode.Location;
 }
 
@@ -220,7 +265,23 @@ export type Evaluation =
   | { readonly kind: 'value'; readonly value: RichText }
   | { readonly kind: 'error'; readonly message: RichText };
 
-/** §3.3 */
+/**
+ * §3.3: what an interactive editing command asks the compiler for (ROADMAP §5 M4). In IDE mode
+ * each kind is one request (F2, F29, F30; ARCHITECTURE §7 for the line and column conventions):
+ *
+ * | Kind | `pos` / `name` | IDE-mode request (1-based compiler lines, `core/positions.ts`) |
+ * |---|---|---|
+ * | `caseSplit` | on the pattern variable / it | `(:case-split L C "name")`, C 1-based (F2) |
+ * | `addClause` | on the type declaration / the function | `(:add-clause L "fn")`, L the declaration's line |
+ * | `makeLemma`, `makeWith`, `makeCase` | on the hole / its name without `?` | `(:make-lemma L "hole")`, `(:make-with …)`, `(:make-case …)` (the hole's name, as recorded in `clean-editing`) |
+ * | `exprSearch` | on the hole / its name | `(:proof-search L "hole" (HINTS…))` — the plain form: the `:all` flag is ignored (F31) |
+ * | `exprSearchNext` | — | the bare symbol `:proof-search-next` (F4) |
+ * | `generateDef` | on the type declaration / the function | `(:generate-def L "fn")`, L the declaration's line (F2) |
+ * | `generateDefNext` | — | the bare symbol `:generate-def-next` |
+ * | `intro` | on the hole / its name | `(:intro L "hole")` → the candidates (F29) |
+ * | `refine` | on the hole / its name | `(:refine L "hole" "EXPR")` → one string, or the ambiguity error (F29) |
+ * | `addMissingCases` | on the declaration of the function a coverage error names / it | `(:interpret ":missing fn")` (F15; `:add-missing` is a stub, F3) |
+ */
 export type EditKind =
   | 'caseSplit'
   | 'addClause'
@@ -235,28 +296,155 @@ export type EditKind =
   | 'refine'
   | 'addMissingCases';
 
-/** §3.3 */
-export interface EditRequest {
-  readonly kind: EditKind;
+/** What every `EditRequest` has. */
+interface EditRequestBase {
   readonly doc: vscode.TextDocument;
-  readonly pos: vscode.Position;
-  readonly name: string;
-  readonly hints?: readonly string[];
-  readonly hint?: string;
+  /**
+   * `doc.version` when the command asked (an addition to §3.3). The result is computed for the text
+   * of that version, and the caller applies it only while `doc.version` is still `version` — else
+   * it is discarded and the user told so (`features/editing/types.ts`). IDE mode answers a request
+   * that names a place (`EditAtRequest`, `ExprSearchRequest`, `RefineRequest`) only while its
+   * `check` session's last load of `doc`'s file is known to have read `doc`'s text at `version`
+   * (the text `TokenIndex.text` describes), since the compiler reads the lines it edits from the
+   * text it loaded (`core/config.ts` `SaveBeforeAction`); otherwise it rejects with `NotLoaded`,
+   * having sent nothing, like a query.
+   */
+  readonly version: number;
+  /**
+   * Cancels the request. Before it is sent it is dropped; once sent, IDE mode stops the root's
+   * `check` session and starts it again (ARCHITECTURE §5.1: the protocol has no cancel; ROADMAP M4
+   * *Risks*: "cancel kills/respawns"). Either way the promise rejects with the `Cancelled` error
+   * (`core/errors.ts`). The commands pass one for the long kinds (`exprSearch`, `generateDef`, their
+   * `-Next`, `refine`, `intro`, `makeLemma` and `addMissingCases`), whose progress notification offers
+   * Cancel.
+   */
+  readonly token?: vscode.CancellationToken;
 }
 
-/** §3.3 */
+/**
+ * A request about something at `pos` in `doc` (table above). `name` is taken from `doc`'s text (or
+ * from a code action's argument) and is untrusted: the backend refuses, with `Unsupported` and
+ * before anything is sent, a name that is not an Idris name as the compiler's lexer reads one —
+ * an identifier (Unicode letters included, F18) for a hole or a pattern variable, an identifier
+ * or an operator in parentheses for a function —, so that nothing typed in a file can turn
+ * `(:interpret ":missing NAME")` into another REPL command (hard requirement of M4; `:missing` is
+ * the one request whose name the compiler parses, `process (Interpret …)`; the others make a name
+ * of the string as it is, `IDEMode/REPL.idr` 143–199 on v0.8.0 [src]).
+ */
+export interface EditAtRequest extends EditRequestBase {
+  readonly kind: 'caseSplit' | 'addClause' | 'makeLemma' | 'makeCase' | 'makeWith' | 'generateDef' | 'intro' | 'addMissingCases';
+  readonly pos: vscode.Position;
+  readonly name: string;
+}
+
+/** `exprSearch`: as `EditAtRequest`, with the names the search may use. */
+export interface ExprSearchRequest extends EditRequestBase {
+  readonly kind: 'exprSearch';
+  readonly pos: vscode.Position;
+  readonly name: string;
+  /** `(:proof-search L "hole" (HINTS…))`: each a name, checked as `name` is; `[]` for none. */
+  readonly hints: readonly string[];
+}
+
+/** `refine`: as `EditAtRequest`, with the expression to refine the hole with. */
+export interface RefineRequest extends EditRequestBase {
+  readonly kind: 'refine';
+  readonly pos: vscode.Position;
+  readonly name: string;
+  /**
+   * The expression the user typed (**Refine Hole…**'s input box). It goes only into the string
+   * argument of `(:refine L "hole" "EXPR")`, through the s-expression encoder, never into a
+   * command's text. The compiler parses it as an expression (`aPTerm`, `IDEMode/REPL.idr` 179) and
+   * checks it, applied to new holes, against the hole's type (`checkTerm`, `processEdit (Refine …)`,
+   * `Idris/REPL.idr` 525–607 on v0.8.0 [src]); so, like Evaluate, it can run the elaborator scripts
+   * the expression reaches [live, idris2 0.8.0: a macro application and a `%runElab` each wrote a
+   * file] — accepted, documented and not refused (ROADMAP §9 Q24, decided 2026-09-30 under Q23).
+   */
+  readonly hint: string;
+}
+
+/**
+ * `exprSearchNext`, `generateDefNext`: the next result of the search that the backend's last
+ * `exprSearch` (or `generateDef`) request in `doc`'s root started for `doc`. Nothing names a place:
+ * the compiler keeps one search of each kind (`psResult`, `gdResult` in `Idris/REPL/Opts.idr`
+ * [src]); every load resets both (`loadMainFile` → `resetProofState`, `Idris/REPL.idr` 833–845 on
+ * v0.8.0 [src]), and a new search of the same kind replaces it. So the backend rejects with
+ * `Unsupported` ("… has ended …"), sending nothing, when that session has loaded a file, run a search
+ * of its kind or a raw request, or stopped since, or when the search was not started for `doc`;
+ * `version` is the text as the caller's last applied result left it.
+ */
+export interface NextRequest extends EditRequestBase {
+  readonly kind: 'exprSearchNext' | 'generateDefNext';
+  /**
+   * Where the previous result of the search is in `doc`'s text at `version` (the cycling
+   * controller follows it, ARCHITECTURE §10); the next result replaces it.
+   */
+  readonly previous: EditorRange;
+}
+
+/**
+ * §3.3, refined by M4: a union by kind (§3.3 has one interface whose `name`, `hints` and `hint`
+ * every kind carries), so that each kind carries exactly the arguments it needs, and `version`
+ * and `token` added (above).
+ */
+export type EditRequest = EditAtRequest | ExprSearchRequest | RefineRequest | NextRequest;
+
+/**
+ * A change of the request's document: `range` — editor coordinates (0-based, UTF-16 columns) in
+ * the text of `EditRequest.version`, empty for an insertion — replaced by `text`, whose lines are
+ * separated by `\n` (the caller writes the document's own line breaks).
+ */
+export interface TextReplacement {
+  readonly range: EditorRange;
+  readonly text: string;
+}
+
+/** One candidate of a `choices` result. */
+export interface EditChoice {
+  /**
+   * The candidate as the compiler printed it (`S ?vlen_rhs_0`, `Ambig.A.foo ?g_rhs_0`): untrusted
+   * text (`core/untrustedText.ts` `quickPickText` in a QuickPick).
+   */
+  readonly label: string;
+  /**
+   * The edit that choosing it makes, as an `edit` result's (IDE mode puts a candidate of more than one
+   * token in parentheses there, `backend/ide/edits.ts` `inPlace`).
+   */
+  readonly replacements: readonly TextReplacement[];
+}
+
+/**
+ * §3.3, refined by M4. §3.3's `replaceLines`, `replaceRange`, `lemma` and `workspaceEdit` are one
+ * `edit` result, a list of replacements of the request's document, for two reasons: every result
+ * then changes only the document the request came from, by construction (a hard requirement of M4 —
+ * the idris2-lsp backend of M5 converts the server's `WorkspaceEdit` and refuses one that changes
+ * another document), and the ranges, whose rules are protocol facts (E15; a make-lemma's two
+ * places, a clause's lines, a literate prefix, F11), are computed once, in the backend, not in each
+ * feature that applies a result. Two variants are added: `choices` also carries Refine's ambiguity
+ * (F29), and `failed` the compiler's error answers.
+ */
 export type EditResult =
-  /** Lines 0-based, inclusive. */
-  | { readonly type: 'replaceLines'; readonly startLine: number; readonly endLine: number; readonly text: string }
-  | { readonly type: 'replaceRange'; readonly range: vscode.Range; readonly text: string }
-  /** make-lemma */
-  | { readonly type: 'lemma'; readonly declaration: string; readonly replacement: string }
-  /** intro */
-  | { readonly type: 'choices'; readonly items: readonly string[] }
-  /** LSP codeAction */
-  | { readonly type: 'workspaceEdit'; readonly edit: vscode.WorkspaceEdit }
-  /** "No more results" */
+  /**
+   * The edit to make, in the text of `EditRequest.version`: replacements that do not overlap, to be
+   * applied together as one undo step. For `exprSearch`, `exprSearchNext`, `generateDef` and
+   * `generateDefNext` exactly one — the result, whose range the cycling controller then follows.
+   */
+  | { readonly type: 'edit'; readonly replacements: readonly TextReplacement[] }
+  /**
+   * Candidates for the user to pick one of: `intro`, one per candidate the compiler offers (F29; a
+   * single one is applied without asking); `ambiguous`, the qualified alternatives of the
+   * compiler's `Ambiguous elaboration` answer to `refine` (F29; IDE mode only, F34).
+   */
+  | { readonly type: 'choices'; readonly reason: 'intro' | 'ambiguous'; readonly choices: readonly EditChoice[] }
+  /**
+   * The compiler answered without an edit: an error (`No clause to split here`, F15; `No search
+   * results`; …), or `:missing`'s text when there is nothing to add (`Edits.count: All cases
+   * covered`, `Part.main: Calls non covering function Part.g`). Its message as sent, untrusted
+   * text. An answer, not a failure: the caller rephrases the ones it knows (ROADMAP M4) and shows
+   * the others as they are.
+   */
+  | { readonly type: 'failed'; readonly message: string }
+  /** A `-Next` request found no further result (the compiler's `No more results`). */
   | { readonly type: 'exhausted' };
 
 /**
@@ -358,7 +546,49 @@ export interface IdrisBackend {
    * included. A query (above).
    */
   completions(doc: vscode.TextDocument, prefix: string): Promise<readonly string[]>;
-  holes(doc: vscode.TextDocument): Promise<Hole[]>;
+  /**
+   * (M4) The holes the compiler knows after its last load of `doc`'s file: those of `doc`'s module
+   * and of the modules it imports [live, prep of M4: after `(:load-file "Main.idr")` of a module
+   * importing `Base`, `(:metavariables 80)` listed the holes of both; after one of `Base.idr`, only
+   * `Base`'s]. Never loads (a query, above); `NotLoaded` when the backend has no answer for that
+   * load and it is not the session's last. In IDE mode `(:metavariables W)`, then `(:name-at "NAME")`
+   * per unqualified name (F2: the qualified form answers `()`), at most `MAX_LOCATED_NAMES`
+   * (`backend/ide/holes.ts`) names per load, whose answer lists every hole of that name —
+   * `Base.todo` and `Main.todo` for `todo` [live, the same probe] — and the entry of the hole's
+   * `qualifiedName` is its location (E16); asked right after each load and kept per load
+   * (`backend/ide/backend.ts`, *Holes*). `:metavariables` also
+   * lists declarations without clauses and definitions that failed; they are left out (their
+   * `:name-at` span is the declaration, not a `?name`). `[]` when there are none. With
+   * `HolesOptions.kept`, the holes of the file's last answered load also after the session has
+   * loaded another file.
+   */
+  holes(doc: vscode.TextDocument, options?: HolesOptions): Promise<Hole[]>;
+  /**
+   * (M4) The edit `req` asks for (`EditRequest`, `EditResult`; ARCHITECTURE §3.3, §10). Like a query
+   * it is answered by the `check` session of `doc`'s root in the context of the file it loaded last
+   * and never loads: it rejects with `NotLoaded`, having sent and started nothing, when that load is
+   * not of `doc`'s file or did not read `doc`'s text at `req.version` — the lines the document shows
+   * are those the load read, line breaks aside (`EditRequestBase.version`; the continuing kinds
+   * excepted, `NextRequest`); the caller saves — `idris2.checking.saveBeforeAction`
+   * —, loads and asks again (`features/editing/types.ts`). A compiler error is an answer (`failed`).
+   * It rejects with `Unsupported`, sending nothing: for a name that is not an Idris name
+   * (`EditAtRequest`); for a search that ended (`NextRequest`); after a load that returned an error,
+   * for `caseSplit`, `addClause` and `generateDef`, which find their place by line (F16 does not hold
+   * for them [live, transcripts `hole-errors`, `part-editing`]); and where the compiler would read
+   * another line than the one it finds its place at — the compiler's lines of a bird-track file are
+   * its unlit lines, where a line of a marker and white space only counts twice (F11 addendum), but
+   * `getSourceLine` takes line L of the raw text (`Idris/REPL/Opts.idr` 129–133 on v0.8.0 [src]):
+   * `caseSplit` below such a line; `addClause` and `generateDef` there when the line read has another
+   * marker; the three in a literate file with a `\r` or any file with a lone `\r`. `makeLemma`,
+   * `makeCase` and `makeWith` are sent the raw source line and work there (`backend/ide/edits.ts`).
+   * `intro`, `refine`, `exprSearch` and `addMissingCases` are not affected: their replies are
+   * expressions or printed clauses. Time limits:
+   * `idris2.ideMode.longActionTimeout` for `exprSearch`, `generateDef`, their `-Next`, `refine`,
+   * `intro`, `makeLemma` and `addMissingCases` (`longAction`), `idris2.ideMode.requestTimeout` for the
+   * others; a time-out rejects with
+   * `RequestTimeout` and restarts the session, as for any request (ARCHITECTURE §5.1) — for a
+   * `longAction` without counting towards giving up (`backend/ide/session.ts`).
+   */
   edit(req: EditRequest): Promise<EditResult>;
   /**
    * (M3) Evaluates `expr` in the context of `doc`'s saved file, in the root's `eval` session

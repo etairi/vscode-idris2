@@ -1,0 +1,4 @@
+package holes
+
+sourcedir = "src"
+modules = Holes.Base, Holes.Util, Holes.Main, Holes.Other

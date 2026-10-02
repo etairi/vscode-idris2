@@ -1,0 +1,44 @@
+{"kind":"meta","format":1,"scenario":"lit-indent-editing","description":"F11: LitIndent.lidr (bird tracks): :add-clause on a declaration in a where block and in a mutual block, and :generate-def on the latter","facts":["F11"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-09-30","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build/.vscode-idris2"],"cwd":"test/fixtures/workspaces/broken","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"LitIndent.lidr":"c4851b44fff76f579b6d55107f127a3b3a263c0c9360bee1811bf8a8c28b151e"}}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"0000a3","text":"((:load-file \"${ROOT}/LitIndent.lidr\") 1)\n"}
+{"kind":"recv","prefix":"0000be","text":"(:write-string \"1/1: Building LitIndent (${ROOT}/LitIndent.lidr)\" 1)\n"}
+{"kind":"recv","prefix":"0000f6","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 0 0) (:end 0 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f6","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 0 7) (:end 0 16)) ((:decor :module)))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 5 0) (:end 5 6)) ((:name \"sumAll\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f6","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 5 7) (:end 5 8)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00015c","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 5 9) (:end 5 13)) ((:name \"List\") (:namespace \"Prelude.Basics\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00015b","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 5 14) (:end 5 17)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f8","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 5 18) (:end 5 20)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00015b","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 5 21) (:end 5 24)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00015c","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 6 0) (:end 6 6)) ((:name \"sumAll\") (:namespace \"LitIndent\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00014c","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 6 7) (:end 6 9)) ((:name \"xs\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f8","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 6 10) (:end 6 11)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00015a","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 6 12) (:end 6 14)) ((:name \"go\") (:namespace \"LitIndent\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 6 15) (:end 6 16)) ((:decor :data)))))) 1)\n"}
+{"kind":"recv","prefix":"00014e","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 6 17) (:end 6 19)) ((:name \"xs\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f6","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 7 2) (:end 7 7)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00014f","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 8 4) (:end 8 6)) ((:name \"go\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f6","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 8 7) (:end 8 8)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00015a","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 8 9) (:end 8 12)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f8","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 8 13) (:end 8 15)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00015d","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 8 16) (:end 8 20)) ((:name \"List\") (:namespace \"Prelude.Basics\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00015b","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 8 21) (:end 8 24)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f8","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 8 25) (:end 8 27)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00015b","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 8 28) (:end 8 31)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f8","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 10 0) (:end 10 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000155","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 11 2) (:end 11 8)) ((:name \"isEven\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f9","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 11 9) (:end 11 10)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00015d","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 11 11) (:end 11 14)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000fa","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 11 15) (:end 11 17)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00015f","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/LitIndent.lidr\") (:start 11 18) (:end 11 22)) ((:name \"Bool\") (:namespace \"Prelude.Basics\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok ()) 1)\n"}
+{"kind":"send","prefix":"000019","text":"((:add-clause 9 \"go\") 2)\n"}
+{"kind":"recv","prefix":"00002b","text":"(:return (:ok \">    go k ks = ?go_rhs\") 2)\n"}
+{"kind":"send","prefix":"00001e","text":"((:add-clause 12 \"isEven\") 3)\n"}
+{"kind":"recv","prefix":"00002e","text":"(:return (:ok \">  isEven k = ?isEven_rhs\") 3)\n"}
+{"kind":"send","prefix":"000020","text":"((:generate-def 12 \"isEven\") 4)\n"}
+{"kind":"recv","prefix":"000045","text":"(:return (:ok \">   isEven 0 = False\n>   isEven (S k) = isEven k\") 4)\n"}
+{"kind":"close"}
+{"kind":"unframed","text":"Alas the file is done, aborting\n"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":["build/.vscode-idris2/ttc/2025081600/LitIndent.ttc","build/.vscode-idris2/ttc/2025081600/LitIndent.ttm"]}

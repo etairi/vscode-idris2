@@ -732,7 +732,7 @@ suite('backend/ide/session', () => {
       h.clock.advance(1);
       await flush();
       assert.strictEqual(kindOf(slow), 'RequestTimeout');
-      assert.strictEqual(messageOf(slow), ':type-of did not answer within 5 s; the Idris 2 process was stopped.');
+      assert.strictEqual(messageOf(slow), ':type-of did not answer within 5 s (idris2.ideMode.requestTimeout); the Idris 2 process was stopped.');
       assert.strictEqual(kindOf(queued), 'RequestTimeout');
       assert.match(messageOf(queued), /Dropped: an earlier request \(:type-of\) did not answer within 5 s/);
       assert.strictEqual(h.t.stopCalls, 1);
@@ -749,7 +749,7 @@ suite('backend/ide/session', () => {
       h.t.partial('000040(:return (:ok');
       h.clock.advance(5_000);
       await flush();
-      assert.strictEqual(messageOf(slow), ':type-of did not answer within 5 s; 19 bytes arrived without completing a message; the Idris 2 process was stopped.');
+      assert.strictEqual(messageOf(slow), ':type-of did not answer within 5 s (idris2.ideMode.requestTimeout); 19 bytes arrived without completing a message; the Idris 2 process was stopped.');
       assert.match(h.changes.find((c) => c.cause === 'timeout')?.detail ?? '', /; 19 bytes arrived without completing a message$/);
     });
 
@@ -1076,6 +1076,51 @@ suite('backend/ide/session', () => {
       assert.deepStrictEqual(h.clock.pending(), []);
     });
 
+    test('onReply: the hooks run when the reply arrives, before the next request is chosen, so their urgent requests go before a load that waited', async () => {
+      // M4: a check load's holes, which another file's load queued behind it would otherwise replace.
+      const h = await readySession();
+      const sentCommands = () => h.t.sent.slice(1).map((frame) => frame.command);
+      const followUps: Promise<unknown>[] = [];
+      const a = track(
+        h.session.request(loadFile('/w/A.idr'), {
+          kind: 'load',
+          file: { path: '/w/A.idr' },
+          onReply: (reply) => {
+            assert.strictEqual(h.session.loadedFile?.path, '/w/A.idr', 'the file is recorded first');
+            followUps.push(h.session.request(typeOf('meta'), { kind: 'lookup', urgent: () => true, onReply: () => followUps.push(h.session.request(typeOf('name'), { kind: 'lookup', urgent: () => true })) }));
+            assert.ok(reply.payload.kind === 'ok');
+          },
+        }),
+      );
+      const b = track(h.session.request(loadFile('/w/B.idr'), { kind: 'load', file: { path: '/w/B.idr' }, beforeSend: () => Promise.resolve() }));
+      await flush();
+      h.t.message(ret(2n, ok()));
+      await flush();
+      assert.strictEqual(a.state, 'resolved');
+      assert.deepStrictEqual(sentCommands(), [loadFile('/w/A.idr'), typeOf('meta')], 'before B, whose check had not started');
+      h.t.message(ret(3n, ok()));
+      await flush();
+      assert.deepStrictEqual(sentCommands().slice(2), [typeOf('name')], 'made in the next reply\'s hook: before B too');
+      h.t.message(ret(4n, ok()));
+      await flush();
+      assert.deepStrictEqual(sentCommands().slice(3), [loadFile('/w/B.idr')]);
+      h.t.message(ret(5n, ok()));
+      await flush();
+      assert.strictEqual(b.state, 'resolved');
+      assert.strictEqual(followUps.length, 2);
+      // A hook that throws is logged, and the session goes on.
+      const c = track(h.session.request(typeOf('c'), { kind: 'lookup', onReply: () => { throw new Error('boom'); } }));
+      const d = h.lookup('d');
+      await flush();
+      h.t.message(ret(6n, ok()));
+      await flush();
+      assert.strictEqual(c.state, 'resolved');
+      assert.ok(h.log.lines.some((l) => l.startsWith('warn: ') && l.includes('a reply hook of :type-of failed: boom')));
+      h.t.message(ret(7n, ok()));
+      await flush();
+      assert.strictEqual(d.state, 'resolved');
+    });
+
     test('urgent: a request goes before the others waiting, never before the one in flight or one whose check runs or has passed; false is first-in, first-out', async () => {
       // M2 verification of the Q20–Q22 fixes (ROADMAP §9 Q21): the active document's load waited
       // behind every load of its root handed to the session before it.
@@ -1290,6 +1335,30 @@ suite('backend/ide/session', () => {
       await flush();
       assert.match(messageOf(later), /^The Idris 2 session has failed: /);
       assert.ok(h.log.lines.some((l) => l.startsWith('warn: ') && l.includes('failed (gaveUp)')));
+    });
+
+    test('a long action over its limit (work the user started and waited for) restarts at once and never counts towards giving up', async () => {
+      const h = await readySession();
+      for (let i = 0; i < 5; i++) {
+        const search = track(h.session.request(list(sym('proof-search')), { kind: 'longAction' }));
+        await flush();
+        h.clock.advance(60_000);
+        await flush();
+        assert.strictEqual(messageOf(search), ':proof-search did not answer within 1 min (idris2.ideMode.longActionTimeout); the Idris 2 process was stopped.');
+        assert.ok(h.changes.some((c) => c.state === 'restarting' && c.cause === 'longActionTimeout'), 'not reported as a crash (its caller reports it)');
+        assert.strictEqual(h.transports.all.length, i + 2, `restart ${i + 1}: at once`);
+        assert.strictEqual(h.session.state, 'ready');
+      }
+      // An unexpected end after them is the first counted one: restarted at once.
+      h.transports.last().exit({ code: 1, signal: null });
+      await flush();
+      assert.strictEqual(h.transports.all.length, 7);
+      // A lookup's own limit (a timeoutMs) names no setting.
+      const own = track(h.session.request(typeOf('y'), { kind: 'lookup', timeoutMs: 1_234 }));
+      await flush();
+      h.clock.advance(1_234);
+      await flush();
+      assert.strictEqual(messageOf(own), ':type-of did not answer within 1.2 s; the Idris 2 process was stopped.');
     });
 
     test('unexpected ends more than five minutes apart never give up and restart at once', async () => {

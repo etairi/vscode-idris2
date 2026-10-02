@@ -13,6 +13,9 @@
  *   is not checked — and each time it is saved. `afterDelay`: as `onSave`, and an Idris file with
  *   unsaved changes is saved once `idris2.checking.delay` ms have passed without an edit (opt-in:
  *   it writes the user's files), which then checks it. `manual`: only **Idris 2: Check File**.
+ *   While M4's cycling holds a document's save checks (`SaveCheckHolds`), its automatic saves
+ *   (`files.autoSave`, the `afterDelay` save) check nothing until the hold ends; any other save
+ *   (the user's) checks it, which ends the cycle.
  *   The trigger is read for each document's resource scope. Several documents of one root are
  *   checked one after another by the root's one session (it runs one request at a time, and
  *   merges queued loads of one file).
@@ -282,6 +285,24 @@ export interface Staleness {
   readonly manual: boolean;
 }
 
+/**
+ * Holding the save checks of a document (M4, `features/editing/cycling.ts`): while a cycle of Proof
+ * Search or Generate Definition results runs in it, an automatic save of it (VS Code's
+ * `files.autoSave`, with the reason `AfterDelay` or `FocusOut`, or the `afterDelay` save of a result
+ * just applied, which VS Code reports as `Manual`, "by an API call" [doc, vscode.d.ts 1.138]) starts
+ * no check — its load would end the compiler's search, and with it the next results. Any other save
+ * checks the document as always, and its load ends the cycle: one with the reason `Manual` that the
+ * checks did not make, and one with no reason — **Save without Formatting** runs no save
+ * participants, so `onWillSaveTextDocument` does not fire for it (`skipSaveParticipants`, VS Code
+ * 1.139.1 workbench [src]). When the hold is released the document is checked if it was saved meanwhile,
+ * has no unsaved changes then (otherwise its next save checks it), and no check has started since
+ * that save (the load that ended the cycle may be that check).
+ */
+export interface SaveCheckHolds {
+  /** Holds the save checks of the document `uri` (`uri.toString()`) until the result is disposed. */
+  holdSaveChecks(uri: string): IDisposable;
+}
+
 /** The status item's view of the checks. */
 export interface CheckStatusSource {
   /** `undefined` for a document that is not checked at all (not an Idris file on disk). */
@@ -289,7 +310,7 @@ export interface CheckStatusSource {
   readonly onDidChange: Event<void>;
 }
 
-export type ChecksApi = Pick<typeof vscode, 'languages' | 'window' | 'workspace' | 'DiagnosticSeverity'>;
+export type ChecksApi = Pick<typeof vscode, 'languages' | 'window' | 'workspace' | 'DiagnosticSeverity' | 'TextDocumentSaveReason'>;
 
 /** `setTimeout`/`clearTimeout`, injected so that the `afterDelay` debounce is unit-tested without waiting. */
 export interface Timers {
@@ -545,10 +566,16 @@ export function isCheckable(doc: vscode.TextDocument): boolean {
   return doc.uri.scheme === 'file' && isIdrisDocument(doc);
 }
 
-export class DocumentChecks implements CheckStatusSource, IDisposable {
+export class DocumentChecks implements CheckStatusSource, SaveCheckHolds, IDisposable {
   private readonly store = new DisposableStore();
   private readonly changed = this.store.add(new Emitter<void>());
   private readonly tracked = new Map<string, Tracked>();
+  /** The documents (`uri.toString()`) whose save checks are held (`holdSaveChecks`), and whether one was saved meanwhile. */
+  private readonly holds = new Map<string, { saved: boolean; generation: number }>();
+  /** The reason of the save each document (`uri.toString()`) is about to have (`onWillSaveTextDocument`), until its save event. */
+  private readonly saveReasons = new Map<string, vscode.TextDocumentSaveReason>();
+  /** The documents (`uri.toString()`) the `afterDelay` timer is saving, until their save event. */
+  private readonly ownSaves = new Set<string>();
   /** The files (by URI) whose diagnostics in the collection a load in this window determined. */
   private readonly reported = new Set<string>();
   /** What closed documents showed, by URI, until a load determines them again. */
@@ -610,6 +637,7 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
       }),
     );
     this.store.add(api.workspace.onDidCloseTextDocument((doc) => this.closed(doc)));
+    this.store.add(api.workspace.onWillSaveTextDocument((e) => this.saveReasons.set(e.document.uri.toString(), e.reason)));
     this.store.add(api.workspace.onDidSaveTextDocument((doc) => this.saved(doc)));
     this.store.add(api.workspace.onDidChangeTextDocument((e) => this.edited(e.document, e.contentChanges.length > 0)));
     const files = this.store.add(api.workspace.createFileSystemWatcher('**/*', false, true, false));
@@ -698,9 +726,36 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
     return t.root !== undefined && this.deps.consent.current(this.deps.projects.sessionCwd(t.root))?.allowed === true;
   }
 
+  holdSaveChecks(uri: string): IDisposable {
+    const hold = { saved: false, generation: 0 };
+    this.holds.set(uri, hold);
+    return {
+      dispose: () => {
+        if (this.holds.get(uri) !== hold) {
+          return;
+        }
+        this.holds.delete(uri);
+        const doc = this.tracked.get(uri)?.document;
+        const checkedSince = (this.tracked.get(uri)?.generation ?? 0) !== hold.generation;
+        if (hold.saved && !checkedSince && doc !== undefined && !doc.isClosed && !doc.isDirty && isCheckable(doc) && this.trigger(doc) !== 'manual') {
+          void this.check(doc);
+        }
+      },
+    };
+  }
+
   private saved(doc: vscode.TextDocument): void {
+    const key = doc.uri.toString();
+    const reason = this.saveReasons.get(key);
+    this.saveReasons.delete(key);
+    const own = this.ownSaves.delete(key);
     if (isCheckable(doc)) {
-      if (this.trigger(doc) !== 'manual') {
+      const hold = this.holds.get(key);
+      const automatic = reason === this.api.TextDocumentSaveReason.AfterDelay || reason === this.api.TextDocumentSaveReason.FocusOut;
+      if (hold !== undefined && (own || automatic)) {
+        hold.saved = true;
+        hold.generation = this.tracked.get(key)?.generation ?? 0;
+      } else if (this.trigger(doc) !== 'manual') {
         void this.check(doc);
       }
     } else if (doc.uri.scheme === 'file' && isIpkgFileName(path.basename(doc.uri.fsPath))) {
@@ -773,7 +828,22 @@ export class DocumentChecks implements CheckStatusSource, IDisposable {
     tracked.saveTimer = this.deps.timers.set(() => {
       tracked.saveTimer = undefined;
       if (!doc.isClosed && doc.isDirty && this.trigger(doc) === 'afterDelay' && this.mayLoad(tracked.root)) {
-        void doc.save().then(undefined, (error: unknown) => this.deps.log.warn(`Could not save ${doc.fileName}: ${String(error)}`));
+        const key = doc.uri.toString();
+        this.ownSaves.add(key);
+        // A save that fails resolves `false` (vscode.d.ts 1.138 [doc]) and sends no save event: the
+        // user's next save is then not taken for this one.
+        void doc.save().then(
+          (ok) => {
+            if (!ok) {
+              this.ownSaves.delete(key);
+              this.deps.log.warn(`Could not save ${doc.fileName}.`);
+            }
+          },
+          (error: unknown) => {
+            this.ownSaves.delete(key);
+            this.deps.log.warn(`Could not save ${doc.fileName}: ${String(error)}`);
+          },
+        );
       }
     }, checking.delayMs);
   }

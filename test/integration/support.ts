@@ -1,10 +1,11 @@
 /**
  * Shared helpers of the integration suites (`integration`, `simple-ipkg`, `toolchain-path`,
- * `diagnostics`, `loose-stdio`, `consent`, `intelligence`, `intelligence-loose` in
+ * `diagnostics`, `loose-stdio`, `consent`, `intelligence`, `intelligence-loose`, `editing`, `holes` in
  * .vscode-test.mjs): the running extension's test API, polling, settings that tests change and
- * restore, (M2) sessions, diagnostics and the status text, and (M3) the fake compiler's logs,
- * hovers, semantic tokens, inlay hints and evaluations as VS Code's commands return them. Not a
- * test file itself (the suites load `*.test.js` only).
+ * restore, (M2) sessions, diagnostics and the status text, (M3) the fake compiler's logs,
+ * hovers, semantic tokens, inlay hints and evaluations as VS Code's commands return them, and (M4)
+ * editing commands, their code actions and the dialogs they open. Not a test file itself (the
+ * suites load `*.test.js` only).
  */
 import * as assert from 'assert';
 import { execFileSync } from 'child_process';
@@ -16,6 +17,7 @@ import * as vscode from 'vscode';
 // of its modules.
 import type { IdeSession } from '../../src/backend/ide/types';
 import type { TestApi } from '../../src/extension';
+import type { EditingCommandId, EditingOutcome } from '../../src/features/editing/types';
 import type { EvaluationOutcome } from '../../src/features/eval/register';
 import type { ToolchainSnapshot } from '../../src/toolchain/types';
 
@@ -431,4 +433,116 @@ export async function evaluateSelection(api: TestApi, editor: vscode.TextEditor,
   editor.selection = new vscode.Selection(range.start, range.end);
   await vscode.commands.executeCommand('idris2.evaluateSelection');
   return waitFor(`the evaluation of ${JSON.stringify(editor.document.getText(range))} to be shown`, () => api.evaluations[before]);
+}
+
+// -------------------------------------------------------------------------------------------
+// M4: interactive editing and holes
+// -------------------------------------------------------------------------------------------
+
+/**
+ * Runs the editing command `command` — with `args`, as a code action passes them, or none, as a
+ * key or the Command Palette does — and returns the outcome it recorded (`TestApi.editing.outcomes`:
+ * what the user was shown, which VS Code's API does not expose). While it runs, `interact` is called
+ * every 50 ms (to answer a QuickPick; a no-op while none is open), so that a command waiting for
+ * the user can finish.
+ */
+export async function runEditing(
+  api: TestApi,
+  command: EditingCommandId,
+  args: readonly unknown[] = [],
+  interact?: () => Thenable<unknown>,
+): Promise<EditingOutcome> {
+  const before = api.editing.outcomes.length;
+  let failure: unknown;
+  // Not awaited: a command that shows a QuickPick settles only once it is answered.
+  vscode.commands.executeCommand(command, ...args).then(undefined, (e: unknown) => (failure = e));
+  return waitForAsync(`${command} to record its outcome`, async () => {
+    if (failure !== undefined) {
+      assert.fail(`${command} rejected: ${String(failure)}`);
+    }
+    const outcome = api.editing.outcomes[before];
+    if (outcome === undefined && interact !== undefined) {
+      await interact();
+    }
+    return outcome;
+  });
+}
+
+/** Accepts the selected (first) item of the QuickPick or input box that is open; a no-op when none is. */
+export const acceptQuickPick = (): Thenable<unknown> => vscode.commands.executeCommand('workbench.action.acceptSelectedQuickOpenItem');
+
+/** Closes the QuickPick or input box that is open (as Escape does); a no-op when none is. */
+export const closeQuickPick = (): Thenable<unknown> => vscode.commands.executeCommand('workbench.action.closeQuickOpen');
+
+/**
+ * Replaces `object[key]` with `value` until `restore()` is called. For the few dialogs no command
+ * can answer: VS Code's `type` command types only into a focused code editor [src: its workbench
+ * bundle, `EditorHandlerCommand`], never into an input box, and a notification's buttons have no
+ * command. The test files and the extension share one `vscode` API object: the extension host
+ * gives one per extension, found by the path of the module that requires it [src: the extension
+ * host bundle of VS Code 1.139.1, the `vscode` module's `load`], and both lie in this checkout.
+ */
+function stub<T extends object, K extends keyof T>(object: T, key: K, value: T[K]): () => void {
+  const original = object[key];
+  object[key] = value;
+  assert.strictEqual(object[key], value, `could not replace ${String(key)}`);
+  return () => {
+    object[key] = original;
+  };
+}
+
+/** What a stubbed dialog was asked, and how to put the real one back. */
+export interface StubbedDialog {
+  /** The prompts (input box) or messages (notifications) in order. */
+  readonly asked: string[];
+  restore(): void;
+}
+
+/** Answers every `window.showInputBox` with `value` (`undefined`: the user pressed Escape) until restored. */
+export function answerInputBox(value: string | undefined): StubbedDialog {
+  const asked: string[] = [];
+  const restore = stub(vscode.window, 'showInputBox', (options?: vscode.InputBoxOptions) => {
+    asked.push(options?.prompt ?? '');
+    return Promise.resolve(value);
+  });
+  return { asked, restore };
+}
+
+type MessageArg = string | vscode.MessageItem | vscode.MessageOptions;
+
+/**
+ * Answers every `window.show{Information,Warning,Error}Message` until restored: `choose` gets the
+ * message and the buttons' titles and returns the title to click, or `undefined` to dismiss it.
+ */
+export function answerMessages(choose: (message: string, titles: readonly string[]) => string | undefined): StubbedDialog {
+  const asked: string[] = [];
+  const answer = (message: string, ...rest: MessageArg[]): Promise<string | vscode.MessageItem | undefined> => {
+    asked.push(message);
+    const items = rest.filter((r): r is string | vscode.MessageItem => typeof r === 'string' || 'title' in r);
+    const title = choose(message, items.map((i) => (typeof i === 'string' ? i : i.title)));
+    return Promise.resolve(items.find((i) => (typeof i === 'string' ? i : i.title) === title));
+  };
+  const restores = (['showInformationMessage', 'showWarningMessage', 'showErrorMessage'] as const).map((key) =>
+    stub(vscode.window, key, answer as (typeof vscode.window)[typeof key]),
+  );
+  return { asked, restore: () => restores.forEach((r) => r()) };
+}
+
+/** The code actions VS Code's light bulb gets at `range` of `uri` (every provider's), of `kind` if given. */
+export async function codeActionsAt(uri: vscode.Uri, range: vscode.Range, kind?: string): Promise<vscode.CodeAction[]> {
+  const found = await vscode.commands.executeCommand<(vscode.CodeAction | vscode.Command)[]>('vscode.executeCodeActionProvider', uri, range, kind);
+  // A bare Command has a string `command`; a CodeAction has an optional Command object there.
+  return found.filter((a): a is vscode.CodeAction => typeof a.command !== 'string');
+}
+
+/** The one code action of `kind` at `range` whose command is `command`; fails if there is none or more than one. */
+export async function codeActionFor(uri: vscode.Uri, range: vscode.Range, kind: string, command: EditingCommandId): Promise<vscode.Command> {
+  const actions = await codeActionsAt(uri, range, kind);
+  const matching = actions.filter((a) => a.kind?.value === kind && a.command?.command === command);
+  assert.strictEqual(matching.length, 1, `code actions of kind ${kind} at ${JSON.stringify(range)}: ${JSON.stringify(actions.map((a) => [a.title, a.kind?.value, a.command?.command]))}`);
+  const [action] = matching;
+  assert.ok(action.command);
+  // Our actions carry a command and never an edit: the edit is computed when it is chosen.
+  assert.strictEqual(action.edit, undefined, `${action.title} carries an edit`);
+  return action.command;
 }

@@ -10,12 +10,13 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   placeholders for future parts are the README files in `src/` and `test/`. M0 is implemented
   and accepted (2026-09-27, `docs/as-built/M0.md`); M1 is implemented (2026-09-27,
   `docs/as-built/M1.md`, which lists its deviations from the M1 text); M2 is implemented
-  (2026-09-28, `docs/as-built/M2.md`, likewise); M3 is implemented (2026-09-29, commit `04e96aa`,
-  `docs/as-built/M3.md`, likewise; the fixes of its fifth to eleventh reviews and the README split
-  were not committed when this was written). The one planned stub is M0's
+  (2026-09-28, `docs/as-built/M2.md`, likewise); M3 is implemented (2026-09-29, commits `04e96aa`
+  and `263f38f`, `docs/as-built/M3.md`, likewise); M4 is implemented for IDE mode (2026-09-30,
+  `docs/as-built/M4.md`, not committed when this was written; its LSP half — `LspBackend.edit()`,
+  `holes()` and the contract suite — is owned by M5, which ships second). The one planned stub is M0's
   `src/webview/goalPanel.ts` (an empty second esbuild entry, ROADMAP M0 "Out"), which M7
   replaces.
-- `docs/as-built/` — what was built: one file per finished milestone (`M0.md` … `M3.md`) with
+- `docs/as-built/` — what was built: one file per finished milestone (`M0.md` … `M4.md`) with
   its deviations from ROADMAP §5 and ARCHITECTURE, measurements, experiments,
   review rounds and gate runs; `README.md` there explains the files and how to read their
   references. Moved out of ROADMAP and ARCHITECTURE on 2026-09-28 so that those two stay
@@ -60,13 +61,20 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   Run main (M9) —; **keybindings as planned** (Q5): `idris2.keybindings.scheme` = `chords`
   (default on macOS) / `prefix` (default elsewhere) / `none`, each milestone binding only its own
   commands, M3 the letters `t`, `d`, `e` (ARCHITECTURE §10). Decided on 2026-09-29 after M3
-  (ROADMAP §9): **Q23 accepted** (its recorded rationale corrected on 2026-09-30; whether the user
-  confirms it on the corrected reasons is [open], ROADMAP §9) — Evaluate does not refuse the
-  elaborator scripts an expression reaches (a `%macro` applied by name runs its script without
+  (ROADMAP §9): **Q23 accepted** (its recorded rationale corrected on 2026-09-30; the user, told the
+  corrected rationale that day, kept the decision and accepted Q24 under it) — Evaluate does not
+  refuse the elaborator scripts an expression reaches (a `%macro` applied by name runs its script without
   `ElabReflection`; `%runElab` runs where the extension is on in the compiler's context); the
   README's *Privacy and security* discloses it and must keep doing so; no textual `%runElab` rule
   in `replCommand.ts` (it cannot see macro applications). Whether this covers M8's Query box and
-  lenses is M8's open question.
+  lenses is M8's open question. Decided on 2026-09-30 (ROADMAP §9 **Q24**): the same holds for
+  **Refine Hole…**, whose expression may run the scripts it reaches — documented (README *Privacy
+  and security*, the guide), not refused. Decided on 2026-10-01 (ROADMAP §9, M4): **always
+  bracket** (rule below, M4); **keep the layout refusal and make it converge** (rule below, M4; after
+  that pass one final review: medium and low findings are recorded as known limitations, only a high
+  finding stops the commit; a regression of the pass that can change a program was fixed too);
+  **Q25** the keybinding letters stay the
+  Idris docs' Vim ones; **Q26** Next Result (`n`) continues the document's cycle of either kind.
   **The `eval` session keeps its highlighting output**: no `(:enable-syntax :False)` (the reload
   cost it would save is accepted; the rule "nothing but evaluations goes to it" already forbids it).
 - Test corpora (`test/corpus/corpus.json`, fetched by `scripts/fetch-corpus.mjs` into the
@@ -88,8 +96,8 @@ npm run test:corpus   # fetch the pinned corpora (network) and tokenise them; wi
                       # IDRIS2_LEXER_ORACLE=1 also compare with the 0.8.0 lexer (needs idris2)
 npm test              # pretest (compile-tests + compile) + vscode-test (.vscode-test.mjs):
                       # the suites integration, simple-ipkg, toolchain-path, diagnostics,
-                      # loose-stdio, consent, intelligence, intelligence-loose (fake tools;
-                      # the fake idris2 replays transcripts)
+                      # loose-stdio, consent, intelligence, intelligence-loose, editing, holes
+                      # (fake tools; the fake idris2 replays transcripts)
 npm run test:e2e      # compile + the e2e suite against the real idris2 on PATH
 npm run check:fixtures        # idris2 --check / --dump-ipkg-json on every fixture and snippet
                               # expansion (temp copy); the broken fixtures must fail as listed
@@ -130,9 +138,10 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
   workspace, which must fail with exactly the errors listed in `EXPECTED_PROBLEMS`
   (`scripts/check-fixtures.mjs`); `npm run check:fixtures` runs both in a temporary copy so
   no `build/` directory lands in the repository. It also expands every snippet into a host file
-  (`SNIPPET_HOSTS` in `scripts/check-fixtures.mjs`) and checks it; a new snippet needs a host. Every lexical rule of the grammar must be
-  traceable to the compiler's lexer/parser (cited in the generator) or to an `idris2 --check`
-  experiment (recorded in `test/grammar/idris2-scopes.md` or the test that pins it).
+  (`SNIPPET_HOSTS` in `scripts/check-fixtures.mjs`) and checks it; a new snippet needs a host. Every
+  lexical rule of the grammar must be traceable to the compiler's lexer/parser (cited in the
+  generator) or to an `idris2 --check` experiment (recorded in `test/grammar/idris2-scopes.md` or
+  the test that pins it).
 
 ## Toolchain constraints
 
@@ -258,22 +267,22 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
   (`src/core/notificationText.ts`; `plainText(a) + b` does not count): the message of
   `show{Information,Warning,Error}Message`, the language status item's `detail`, an input box's
   or QuickPick's `prompt` (also `showQuickPick`'s option) and `validationMessage` (and what
-  `validateInput` returns), and a notification progress's `title` and `message`. VS Code 1.139.1 turns `[label](command:…)` in all of these
-  into a link that runs the command, and the texts quote folder names and compiler output
-  (`docs/as-built/M2.md`, *Registry and status*). Call these APIs directly (`x.showWarningMessage(…)`,
-  `progress.report(…)`, never through element access, destructuring, `.call` or a stored
-  reference), give `showInputBox`, `showQuickPick`, `withProgress` and `report` an object literal,
-  and set `detail`, `prompt` and `validationMessage` with `=` on the property (not `+=`, element
-  access, `Object.assign`, `Object.defineProperty` or `Reflect.set`).
-  `test/unit/notificationText.test.ts` reads the syntax tree of `src/`, resolves names with the
-  type checker, and fails otherwise. A command handler must not reject with such a text either (VS Code
-  shows a rejected command's message as a notification, links working): catch it, log it and show
-  it through `plainText` (`guarded` in `features/consent/register.ts`). A path in a text the user
-  decides on (the consent question) goes through `shownPath` — in quotes, invisible characters,
-  spaces other than U+0020, characters drawn like a double quote (or like three or four
-  apostrophes) and runs of two or more drawn like an apostrophe (with the marks on them) written
-  out, shortened in the middle to 200 UTF-16 units —
-  and comes after the fixed text; in the status item's detail a consent text comes before any path.
+  `validateInput` returns), and a notification progress's `title` and `message`. VS Code 1.139.1
+  turns `[label](command:…)` in all of these into a link that runs the command, and the texts quote
+  folder names and compiler output (`docs/as-built/M2.md`, *Registry and status*). Call these APIs
+  directly (`x.showWarningMessage(…)`, `progress.report(…)`, never through element access,
+  destructuring, `.call` or a stored reference), give `showInputBox`, `showQuickPick`,
+  `withProgress` and `report` an object literal, and set `detail`, `prompt` and `validationMessage`
+  with `=` on the property (not `+=`, element access, `Object.assign`, `Object.defineProperty` or
+  `Reflect.set`). `test/unit/notificationText.test.ts` reads the syntax tree of `src/`, resolves
+  names with the type checker, and fails otherwise. A command handler must not reject with such a
+  text either (VS Code shows a rejected command's message as a notification, links working): catch
+  it, log it and show it through `plainText` (`guarded` in `features/consent/register.ts`). A path
+  in a text the user decides on (the consent question) goes through `shownPath` — in quotes,
+  invisible characters, spaces other than U+0020, characters drawn like a double quote (or like
+  three or four apostrophes) and runs of two or more drawn like an apostrophe (with the marks on
+  them) written out, shortened in the middle to 200 UTF-16 units — and comes after the fixed text;
+  in the status item's detail a consent text comes before any path.
 - Features see the IDE-mode backend only through `backend/registry.ts` (`BackendProvider`,
   `BackendState`) and interfaces `extension.ts` fills from `IdeMode` (`BackendControl`,
   `RawRequests`, `RootRelease`, `RootRestarts`, `ActiveRoot`, `LoadPreflight`), never by importing
@@ -359,6 +368,104 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
   (`--build-dir …/.vscode-idris2-eval`); the fake compiler answers a process only from recordings
   of its own role, told by that build directory.
 
+## Rules established by M4
+
+- **Names from a document are untrusted.** Every name an edit sends (a hole's, a pattern
+  variable's, a function's, a proof-search hint) is checked against the compiler's name grammar
+  (`backend/ide/protocol.ts` `isHoleName`, `isIdentifierName`, `isOperatorInParentheses`) by
+  `IdrisBackend.edit` before it classifies or sends anything (the command may have saved and
+  checked the file by then; no text taken from a name reaches the compiler), and
+  `(:interpret ":missing NAME")` is built only by `missingCases()`, which throws on anything else,
+  so no text in a file can become another REPL command. Refine Hole's expression goes only into the
+  string slot of `:refine`. Refusals do not echo a rejected name.
+- **An edit lands only where and when it was asked.** `IdrisBackend.edit` answers with
+  replacements of the request's document (`EditResult` `edit`), computed for `EditRequest.version`;
+  IDE mode makes a request only for a document that, at `EditRequest.version`, shows exactly the
+  lines its `check` session's last load read (`LoadRecord.loadedText`), and
+  `features/editing/apply.ts` applies the answer as one `WorkspaceEdit` of that document only
+  while its version is still `version` (one undo step). Intro, Refine Hole, Proof Search and Make
+  Lemma, which the compiler answers for the hole it registered under the name, are sent only when
+  that load's holes put the one hole of the name at the cursor (`edits.ts` `holeRefusal`).
+  A `-Next` is sent only while the compiler's search is the one it continues (per session and
+  kind; any load, a search of the same kind or a raw request ends it).
+- **Always bracket** (user decision, 2026-10-01, ROADMAP §9): an answer put in place of a hole —
+  Intro (also a single candidate applied without asking), Refine Hole… and its ambiguity
+  alternatives, Proof Search and its next results, Make Lemma's call — goes in parentheses unless it
+  is one token (`core/idrisSyntax.ts` `isOneToken`: a name, a literal, a hole, an operator in
+  parentheses, or one bracket group spanning the whole answer; a postfix projection `.x` counts as
+  more, since the parser applies it to the expression before it) that would not run into a name right
+  before the hole or a `.` right after it, and is not a string literal touching a `"` (`edits.ts`
+  `inPlace`, wherever the hole is; `docs/as-built/M4.md`, *Edits*); after a backtick a space goes
+  before an answer that starts with a bracket (`` `( `` would open a quotation); at the head of an
+  idiom bracket on the hole's line only a name, a hole or a lambda is put, anything else is refused
+  (`idiomHeadProblem`). **Do not add a reading of the code around the hole to leave parentheses
+  out**: that analysis missed a case in
+  every review round, each a silent change of the program. Refine Hole's ambiguity alternatives are
+  offered only when each is the hinted name, qualified, followed by its arguments (`isNameApplied`);
+  the infix form the compiler prints for a binary operator with a fixity is refused. **Make Case**
+  applies only the compiler's bracketed form (`makeCase`, `Idris/IDEMode/MakeClause.idr` 57–81
+  [src]; `edits.ts` `madeCase` rebuilds both forms from the line): the bracketed answer as it is,
+  the unbracketed one rewritten into it, anything else refused.
+- **The layout refusal** (user decision, 2026-10-01, ROADMAP §9: kept, made to converge). Make
+  Case and the answers in place are refused before sending when the rest of the hole's line starts
+  an entry of a layout block (`core/idrisSyntax.ts` `opensBlockOnLine`) or the code of the hole's
+  entry before it, read from the nearest line above whose first token is left of the hole line's
+  (`edits.ts` `entryStart`), ends inside a `parameters`/`using`/`with` header (`holdsBlockHeader`),
+  and the first token below is right of the hole (`edits.ts` `layoutProblem`): the new text would move that entry's
+  column, which can change the program silently (`docs/as-built/M4.md`, *Blocks after the hole*).
+  The block openers are the block calls of `src/Idris/Parser.idr` 0.8.0, all of them (a `where`'s
+  options and any `|` read conservatively), listed with line numbers in the comment above
+  `ENTRY_KEYWORDS` in `core/idrisSyntax.ts`, each with a test in
+  `test/unit/idrisSyntax.test.ts`; a new opener goes into that list with its citation and a test.
+  `edits.ts` reads every line's layout column from its first token (`firstTokenColumn`: past white
+  space, U+00A0 and comments; `entryAt`), not its leading spaces and tabs, and gives new lines that
+  column (`layoutIndentation`). QuickPick labels stay as the compiler printed them.
+- **Next Result continues either cycle** (Q26): `n` sends the `-Next` of the document's cycle's kind;
+  Next Definition and Generate Definition on the cycle's declaration or result continue a Generate
+  Definition cycle only (`features/editing/commands.ts` `continues`).
+- **Lines of edit requests** go through `core/positions.ts` like every other compiler line:
+  `toIdeCaseSplitRequest` / `toIdeLineRequest` for the commands that find their place by the
+  lexer's lines, `toIdeSourceLineRequest` for `:make-lemma`, `:make-case`, `:make-with`, which read
+  the raw source line (they differ below a doubled bird-track line, F11 addendum).
+- The holes model refreshes on `LoadNotifications.onDidLoad` and asks `IdrisBackend.holes` directly
+  (with `HolesOptions.kept`); it never loads (the M3 rule for passive providers). List Holes asks
+  without `kept`, so that it checks a file that is not the one loaded last.
+- **One lexer, shared.** The lexer's tables and rules and the stack of what is open (brackets,
+  strings, interpolations, a block comment or character literal cut by a line break) live in
+  `core/idrisLexer.ts` (`lexText`, a port of the compiler's lexer rule by rule, resumable at a line
+  break). M0's `lex()` runs it on a whole text; the line reader of the edits (`core/idrisSyntax.ts`:
+  `levelTokens`, `openAfter`, `firstTokenColumn`, `opensBlockOnLine`, `holdsBlockHeader`,
+  `clauseName`, `withClauseStart`, `caseSplitLineProblem`) runs it a line at a time. **The line
+  reader reads no lexeme itself**; a lexeme rule changes in `idrisLexer.ts` only. One older reader
+  remains outside it, a known limitation: `edits.ts` `startsToken`/`holeTokenAt`, which find the
+  hole token at the cursor (it misses a hole right after a raw string's `"#`, a false refusal).
+  `core/idrisSyntax.ts` re-exports `KEYWORDS`, `OPERATOR_CHARACTERS`, `GROUP_SYMBOLS` and
+  `isKeyword`, and keeps the parser's tables (reserved symbols, modifiers, function-option pragmas,
+  block openers); `selectionRangeModel.ts`, `occurrence.ts`, `symbols.ts`, completion,
+  `targets.ts`, the holes and `edits.ts` import from there (of the features, only
+  `features/syntax/lexer.ts` imports `idrisLexer.ts`; in core, `idrisSyntax.ts`); the light bulb and the backend read Make With's clause and Case Split's
+  line with the same predicates. Do not copy them. Guards: `test/unit/idrisSyntaxLines.test.ts`
+  and the corpus suite *line reader against lex* (`npm run test:corpus`, in CI) compare the reader with `lex()` token by
+  token; `test/unit/syntaxLexer.test.ts` pins the rules and the documented line-by-line
+  deviations; the lexer oracle (`IDRIS2_LEXER_ORACLE=1 npm run test:corpus`, local only) checks
+  `lex()` against the compiler's own lexer. The comparison cannot see a rule broken the same way on
+  both sides; the unit tests and the oracle can.
+- A contributed keybinding names a command its milestone registers (`test/unit/keybindings.test.ts`;
+  the editing commands are registered in a loop over `EDITING_COMMAND_KINDS`, which that test
+  accepts from `features/editing/register.ts` only), and the `intelligence-loose` suite checks
+  every letter against VS Code's resolved keymap (E23).
+- An integration test that restarts a session (e.g. through `idris2.toolchain.env`) and then shows
+  a file must not wait for a load that showing it may not start: a document still open from an
+  earlier test file is checked only once per opening (M2), and the restart checks only the
+  documents visible at its handshake. Start the check when none runs (`editing/fixture.ts`
+  `showLoaded`).
+- `@vscode/test-cli` runs the newest stable VS Code it finds or downloads: since 2026-09-30
+  (during M4's integration) that is 1.140.0, not the 1.139.1 whose bundle the M0–M3 `[src]` facts
+  were read from; no difference between the two has been met.
+- VS Code (1.139.1 and 1.140.0 [src]) registers commands of its own for every contributed view
+  (`idris2.holes.focus`, `.open`, `.removeView`, `.resetViewLocation`, `.toggleVisibility`); tests
+  that list the extension's commands leave them out.
+
 ## Platforms
 
 - Supported: macOS and Linux (and Windows through WSL, which is Linux). **Native Windows is
@@ -382,3 +489,5 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
   compiler runs have taken it down (2026-09-27). `check:fixtures` and the lexer oracle spawn
   `idris2` one file at a time (`spawnSync`) and honour `IDRIS2=<path>`, so a wrapper running
   `timeout 120 idris2 "$@"` adds a time limit. Start only one VS Code test instance at a time.
+  The Homebrew `idris2` is a shell launcher that runs `chez --program …/idris2_app/idris2.so`, so
+  `pgrep -x idris2` never sees a compiler; count them with `pgrep -f idris2_app/idris2.so`.

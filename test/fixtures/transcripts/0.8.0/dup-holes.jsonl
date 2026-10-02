@@ -1,0 +1,22 @@
+{"kind":"meta","format":1,"scenario":"dup-holes","description":"M4: DupHole.idr: a second ?h in the module (h is already defined): :metavariables and :name-at list the first (and g, whose definition failed); :proof-search and :make-lemma of h answer for the first, also when asked on the second's line","facts":["F16"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-09-30","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build/.vscode-idris2"],"cwd":"test/fixtures/workspaces/broken","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"DupHole.idr":"8ba593c312c3e406c079a969d91c7de155bbbdbc2fa4a71689227e650ca86b39"}}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"0000a0","text":"((:load-file \"${ROOT}/DupHole.idr\") 1)\n"}
+{"kind":"recv","prefix":"0000b9","text":"(:write-string \"1/1: Building DupHole (${ROOT}/DupHole.idr)\" 1)\n"}
+{"kind":"recv","prefix":"0001ee","text":"(:warning (\"DupHole.idr\" (8 8) (8 10) \"While processing right hand side of g. DupHole.h is already defined.\n\nDupHole:9:9--9:11\n 5 | f : Nat -> Nat\n 6 | f x = ?h\n 7 | \n 8 | g : String -> String -> Nat\n 9 | g a b = ?h\n             ^^\n\" ((36 1 ((:decor :bound))) (39 9 ((:decor :bound))) (70 17 ((:decor :type))) (89 3 ((:decor :type))) (109 3 ((:decor :type))) (123 3 ((:decor :type))) (129 3 ((:decor :type))) (162 3 ((:decor :type))) (190 2 ((:text-formatting :bold) (:decor :postulate))))) 1)\n"}
+{"kind":"recv","prefix":"0000bb","text":"(:return (:error \"Error(s) building file ${ROOT}/DupHole.idr\") 1)\n"}
+{"kind":"send","prefix":"000018","text":"((:metavariables 80) 2)\n"}
+{"kind":"recv","prefix":"000078","text":"(:return (:ok ((\"\\\"DupHole.g\\\"\" () (\"String -> String -> Nat\" ())) (\"\\\"DupHole.h\\\"\" ((\"  x\" \"Nat\" ())) (\"Nat\" ())))) 2)\n"}
+{"kind":"send","prefix":"000013","text":"((:name-at \"h\") 3)\n"}
+{"kind":"recv","prefix":"0000d5","text":"(:return (:ok ((\"DupHole.h\" (:filename \"${ROOT}/DupHole.idr\") (:start 5 6) (:end 5 8)))) 3)\n"}
+{"kind":"send","prefix":"000013","text":"((:name-at \"g\") 4)\n"}
+{"kind":"recv","prefix":"0000d6","text":"(:return (:ok ((\"DupHole.g\" (:filename \"${ROOT}/DupHole.idr\") (:start 7 0) (:end 7 27)))) 4)\n"}
+{"kind":"send","prefix":"00001d","text":"((:proof-search 6 \"h\" ()) 5)\n"}
+{"kind":"recv","prefix":"000016","text":"(:return (:ok \"x\") 5)\n"}
+{"kind":"send","prefix":"00001d","text":"((:proof-search 9 \"h\" ()) 6)\n"}
+{"kind":"recv","prefix":"000016","text":"(:return (:ok \"x\") 6)\n"}
+{"kind":"send","prefix":"000018","text":"((:make-lemma 9 \"h\") 7)\n"}
+{"kind":"recv","prefix":"00006a","text":"(:return (:ok (:metavariable-lemma (:replace-metavariable \"h x\") (:definition-type \"h : Nat -> Nat\"))) 7)\n"}
+{"kind":"close"}
+{"kind":"unframed","text":"Alas the file is done, aborting\n"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":[]}

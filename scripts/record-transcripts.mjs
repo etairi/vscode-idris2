@@ -99,6 +99,24 @@ const nameAt = (name) => `(:name-at ${quote(name)})`;
 const completions = (prefix) => `(:repl-completions ${quote(prefix)})`;
 const browse = (ns) => `(:browse-namespace ${quote(ns)})`;
 const interpret = (text) => `(:interpret ${quote(text)})`;
+// M4: the editing commands, written as src/backend/ide/protocol.ts builds them (1-based compiler
+// lines; the column of :case-split 1-based, 0 = anywhere on the line, F2).
+const caseSplit = (line, column, name) => `(:case-split ${line} ${column} ${quote(name)})`;
+/** The same `:case-split` at every column from `from` to `to`, both included. */
+const caseSplitSweep = (line, from, to, name) =>
+  Array.from({ length: to - from + 1 }, (_, i) => caseSplit(line, from + i, name));
+const addClause = (line, name) => `(:add-clause ${line} ${quote(name)})`;
+const makeLemma = (line, hole) => `(:make-lemma ${line} ${quote(hole)})`;
+const makeCase = (line, hole) => `(:make-case ${line} ${quote(hole)})`;
+const makeWith = (line, hole) => `(:make-with ${line} ${quote(hole)})`;
+const proofSearch = (line, hole, hints = []) => `(:proof-search ${line} ${quote(hole)} (${hints.map(quote).join(' ')}))`;
+const generateDef = (line, name) => `(:generate-def ${line} ${quote(name)})`;
+const intro = (line, hole) => `(:intro ${line} ${quote(hole)})`;
+const refine = (line, hole, expression) => `(:refine ${line} ${quote(hole)} ${quote(expression)})`;
+const missing = (name) => interpret(`:missing ${name}`);
+const metavariables = '(:metavariables 80)';
+/** `n` times the bare symbol `next` (`:proof-search-next`, `:generate-def-next`, F4). */
+const times = (n, next) => Array.from({ length: n }, () => next);
 
 const SCENARIOS = [
   {
@@ -270,7 +288,7 @@ const SCENARIOS = [
   },
   {
     name: 'clean-lookups',
-    description: 'Clean.idr: positional :type-of at the column bounds of xs, :type-of by name, :docs-for with and without a mode, :name-at unqualified and qualified, :metavariables, and a reload with the ignored line argument',
+    description: 'Clean.idr: positional :type-of at the column bounds of xs, :type-of by name, :docs-for with and without a mode, :name-at unqualified and qualified, :metavariables, a reload with the ignored line argument, and :name-at of append, a declaration without clauses that :metavariables lists (M4)',
     facts: ['F2', 'F7', 'F30', 'F31', 'F33'],
     workspace: 'broken',
     cwd: '.',
@@ -290,6 +308,7 @@ const SCENARIOS = [
       '(:name-at "Clean.vlen_rhs")',
       '(:metavariables 80)',
       `(:load-file "${ROOT}/Clean.idr" 3)`,
+      '(:name-at "append")',
     ],
   },
   {
@@ -716,6 +735,514 @@ const SCENARIOS = [
     transport: 'socket',
     fixtures: ['Clean.idr'],
     requests: [load('Clean.idr'), interpret('the (IO ()) (putStrLn "hi")')],
+  },
+  // M4 (ROADMAP §5 M4): the editing commands and the holes, each after a load of the file as the
+  // `check` session makes it. Lines are 1-based compiler lines; the comments quote the file line.
+  {
+    name: 'clean-split-columns',
+    description: 'Clean.idr: :case-split on xs (vlen xs = ?vlen_rhs, line 8) at the columns clean-editing leaves out, 2 to 7',
+    facts: ['F2'],
+    workspace: 'broken',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['Clean.idr'],
+    requests: [load('Clean.idr'), ...caseSplitSweep(8, 2, 7, 'xs')],
+  },
+  {
+    name: 'plain-split-columns',
+    description: 'Plain.idr: :metavariables (no hole), and :case-split on n in f n = n (right-hand side not a hole) at columns 1 to 5',
+    facts: ['F2', 'F15'],
+    workspace: 'broken',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['Plain.idr'],
+    requests: [load('Plain.idr'), metavariables, ...caseSplitSweep(5, 1, 5, 'n')],
+  },
+  {
+    name: 'ambig-holes',
+    description: 'Ambig.idr: :metavariables, :name-at of the hole g_rhs, and :refine with a partly and a fully qualified name of the ambiguous foo',
+    facts: ['F2', 'F29'],
+    workspace: 'broken',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['Ambig.idr'],
+    requests: [load('Ambig.idr'), metavariables, nameAt('g_rhs'), refine(14, 'g_rhs', 'A.foo'), refine(14, 'g_rhs', 'Ambig.B.foo')],
+  },
+  {
+    name: 'part-editing',
+    description: 'F16: Part.idr (a coverage error only): after the failed load :metavariables, :add-clause and :generate-def on the declarations of g and main, and :missing of main',
+    facts: ['F15', 'F16'],
+    workspace: 'broken',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['Part.idr'],
+    requests: [load('Part.idr'), metavariables, addClause(3, 'g'), generateDef(3, 'g'), addClause(6, 'main'), missing('main')],
+  },
+  {
+    name: 'hole-errors',
+    description: 'F16: HoleErr.idr (a type error in bad, a coverage error in cover): after the failed load :metavariables and :name-at of the holes before and after the error; the commands that find their place by position (:case-split, :add-clause, :generate-def, a positional :type-of of a local) and the others (:make-lemma/-case/-with, :intro, :refine, :proof-search, :missing)',
+    facts: ['F15', 'F16'],
+    workspace: 'broken',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['HoleErr.idr'],
+    requests: [
+      load('HoleErr.idr'),
+      metavariables,
+      nameAt('before_rhs'),
+      nameAt('after_rhs'),
+      nameAt('bad'),
+      caseSplit(6, 8, 'n'), //        before n = ?before_rhs
+      caseSplit(12, 7, 'xs'), //      after xs = ?after_rhs
+      addClause(5, 'before'),
+      addClause(14, 'cover'),
+      generateDef(8, 'bad'),
+      typeOf('xs', 12, 6),
+      makeLemma(12, 'after_rhs'),
+      makeCase(12, 'after_rhs'),
+      makeWith(12, 'after_rhs'),
+      intro(6, 'before_rhs'),
+      refine(6, 'before_rhs', 'S'),
+      proofSearch(12, 'after_rhs'),
+      ':proof-search-next',
+      missing('cover'),
+      missing('bad'),
+    ],
+  },
+  {
+    name: 'edits-shapes',
+    description: 'E15: Edits.idr: :add-clause and :generate-def on each line of a three-line type declaration; :case-split, :make-lemma, :make-case and :make-with on a clause continued over the next lines, in a where block, in a with block, on an operator, with the hole in a let, in case alternatives (also on one line) and under an application; the name of :add-clause and a line without the hole',
+    facts: ['F2', 'F15', 'F30'],
+    workspace: 'broken',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['Edits.idr'],
+    requests: [
+      load('Edits.idr'),
+      // zip3 : Vect n a -> / Vect n b -> Vect n c -> / Vect n (a, b, c)   (lines 8–10, no clauses)
+      addClause(8, 'zip3'),
+      addClause(9, 'zip3'),
+      addClause(10, 'zip3'),
+      addClause(11, 'zip3'),
+      addClause(8, 'whatever'),
+      generateDef(8, 'zip3'),
+      generateDef(9, 'zip3'),
+      generateDef(10, 'zip3'),
+      // count xs = / ?count_rhs   (lines 14–15)
+      caseSplit(14, 7, 'xs'),
+      caseSplit(14, 0, 'xs'),
+      makeLemma(15, 'count_rhs'),
+      makeCase(15, 'count_rhs'),
+      makeWith(15, 'count_rhs'),
+      makeCase(14, 'count_rhs'),
+      makeWith(14, 'count_rhs'),
+      // step m / n / = ?step_rhs   (lines 18–20, declaration on 17)
+      caseSplit(18, 6, 'm'),
+      caseSplit(19, 6, 'n'),
+      caseSplit(19, 6, 'm'),
+      caseSplit(20, 3, 'n'),
+      makeWith(18, 'step_rhs'),
+      makeWith(20, 'step_rhs'),
+      makeCase(20, 'step_rhs'),
+      addClause(17, 'step'),
+      // where / go : Nat -> List Nat -> Nat / go acc ys = ?go_rhs   (lines 25–27)
+      caseSplit(27, 12, 'ys'),
+      caseSplit(27, 0, 'ys'),
+      addClause(26, 'go'),
+      makeLemma(27, 'go_rhs'),
+      makeCase(27, 'go_rhs'),
+      makeWith(27, 'go_rhs'),
+      // classify n with (n > 10) / classify n | True = ?classify_big   (lines 31–32)
+      caseSplit(32, 12, 'n'),
+      caseSplit(31, 10, 'n'),
+      addClause(30, 'classify'),
+      makeLemma(32, 'classify_big'),
+      makeCase(32, 'classify_big'),
+      makeWith(32, 'classify_big'),
+      // x <&&> y = ?op_rhs (line 39); (<||>) : Bool -> Bool -> Bool (line 41, no clauses)
+      caseSplit(39, 1, 'x'),
+      caseSplit(39, 8, 'y'),
+      addClause(38, '(<&&>)'),
+      addClause(41, '(<||>)'),
+      makeLemma(39, 'op_rhs'),
+      makeCase(39, 'op_rhs'),
+      makeWith(39, 'op_rhs'),
+      // withLet n = let m = S n in ?let_rhs   (line 45)
+      caseSplit(45, 9, 'n'),
+      makeLemma(45, 'let_rhs'),
+      makeCase(45, 'let_rhs'),
+      makeWith(45, 'let_rhs'),
+      // withCase mn = case mn of / Nothing => ?case_nothing / Just k => ?case_just   (lines 48–50)
+      caseSplit(50, 8, 'k'),
+      caseSplit(48, 10, 'mn'),
+      makeLemma(50, 'case_just'),
+      makeCase(50, 'case_just'),
+      makeWith(50, 'case_just'),
+      // inline n = case n of m => ?inline_rhs   (line 53)
+      caseSplit(53, 22, 'm'),
+      makeCase(53, 'inline_rhs'),
+      // under n = S ?under_rhs   (line 57)
+      caseSplit(57, 7, 'n'),
+      makeLemma(57, 'under_rhs'),
+      makeCase(57, 'under_rhs'),
+      makeWith(57, 'under_rhs'),
+    ],
+  },
+  {
+    name: 'edits-searches',
+    description: 'E15: Edits.idr: :proof-search and -next until No more results, with and without hints, with no result (also with a hint); :generate-def and -next until No more results, on an operator, and repeating a result; :intro with one, two and no candidates; :refine with a unique name, an ambiguous one (four alternatives), a local, a constructor, and failing (no implementation, lexer error, mismatch, undefined name); :refine text that the expression parser rejects or reads only in part',
+    facts: ['F29', 'F30', 'F31'],
+    workspace: 'broken',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['Edits.idr'],
+    requests: [
+      load('Edits.idr'),
+      proofSearch(61, 'choose_rhs'), //   choose x y = ?choose_rhs
+      ...times(5, ':proof-search-next'),
+      proofSearch(70, 'check_rhs'), //    check n = ?check_rhs
+      ...times(2, ':proof-search-next'),
+      proofSearch(70, 'check_rhs', ['isBig']),
+      ...times(3, ':proof-search-next'),
+      proofSearch(70, 'check_rhs', ['nope']),
+      proofSearch(70, 'check_rhs', ['"; :t id']),
+      proofSearch(73, 'label_rhs'), //    label n = ?label_rhs
+      ':proof-search-next',
+      proofSearch(73, 'label_rhs', ['describe']),
+      proofSearch(78, 'pair_rhs'), //     pair x y = ?pair_rhs
+      ':proof-search-next',
+      proofSearch(81, 'fun_rhs'), //      fun = ?fun_rhs
+      ...times(2, ':proof-search-next'),
+      generateDef(75, 'swap'), //         swap : (a, b) -> (b, a)
+      ...times(3, ':generate-def-next'),
+      generateDef(41, '(<||>)'), //       (<||>) : Bool -> Bool -> Bool
+      ...times(2, ':generate-def-next'),
+      generateDef(8, 'zip3'),
+      ...times(3, ':generate-def-next'),
+      intro(78, 'pair_rhs'),
+      intro(81, 'fun_rhs'),
+      intro(61, 'choose_rhs'),
+      intro(73, 'label_rhs'),
+      refine(61, 'choose_rhs', 'not'),
+      refine(73, 'label_rhs', 'describe'),
+      refine(27, 'go_rhs', 'plus'), //    go acc ys = ?go_rhs
+      refine(27, 'go_rhs', 'acc'),
+      refine(78, 'pair_rhs', 'MkPair'),
+      refine(27, 'go_rhs', 'length'),
+      refine(27, 'go_rhs', 'foldr'),
+      refine(27, 'go_rhs', 'S (S'),
+      refine(27, 'go_rhs', 'True'),
+      refine(27, 'go_rhs', 'nope'),
+      refine(73, 'label_rhs', '"a\\"b\\\\c"'),
+      refine(73, 'label_rhs', ':t id'),
+      refine(73, 'label_rhs', 'describe 1\n:t id'),
+    ],
+  },
+  {
+    name: 'edits-names',
+    description: 'Edits.idr: :metavariables (a declaration without clauses is listed too) and :name-at of each hole and of those declarations (an operator bare and in parentheses); the commands on a primed and on non-ASCII names; :missing of a partial function, qualified, of names also defined in imported modules, of an operator bare and in parentheses, of an unknown name, of a where-local function, and with text after the name; the hole commands with an unknown hole name; :generate-def where there is no declaration or a definition',
+    facts: ['F1', 'F2', 'F15', 'F29'],
+    workspace: 'broken',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['Edits.idr'],
+    requests: [
+      load('Edits.idr'),
+      metavariables,
+      ...['count_rhs', 'step_rhs', 'go_rhs', 'classify_big', 'classify_small', 'op_rhs', 'let_rhs', 'case_nothing',
+        'case_just', 'inline_rhs', 'under_rhs', 'choose_rhs', 'check_rhs', 'label_rhs', 'pair_rhs', 'fun_rhs', 'h\'', 'ε',
+        'zip3', 'swap', '<||>', '(<||>)', 'nope'].map(nameAt),
+      // primed x' = ?h'   (line 85)
+      caseSplit(85, 8, 'x\''),
+      makeLemma(85, 'h\''),
+      makeCase(85, 'h\''),
+      makeWith(85, 'h\''),
+      intro(85, 'h\''),
+      refine(85, 'h\'', 'S'),
+      proofSearch(85, 'h\''),
+      // δ x₁ = ?ε   (line 88, declaration on 87)
+      caseSplit(88, 3, 'x₁'),
+      makeLemma(88, 'ε'),
+      makeCase(88, 'ε'),
+      makeWith(88, 'ε'),
+      intro(88, 'ε'),
+      proofSearch(88, 'ε'),
+      addClause(87, 'δ'),
+      ...['both', 'Edits.both', 'count', 'zip3', '(<&&>)', '<&&>', 'primed', 'δ', 'nope', 'go', 'both :t id', 'both\n:t id', 'both -- c']
+        .map(missing),
+      // go acc ys = ?go_rhs   (line 27)
+      makeLemma(27, 'nope'),
+      makeCase(27, 'nope'),
+      makeWith(27, 'nope'),
+      intro(27, 'nope'),
+      refine(27, 'nope', 'S'),
+      proofSearch(27, 'nope'),
+      caseSplit(27, 12, 'nope'),
+      generateDef(27, 'go'),
+      generateDef(13, 'count'),
+      generateDef(12, 'count'),
+    ],
+  },
+  {
+    name: 'lit2-editing',
+    description: 'F11: Lit2.lidr (bird tracks): :metavariables, :name-at; :case-split on xs at columns 0 to 10; :add-clause, :make-lemma/-case/-with, :proof-search, :generate-def, :intro, :refine and :missing above the line `> ` (file line 16, two lines of the unlit text); below it, the commands at the compiler\'s line of half and at its file line',
+    facts: ['F2', 'F11', 'F15', 'F29', 'F30'],
+    workspace: 'broken',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['Lit2.lidr'],
+    requests: [
+      load('Lit2.lidr'),
+      metavariables,
+      nameAt('vlen_rhs'),
+      nameAt('half_rhs'),
+      nameAt('vapp'),
+      ...caseSplitSweep(9, 0, 10, 'xs'), // > vlen xs = ?vlen_rhs
+      addClause(8, 'vlen'),
+      addClause(11, 'vapp'), //              > vapp : Vect n a -> Vect m a -> Vect (n + m) a
+      makeLemma(9, 'vlen_rhs'),
+      makeCase(9, 'vlen_rhs'),
+      makeWith(9, 'vlen_rhs'),
+      proofSearch(9, 'vlen_rhs'),
+      ...times(2, ':proof-search-next'),
+      generateDef(11, 'vapp'),
+      ...times(2, ':generate-def-next'),
+      intro(9, 'vlen_rhs'),
+      refine(9, 'vlen_rhs', 'S'),
+      missing('both'),
+      // > half : Nat -> Nat / > half n = ?half_rhs: file lines 17–18, compiler lines 18–19.
+      caseSplit(19, 6, 'n'),
+      caseSplit(19, 0, 'n'),
+      caseSplit(18, 6, 'n'),
+      makeLemma(19, 'half_rhs'),
+      makeCase(19, 'half_rhs'),
+      makeWith(19, 'half_rhs'),
+      makeLemma(18, 'half_rhs'),
+      makeCase(18, 'half_rhs'),
+      makeWith(18, 'half_rhs'),
+      addClause(18, 'half'),
+      addClause(17, 'half'),
+      intro(19, 'half_rhs'),
+      refine(19, 'half_rhs', 'S'),
+      proofSearch(19, 'half_rhs'),
+    ],
+  },
+  {
+    name: 'edits-layout',
+    description: 'M4 layout: Layout.idr: :make-lemma on the clauses of an infix operator, of an operator in prefix form, of a backticked name and of a function with a modifier and a pragma line; :missing and :add-clause of a function declared first in a mutual block; :add-clause and :generate-def on a declaration after a pragma, on an operator with - and on a declaration of two names; :make-with on a hole with a comment after it; :case-split and :make-with on a clause whose left-hand side starts on the line above',
+    facts: ['F15', 'F30'],
+    workspace: 'broken',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['Layout.idr'],
+    requests: [
+      load('Layout.idr'),
+      makeLemma(11, 'and_true'), //     True <&&> y = ?and_true
+      makeLemma(10, 'and_false'), //    False <&&> y = ?and_false
+      makeLemma(15, 'or_true'), //      (<||>) True y = ?or_true
+      makeLemma(19, 'plus2_rhs'), //    S k `plus2` y = ?plus2_rhs
+      makeLemma(24, 'twice_rhs'), //    twice x = ?twice_rhs (below public export / %inline)
+      missing('isOdd'),
+      addClause(30, 'isOdd'), //        isOdd : Nat -> Bool (its clause on line 35)
+      addClause(37, 'inl'), //          %inline inl : Nat -> Nat
+      generateDef(37, 'inl'),
+      addClause(39, '(<->)'),
+      generateDef(39, '(<->)'),
+      addClause(41, 'pair'), //         pair, other : Nat -> Nat
+      addClause(41, 'other'),
+      generateDef(41, 'pair'),
+      makeWith(44, 'note_rhs'), //      note xs = ?note_rhs -- keep this note
+      caseSplit(48, 3, 'y'), //         above x / y = ?above_rhs
+      makeWith(48, 'above_rhs'),
+    ],
+  },
+  {
+    name: 'edits-blocks',
+    description: 'M4 blocks: Blocks.idr (coverage errors in bc and f4): :make-lemma in a namespace, a mutual block, an interface\'s default method and a parameters block; :missing of a function in a parameters block and of one with a clause in a block comment; :make-with on a let binding; then Indented.idr: :make-lemma where the top-level declarations are indented',
+    facts: ['F15'],
+    workspace: 'broken',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['Blocks.idr', 'Indented.idr'],
+    requests: [
+      load('Blocks.idr'),
+      makeLemma(14, 'ns_rhs'), //       g u = ?ns_rhs (namespace N)
+      makeLemma(20, 'mut_rhs'), //      f v = ?mut_rhs (mutual)
+      makeLemma(24, 'default_rhs'), //  foo x = ?default_rhs (interface Foo)
+      makeLemma(31, 'pw_rhs'), //       pw x = ?pw_rhs (parameters (k : Nat))
+      missing('f4'),
+      missing('bc'),
+      makeWith(41, 'let_rhs'), //       let y = ?let_rhs
+      load('Indented.idr'),
+      makeLemma(6, 'f_rhs'), //         f x = ?f_rhs (indented top level)
+    ],
+  },
+  {
+    name: 'edits-same-name',
+    description: 'M4: SameName.idr, which imports SameBase.idr: :missing of a name defined in both modules (g), in two namespaces of the module (f), and at the top level and in a where block (go)',
+    facts: ['F15'],
+    workspace: 'broken',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['SameName.idr', 'SameBase.idr'],
+    requests: [load('SameName.idr'), missing('g'), missing('f'), missing('go')],
+  },
+  {
+    name: 'dup-holes',
+    description: 'M4: DupHole.idr: a second ?h in the module (h is already defined): :metavariables and :name-at list the first (and g, whose definition failed); :proof-search and :make-lemma of h answer for the first, also when asked on the second\'s line',
+    facts: ['F16'],
+    workspace: 'broken',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['DupHole.idr'],
+    requests: [load('DupHole.idr'), metavariables, nameAt('h'), nameAt('g'), proofSearch(6, 'h'), proofSearch(9, 'h'), makeLemma(9, 'h')],
+  },
+  {
+    name: 'lit-indent-editing',
+    description: 'F11: LitIndent.lidr (bird tracks): :add-clause on a declaration in a where block and in a mutual block, and :generate-def on the latter',
+    facts: ['F11'],
+    workspace: 'broken',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['LitIndent.lidr'],
+    requests: [load('LitIndent.lidr'), addClause(9, 'go'), addClause(12, 'isEven'), generateDef(12, 'isEven')],
+  },
+  {
+    name: 'edits-impossible',
+    description: 'M4: :case-split where every constructor is impossible (the answer is indented by the line\'s leading spaces only) and on a one-line case (the lines after the first indented with spaces), in Absurd.lidr (bird tracks) and on the tab-indented clauses of a where block in ImposTab.idr',
+    facts: ['F11'],
+    workspace: 'broken',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['Absurd.lidr', 'ImposTab.idr'],
+    requests: [
+      load('Absurd.lidr'),
+      caseSplit(9, 10, 'p'), //         > notInNil p = ?notInNil_rhs
+      caseSplit(12, 20, 'x'), //        > pick m = case m of x => ?pick_rhs
+      load('ImposTab.idr'),
+      caseSplit(12, 18, 'x'), //        <tab>f m = case m of x => ?f_rhs
+      caseSplit(14, 4, 'x'), //         <tab>v x = ?v_rhs
+    ],
+  },
+  {
+    name: 'edits-case-words',
+    description: 'M4: :case-split in CaseWords.idr on lines whose answer the compiler reshapes as for a one-line case (the word of in a comment, in a string, on a case alternative\'s line) or for a hole in parentheses, on a string holding the variable, and on Make Case\'s case_val (alone, and in a case in parentheses)',
+    facts: ['F15'],
+    workspace: 'broken',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['CaseWords.idr'],
+    requests: [
+      load('CaseWords.idr'),
+      caseSplit(10, 6, 'xs'), //  vlen xs = ?vlen_rhs -- the length of the vector
+      caseSplit(13, 6, 'xs'), //  word xs "of" = ?word_rhs
+      caseSplit(17, 7, 'xs'), //  paren xs = (?paren_rhs)
+      caseSplit(20, 7, 'xs'), //  named xs "xs" = ?named_rhs
+      caseSplit(25, 8, 'y'), //   Just y => ?alt_rhs -- the rest of it
+      caseSplit(30, 16, 'case_val'), //               case_val => ?made_rhs
+      caseSplit(34, 16, 'case_val'), //               case_val => ?closing_rhs)
+    ],
+  },
+  {
+    name: 'edits-shadowing',
+    description: 'M4: Shadow.idr: :case-split of a variable matched by a braced named argument of its own name ({n = n}, and a record pattern MkP {x = x, y = y}) and of the control {n}; :add-clause and :generate-def of functions whose argument names the compiler picks like the function; :make-with on a clause without a space before its =; :intro on a hole applied to an argument',
+    facts: ['F15', 'F30'],
+    workspace: 'broken',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['Shadow.idr'],
+    requests: [
+      load('Shadow.idr'),
+      caseSplit(11, 14, 'xs'), // vlen {n = n} xs = ?vlen_rhs
+      caseSplit(11, 11, 'n'),
+      caseSplit(14, 11, 'xs'), // vlen2 {n} xs = ?vlen2_rhs
+      caseSplit(22, 25, 'y'), //  fields (MkP {x = x, y = y}) = ?fields_rhs
+      addClause(24, 'f'), //      f : (Nat -> Nat) -> Nat
+      addClause(26, 'j'), //      j : Nat -> Nat -> Nat
+      generateDef(26, 'j'),
+      makeWith(29, 'mw_h'), //    mw x= ?mw_h
+      intro(32, 'g'), //          foo x = ?g (S x)
+    ],
+  },
+  // E16 (ROADMAP §9): holes across modules. holes-ipkg: Holes.Main imports Holes.Util, which
+  // imports Holes.Base; `todo` is a hole of Base, Main and Other. holes: the loose files of M4's
+  // `holes` integration suite, Main.idr importing Base.idr, `todo` in both.
+  {
+    name: 'holes-ipkg-main',
+    description: 'E16: holes-ipkg, Holes.Main loaded first: :metavariables (the holes of Main and of the modules it imports, directly and not) and :name-at of each, the colliding todo included; the commands on Main\'s todo that look the hole up by name, and those that do not; then Holes.Other, and Holes.Main again from fresh TTC files',
+    facts: ['F2', 'F7', 'F29'],
+    workspace: 'holes-ipkg',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['holes.ipkg', 'src/Holes/Base.idr', 'src/Holes/Util.idr', 'src/Holes/Main.idr', 'src/Holes/Other.idr'],
+    requests: [
+      load('src/Holes/Main.idr'),
+      metavariables,
+      ...['todo', 'util_rhs', 'secret_rhs', 'size_rhs'].map(nameAt),
+      // count ns = ?todo   (line 8)
+      intro(8, 'todo'),
+      makeLemma(8, 'todo'),
+      proofSearch(8, 'todo'),
+      refine(8, 'todo', 'S'),
+      intro(8, 'Holes.Main.todo'),
+      makeCase(8, 'todo'),
+      makeWith(8, 'todo'),
+      caseSplit(8, 7, 'ns'),
+      // size = thrice ?size_rhs   (line 11)
+      intro(11, 'size_rhs'),
+      load('src/Holes/Other.idr'),
+      metavariables,
+      nameAt('todo'),
+      load('src/Holes/Main.idr'),
+      metavariables,
+      nameAt('todo'),
+    ],
+  },
+  // Each other module of holes-ipkg loaded first; the modules it reads, its holes' names, and an
+  // :intro on its todo where that name is unique in the loaded context.
+  ...[
+    ['Base', ['Base'], ['todo', 'secret_rhs'], [intro(7, 'todo')]],
+    ['Util', ['Base', 'Util'], ['todo', 'util_rhs', 'secret_rhs'], []],
+    ['Other', ['Other'], ['todo'], [intro(6, 'todo')]],
+  ].map(([module, reads, holes, more]) => ({
+    name: `holes-ipkg-${module.toLowerCase()}`,
+    description: `E16: holes-ipkg, Holes.${module} loaded first: :metavariables and :name-at of ${holes.join(', ')}${more.length > 0 ? ', and :intro on its todo' : ''}`,
+    facts: ['F2'],
+    workspace: 'holes-ipkg',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['holes.ipkg', ...reads.map((m) => `src/Holes/${m}.idr`)],
+    requests: [load(`src/Holes/${module}.idr`), metavariables, ...holes.map(nameAt), ...more],
+  })),
+  {
+    name: 'holes-loose-main',
+    description: 'E16: the loose files of the holes workspace, Main.idr (importing Base.idr) loaded first: :metavariables, :name-at of todo (a hole of both) and size_rhs, :intro on each; then Base.idr from its fresh TTC file, :metavariables and :name-at of todo',
+    facts: ['F2', 'F7'],
+    workspace: 'holes',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['Main.idr', 'Base.idr'],
+    requests: [
+      load('Main.idr'),
+      metavariables,
+      nameAt('todo'),
+      nameAt('size_rhs'),
+      intro(6, 'todo'), //      count ns = ?todo
+      intro(9, 'size_rhs'), //  size = ?size_rhs
+      load('Base.idr'),
+      metavariables,
+      nameAt('todo'),
+    ],
+  },
+  {
+    name: 'holes-loose-base',
+    description: 'E16: the loose files of the holes workspace, Base.idr loaded first: :metavariables (premises of multiplicity 0, 1 and unrestricted) and :name-at of todo',
+    facts: ['F2'],
+    workspace: 'holes',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['Base.idr'],
+    requests: [load('Base.idr'), metavariables, nameAt('todo')],
   },
 ];
 

@@ -1,7 +1,7 @@
 {
   "name": "vscode-idris2",
   "displayName": "Idris 2",
-  "description": "Idris 2 language support: the compiler's errors and warnings, types and documentation on hover, go to definition, completion, semantic highlighting, inlay hints, evaluation of expressions, syntax highlighting, editing support, snippets and toolchain detection. Holes and interactive editing are in development.",
+  "description": "Idris 2 language support: the compiler's errors and warnings, types and documentation on hover, go to definition, completion, semantic highlighting, inlay hints, evaluation of expressions, interactive editing with holes (case split, proof search, generate definition and more) and a list of holes, syntax highlighting, editing support, snippets and toolchain detection.",
   "version": "0.0.1",
   "publisher": "etairi",
   "license": "MIT",
@@ -185,6 +185,23 @@
           "order": 11,
           "markdownDescription": "Milliseconds without an edit after which an Idris file with unsaved changes is saved when `#idris2.checking.trigger#` is `afterDelay`. From 100 to 2147483647 (about 24.8 days)."
         },
+        "idris2.checking.saveBeforeAction": {
+          "type": "string",
+          "enum": [
+            "always",
+            "prompt",
+            "never"
+          ],
+          "default": "always",
+          "scope": "resource",
+          "order": 12,
+          "markdownEnumDescriptions": [
+            "Save the file, then run the command.",
+            "Ask whether to save the file; the command runs once it is saved.",
+            "Do not save: the command stops and asks you to save the file first."
+          ],
+          "markdownDescription": "What an interactive editing command (**Idris 2: Case Split**, **Add Clause**, **Make Lemma**, **Proof Search**, …) does with an Idris file that has unsaved changes. The compiler works on the file as saved, so the saved file must be the text you see. `always` (the default): save it first. `prompt`: ask before saving. `never`: do not save; the command asks you to save the file first. **Next Result** and **Next Definition** never save the file."
+        },
         "idris2.ideMode.transport": {
           "type": "string",
           "enum": [
@@ -244,7 +261,7 @@
           "maximum": 2147483647,
           "scope": "window",
           "order": 25,
-          "markdownDescription": "Milliseconds the compiler has to check a file. IDE mode cannot cancel a request, so one that takes longer stops the compiler's process, and the extension starts a new one. From 1000 to 2147483647 (about 24.8 days)."
+          "markdownDescription": "Milliseconds the compiler has to check a file and list its holes, to search for an expression (**Idris 2: Proof Search**) or generate a definition (**Generate Definition**), to get the next result of either (**Next Result**, **Next Definition**), or to answer **Intro**, **Make Lemma**, **Refine Hole…** and **Add Missing Cases**. IDE mode cannot cancel a request, so one that takes longer stops the compiler's process, and the extension starts a new one. From 1000 to 2147483647 (about 24.8 days)."
         },
         "idris2.ideMode.idleTimeout": {
           "type": "integer",
@@ -314,11 +331,18 @@
           "order": 35,
           "markdownEnumDescriptions": [
             "`chords` on macOS, `prefix` on Linux and Windows.",
-            "`Ctrl+C` followed by `Ctrl+<letter>`, in the style of Emacs and Agda (on macOS the Control key, not Command). On Linux and Windows, `Ctrl+C` then starts a shortcut in Idris editors and no longer copies there.",
-            "`Ctrl+Alt+I` followed by the letter. On Linux and Windows, `Ctrl+Alt+I` then starts a shortcut in Idris editors and no longer opens the Chat view there.",
+            "`Ctrl+C` followed by `Ctrl+<key>` (on macOS the Control key, not Command). The letters are those of the Vim bindings in the Idris docs; Emacs idris-mode's `C-c C-a`, `C-c C-s` and `C-c C-e` run other commands here. On Linux and Windows, `Ctrl+C` then starts a shortcut in Idris editors and no longer copies there.",
+            "`Ctrl+Alt+I` followed by the key. On Linux and Windows, `Ctrl+Alt+I` then starts a shortcut in Idris editors and no longer opens the Chat view there.",
             "No keyboard shortcuts; the commands stay in the Command Palette."
           ],
-          "markdownDescription": "Keyboard shortcuts of the Idris 2 commands in Idris editors: the letter `t` runs **Idris 2: Type at Cursor**, `d` **Docs at Cursor** and `e` **Evaluate Selection**. `auto` (the default): `chords` on macOS, `prefix` on Linux and Windows. `chords`: `Ctrl+C` followed by `Ctrl+<letter>`, e.g. `Ctrl+C Ctrl+T` (on macOS the Control key); on Linux and Windows `Ctrl+C` then no longer copies in Idris editors. `prefix`: `Ctrl+Alt+I` followed by the letter, e.g. `Ctrl+Alt+I T`; on Linux and Windows `Ctrl+Alt+I` then no longer opens the Chat view in Idris editors. `none`: no shortcuts. A keymap extension that binds `Ctrl+C` itself (VSCodeVim does in its default configuration) takes precedence over `chords`: choose `prefix` then. Read from your user settings only: a workspace cannot change your keyboard."
+          "markdownDescription": "Keyboard shortcuts of the Idris 2 commands in Idris editors; **Idris 2: Show Keybindings** lists them. `auto` (the default): `chords` on macOS, `prefix` on Linux and Windows. `chords`: `Ctrl+C` followed by `Ctrl+<key>`, e.g. `Ctrl+C Ctrl+T` for **Type at Cursor** (on macOS the Control key), with the letters of the Idris docs' Vim bindings, not Emacs idris-mode's; on Linux and Windows `Ctrl+C` then no longer copies in Idris editors. `prefix`: `Ctrl+Alt+I` followed by the key, e.g. `Ctrl+Alt+I T`; on Linux and Windows `Ctrl+Alt+I` then no longer opens the Chat view in Idris editors. `none`: no shortcuts. A keymap extension that binds `Ctrl+C` itself (VSCodeVim does in its default configuration) takes precedence over `chords`: choose `prefix` then. Read from your user settings only: a workspace cannot change your keyboard."
+        },
+        "idris2.holes.showInSideBar": {
+          "type": "boolean",
+          "default": true,
+          "scope": "window",
+          "order": 36,
+          "markdownDescription": "Show the **Holes** view in the **Idris 2** side bar: the holes (`?name`) of the Idris files the compiler has checked, each with its type and the local variables in scope there. **Idris 2: List Holes**, **Next Hole** and **Previous Hole** work either way."
         },
         "idris2.trace.protocol": {
           "type": "boolean",
@@ -469,6 +493,86 @@
         "command": "idris2.clearEvaluationResults",
         "title": "Clear Evaluation Results",
         "category": "Idris 2"
+      },
+      {
+        "command": "idris2.caseSplit",
+        "title": "Case Split",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.addClause",
+        "title": "Add Clause",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.makeLemma",
+        "title": "Make Lemma",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.makeWith",
+        "title": "Make With",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.makeCase",
+        "title": "Make Case",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.proofSearch",
+        "title": "Proof Search",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.nextResult",
+        "title": "Next Result",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.generateDefinition",
+        "title": "Generate Definition",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.nextDefinition",
+        "title": "Next Definition",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.intro",
+        "title": "Intro",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.refineHole",
+        "title": "Refine Hole…",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.addMissingCases",
+        "title": "Add Missing Cases",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.nextHole",
+        "title": "Next Hole",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.previousHole",
+        "title": "Previous Hole",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.listHoles",
+        "title": "List Holes",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.showKeybindings",
+        "title": "Show Keybindings",
+        "category": "Idris 2"
       }
     ],
     "submenus": [
@@ -527,6 +631,66 @@
         {
           "command": "idris2.clearEvaluationResults",
           "when": "idris2.isIdrisDocument"
+        },
+        {
+          "command": "idris2.caseSplit",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.addClause",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.makeLemma",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.makeWith",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.makeCase",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.proofSearch",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.nextResult",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.generateDefinition",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.nextDefinition",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.intro",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.refineHole",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.addMissingCases",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.nextHole",
+          "when": "idris2.isIdrisDocument"
+        },
+        {
+          "command": "idris2.previousHole",
+          "when": "idris2.isIdrisDocument"
+        },
+        {
+          "command": "idris2.listHoles",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
         }
       ],
       "editor/title": [
@@ -574,6 +738,66 @@
           "group": "0_intelligence@6"
         },
         {
+          "command": "idris2.caseSplit",
+          "group": "0_interactive@1"
+        },
+        {
+          "command": "idris2.addClause",
+          "group": "0_interactive@2"
+        },
+        {
+          "command": "idris2.makeLemma",
+          "group": "0_interactive@3"
+        },
+        {
+          "command": "idris2.makeWith",
+          "group": "0_interactive@4"
+        },
+        {
+          "command": "idris2.makeCase",
+          "group": "0_interactive@5"
+        },
+        {
+          "command": "idris2.proofSearch",
+          "group": "0_interactive@6"
+        },
+        {
+          "command": "idris2.nextResult",
+          "group": "0_interactive@7"
+        },
+        {
+          "command": "idris2.generateDefinition",
+          "group": "0_interactive@8"
+        },
+        {
+          "command": "idris2.nextDefinition",
+          "group": "0_interactive@9"
+        },
+        {
+          "command": "idris2.intro",
+          "group": "0_interactive@10"
+        },
+        {
+          "command": "idris2.refineHole",
+          "group": "0_interactive@11"
+        },
+        {
+          "command": "idris2.addMissingCases",
+          "group": "0_interactive@12"
+        },
+        {
+          "command": "idris2.nextHole",
+          "group": "0_interactive_holes@1"
+        },
+        {
+          "command": "idris2.previousHole",
+          "group": "0_interactive_holes@2"
+        },
+        {
+          "command": "idris2.listHoles",
+          "group": "0_interactive_holes@3"
+        },
+        {
           "command": "idris2.showSetupInformation",
           "group": "1_toolchain@1"
         },
@@ -612,15 +836,51 @@
           "group": "3_help@3"
         },
         {
-          "command": "idris2.openDocumentation",
+          "command": "idris2.showKeybindings",
           "group": "3_help@4"
         },
         {
-          "command": "idris2.reportIssue",
+          "command": "idris2.openDocumentation",
           "group": "3_help@5"
+        },
+        {
+          "command": "idris2.reportIssue",
+          "group": "3_help@6"
         }
       ]
     },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "idris2",
+          "title": "Idris 2",
+          "icon": "$(question)"
+        }
+      ]
+    },
+    "views": {
+      "idris2": [
+        {
+          "id": "idris2.holes",
+          "name": "Holes",
+          "icon": "$(question)",
+          "contextualTitle": "Idris 2",
+          "when": "config.idris2.holes.showInSideBar && idris2.isIdrisWorkspace"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "idris2.holes",
+        "contents": "No holes. The holes of an Idris file are listed here once the compiler has checked it.",
+        "when": "isWorkspaceTrusted"
+      },
+      {
+        "view": "idris2.holes",
+        "contents": "The holes are listed by the Idris 2 compiler, which does not run in Restricted Mode.",
+        "when": "!isWorkspaceTrusted"
+      }
+    ],
     "keybindings": [
       {
         "command": "idris2.typeAtCursor",
@@ -668,6 +928,198 @@
         "command": "idris2.evaluateSelection",
         "key": "ctrl+alt+i e",
         "mac": "ctrl+c ctrl+e",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'auto'"
+      },
+      {
+        "command": "idris2.caseSplit",
+        "key": "ctrl+c ctrl+c",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'chords'"
+      },
+      {
+        "command": "idris2.caseSplit",
+        "key": "ctrl+alt+i c",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'prefix'"
+      },
+      {
+        "command": "idris2.caseSplit",
+        "key": "ctrl+alt+i c",
+        "mac": "ctrl+c ctrl+c",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'auto'"
+      },
+      {
+        "command": "idris2.addClause",
+        "key": "ctrl+c ctrl+a",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'chords'"
+      },
+      {
+        "command": "idris2.addClause",
+        "key": "ctrl+alt+i a",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'prefix'"
+      },
+      {
+        "command": "idris2.addClause",
+        "key": "ctrl+alt+i a",
+        "mac": "ctrl+c ctrl+a",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'auto'"
+      },
+      {
+        "command": "idris2.makeLemma",
+        "key": "ctrl+c ctrl+l",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'chords'"
+      },
+      {
+        "command": "idris2.makeLemma",
+        "key": "ctrl+alt+i l",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'prefix'"
+      },
+      {
+        "command": "idris2.makeLemma",
+        "key": "ctrl+alt+i l",
+        "mac": "ctrl+c ctrl+l",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'auto'"
+      },
+      {
+        "command": "idris2.makeWith",
+        "key": "ctrl+c ctrl+w",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'chords'"
+      },
+      {
+        "command": "idris2.makeWith",
+        "key": "ctrl+alt+i w",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'prefix'"
+      },
+      {
+        "command": "idris2.makeWith",
+        "key": "ctrl+alt+i w",
+        "mac": "ctrl+c ctrl+w",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'auto'"
+      },
+      {
+        "command": "idris2.makeCase",
+        "key": "ctrl+c ctrl+m",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'chords'"
+      },
+      {
+        "command": "idris2.makeCase",
+        "key": "ctrl+alt+i m",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'prefix'"
+      },
+      {
+        "command": "idris2.makeCase",
+        "key": "ctrl+alt+i m",
+        "mac": "ctrl+c ctrl+m",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'auto'"
+      },
+      {
+        "command": "idris2.proofSearch",
+        "key": "ctrl+c ctrl+s",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'chords'"
+      },
+      {
+        "command": "idris2.proofSearch",
+        "key": "ctrl+alt+i s",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'prefix'"
+      },
+      {
+        "command": "idris2.proofSearch",
+        "key": "ctrl+alt+i s",
+        "mac": "ctrl+c ctrl+s",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'auto'"
+      },
+      {
+        "command": "idris2.nextResult",
+        "key": "ctrl+c ctrl+n",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'chords'"
+      },
+      {
+        "command": "idris2.nextResult",
+        "key": "ctrl+alt+i n",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'prefix'"
+      },
+      {
+        "command": "idris2.nextResult",
+        "key": "ctrl+alt+i n",
+        "mac": "ctrl+c ctrl+n",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'auto'"
+      },
+      {
+        "command": "idris2.generateDefinition",
+        "key": "ctrl+c ctrl+g",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'chords'"
+      },
+      {
+        "command": "idris2.generateDefinition",
+        "key": "ctrl+alt+i g",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'prefix'"
+      },
+      {
+        "command": "idris2.generateDefinition",
+        "key": "ctrl+alt+i g",
+        "mac": "ctrl+c ctrl+g",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'auto'"
+      },
+      {
+        "command": "idris2.intro",
+        "key": "ctrl+c ctrl+i",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'chords'"
+      },
+      {
+        "command": "idris2.intro",
+        "key": "ctrl+alt+i i",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'prefix'"
+      },
+      {
+        "command": "idris2.intro",
+        "key": "ctrl+alt+i i",
+        "mac": "ctrl+c ctrl+i",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'auto'"
+      },
+      {
+        "command": "idris2.refineHole",
+        "key": "ctrl+c ctrl+r",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'chords'"
+      },
+      {
+        "command": "idris2.refineHole",
+        "key": "ctrl+alt+i r",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'prefix'"
+      },
+      {
+        "command": "idris2.refineHole",
+        "key": "ctrl+alt+i r",
+        "mac": "ctrl+c ctrl+r",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'auto'"
+      },
+      {
+        "command": "idris2.previousHole",
+        "key": "ctrl+c ctrl+[",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'chords'"
+      },
+      {
+        "command": "idris2.previousHole",
+        "key": "ctrl+alt+i [",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'prefix'"
+      },
+      {
+        "command": "idris2.previousHole",
+        "key": "ctrl+alt+i [",
+        "mac": "ctrl+c ctrl+[",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'auto'"
+      },
+      {
+        "command": "idris2.nextHole",
+        "key": "ctrl+c ctrl+]",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'chords'"
+      },
+      {
+        "command": "idris2.nextHole",
+        "key": "ctrl+alt+i ]",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'prefix'"
+      },
+      {
+        "command": "idris2.nextHole",
+        "key": "ctrl+alt+i ]",
+        "mac": "ctrl+c ctrl+]",
         "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'auto'"
       }
     ],

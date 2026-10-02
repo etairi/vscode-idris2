@@ -74,7 +74,9 @@
  * - **Stop, release and idle.** `stop(root?)` stops sessions of both roles (Stop Backend, cause
  *   `stop`); `restart(root)` stops the root's `eval` session (cause `stop`) and restarts its `check`
  *   session, and `restartAll()` restarts every `check` session that is not stopped and stops every
- *   `eval` session, so an `eval` session starts again at the next evaluation; `cancelEvaluation(root)`
+ *   `eval` session, so an `eval` session starts again at the next evaluation; `restartCheck(root)`
+ *   restarts the root's `check` session alone (a long edit request the user cancelled, M4);
+ *   `cancelEvaluation(root)`
  *   stops the root's `eval` session (cause `stop`: its evaluation was cancelled, and IDE mode has no
  *   cancel), and so does `releaseEvaluation(root, detail)` (after an evaluation that ran long,
  *   `backend.ts`); `release(root)` stops a root's sessions when its last open document was closed (cause
@@ -725,6 +727,14 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
         } else {
           session.restart('Restart Backend, all roots');
         }
+      }
+    },
+
+    restartCheck(root: Classification, detail: string): void {
+      const session = sessions.get(keyOf(root, 'check'));
+      // Only a request in flight is stopped: a restart of a session without a process would start one.
+      if (session?.state === 'busy') {
+        session.restart(detail);
       }
     },
 

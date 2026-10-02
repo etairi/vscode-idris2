@@ -33,6 +33,7 @@
  *   read from its left-hand side (the tokens before `=`, `with` or `impossible`): a backticked
  *   infix name, else the first operator, else the first token or `(op)`.
  */
+import { FUNCTION_PRAGMAS, MODIFIER_KEYWORDS, RESERVED_INFIX_SYMBOLS } from '../../core/idrisSyntax';
 import { birdPrefixWidth, type LiterateStyle } from '../../project/literate';
 import { lex, type Group, type Token } from './lexer';
 
@@ -80,20 +81,6 @@ export interface SyntaxModel {
    */
   readonly unlitLineStarts: readonly number[] | undefined;
 }
-
-/** Visibility and totality keywords (`visOption`, `totalityOpt` in Parser.idr). */
-const MODIFIER_KEYWORDS: ReadonlySet<string> = new Set(['public', 'export', 'private', 'total', 'partial', 'covering']);
-
-/** Pragmas accepted before a type signature (`fnDirectOpt` in Parser.idr, master and 0.8.0). */
-const FUNCTION_PRAGMAS: ReadonlySet<string> = new Set([
-  '%hint', '%globalhint', '%defaulthint', '%inline', '%unsafe', '%noinline', '%deprecate',
-  '%tcinline', '%extern', '%macro', '%spec', '%foreign', '%export', '%nomangle',
-]);
-
-/** `reservedInfixSymbols` in Source.idr: never the name an infix clause defines. */
-const RESERVED_INFIX: ReadonlySet<string> = new Set([
-  '%', '\\', ':', '=', ':=', '$=', '|', '|||', '<-', '->', '=>', '?', '!', '&', '**', '..', '~', '@',
-]);
 
 const DELIMITER_KINDS: ReadonlySet<Token['kind']> = new Set([
   'groupOpen', 'groupClose', 'stringOpen', 'stringClose', 'interpOpen', 'interpClose',
@@ -357,7 +344,7 @@ function operatorInParentheses(open: Token, all: readonly Token[]): string | und
 }
 
 function isOperator(text: string): boolean {
-  return text !== ',' && text !== ';' && text !== '_' && text !== '`' && !RESERVED_INFIX.has(text);
+  return text !== ',' && text !== ';' && text !== '_' && text !== '`' && !RESERVED_INFIX_SYMBOLS.has(text);
 }
 
 /**

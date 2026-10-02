@@ -11,6 +11,8 @@ import {
   readEvaluationSettings,
   readIdeModeSettings,
   readInlayHintSettings,
+  readKeybindingScheme,
+  readSaveBeforeAction,
   readToolchainSettings,
   readTraceSettings,
   usableHomeDirectory,
@@ -364,6 +366,68 @@ suite('core/config', () => {
       change(['idris2.keybindings.scheme']);
       change(['idris2.evalX']);
       assert.deepStrictEqual(calls, ['inlayHints', 'eval']);
+    });
+  });
+
+  suite('M4 settings (checking.saveBeforeAction)', () => {
+    test('always, prompt or never as written; anything else reads as the default, always', () => {
+      assert.strictEqual(readSaveBeforeAction(section({})), 'always');
+      for (const value of ['always', 'prompt', 'never'] as const) {
+        assert.strictEqual(readSaveBeforeAction(section({ 'checking.saveBeforeAction': value })), value);
+      }
+      for (const value of ['Never', 'ask', '', true, 0, null, ['never'], {}]) {
+        assert.strictEqual(readSaveBeforeAction(section({ 'checking.saveBeforeAction': value })), 'always', String(value));
+      }
+    });
+
+    test('Config.saveBeforeAction(scope) reads the resource-scoped section for the scope, afresh; a change fires the checking group', () => {
+      const values: Record<string, unknown> = { 'checking.saveBeforeAction': 'never' };
+      const { host, sections, scopes, change } = fakeHost(values);
+      const config = new Config(host, HOME);
+      const uri = { scheme: 'file', path: '/w/A.idr' } as unknown as vscode.Uri;
+      assert.strictEqual(config.saveBeforeAction(uri), 'never');
+      values['checking.saveBeforeAction'] = 'prompt';
+      assert.strictEqual(config.saveBeforeAction(), 'prompt');
+      assert.deepStrictEqual(sections, ['idris2', 'idris2']);
+      assert.deepStrictEqual(scopes, [uri, undefined]);
+      const calls: string[] = [];
+      config.onDidChange('checking', (c) => calls.push(String(c.affects('checking.saveBeforeAction'))));
+      change(['idris2.checking.saveBeforeAction']);
+      assert.deepStrictEqual(calls, ['true']);
+    });
+  });
+
+  suite('keybindings.scheme (read for Show Keybindings, M4)', () => {
+    test('the four schemes as written; the value as a when clause compares it with ==, anything else no scheme', () => {
+      for (const value of ['auto', 'chords', 'prefix', 'none'] as const) {
+        assert.strictEqual(readKeybindingScheme(section({ 'keybindings.scheme': value })), value);
+      }
+      // `config.idris2.keybindings.scheme == 'auto'` holds for a list whose text is `auto` [src: VS
+      // Code 1.139.1 ContextKeyEqualsExpr.evaluate uses ==].
+      assert.strictEqual(readKeybindingScheme(section({ 'keybindings.scheme': ['auto'] })), 'auto');
+      assert.strictEqual(readKeybindingScheme(section({ 'keybindings.scheme': [['prefix']] })), 'prefix');
+      // No binding's clause holds for these: nothing is on.
+      for (const value of [undefined, 'Auto', 'emacs', '', 0, true, null, {}, ['auto', 'none']]) {
+        assert.strictEqual(readKeybindingScheme(section({ 'keybindings.scheme': value })), undefined, String(value));
+      }
+      // The loose comparison itself, which the reader mirrors.
+      // eslint-disable-next-line eqeqeq
+      assert.ok((['auto'] as unknown) == 'auto' && !((['auto', 'none'] as unknown) == 'auto'));
+    });
+
+    test('Config.keybindingScheme reads the window\'s value afresh; a change fires the keybindings group', () => {
+      const values: Record<string, unknown> = { 'keybindings.scheme': 'prefix' };
+      const { host, scopes, change } = fakeHost(values);
+      const config = new Config(host, HOME);
+      assert.strictEqual(config.keybindingScheme(), 'prefix');
+      values['keybindings.scheme'] = 'none';
+      assert.strictEqual(config.keybindingScheme(), 'none');
+      assert.deepStrictEqual(scopes, [undefined, undefined]);
+      const calls: string[] = [];
+      config.onDidChange('keybindings', () => calls.push('keybindings'));
+      change(['idris2.keybindings.scheme']);
+      change(['idris2.eval.timeout']);
+      assert.deepStrictEqual(calls, ['keybindings']);
     });
   });
 

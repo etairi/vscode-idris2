@@ -31,6 +31,8 @@
  *   namespace listings are answered from the newer load), but never before the one in flight, nor
  *   before one whose `beforeSend` check runs or
  *   has passed for the process (that check and the write stay one step, *Consent* in docs/as-built/M2.md).
+ *   A request's `onReply` hooks run when its reply arrives, before the next request is chosen, so
+ *   that the urgent requests they make go first (M4: the holes of a load).
  *   The checks mark the active document's load so while `idris2.ideMode.maxBackgroundChecks` is
  *   above 0 (ROADMAP §9 Q21); without it the queue is first-in, first-out. A cancellation token
  *   removes a waiting request from the queue (a `beforeSend` check of it that runs is abandoned,
@@ -124,7 +126,11 @@
  *   process's exit); an unexpected end that would need a fourth restart within five minutes
  *   gives up: `failed` with cause `gaveUp`, and every waiting request rejects with
  *   `BackendCrashed`. A stop, a restart (command, settings, toolchain) and leaving `failed`
- *   clear the count.
+ *   clear the count. A `longAction` that exceeds its limit — an edit or a raw request, which the
+ *   user started and waited for, or the holes asked for after a load, which can take seconds on
+ *   large types — restarts the process at once and is not counted, as the user's Cancel of it is
+ *   not (`IdeBackend` restarts the session then); its state change has the cause
+ *   `longActionTimeout`, not `timeout`, since the request's caller reports it.
  * - **Loaded-file tracking.** `loadedFile` is the `file` of the last `load` whose `:return`
  *   arrived in the current process (also an `:error` return: the compiler still answers
  *   position requests for the file after a failed load, F16); it is cleared when the process
@@ -292,6 +298,8 @@ interface Entry {
   beforeSend: (() => Promise<void>) | undefined;
   /** `RequestOptions.urgent` of the newest caller. */
   urgent: (() => boolean) | undefined;
+  /** `RequestOptions.onReply` of every caller. */
+  readonly onReply: ((reply: Reply) => void)[];
   /** The process `beforeSend` has passed for. */
   passedFor: Proc | undefined;
   /**
@@ -495,12 +503,16 @@ class Session implements ManagedSession {
           messages: [],
           beforeSend: options.beforeSend,
           urgent: options.urgent,
+          onReply: [],
           passedFor: undefined,
           running: undefined,
         };
         this.queue.push(entry);
       }
       entry.waiters.push(waiter);
+      if (options.onReply !== undefined) {
+        entry.onReply.push(options.onReply);
+      }
       const target = entry;
       if (options.token !== undefined) {
         waiter.subscription = options.token.onCancellationRequested(() => this.cancel(target, waiter));
@@ -884,8 +896,11 @@ class Session implements ManagedSession {
     this.crash(proc, 'exit', detail);
   }
 
-  /** An unexpected end of `proc`: restart after the backoff, or give up (module comment). */
-  private crash(proc: Proc, cause: 'exit' | 'timeout' | 'protocolError', detail: string, inFlightError?: Error): void {
+  /**
+   * An unexpected end of `proc`: restart after the backoff, or give up (module comment). `counted`
+   * false: at once, and not counted towards giving up.
+   */
+  private crash(proc: Proc, cause: 'exit' | 'timeout' | 'longActionTimeout' | 'protocolError', detail: string, inFlightError?: Error, counted = true): void {
     if (proc !== this.proc || proc.ending) {
       return;
     }
@@ -910,7 +925,9 @@ class Session implements ManagedSession {
     const now = this.deps.clock.now();
     const { restartDelaysMs, crashWindowMs } = this.deps.timing;
     this.crashTimes = this.crashTimes.filter((t) => now - t < crashWindowMs);
-    this.crashTimes.push(now);
+    if (counted) {
+      this.crashTimes.push(now);
+    }
     const count = this.crashTimes.length;
     if (count > restartDelaysMs.length) {
       this.failure =
@@ -921,7 +938,7 @@ class Session implements ManagedSession {
       return;
     }
     this.setState('restarting', cause, detail);
-    this.scheduleRespawn(restartDelaysMs[count - 1]);
+    this.scheduleRespawn(counted ? restartDelaysMs[count - 1] : restartDelaysMs[0]);
   }
 
   /** The process cannot serve at all (it could not be started, or speaks protocol 1): `failed` at once. */
@@ -962,12 +979,15 @@ class Session implements ManagedSession {
       return;
     }
     const name = commandName(entry.command);
-    const detail = `${name} did not answer within ${duration(limitMs)}${pendingBytes(proc)}`;
+    const setting = entry.timeoutMs !== undefined ? '' : entry.kind === 'lookup' ? ' (idris2.ideMode.requestTimeout)' : ' (idris2.ideMode.longActionTimeout)';
+    const detail = `${name} did not answer within ${duration(limitMs)}${setting}${pendingBytes(proc)}`;
     const timeout = idrisError('RequestTimeout', `${detail}; the Idris 2 process was stopped.`);
     this.rejectQueue(
       idrisError('RequestTimeout', `Dropped: an earlier request (${name}) did not answer within ${duration(limitMs)}, and the Idris 2 process was stopped.`),
     );
-    this.crash(proc, 'timeout', detail, timeout);
+    // A long action is one the user started and waited for (module comment, *Backoff and give-up*).
+    const long = entry.kind === 'longAction';
+    this.crash(proc, long ? 'longActionTimeout' : 'timeout', detail, timeout, !long);
   }
 
   // -----------------------------------------------------------------------------------------
@@ -1112,6 +1132,15 @@ class Session implements ManagedSession {
     for (const waiter of entry.waiters.splice(0)) {
       waiter.subscription?.dispose();
       waiter.resolve(reply);
+    }
+    // Before the next request is chosen (`RequestOptions.onReply`); still `busy`, so the requests
+    // a hook makes are only queued.
+    for (const hook of entry.onReply) {
+      try {
+        hook(reply);
+      } catch (error) {
+        this.deps.log.warn(`Idris 2 (${this.cwd}): a reply hook of ${commandName(entry.command)} failed: ${error instanceof Error ? error.message : String(error)}`);
+      }
     }
     this.setState('ready', 'reply');
     this.pump();
@@ -1296,6 +1325,7 @@ class Session implements ManagedSession {
         break;
       case 'exit':
       case 'timeout':
+      case 'longActionTimeout':
       case 'protocolError':
       case 'spawnError':
       case 'gaveUp':

@@ -6,10 +6,12 @@
  *
  * M1 contributes the `idris2.toolchain.*` section; M2 adds `idris2.checking.*`,
  * `idris2.ideMode.*`, `idris2.diagnostics.*` and `idris2.trace.*`; M3 adds
- * `idris2.inlayHints.*`, `idris2.eval.*` and `idris2.keybindings.scheme`, which only VS Code
- * reads (the `when` clauses of the keybindings in `package.json`), so it has no accessor here. The
- * module has no runtime dependency on `vscode` (one type import): `extension.ts` passes
- * `vscode.workspace` as the `ConfigurationHost`, unit tests pass a fake.
+ * `idris2.inlayHints.*`, `idris2.eval.*` and `idris2.keybindings.scheme`, which the `when` clauses
+ * of the keybindings in `package.json` read (and, since M4, **Idris 2: Show Keybindings**,
+ * `Config.keybindingScheme`); M4 adds `idris2.checking.saveBeforeAction` (`Config.saveBeforeAction`)
+ * and `idris2.holes.showInSideBar`, which only the `when` clause of the Holes view reads, so it has
+ * no accessor here. The module has no runtime dependency on `vscode` (one type import):
+ * `extension.ts` passes `vscode.workspace` as the `ConfigurationHost`, unit tests pass a fake.
  *
  * Values are validated here, so that callers never see a wrongly typed value from a
  * hand-edited `settings.json`: a value of the wrong type (or an unknown enum value) reads as the
@@ -31,7 +33,15 @@ export const CONFIGURATION_SECTION = 'idris2';
  * The groups of settings a listener can subscribe to (`idris2.<group>.*`); later milestones add
  * theirs.
  */
-export type ConfigurationGroup = 'toolchain' | 'checking' | 'ideMode' | 'diagnostics' | 'trace' | 'inlayHints' | 'eval';
+export type ConfigurationGroup =
+  | 'toolchain'
+  | 'checking'
+  | 'ideMode'
+  | 'diagnostics'
+  | 'trace'
+  | 'inlayHints'
+  | 'eval'
+  | 'keybindings';
 
 /** `idris2.toolchain.*` (ARCHITECTURE §11, M1). */
 export interface ToolchainSettings {
@@ -257,7 +267,10 @@ export interface IdeModeSettings {
   readonly extraArgs: readonly string[];
   /** `idris2.ideMode.requestTimeout`, ms: the limit of a lookup request. */
   readonly requestTimeoutMs: number;
-  /** `idris2.ideMode.longActionTimeout`, ms: the limit of `:load-file`, `:proof-search`, `:generate-def`. */
+  /**
+   * `idris2.ideMode.longActionTimeout`, ms: the limit of `:load-file` and of the long edit requests
+   * (`:proof-search`, `:generate-def`, their `-next`, `:refine`).
+   */
   readonly longActionTimeoutMs: number;
   /** `idris2.ideMode.idleTimeout`, ms: a session with no request for this long is stopped; 0 = never. */
   readonly idleTimeoutMs: number;
@@ -455,6 +468,58 @@ export function readEvaluationSettings(section: ConfigurationReader): Evaluation
   };
 }
 
+// -------------------------------------------------------------------------------------------
+// M4: interactive editing (ARCHITECTURE §11; ROADMAP M4)
+// -------------------------------------------------------------------------------------------
+
+/**
+ * `idris2.checking.saveBeforeAction` (resource scope, like the rest of `idris2.checking.*`): what an
+ * interactive editing command does with a document that has unsaved changes. The compiler edits
+ * the text its last load of the file read (`loadMainFile` keeps it with `setSource`, and the edit
+ * commands read their lines from it with `getSourceLine` [src v0.8.0: `Idris/REPL.idr` 833–845,
+ * `Idris/REPL/Opts.idr` 119–133]), so an edit is asked for only while the document shows exactly
+ * that text (`backend/types.ts` `EditRequest`):
+ * - `always` (the default): save the document, then run the command;
+ * - `prompt`: ask; the command runs once the document is saved, and stops when the user declines;
+ * - `never`: do not save; the command says that the file must be saved first.
+ * The two commands that continue a search (**Next Result**, **Next Definition**) never save
+ * (`features/editing/types.ts`).
+ */
+export type SaveBeforeAction = 'always' | 'prompt' | 'never';
+
+const SAVE_BEFORE_ACTIONS: readonly SaveBeforeAction[] = ['always', 'prompt', 'never'];
+
+/** Reads and validates `idris2.checking.saveBeforeAction` from the `idris2` section. */
+export function readSaveBeforeAction(section: ConfigurationReader): SaveBeforeAction {
+  return enumSetting(section.get('checking.saveBeforeAction'), SAVE_BEFORE_ACTIONS, 'always');
+}
+
+/**
+ * `idris2.keybindings.scheme` (M3; ARCHITECTURE §10, ROADMAP §9 Q5): which of the contributed
+ * keybindings are on. Their `when` clauses compare `config.idris2.keybindings.scheme` with each
+ * scheme's name; `auto` binds the `chords` keys on macOS and the `prefix` keys elsewhere (a `mac`
+ * key on the `auto` bindings). VS Code reads it there; the extension reads it only to list the
+ * shortcuts that are on (**Idris 2: Show Keybindings**, M4).
+ */
+export type KeybindingScheme = 'auto' | 'chords' | 'prefix' | 'none';
+
+const KEYBINDING_SCHEMES: readonly KeybindingScheme[] = ['auto', 'chords', 'prefix', 'none'];
+
+/**
+ * Reads `idris2.keybindings.scheme` from the `idris2` section as the keybindings' `when` clauses
+ * read it, so that what Show Keybindings lists is what is on. Unlike the other readers it does not
+ * replace a value it does not know by the default: such a value turns every binding of the
+ * extension off, and reads as `undefined`. A clause `config.<key> == 'auto'` compares with
+ * JavaScript's `==` (`ContextKeyEqualsExpr.evaluate` in VS Code 1.139.1's workbench bundle [src]),
+ * which makes a list equal to the text of its elements joined by commas (`["auto"] == 'auto'`), and
+ * no number, boolean, `null` or other object equal to a scheme's name.
+ */
+export function readKeybindingScheme(section: ConfigurationReader): KeybindingScheme | undefined {
+  const value = section.get('keybindings.scheme');
+  const text = typeof value === 'string' ? value : Array.isArray(value) ? String(value) : undefined;
+  return KEYBINDING_SCHEMES.find((scheme) => scheme === text);
+}
+
 /**
  * The settings as the rest of the extension sees them. Reads are not cached: each call
  * reflects the current value, so callers read again after `onDidChange` fires.
@@ -476,6 +541,16 @@ export class Config {
    */
   checking(scope?: ConfigurationScope): CheckingSettings {
     return readCheckingSettings(this.host.getConfiguration(CONFIGURATION_SECTION, scope));
+  }
+
+  /** `idris2.checking.saveBeforeAction` for `scope` (the document's URI), as `checking` reads its section. */
+  saveBeforeAction(scope?: ConfigurationScope): SaveBeforeAction {
+    return readSaveBeforeAction(this.host.getConfiguration(CONFIGURATION_SECTION, scope));
+  }
+
+  /** `idris2.keybindings.scheme` (`readKeybindingScheme`). */
+  keybindingScheme(): KeybindingScheme | undefined {
+    return readKeybindingScheme(this.host.getConfiguration(CONFIGURATION_SECTION));
   }
 
   ideMode(): IdeModeSettings {

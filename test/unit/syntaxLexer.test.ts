@@ -1,4 +1,5 @@
 import * as assert from 'assert';
+import { lexText, START, startsInside, startsInStringText, type LexerState } from '../../src/core/idrisLexer';
 import { lex, type TokenKind } from '../../src/features/syntax/lexer';
 
 /** `[kind, text]` for every token. */
@@ -320,6 +321,63 @@ suite('features/syntax/lexer', () => {
       assert.strictEqual(open.outer, undefined);
       assert.strictEqual(a.outer, group);
       assert.strictEqual(a.delimits, undefined);
+    });
+  });
+
+  suite('a line at a time (core/idrisLexer.ts lexText, end: line)', () => {
+    /** `[kind, text]` of each token or piece, per line, and what is open after the last line. */
+    function lines(...texts: string[]): { pieces: [string, string][][]; open: LexerState } {
+      let open = START;
+      const pieces = texts.map((text) => {
+        const out: [string, string][] = [];
+        open = lexText(text, open, 'line', {
+          token: (kind, start, end) => out.push([kind, text.slice(start, end)]),
+          open: (kind, start, end) => out.push([`open ${kind}`, text.slice(start, end)]),
+          close: (kind, start, end) => out.push([`close ${kind}`, text.slice(start, end)]),
+          drop: (kind) => out.push([`drop ${kind}`, '']),
+        });
+        return out;
+      });
+      return { pieces, open };
+    }
+
+    test('a block comment goes on with its depth, a string literal in it too', () => {
+      const r = lines('x {- a {- b', ' -} " -} ', ' " -} y');
+      assert.deepStrictEqual(r.pieces, [[['ident', 'x'], ['comment', '{- a {- b']], [['comment', ' -} " -} ']], [['comment', ' " -}'], ['ident', 'y']]]);
+      assert.ok(!startsInside(r.open));
+    });
+
+    test('a `"` string goes on only when an escape takes the line break; otherwise it ends there, unclosed, and the reading is unsure', () => {
+      const escaped = lines('s = "a\\', 'b"');
+      assert.deepStrictEqual(escaped.pieces[1], [['stringText', 'b'], ['close string', '"']]);
+      assert.ok(!escaped.open.unsure);
+      const cut = lines('s = "a', 't');
+      assert.deepStrictEqual(cut.pieces, [[['ident', 's'], ['symbol', '='], ['open string', '"'], ['stringText', 'a'], ['drop string', '']], [['ident', 't']]]);
+      assert.ok(cut.open.unsure);
+    });
+
+    test('`"""` and white space before the line break open a multiline string', () => {
+      const r = lines('m = """  ', '  a " b', '  """');
+      assert.deepStrictEqual(r.pieces[0], [['ident', 'm'], ['symbol', '='], ['open string', '"""  ']]);
+      assert.deepStrictEqual(r.pieces[1], [['stringText', '  a " b']]);
+      assert.ok(startsInStringText(lines('m = """').open));
+    });
+
+    test("a character literal across a line break: ' ⏎ ' and '\\ ⏎ '", () => {
+      assert.deepStrictEqual(lines("x = '", "' + y").pieces, [[['ident', 'x'], ['symbol', '='], ['char', "'"]], [['char', "'"], ['symbol', '+'], ['ident', 'y']]]);
+      assert.deepStrictEqual(lines("x = '\\", "'").pieces[1], [['char', "'"]]);
+      // Taken for one before the next line decides (module comment); `lex` reads `'` there when the next line does
+      // not close it.
+      assert.deepStrictEqual(lines("x = '", 'y').pieces, [[['ident', 'x'], ['symbol', '='], ['char', "'"]], [['ident', 'y']]]);
+      assert.deepStrictEqual(tokens("x = '\ny"), [['ident', 'x'], ['symbol', '='], ['unrecognised', "'"], ['ident', 'y']]);
+    });
+
+    test('deviations (module comment): a %cg directive is read within its line; a \\r before a line break is not seen', () => {
+      assert.deepStrictEqual(tokens('%cg chez\n {x}'), [['cgDirective', '%cg chez\n {x}']]);
+      assert.deepStrictEqual(lines('%cg chez', ' {x}').pieces, [[['cgDirective', '%cg chez']], [['open bracket', '{'], ['ident', 'x'], ['close bracket', '}']]]);
+      // `lex` on CRLF text: the escape takes the \r and the \n ends the string; read line by line, the escape takes the break.
+      assert.deepStrictEqual(tokens('"a\\\r\nb"').slice(0, 2), [['stringOpen', '"'], ['stringText', 'a\\\r']]);
+      assert.ok(!lines('"a\\', 'b"').open.unsure);
     });
   });
 });

@@ -1,0 +1,33 @@
+{"kind":"meta","format":1,"scenario":"plain-split-columns","description":"Plain.idr: :metavariables (no hole), and :case-split on n in f n = n (right-hand side not a hole) at columns 1 to 5","facts":["F2","F15"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-09-30","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build/.vscode-idris2"],"cwd":"test/fixtures/workspaces/broken","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"Plain.idr":"81c892519d1984e9979e29ffddf8b8aac53868792bd9f4075563714e33ad6930"}}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"00009e","text":"((:load-file \"${ROOT}/Plain.idr\") 1)\n"}
+{"kind":"recv","prefix":"0000b5","text":"(:write-string \"1/1: Building Plain (${ROOT}/Plain.idr)\" 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Plain.idr\") (:start 0 0) (:end 0 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Plain.idr\") (:start 0 7) (:end 0 12)) ((:decor :module)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f2","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Plain.idr\") (:start 2 0) (:end 2 72)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"000149","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Plain.idr\") (:start 3 0) (:end 3 1)) ((:name \"f\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Plain.idr\") (:start 3 2) (:end 3 3)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000154","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Plain.idr\") (:start 3 4) (:end 3 7)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f2","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Plain.idr\") (:start 3 8) (:end 3 10)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000156","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Plain.idr\") (:start 3 11) (:end 3 14)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00014e","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Plain.idr\") (:start 4 0) (:end 4 1)) ((:name \"f\") (:namespace \"Plain\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000146","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Plain.idr\") (:start 4 2) (:end 4 3)) ((:name \"n\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f1","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Plain.idr\") (:start 4 4) (:end 4 5)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000146","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/Plain.idr\") (:start 4 6) (:end 4 7)) ((:name \"n\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok ()) 1)\n"}
+{"kind":"send","prefix":"000018","text":"((:metavariables 80) 2)\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok ()) 2)\n"}
+{"kind":"send","prefix":"00001a","text":"((:case-split 5 1 \"n\") 3)\n"}
+{"kind":"recv","prefix":"00002f","text":"(:return (:error \"No clause to split here\") 3)\n"}
+{"kind":"send","prefix":"00001a","text":"((:case-split 5 2 \"n\") 4)\n"}
+{"kind":"recv","prefix":"00002f","text":"(:return (:error \"No clause to split here\") 4)\n"}
+{"kind":"send","prefix":"00001a","text":"((:case-split 5 3 \"n\") 5)\n"}
+{"kind":"recv","prefix":"00002f","text":"(:return (:error \"No clause to split here\") 5)\n"}
+{"kind":"send","prefix":"00001a","text":"((:case-split 5 4 \"n\") 6)\n"}
+{"kind":"recv","prefix":"00002f","text":"(:return (:error \"No clause to split here\") 6)\n"}
+{"kind":"send","prefix":"00001a","text":"((:case-split 5 5 \"n\") 7)\n"}
+{"kind":"recv","prefix":"00002f","text":"(:return (:error \"No clause to split here\") 7)\n"}
+{"kind":"close"}
+{"kind":"unframed","text":"Alas the file is done, aborting\n"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":["build/.vscode-idris2/ttc/2025081600/Plain.ttc","build/.vscode-idris2/ttc/2025081600/Plain.ttm"]}
