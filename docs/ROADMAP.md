@@ -757,7 +757,8 @@ M0 → M1 → M2 → M3 → M14).
   U1.3 (README kind table).
 - **Status: implemented for IDE mode** (2026-09-30; the user's decisions of 2026-10-01, §9,
   implemented the same day, every gate green after them; then the convergence pass of the layout
-  refusal, §9, 2026-10-01, `docs/as-built/M4.md`, *Convergence pass*), not committed when this was written. M5 has not shipped, so by the
+  refusal, §9, 2026-10-01, `docs/as-built/M4.md`, *Convergence pass*); committed as `982d2fc` (2026-10-01), CI run 36953444016
+  green on ubuntu and macOS. M5 has not shipped, so by the
   ownership rule above `LspBackend.edit()`/`holes()`, the LSP acceptance and the contract suite are
   M5's; the goal panel stays M7's. The IDE-mode acceptance was tested with these corrections of its
   text: Case Split on `f n = n` is refused before the compiler is asked ("this line has no hole to
@@ -1278,6 +1279,12 @@ release; no native dependencies → one universal `.vsix`; `extensionKind: ["wor
 `.vscodeignore` excludes sources, tests, fixtures, docs. `@vscode/vsce` 4.x publishes to the
 Marketplace and `ovsx` to Open VSX on `vX.Y.Z` tags from CI secrets (both need Node ≥ 22 per
 plan-ecosystem [npm, unverified here]); a `--pre-release` channel carries master-tracking builds.
+**As of 2026-10-01** the first pre-release is published by hand (`CONTRIBUTING.md`, *Releasing*);
+no publishing job exists. `@vscode/vsce` needs Node ≥ 22 [doc, its README]. A CI job cannot rest
+on a Marketplace token for long: Azure DevOps retires global personal access tokens on 2026-12-01
+[doc, VS Code's publishing guide], which recommends Microsoft Entra ID (`vsce publish
+--azure-credential`); `vsce` 4.0.0 also has `--oidc`, trusted publishing from GitHub Actions [src],
+and `ovsx` has `--trusted-publishing` [src, its CLI at HEAD].
 Bundle budget: extension < 1 MB, webview < 300 KB.
 
 ### 7.4 Versioning policy versus Idris 2 releases
@@ -1363,6 +1370,11 @@ retiring every backend risk before UI work is preferred.
 
 **Decided by the user on 2026-10-01 (M4)**
 
+- **Publishing prepared** (after M4, as decided on 2026-09-29): version **0.1.0**, the first
+  pre-release on the Visual Studio Marketplace and Open VSX, published by the user by hand
+  (`CONTRIBUTING.md`, *Releasing*). Pre-releases take odd minor versions (`0.1.x`), releases even
+  ones (`0.2.0` first), as VS Code's publishing guide recommends; it supports `major.minor.patch`
+  only, and a pre-release and a release may not share a version [doc, 2026-10-01].
 - **Always bracket.** Every answer the extension puts in place of a hole that is more than one
   token goes in parentheses, wherever the hole is, with no reading of the code around it: Intro
   (also a single candidate applied without asking), Refine Hole… and its ambiguity alternatives,
@@ -1844,8 +1856,10 @@ retiring every backend risk before UI work is preferred.
   2026-09-29; not run] (`docs/as-built/M3.md`, *Keybindings*). The `ctrl+shift+enter` part stays
   M4's. **M4 (2026-09-30):** the same check for all fifteen letters, each chord's whole sequence:
   on macOS no other binding of VS Code 1.140.0 is one of them or starts with one [live]; on Linux
-  M3's list holds single chords only [live, CI run 36715864881], and the check of the fifteen
-  letters runs at the first CI run of the M4 commit. `ctrl+shift+enter` is **Insert Line Above** (`editor.action.insertLineBefore`,
+  M3's list holds single chords only [live, CI run 36715864881], and no binding of VS Code 1.140.0
+  is one of the fifteen chords or starts with one either; its first keys are nine `ctrl+c` copy
+  bindings and three `ctrl+alt+i` Chat bindings, single chords [live, CI run 36953444016, ubuntu
+  job, at `982d2fc`]. `ctrl+shift+enter` is **Insert Line Above** (`editor.action.insertLineBefore`,
   CtrlCmd+Shift+Enter under `editorTextFocus`) in VS Code 1.139.1 and 1.140.0 [src, the workbench
   bundles]; binding it is M7's.
 - **E24** (M4/M5) LSP editing semantics against a real server: does VS Code's

@@ -1041,8 +1041,8 @@ mutable) or to LSP `didChangeConfiguration`.
   is on the declaration or the result of the document's Generate Definition cycle; Next Definition, Add
   Missing Cases, List Holes and Show Keybindings have no key. E23 for every letter: on macOS no
   other binding of VS Code 1.140.0 is one of these chords or starts with one [live]; on Linux M3's
-  list (above) holds single chords only, and the check of these letters runs at the first CI run of
-  the M4 commit. **Idris 2: Show
+  list (above) holds single chords only, and none of VS Code 1.140.0 is one of these chords or
+  starts with one either [live, CI run 36953444016, ubuntu job]. **Idris 2: Show
   Keybindings** is generated from the manifest. `docs/as-built/M4.md`, *Keybindings*.
 
 **As built (M4), the rest of this section.** Availability: the light bulb reads the text only

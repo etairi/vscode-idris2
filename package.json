@@ -2,7 +2,7 @@
   "name": "vscode-idris2",
   "displayName": "Idris 2",
   "description": "Idris 2 language support: the compiler's errors and warnings, types and documentation on hover, go to definition, completion, semantic highlighting, inlay hints, evaluation of expressions, interactive editing with holes (case split, proof search, generate definition and more) and a list of holes, syntax highlighting, editing support, snippets and toolchain detection.",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "publisher": "etairi",
   "license": "MIT",
   "repository": {

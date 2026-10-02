@@ -11,8 +11,8 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   and accepted (2026-09-27, `docs/as-built/M0.md`); M1 is implemented (2026-09-27,
   `docs/as-built/M1.md`, which lists its deviations from the M1 text); M2 is implemented
   (2026-09-28, `docs/as-built/M2.md`, likewise); M3 is implemented (2026-09-29, commits `04e96aa`
-  and `263f38f`, `docs/as-built/M3.md`, likewise); M4 is implemented for IDE mode (2026-09-30,
-  `docs/as-built/M4.md`, not committed when this was written; its LSP half — `LspBackend.edit()`,
+  and `263f38f`, `docs/as-built/M3.md`, likewise); M4 is implemented for IDE mode (2026-10-01,
+  commit `982d2fc`, `docs/as-built/M4.md`, likewise; its LSP half — `LspBackend.edit()`,
   `holes()` and the contract suite — is owned by M5, which ships second). The one planned stub is M0's
   `src/webview/goalPanel.ts` (an empty second esbuild entry, ROADMAP M0 "Out"), which M7
   replaces.
@@ -37,7 +37,8 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   actually running it.
 - Decisions taken by the user on 2026-09-26 (recorded in `docs/ROADMAP.md` §9): MIT licence
   (`LICENSE`, copyright Erkan Tairi); repository `github.com/etairi/vscode-idris2`; publisher
-  `etairi` (provisional, not yet created on the Marketplace); language id `idris2` (the clashing
+  `etairi` (provisional, not yet created on the Marketplace; the first pre-release, 0.1.0, was
+  prepared on 2026-10-01 and is published by the user, `CONTRIBUTING.md`, *Releasing*); language id `idris2` (the clashing
   `j-nava.idris2-language-support` was uninstalled from the user's VS Code); grammar written
   fresh, using existing grammars only as reference; implementation order M0 → M1 → M2 with one
   commit per milestone. Icon (decided 2026-09-27): the official Idris logo,

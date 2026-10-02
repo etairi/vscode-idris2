@@ -4,10 +4,11 @@ All notable changes to the "Idris 2" extension (`vscode-idris2`) are documented 
 The format follows [Keep a Changelog](https://keepachangelog.com/); the extension's version is
 independent of Idris 2 releases (`docs/ROADMAP.md` §7.4).
 
-## [Unreleased]
+## [0.1.0] - 2026-10-01
 
-Not published yet. A build of this repository (version 0.0.1) gives you the following. It
-supports macOS and Linux; on Windows, use VS Code with WSL, where the extension runs on Linux.
+The first pre-release, on the Visual Studio Marketplace and Open VSX (`etairi.vscode-idris2`). It
+supports macOS and Linux and was tested with Idris 2 0.8.0; on Windows, use VS Code with WSL,
+where the extension runs on Linux.
 
 ### Added
 

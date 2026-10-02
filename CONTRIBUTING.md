@@ -159,6 +159,46 @@ To try a `.vsix` without touching your own VS Code profile, follow
 [docs/checklists/M4.md](docs/checklists/M4.md) (or `M1.md` … `M3.md`): it installs the package
 into separate `--user-data-dir`, `--extensions-dir` and `--shared-data-dir` directories.
 
+## Releasing
+
+Pre-releases take odd minor versions (`0.1.x`), releases even ones (`0.2.0` first), as VS Code's
+[publishing guide](https://code.visualstudio.com/api/working-with-extensions/publishing-extension)
+recommends: it accepts `major.minor.patch` only, and a pre-release and a release may not share a
+version. `package.json` keeps `"preview": true` (the Marketplace's Preview badge) until a release
+is declared stable.
+
+1. Set the version (`npm version 0.1.1 --no-git-tag-version`), give it a `## [0.1.1] - <date>`
+   section in `CHANGELOG.md`, run the checks (`npm run check-types`, `npm run lint`,
+   `npm run test:unit`, `npm test`, `IDRIS2_E2E=1 npm run test:e2e`), commit, push and wait for CI.
+2. Build the package: `npm run package -- --pre-release` for a pre-release (`vsce publish
+   --pre-release` refuses a package that was not built with `--pre-release`), `npm run package`
+   for a release. It writes `vscode-idris2-<version>.vsix`; `npx vsce ls` lists what it holds.
+3. Visual Studio Marketplace, publisher `etairi` (created once at
+   <https://marketplace.visualstudio.com/manage> with a Microsoft account; the ID is fixed):
+
+   ```sh
+   npx vsce login etairi        # once; asks for a personal access token
+   npx vsce publish --pre-release --packagePath vscode-idris2-<version>.vsix
+   ```
+
+   The token comes from Azure DevOps (dev.azure.com): *User settings → Personal access tokens*,
+   organization **All accessible organizations**, scope **Marketplace → Manage**. Azure DevOps
+   retires these tokens on 2026-12-01; after that, publish with Microsoft Entra ID
+   (`npx vsce publish --azure-credential`, see the guide) or from GitHub Actions with trusted
+   publishing (`npx vsce publish --oidc`, `@vscode/vsce` 4.0 or later; it needs a trusted-publishing
+   policy for this repository's workflow on the publisher, which the guide does not describe yet).
+4. Open VSX, namespace `etairi` (once: an Eclipse account carrying your GitHub username, the
+   Publisher Agreement signed from your open-vsx.org profile, an access token from its settings,
+   and `npx ovsx create-namespace etairi -p <token>`):
+
+   ```sh
+   npx ovsx publish vscode-idris2-<version>.vsix --pre-release -p <token>
+   ```
+
+5. Tag the published commit: `git tag v<version> && git push origin v<version>`.
+
+A release is the same without `--pre-release`, on an even minor version.
+
 ## License
 
 By contributing you agree that your contributions are licensed under the [MIT licence](LICENSE).

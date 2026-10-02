@@ -7,7 +7,7 @@
 Language support for [Idris 2](https://www.idris-lang.org/), a purely functional programming
 language with first-class dependent types.
 
-> **Preview.** Early development, not yet on the Marketplace. A goal panel and checking while
+> **Preview.** Early development, published as a pre-release. A goal panel and checking while
 > you type come next — see the [roadmap](docs/ROADMAP.md).
 
 ## Features
@@ -56,12 +56,15 @@ The [user guide](docs/guide.md) describes each feature in detail.
 
 ## Installation
 
-Not yet published. To build and install from source (Node.js 24):
+Install the pre-release of **Idris 2** (`etairi.vscode-idris2`) from the
+[Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=etairi.vscode-idris2)
+or [Open VSX](https://open-vsx.org/extension/etairi/vscode-idris2), or run
+`code --install-extension etairi.vscode-idris2 --pre-release`. To build it from source (Node.js 24):
 
 ```sh
 git clone https://github.com/etairi/vscode-idris2 && cd vscode-idris2
 npm ci && npm run package
-code --install-extension vscode-idris2-0.0.1.vsix
+code --install-extension vscode-idris2-0.1.0.vsix
 ```
 
 Disable other Idris extensions while you use this one: they claim the same file types.
