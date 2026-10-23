@@ -889,8 +889,8 @@ M0 → M1 → M2 → M3 → M14).
 - **Open questions.** E9 (`-p`/opts in the shadow with `depends = contrib`), E22 (measured
   latency: warm shadow session vs cold spawn vs sibling retry), Q6 (on by default?).
 - **Upstream.** U3 removes the need for shadow copies; U1.5 for LSP users.
-- **Status: implemented** (2026-10-24), `idris2.checkOnType.enabled` on by default (ARCHITECTURE
-  §11). E9 settled from the 0.8.0 source and a live run: `-p` adds no package's dependencies, so the
+- **Status: implemented** (2026-10-24), committed as `ddabd4f`, CI run 40004468317 green on ubuntu
+  and macOS; `idris2.checkOnType.enabled` on by default (ARCHITECTURE §11). E9 settled from the 0.8.0 source and a live run: `-p` adds no package's dependencies, so the
   shadow directory holds a package file the extension writes (`shadow.ipkg`: the root's `depends`
   and `opts`), which departs from the acceptance item "no `.ipkg`" — whose intent, never the
   project's `.ipkg`, holds — and is the user's to confirm. E22 measured (a warm check 0.1 s beyond

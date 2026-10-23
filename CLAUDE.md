@@ -14,9 +14,9 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   and `263f38f`, `docs/as-built/M3.md`, likewise); M4 is implemented for IDE mode (2026-10-01,
   commit `982d2fc`, `docs/as-built/M4.md`, likewise; its LSP half — `LspBackend.edit()`,
   `holes()` and the contract suite — was M5's, which shipped second); M5 is implemented (2026-10-02,
-  commit `e4eedaa`, `docs/as-built/M5.md`, likewise); M6 is implemented (2026-10-24,
-  `docs/as-built/M6.md`, likewise: its shadow directory holds a package file, against an acceptance
-  item, for the user to confirm). The one planned stub is M0's
+  commit `e4eedaa`, `docs/as-built/M5.md`, likewise); M6 is implemented (2026-10-24, commit
+  `ddabd4f`, `docs/as-built/M6.md`, likewise: its shadow directory holds a package file, against an
+  acceptance item, for the user to confirm). The one planned stub is M0's
   `src/webview/goalPanel.ts` (an empty second esbuild entry, ROADMAP M0 "Out"), which M7
   replaces.
 - `docs/as-built/` — what was built: one file per finished milestone (`M0.md` … `M6.md`) with

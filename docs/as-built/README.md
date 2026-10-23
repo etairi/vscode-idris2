@@ -15,7 +15,7 @@ entry pointing here.
 | [`M3.md`](M3.md) | Read-only intelligence over IDE mode | 2026-09-29 | `04e96aa`, `263f38f` | 36674477234 (ubuntu, macOS; on `04e96aa`) |
 | [`M4.md`](M4.md) | Interactive editing and holes (IDE mode) | 2026-10-01 | `982d2fc` | 36953444016 (ubuntu, macOS) |
 | [`M5.md`](M5.md) | idris2-lsp backend and routing (and M4's LSP half) | 2026-10-02 (integrated) | `e4eedaa` | 39986288643 (ubuntu, macOS) |
-| [`M6.md`](M6.md) | Check-while-typing: shadow typecheck of unsaved buffers | 2026-10-24 | (this milestone's commit) | — |
+| [`M6.md`](M6.md) | Check-while-typing: shadow typecheck of unsaved buffers | 2026-10-24 | `ddabd4f` | 40004468317 (ubuntu, macOS) |
 
 ## How these files were made
 
