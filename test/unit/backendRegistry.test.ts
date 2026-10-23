@@ -30,7 +30,7 @@ class FakeProvider implements BackendProvider {
   }
 }
 
-suite('backend/registry (M2: one provider serves every root; its state for the status)', () => {
+suite('backend/registry (M2: one provider serves every root; its state for the status; the routing of M5 is in routing.test.ts)', () => {
   const project = projectRoot();
 
   test('without a provider every root, and a document without one, gets NullBackend, "syntax only" and no state', () => {
@@ -100,14 +100,17 @@ suite('backend/registry (M2: one provider serves every root; its state for the s
     assert.strictEqual(fired, 2);
   });
 
-  test('a second provider while one is set is refused (routing between two is M5); after removal another may be set', () => {
+  test('a second provider of one kind is refused; one of each kind may be set (M5), and without a routing IDE mode serves', () => {
     const registry = new BackendRegistry();
     const registration = registry.setProvider(new FakeProvider('ideMode'));
-    assert.throws(() => registry.setProvider(new FakeProvider('lsp')), /already set/);
+    assert.throws(() => registry.setProvider(new FakeProvider('ideMode')), /already set/);
+    const lsp = registry.setProvider(new FakeProvider('lsp'));
     assert.strictEqual(registry.labelFor(project), 'IDE mode');
     registration.dispose();
-    registry.setProvider(new FakeProvider('lsp'));
-    assert.strictEqual(registry.labelFor(project), 'idris2-lsp');
+    assert.strictEqual(registry.labelFor(project), 'idris2-lsp', 'the LSP provider alone serves every root');
+    lsp.dispose();
+    registry.setProvider(new FakeProvider('ideMode'));
+    assert.strictEqual(registry.labelFor(project), 'IDE mode');
   });
 
   test('after dispose: setting a provider throws, lookups fall back to NullBackend, no event fires', () => {

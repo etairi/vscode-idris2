@@ -183,10 +183,13 @@ vscode-idris2/
 │  │  ├─ types.ts                IdrisBackend interface, Capabilities, domain types (Hole,
 │  │  │                          Premise, TypeInfo, EditRequest/EditResult, Loaded…)   (M0)
 │  │  ├─ null.ts                 NullBackend: every capability false, every call Unsupported (M0)
-│  │  ├─ registry.ts             per-ProjectRoot backend choice (auto | lsp | ideMode), per-
-│  │  │                          feature fallback, lifecycle (start lazily, stop on close);
+│  │  ├─ registry.ts             per-ProjectRoot backend choice (auto | lsp | ideMode),
+│  │  │                          lifecycle (start lazily, stop on close);
 │  │  │                          M1: registration + status label only; as built (M2): one
-│  │  │                          BackendProvider for every root, BackendState, pendingLabel
+│  │  │                          BackendProvider for every root, BackendState, pendingLabel;
+│  │  │                          as built (M5): one provider of each kind, the routing
+│  │  │                          (decideRoute, BackendRouting, BackendChoices; §3.2, no
+│  │  │                          fallback per feature), LspAdmission (§3.2), LspProvider
 │  │  ├─ ide/                                                                        (M2, M3)
 │  │  │  ├─ types.ts             (as built, M2) the layer's contracts, types only: s-expressions,
 │  │  │  │                       frames, messages, IdeCodec, Transport, IdeSession, SessionPool
@@ -232,6 +235,12 @@ vscode-idris2/
 │  │  │  └─ backend.ts           LspBackend implements IdrisBackend; holes() via metavars and
 │  │  │                          edit() via codeAction selected by title (§3.3) are owned by
 │  │  │                          whichever of M4/M5 ships second (ROADMAP M4/M5 scope)
+│  │  │                          as built (M5): types.ts (the layer's contracts), client.ts
+│  │  │                          (the client, its process, framing, the executeCommand
+│  │  │                          wrappers as typed `executeCommand`), middleware.ts
+│  │  │                          (DocumentSync, ServerPaths, coordinates, untrusted text),
+│  │  │                          commands.ts (Restart / Stop / Show Output / Send Raw LSP
+│  │  │                          executeCommand…), edits.ts, holes.ts, backend.ts
 │  │  └─ cli/                                                                        (M9, M11)
 │  │     ├─ runner.ts            execFile/spawn idris2 or pack with cwd, env, cancellation
 │  │     └─ diagnostics.ts       parser for the landscape §4.2 text format; stem → path mapping
@@ -244,6 +253,10 @@ vscode-idris2/
 │  │  │                          core/idrisLexer.ts),
 │  │  │                          selectionRangeModel.ts (token → groups → layout blocks →
 │  │  │                          declaration → document), selectionRanges.ts (provider)  (M0)
+│  │  ├─ backend/                (as built, M5) the routing's UI: switchBackend.ts (Switch
+│  │  │                          Backend…), follow.ts (route changes, the consent question when
+│  │  │                          a document is shown, the no-.ipkg notification), migration.ts
+│  │  │                          (bamboo's settings), restart.ts, register.ts, types.ts
 │  │  ├─ consent/                (as built, M2) the consent gate of sessions outside the
 │  │  │                          trusted workspace folders (ROADMAP §9, 2026-09-27): gate.ts,
 │  │  │                          register.ts (question, Allow…, Manage Allowed Folders…)
@@ -300,9 +313,11 @@ vscode-idris2/
    │                             recorded --ttc-version/--paths/--list-packages/--dump-ipkg-json
    ├─ fake-tools/                (M1) sh and .cmd launchers of the fake idris2, idris2-lsp and
    │                             pack; fault modes; simulated pack layouts
-   ├─ fake-lsp/                  Node script (vscode-languageserver) replaying JSON-RPC
+   ├─ fake-lsp/                  Node script replaying JSON-RPC (as built, M5: plain Node, no
+   │                             library; replay.mjs, server.mjs, bin/idris2-lsp)
    └─ fixtures/
       ├─ transcripts/<idris2-version>/*.jsonl   recorded IDE-mode sessions
+      ├─ lsp-transcripts/<server-version>/*.jsonl recorded idris2-lsp sessions (M5)
       ├─ cli/<idris2-version>/*.txt              recorded --check/--build output
       ├─ ipkg/                                    package files for the ipkg reader (M1): errors,
       │                                           escapes, comments, versions, two .ipkg in one
@@ -312,7 +327,7 @@ vscode-idris2/
       │                                           attributes the excerpts
       └─ workspaces/  loose-file/  simple-ipkg/ (sourcedir=src, depends=contrib)
                       multi-module/  broken/ (type + coverage errors)  literate/
-                      golden-tests/  (Test.Golden layout)
+                      golden-tests/  (Test.Golden layout)  lsp-ipkg/ (M5)
 ```
 
 Naming rules: `features/*` never import from `backend/ide` or `backend/lsp` directly, only
@@ -405,7 +420,7 @@ up from a document **to the filesystem root** — the same walk the compiler's `
 from the process cwd (F13), so the extension and the compiler always agree on which ipkg
 governs a file even when the workspace folder is opened inside the package; the workspace
 folder only limits which projects the UI lists — else the document's directory for a loose
-file) to one *primary* backend and an optional *secondary* one. The status item's text is
+file) to one backend (M5: no secondary one, below). The status item's text is
 derived from this registry: `· syntax only` while no backend is registered for the document's
 root, `· IDE mode` / `· idris2-lsp` / `stopped` otherwise (goal 4).
 
@@ -415,8 +430,9 @@ clause is registered with `idrisDocumentSelector()` / `isIdrisDocument(doc)` / t
 language id: literate documents keep their host language ids (`markdown`, `latex`, …, ROADMAP
 M12), so a language-id selector would silently exclude them and M12 would have to retrofit
 every registration made by M2–M5. The one deliberate exception is the `LanguageClient`'s own
-`documentSelector` (`idris2` + `lidr`, M5): whether the server accepts literate files is
-[open] (E1), and ownership is enforced by middleware anyway. In M0 the selector is built from
+`documentSelector`, `file:` documents only (as built, M5: the extension's selector, rows and
+patterns, since the server accepts literate files [live, E1]); ownership is enforced by middleware
+anyway. In M0 the selector is built from
 language rows only (`idris2`, `lidr`): `.lidr` has its own id, and a pattern row would select
 documents that `isIdrisDocument` (keyed on `languageId`) rejects. Rows selected by file pattern
 or content come with M1's extension table and M12, each with the matching `isIdrisDocument`
@@ -425,17 +441,30 @@ test (`docs/as-built/M0.md`). As built in M1: pattern rows `**/*.idr.<ext>` and
 `isIdrisDocument` that tests the same suffixes on `document.fileName`; a bare `.md`, `.tex`,
 `.org` or `.typ` is selected only from M12 (`docs/as-built/M1.md`).
 
-Policy for `idris2.backend.mode`:
+Policy for `idris2.backend.mode` (the user's decision of 2026-10-01 on ROADMAP §9 Q7; until then
+`auto` preferred idris2-lsp for packages, with the other backend as a secondary one and a fallback
+per feature):
 
-| mode | primary | secondary |
+| mode | a root with an `.ipkg` | a loose file |
 |---|---|---|
-| `auto` (default) | `lsp` iff `idris2-lsp` is found **and** the pair verdict is compatible **and** the root has an `.ipkg` (the server requires one [src]) **and** the document is not literate (server acceptance [open]); else `ideMode` | the other one, if it can serve that root |
-| `lsp` | `lsp` (error status if unavailable) | none |
-| `ideMode` | `ideMode` | none |
+| `auto` (default) | `ideMode` while a usable `idris2` is found or no trusted scan has finished; else `lsp` when the server answered `--version` and the pair verdict is not `likelyMismatch`; with neither tool usable, `ideMode` (which reports the missing compiler) | `ideMode`; nothing when only the server is usable |
+| `lsp` | `lsp` (`failed`, with the scan's reason, while no usable server was found) | nothing: the one-time notification (§5.3), which offers IDE mode for its folder |
+| `ideMode` | `ideMode` | `ideMode` |
 
-Per-feature fallback: when the primary lacks a capability (LSP has no `-next` cycling or
-`intro` list; IDE mode has no signature help), the registry answers from the secondary if one
-is running for that root. Loose files are always `ideMode` (server needs an ipkg [src]).
+**Idris 2: Switch Backend…** keeps a per-root choice in the workspace state
+(`idris2.backendChoices`), which comes before the setting. **One backend per root**: there is no
+secondary backend and no fallback per feature; a feature the root's backend lacks answers
+`Unsupported` with the reason (§3.1), which the UI shows. A root served by nothing
+(`UnservedBackend`) reads `syntax only`. Literate files are routed like any other: the server loads
+`.lidr`, `.md` and `.idr.md` files of a package [live, E1]. As built: `docs/as-built/M5.md`,
+*Routing*.
+
+**Which documents reach the server** (`LspAdmission`, the `LspOwnership` of `backend/lsp/types.ts`):
+only a `file:` Idris document of a root with an `.ipkg` routed to idris2-lsp, in a trusted workspace,
+whose folder lies inside a trusted workspace folder or was allowed by the consent gate of M2 — the
+server changes into a file's folder and builds it, which can run elaborator scripts, and it does so
+for any file a request names [live]. `admits` never asks the question; it is asked when such a
+document is shown (`features/backend/follow.ts`).
 
 **LSP ownership is enforced with `LanguageClientOptions.middleware`, not with document
 selectors**: the single `LanguageClient` (the server keeps one open file and declares
@@ -517,6 +546,18 @@ ROADMAP §9, 2026-10-01): the line reader behind it runs M0's lexer (`core/idris
 shapes it misses or over-refuses: `docs/as-built/M4.md`, *Open issues*.
 `docs/as-built/M4.md`, *Edits*.
 
+**As built (M5).** `LspBackend.edit()` follows the table above for the request (the specific
+`context.only` key, the action chosen by its title) but never applies the server's
+`WorkspaceEdit`: it takes the answer out of it — checked to be for the request's document and the
+hole's or the line's range — and hands it, as IDE mode's reply, to IDE mode's plan, so that M4's
+rules apply (the user's decision of 2026-10-01; ROADMAP §9). The result is an `EditResult` of the
+form above, not `workspaceEdit`. Proof Search and Generate Definition keep the server's up to
+`maxCodeActionResults` results for Next, which then says that the server gives no more; the
+server's `Generate next definition` repeats its first answer and is not used. A refine with no
+action says that the expression may be ambiguous and that IDE mode offers the alternatives. The
+contract suite asserts the same text from both backends and pins each difference
+(`docs/as-built/M5.md`, *LSP backend*, *Contract*).
+
 ---
 
 ## 4. The three engines
@@ -525,7 +566,7 @@ shapes it misses or over-refuses: `docs/as-built/M4.md`, *Open issues*.
                  features/*  (providers, commands, views, panel)
                         │ IdrisBackend + Capabilities
              ┌──────────┴───────────┐
-             │ backend/registry.ts  │  per ProjectRoot: auto | lsp | ideMode (+ fallback)
+             │ backend/registry.ts  │  per ProjectRoot: auto | lsp | ideMode (one each)
              └───┬──────────────┬───┘
                  │              │                          backend/cli/runner.ts
    ┌─────────────┴───┐   ┌──────┴───────────────┐   ┌──────────────────────────┐
@@ -541,7 +582,9 @@ shapes it misses or over-refuses: `docs/as-built/M4.md`, *Open issues*.
 ```
 
 - **LSP client**: `vscode-languageclient/node` 10.x, `ServerOptions = { command: <idris2-lsp>,
-  options: { cwd: <workspace folder>, env } }`. `initializationOptions` is the flat object of
+  options: { cwd: <workspace folder>, env } }` (as built, M5: `ServerOptions` is a function that
+  starts the process through `core/process.ts` `startLongRunningProcess`, in the real path the
+  consent gate judged, and frames its stdout itself; `docs/as-built/M5.md`, *Decisions*). `initializationOptions` is the flat object of
   the eight server options (`logFile`, `logSeverity`, `longActionTimeout`,
   `maxCodeActionResults`, `showImplicits`, `showMachineNames`, `fullNamespace`,
   `briefCompletions` [landscape §3]). Setting changes are forwarded by sending
@@ -610,7 +653,9 @@ stopped ─spawn─▶ starting ─(:protocol-version 2 1 within 10 s)─▶ rea
 - **Configuration changes.** A change to any `idris2.toolchain.*` or `idris2.ideMode.*`
   setting restarts every session (new binary, argv, env or transport take effect at once);
   the LSP client prompts "Restart language server?" for `toolchain.lspPath`/`lsp.trace.server`
-  and forwards the eight server options without a restart (§4).
+  and forwards the eight server options without a restart (§4). As built (M5): it asks when a new
+  scan finds another server or environment (`lspPath`, `env`, `preferPack`) and when `lsp.logFile`
+  is cleared; `lsp.trace.server` is applied by the library at once and asks nothing.
 - **Effective build directory.** `SessionPool.effectiveCheckBuildDir(root)` =
   `<root>/<build>/.vscode-idris2` when `ideMode.isolateBuildDir` is on and the ipkg has no
   `builddir`, else `<root>/<builddir or build>`; the shadow role (§5.2, §6.3) reads its TTCs
@@ -699,7 +744,13 @@ Started lazily on the first LSP-owned document; `ErrorHandler` with the same bac
 `idris2.showLanguageServerOutput` opens the client's channel, where the server's stderr `LOG
 <severity>:<topic>: …` lines land [src `Server/Log.idr` 78–82]; `RequestCancelled` from
 `semanticTokens/full` on dirty documents is swallowed and the last tokens are returned
-[landscape §7].
+[landscape §7]. As built (M5): the backoff is M2's (three restarts in five minutes, then
+`failed`); Stop keeps the server stopped until Restart; the cancelled tokens become a
+`CancellationError`, after which VS Code keeps the tokens it shows (returning the last tokens would
+set tokens of the text before the unsaved edits); a document VS Code shows unchanged again without
+a save is sent `didSave`, since the server answers nothing for a changed document until then; the
+documents are sent as the real paths of their folders (the server refuses a path below a symbolic
+link). `docs/as-built/M5.md`, *Language client*.
 
 **Missing ipkg.** The server never reports it: `loadURI` only logs `Cannot load ipkg file for
 <uri>: "Cannot find the ipkg file"` to its log handle and `didOpen`/`didSave` discard the
@@ -712,7 +763,12 @@ LSP-owned: a `ResponseError` with code `3` whose message contains `Cannot find t
 (`withURI`, [src `ProcessMessage.idr` 292–297]) and, when the extension spawns the server
 itself so that stderr is a stream it owns, the line `LOG Error:Server: Cannot load ipkg file
 for` — both derived from source, not observed live (Q2), and neither is guaranteed to fire
-because `loadURI` records `openFile` before the ipkg check fails (F35).
+because `loadURI` records `openFile` before the ipkg check fails (F35). **Corrected in M5**
+[live]: neither form occurs with Idris 2 `1c630e6`; a file without an `.ipkg` is answered with code
+4, `Error: Source file "<abs>" is not in the source directory ""`, or `null`, and logged `LOG
+ERROR:Server: … Source file …` (severity in capitals); an `.ipkg` deleted while the server runs is
+not reported at all. The client reads both the code-4 form and the source's code-3 form, from every
+request (the middleware's request hook) and from the log (ROADMAP §0 F35).
 
 ---
 
@@ -1094,7 +1150,7 @@ Every key has a `markdownDescription` and a scope (`machine-overridable` for pat
 | `toolchain.idris2Path`, `toolchain.lspPath`, `toolchain.packPath` | `""` (discover) | M1 |
 | `toolchain.preferPack` | `false` | M1 |
 | `toolchain.env` | `{}` (e.g. `IDRIS2_PREFIX`) | M1 |
-| `backend.mode` | `"auto"` (`auto` \| `lsp` \| `ideMode`) | M5 |
+| `backend.mode` | `"auto"` (`auto` \| `lsp` \| `ideMode`; as built `resource` scope, §3.2) | M5 |
 | `checking.trigger`, `checking.delay` | `"onSave"`, `700` ms | M2 |
 | `checking.saveBeforeAction` | `"always"` (`always` \| `prompt` \| `never`) | M4 |
 | `checkOnType.enabled`, `checkOnType.delay` | `true`, `500` ms (shadow) | M6 |
@@ -1105,8 +1161,8 @@ Every key has a `markdownDescription` and a scope (`machine-overridable` for pat
 | `ideMode.requestTimeout`, `ideMode.longActionTimeout`, `ideMode.idleTimeout` | `5000`, `60000`, `600000` ms | M2 |
 | `ideMode.maxSessions`, `ideMode.maxBackgroundChecks` | `0`, `0` (no limit; ROADMAP §9 Q21) | M2 |
 | `diagnostics.includeSourceExcerpt` | `false` | M2 |
-| `lsp.{logFile,logSeverity,longActionTimeout,maxCodeActionResults,showImplicits,showMachineNames,fullNamespace,briefCompletions}` | server defaults [landscape §3] | M5 |
-| `lsp.trace.server` | `"off"` | M5 |
+| `lsp.{logFile,logSeverity,longActionTimeout,maxCodeActionResults,showImplicits,showMachineNames,fullNamespace,briefCompletions}` | server defaults [landscape §3], but `logSeverity` `info` (ROADMAP §9, 2026-10-24) | M5 |
+| `lsp.trace.server` | `"off"` (as built: `"messages"`, values `messages` \| `verbose`, no `off`: the library writes a trace only while its channel's level is Trace, and then reads `off` as `messages`) | M5 |
 | `keybindings.scheme` | `"chords"` on macOS, `"prefix"` elsewhere (as built: `"auto"`, which means that, §10) | M3 or M4, whichever ships first (both contribute bindings under it, §10) |
 | `holes.showInSideBar` | `true` | M4 |
 | `goalPanel.autoOpen`, `goalPanel.followCursor`, `goalPanel.debounce` | `false`, `true`, `50` ms | M7 |
@@ -1137,7 +1193,14 @@ them with this key map (F36): `idris2-lsp.loglevel → idris2.lsp.logSeverity` (
 name differs from the server option it never actually read), `idris2-lsp.{logFile,
 longActionTimeout, maxCodeActionResults, showImplicits, showMachineNames, fullNamespace,
 briefCompletions} → idris2.lsp.<same>`, `idris2-lsp.path → idris2.toolchain.lspPath`,
-`idris2-lsp.trace.server → idris2.lsp.trace.server`.
+`idris2-lsp.trace.server → idris2.lsp.trace.server`. As built (M5): offered in a trusted workspace,
+at activation and on any `idris2-lsp.*` change, once per set of values; not copied: a `logFile` of
+`stderr` or a relative path, a trace `off`, counts below 1, wrong types, and a workspace folder's
+value of a `window`-scoped key (VS Code writes folder values of `resource`-like settings only);
+`docs/as-built/M5.md`, *Decisions*. **As built (M5)** for the other keys: the eight server options
+have the server's own defaults (`window` scope; `logFile` `machine-overridable` and in
+`restrictedConfigurations`), and `lsp.trace.server` is read by vscode-languageclient itself, not
+through `core/config.ts`.
 
 ---
 
@@ -1149,7 +1212,7 @@ briefCompletions} → idris2.lsp.<same>`, `idris2-lsp.path → idris2.toolchain.
 | Grammar | `vscode-textmate` + `vscode-oniguruma` snapshots (`npm run test:grammar`) | nothing | scopes over `test/fixtures/grammar/*.idr`, `.lidr`, `.ipkg`, injections |
 | Integration | `@vscode/test-cli` (Electron, per fixture workspace) | VS Code download | activation, contributions, commands, providers, settings, routing, diagnostics rendering, hole views, task UI — driven by `test/fake-idris2` (stdio + socket) and `test/fake-lsp` replaying transcripts |
 | E2E | same runner, `IDRIS2_E2E=1` | real `idris2` (+ `idris2-lsp`) | the facts in `ROADMAP.md` §0 as regression tests (planned: every row; as built in M2: F1–F7, F10, F12–F14, F29–F33); `IDRIS2_RECORD=1` refreshes `test/fixtures/transcripts/<version>/` |
-| Contract | mocha suite parameterised over backends | as above | the same fixture yields the same holes/types/edits from `IdeBackend` and `LspBackend`; owned by whichever of M4/M5 ships second (§3.3), runs against the fakes in CI and the real toolchain in e2e |
+| Contract | mocha suite parameterised over backends | as above | the same fixture yields the same holes/types/edits from `IdeBackend` and `LspBackend`; owned by whichever of M4/M5 ships second (§3.3), runs against the fakes in CI and the real toolchain in e2e (as built, M5: `test/unit/contract.test.ts`, the edits, over the IDE-mode transcripts and the idris2-lsp recordings; the e2e-lsp suite checks the same texts against the real server) |
 | Manual | `docs/checklists/Mn.md` | — | 5–10 steps per milestone before tagging |
 
 **As built (M1, M2).** The suites that exist and what drives them, the transcript recorder (`npm
@@ -1162,7 +1225,10 @@ adds the integration suites `editing` (`broken`) and `holes` (`holes`), the fake
 held-back answers and its replay matching without queries, the e2e file `editing.test.ts`, and a
 differential test of the edits' line reader against M0's lexer (unit, and the corpus suite in CI)
 beside the lexer oracle's check of that lexer (local); the contract suite is M5's
-(`docs/as-built/M4.md`, *Tests*).
+(`docs/as-built/M4.md`, *Tests*). M5 adds the integration suite `lsp` (`lsp-ipkg`, the fake
+language server of `test/fake-lsp` replaying the recordings of `npm run record:lsp-transcripts`), the
+e2e suite `e2e-lsp` (only with `IDRIS2_LSP`), the contract suite, and the fixture `lsp-ipkg`
+(`docs/as-built/M5.md`, *Tests*).
 
 Fixture workspaces: `loose-file/` (no ipkg, `import Data.Vect`), `simple-ipkg/` (`sourcedir =
 "src"`, `depends = contrib`, two modules), `multi-module/` (one error in a sub-module),

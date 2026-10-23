@@ -22,12 +22,33 @@
  * in the comments of the two types). The contract is backend-neutral: M4 implements it for IDE
  * mode; `LspBackend.edit()` and `LspBackend.holes()` and the contract suite are owned by M5, which
  * ships second (ROADMAP M4 *Scope*, ownership rule).
+ *
+ * M5 (ROADMAP §5 M5) adds the idris2-lsp backend (`backend/lsp/backend.ts`, kind `lsp`) and says
+ * what `Capabilities` means per backend (below). Its layer's own contracts are
+ * `backend/lsp/types.ts`.
  */
 import type * as vscode from 'vscode';
 import type { EditorRange } from '../core/positions';
 
 export type BackendKind = 'ideMode' | 'lsp' | 'null';
 
+/**
+ * Which `IdrisBackend` methods answer, and so which of the extension's own providers, commands and
+ * views serve a root: a provider answers only when its capability is true; a command asks whatever
+ * the capabilities say, so that a backend that cannot answer says why (`Unsupported`, naming the
+ * backend; ARCHITECTURE §3.1). One backend serves a root, with no secondary one (ROADMAP §9 Q7,
+ * decided 2026-10-01). Per backend:
+ *
+ * | Capabilities | IDE mode (`backend/ide/backend.ts` `IDE_MODE_CAPABILITIES`) | idris2-lsp (`backend/lsp/backend.ts`, M5) | none (`backend/null.ts` `NO_CAPABILITIES`) |
+ * |---|---|---|---|
+ * | `diagnostics`, `hover`, `definition`, `completion`, `semanticTokens`, `documentSymbols`, `documentHighlights` | true | false: for the documents the routing gives the server (`backend/lsp/types.ts` `LspOwnership`) the language client's own providers answer, through its middleware, so the extension's providers stay silent there and nothing is answered twice | false |
+ * | `signatureHelp` | false: IDE mode has none | false: the language client's provider | false |
+ * | `holes`, `holeLocations` | true | true (`metavars`, F26) | false |
+ * | `editing`, `intro`, `refine`, `missingCases` | true | true: code actions requested with `only` and chosen by title, `exprSearchWithHints`, `refineHole`, the quick fix of a coverage error (ARCHITECTURE §3.3), under M4's rules | false |
+ * | `editingNext` | true | true: the next of the server's `Expression search` actions (at most `idris2.lsp.maxCodeActionResults`, then `exhausted`) and its `Generate next definition` | false |
+ * | `evaluate`, `docs`, `browseNamespace` | true | as `backend/lsp/backend.ts` says (`repl` only behind M3's `replCommandRefusal`; `browseNamespace`) | false |
+ * | `checksUnsaved` | false | false | false (M6's shadow backend) |
+ */
 export interface Capabilities {
   /** load + errors */
   diagnostics: boolean;

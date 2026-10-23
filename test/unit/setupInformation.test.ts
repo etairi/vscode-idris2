@@ -171,6 +171,25 @@ suite('toolchain/setupInfo', () => {
       assert.ok(renderSetupInformation(input()).includes('No idris2-lsp was found, so there is no pair to judge.'));
     });
 
+    test("M5: the compiler of idris2-lsp's installation, which the verdict compares the server with", () => {
+      const besideIdris2 = '/home/u/.local/share/pack/bin/idris2';
+      const probed = idris2Probed('0.8.0-1c630e67c');
+      assert.ok(probed.status === 'probed');
+      const own = { ...probed, location: location('idris2', besideIdris2) };
+      const heading = "## The compiler of idris2-lsp's installation\n\n";
+      const text = renderSetupInformation(
+        input({ snapshot: snapshot({ lsp: lspProbed('0.8.0-1c630e67c'), lspCompiler: { source: 'beside', sameAsIdris2: false, state: own } }) }),
+      );
+      assert.ok(text.includes(`${heading}- Path: \`${besideIdris2}\``), text);
+      assert.ok(text.includes('- Version line: `Idris 2, version 0.8.0-1c630e67c`\n'));
+      assert.ok(text.includes('## Pair verdict (idris2-lsp and its compiler)'));
+      const same = renderSetupInformation(input({ snapshot: snapshot({ lsp: lspProbed('0.8.0'), lspCompiler: { source: 'beside', sameAsIdris2: true, state: idris2Probed() } }) }));
+      assert.ok(same.includes(`${heading}- The \`idris2\` beside idris2-lsp is the \`idris2\` above.\n`));
+      const search = renderSetupInformation(input({ snapshot: snapshot({ lsp: lspProbed('0.8.0'), lspCompiler: { source: 'search', state: idris2Probed() } }) }));
+      assert.ok(search.includes(`${heading}- No \`idris2\` lies beside idris2-lsp`));
+      assert.ok(!renderSetupInformation(input()).includes(heading), 'no server, no section');
+    });
+
     test('settings as the scan used them, including ignored env entries', () => {
       const text = renderSetupInformation(
         input({

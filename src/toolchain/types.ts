@@ -27,7 +27,8 @@
  *   (`printVersion`, `src/Server/Main.idr` 206–209); both use the compiler's `Show Version`
  *   above. The server's own version is 0.1.0 plus the same kind of git tag (idris2-lsp
  *   `Makefile` 8–20, 58); the API version is the one compiled into the `idris2api` package the
- *   server was built against [src]. No server was run (none is installed; ROADMAP §9 Q2).
+ *   server was built against [src]. pack's build of `9a2f0ad` printed `Idris2 LSP: 0.1.0-9a2f0ad6a`
+ *   and `Idris2 API: 0.8.0-1c630e67c` [live, 2026-10-01, docs/as-built/M5.md].
  * - pack (`toolchain/pack.ts` has the details and line numbers): it needs `$HOME` to be an
  *   absolute path (`~` below) and has no directories otherwise; its configuration directory is
  *   `$PACK_USER_DIR`, else `$XDG_CONFIG_HOME/pack`, else `~/.config/pack`; its state directory
@@ -40,11 +41,11 @@
  *   449–457, 487, 695–702 [src]). README 293–299 [doc] also names
  *   `$XDG_STATE_HOME/pack/install/<collection>/bin`, but no code in 6baee7d creates it and
  *   `pack gc` would delete it (`src/Pack/Runner/Database.idr` 381–384) [src]. pack's wrappers run
- *   pack itself (`pack app-path <app>`, and for `idris2` also `package-path`, `libs-path`,
- *   `data-path`: `appLink`, `src/Pack/Runner/Install.idr` 139–188 [src]), so probing a
- *   pack-installed `idris2` runs pack even though the extension never starts pack directly.
- *   pack is not installed on the development machine (ROADMAP §9: installed only in M5), so
- *   nothing about it was observed.
+ *   pack itself (`pack app-path <app>`, `package-path`, `libs-path` and `data-path`: `appLink`,
+ *   `src/Pack/Runner/Install.idr` 139–188 [src]; for `idris2-lsp` too, seen in the wrappers pack
+ *   wrote on the development machine, 2026-10-01 [live]), so probing a pack-installed `idris2` or
+ *   `idris2-lsp` runs pack even though the extension never starts pack directly. pack was
+ *   installed there in M5 (docs/as-built/M5.md); the rest of this paragraph was read, not run.
  */
 import type { Config, ToolchainSettings } from '../core/config';
 import type { IDisposable } from '../core/disposable';
@@ -287,18 +288,42 @@ export type ToolState<Info> =
       readonly probes: readonly ProbeRecord[];
     };
 
+/** What the pair verdict needs of a compiler: its `--version` answer (`Idris2Info` has more). */
+export type CompilerVersionInfo = Pick<Idris2Info, 'versionLine' | 'version' | 'probes'>;
+
+/**
+ * The compiler the pair verdict compares idris2-lsp with (ROADMAP M5, user decision of 2026-10-01:
+ * the server is paired with the compiler of its own installation, not with the `idris2` on `PATH`):
+ *
+ * - `beside` — an `idris2` executable in the directory the server was found in (as found, symbolic
+ *   links not resolved). pack writes its `idris2` and `idris2-lsp` wrappers side by side into its
+ *   bin directory (`appLink`, `src/Pack/Runner/Install.idr` 157–186 [src]; seen in the
+ *   `PACK_BIN_DIR` of the development machine's install, 2026-10-01 [live]), and a server
+ *   built from source is installed by `make install` into `$(PREFIX)/bin`, `PREFIX ?=
+ *   $(HOME)/.idris2` (idris2-lsp `9a2f0ad` `config.mk` 4, `Makefile` 43–45 [src]), the default
+ *   `PREFIX` of Idris 2's own `make install` too (Idris2 `1c630e6` `config.mk` 4 [src]). When it
+ *   is the file the search found (`sameAsIdris2`; compared as written, else by real path), `state`
+ *   is that `idris2`'s; otherwise it is this executable's `--version`, one more probe.
+ * - `search` — there is no `idris2` beside the server: the `idris2` the search found (M1's pairing),
+ *   whose `state` this is.
+ */
+export type ServerCompiler =
+  | { readonly source: 'beside'; readonly sameAsIdris2: boolean; readonly state: ToolState<CompilerVersionInfo> }
+  | { readonly source: 'search'; readonly state: ToolState<CompilerVersionInfo> };
+
 /** pack is found when its executable is; the layout is read from the file system only. */
 export type PackState =
   | { readonly status: 'missing'; readonly searched: readonly string[]; readonly reason: string }
   | { readonly status: 'found'; readonly info: PackInfo };
 
 /**
- * Whether `idris2` and `idris2-lsp` fit together (ROADMAP M1 technical approach, D20). A
- * heuristic: `compatible` iff the server's `Idris2 API` version text equals the compiler's
- * version text or differs only in how far one commit hash is abbreviated, `likelyMismatch`
- * otherwise (where the two were found only chooses the explanation, `verdict.ts`;
- * docs/as-built/M1.md, *Pair verdict*); `unknown` when the texts are not available
- * (e.g. Restricted Mode, a failed probe). `reason` is one sentence for the UI.
+ * Whether `idris2-lsp` fits the compiler it is paired with (ROADMAP M1 technical approach, D20;
+ * since M5 the compiler of the server's own installation, `ServerCompiler`). A heuristic:
+ * `compatible` iff the server's `Idris2 API` version text equals the compiler's version text or
+ * differs only in how far one commit hash is abbreviated, `likelyMismatch` otherwise (where the
+ * two were found only chooses the explanation, `verdict.ts`; docs/as-built/M1.md, *Pair
+ * verdict*); `unknown` when the texts are not available (e.g. Restricted Mode, a failed probe).
+ * `reason` is one sentence for the UI.
  */
 export type VerdictKind = 'compatible' | 'likelyMismatch' | 'unknown';
 
@@ -320,6 +345,11 @@ export interface ToolchainSnapshot {
   readonly settings: ToolchainSettings;
   readonly idris2: ToolState<Idris2Info>;
   readonly lsp: ToolState<LspInfo>;
+  /**
+   * The compiler `verdict` pairs the server with (`ServerCompiler`): set by every scan that found an
+   * `idris2-lsp`, absent otherwise (optional, so that the snapshots unit tests build may leave it out).
+   */
+  readonly lspCompiler?: ServerCompiler;
   readonly pack: PackState;
   /** `undefined` when no `idris2-lsp` was found (there is no pair to judge). */
   readonly verdict: Verdict | undefined;

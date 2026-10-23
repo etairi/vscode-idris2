@@ -1,0 +1,64 @@
+{"kind":"meta","format":1,"scenario":"repl","description":"E10: executeCommand repl in the context of Clean.idr: an expression, an IO action (shown, not run), a name with a hole, and the colon commands :t id and :version (no :exec is sent)","facts":["F20"],"server":{"version":"0.1.0-9a2f0ad6a","api":"0.8.0-1c630e67c","versionText":"Idris2 LSP: 0.1.0-9a2f0ad6a\nIdris2 API: 0.8.0-1c630e67c","executable":"~/.local/share/pack/bin/idris2-lsp"},"platform":"darwin arm64","recorded":"2026-10-01","workspace":"test/fixtures/workspaces/lsp-ipkg","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"src/Clean.idr":"4f802b8f59f48e473ab27910d428c50c4eff75c7e103766c1de6c0ae80ffea19"}}
+{"kind":"send","length":1661,"text":"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"processId\":null,\"clientInfo\":{\"name\":\"vscode-idris2 record-lsp-transcripts\"},\"locale\":\"en\",\"rootPath\":\"${ROOT}\",\"rootUri\":\"file://${ROOT}\",\"capabilities\":{\"workspace\":{\"applyEdit\":true,\"workspaceEdit\":{\"documentChanges\":true},\"didChangeConfiguration\":{\"dynamicRegistration\":false},\"executeCommand\":{\"dynamicRegistration\":false},\"semanticTokens\":{\"refreshSupport\":true}},\"textDocument\":{\"synchronization\":{\"dynamicRegistration\":false,\"willSave\":false,\"willSaveWaitUntil\":false,\"didSave\":true},\"hover\":{\"dynamicRegistration\":false,\"contentFormat\":[\"markdown\",\"plaintext\"]},\"publishDiagnostics\":{\"relatedInformation\":true,\"versionSupport\":false,\"tagSupport\":{\"valueSet\":[1,2]},\"codeDescriptionSupport\":true,\"dataSupport\":true},\"codeAction\":{\"dynamicRegistration\":false,\"isPreferredSupport\":true,\"codeActionLiteralSupport\":{\"codeActionKind\":{\"valueSet\":[\"\",\"quickfix\",\"refactor\",\"refactor.extract\",\"refactor.inline\",\"refactor.rewrite\",\"source\",\"source.organizeImports\"]}}}}},\"initializationOptions\":{\"logSeverity\":\"info\",\"longActionTimeout\":1000,\"maxCodeActionResults\":5,\"showImplicits\":false,\"showMachineNames\":false,\"fullNamespace\":false,\"briefCompletions\":false},\"trace\":\"off\",\"workspaceFolders\":[{\"uri\":\"file://${ROOT}\",\"name\":\"lsp-ipkg\"}]}}"}
+{"kind":"stderr","text":"LOG DEBUG:Communication.Channel: Received message: {\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"processId\":null,\"clientInfo\":{\"name\":\"vscode-idris2 record-lsp-transcripts\"},\"locale\":\"en\",\"rootPath\":\"${ROOT}\",\"rootUri\":\"file://${ROOT}\",\"capabilities\":{\"workspace\":{\"applyEdit\":true,\"workspaceEdit\":{\"documentChanges\":true},\"didChangeConfiguration\":{\"dynamicRegistration\":false},\"executeCommand\":{\"dynamicRegistration\":false},\"semanticTokens\":{\"refreshSupport\":true}},\"textDocument\":{\"synchronization\":{\"dynamicRegistration\":false,\"willSave\":false,\"willSaveWaitUntil\":false,\"didSave\":true},\"hover\":{\"dynamicRegistration\":false,\"contentFormat\":[\"markdown\",\"plaintext\"]},\"publishDiagnostics\":{\"relatedInformation\":true,\"versionSupport\":false,\"tagSupport\":{\"valueSet\":[1,2]},\"codeDescriptionSupport\":true,\"dataSupport\":true},\"codeAction\":{\"dynamicRegistration\":false,\"isPreferredSupport\":true,\"codeActionLiteralSupport\":{\"codeActionKind\":{\"valueSet\":[\"\",\"quickfix\",\"refactor\",\"refactor.extract\",\"refactor.inline\",\"refactor.rewrite\",\"source\",\"source.organizeImports\"]}}}}},\"initializationOptions\":{\"logSeverity\":\"info\",\"longActionTimeout\":1000,\"maxCodeActionResults\":5,\"showImplicits\":false,\"showMachineNames\":false,\"fullNamespace\":false,\"briefCompletions\":false},\"trace\":\"off\",\"workspaceFolders\":[{\"uri\":\"file://${ROOT}\",\"name\":\"lsp-ipkg\"}]}}\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"initialize\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received initialization request\n"}
+{"kind":"stderr","text":"LOG INFO:Request.Configuration: Long action timeout set to 1000\n"}
+{"kind":"stderr","text":"LOG INFO:Request.Configuration: Max code action results set to 5\n"}
+{"kind":"stderr","text":"LOG INFO:Request.Configuration: Show implicits set to False\n"}
+{"kind":"stderr","text":"LOG INFO:Request.Configuration: Full namespace set to False\n"}
+{"kind":"stderr","text":"LOG INFO:Server: Server initialized and configured\n"}
+{"kind":"recv","length":1290,"text":"{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"capabilities\":{\"textDocumentSync\":{\"openClose\":true,\"change\":2,\"save\":{\"includeText\":true}},\"completionProvider\":{\"triggerCharacters\":[],\"allCommitCharacters\":[]},\"hoverProvider\":true,\"signatureHelpProvider\":{},\"declarationProvider\":false,\"definitionProvider\":{\"workDoneProgress\":false},\"typeDefinitionProvider\":false,\"implementationProvider\":false,\"referencesProvider\":false,\"documentHighlightProvider\":true,\"documentSymbolProvider\":{},\"codeActionProvider\":{\"resolveProvider\":false},\"codeLensProvider\":{},\"documentLinkProvider\":{},\"colorProvider\":false,\"documentFormattingProvider\":false,\"documentRangeFormattingProvider\":false,\"renameProvider\":false,\"foldingRangeProvider\":false,\"executeCommandProvider\":{\"commands\":[\"repl\",\"exprSearchWithHints\",\"refineHoleWithHints\",\"metavars\"]},\"selectionRangeProvider\":false,\"linkedEditingRangeProvider\":false,\"callHierarchyProvider\":false,\"semanticTokensProvider\":{\"legend\":{\"tokenTypes\":[\"type\",\"function\",\"enumMember\",\"variable\",\"keyword\",\"namespace\",\"postulate\",\"module\",\"comment\"],\"tokenModifiers\":[]},\"range\":false,\"full\":true},\"monikerProvider\":false,\"workspaceSymbolProvider\":false,\"workspace\":{\"workspaceFolders\":{\"supported\":false},\"fileOperations\":{}}},\"serverInfo\":{\"name\":\"idris2-lsp\",\"version\":\"0.1\"}}}"}
+{"kind":"send","length":52,"text":"{\"jsonrpc\":\"2.0\",\"method\":\"initialized\",\"params\":{}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"initialize\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received notification for method \"initialized\"\n"}
+{"kind":"stderr","text":"LOG WARNING:Communication.Channel: Received unhandled notification for method \"initialized\"\n"}
+{"kind":"send","length":411,"text":"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Clean.idr\",\"languageId\":\"idris2\",\"version\":1,\"text\":\"module Clean\\n\\nimport Data.Vect\\n\\nappend : Vect n a -> Vect m a -> Vect (n + m) a\\n\\nvlen : Vect n a -> Nat\\nvlen xs = ?vlen_rhs\\n\"}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received notification for method \"textDocument/didOpen\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received didOpen notification for file://${ROOT}/src/Clean.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Server: Loading file file://${ROOT}/src/Clean.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Notification.Diagnostic: Sending diagnostic message for file://${ROOT}/src/Clean.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent notification message for method \"textDocument/publishDiagnostics\"\n"}
+{"kind":"recv","length":258,"text":"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{\"uri\":\"file://${ROOT}/src/Clean.idr\",\"version\":1,\"diagnostics\":[]}}"}
+{"kind":"send","length":110,"text":"{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"workspace/executeCommand\",\"params\":{\"command\":\"repl\",\"arguments\":[\"1 + 1\"]}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"workspace/executeCommand\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received repl command request\n"}
+{"kind":"recv","length":37,"text":"{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":\"2\"}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"workspace/executeCommand\"\n"}
+{"kind":"send","length":120,"text":"{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"workspace/executeCommand\",\"params\":{\"command\":\"repl\",\"arguments\":[\"putStrLn \\\"hi\\\"\"]}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"workspace/executeCommand\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received repl command request\n"}
+{"kind":"recv","length":157,"text":"{\"jsonrpc\":\"2.0\",\"id\":3,\"result\":\"Error: Can't find an implementation for HasIO ?io.\\n\\n(Interactive):1:1--1:14\\n 1 | putStrLn \\\"hi\\\"\\n     ^^^^^^^^^^^^^\\n\"}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"workspace/executeCommand\"\n"}
+{"kind":"send","length":116,"text":"{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"workspace/executeCommand\",\"params\":{\"command\":\"repl\",\"arguments\":[\"vlen [1, 2]\"]}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"workspace/executeCommand\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received repl command request\n"}
+{"kind":"recv","length":66,"text":"{\"jsonrpc\":\"2.0\",\"id\":4,\"result\":\"?vlen_rhs [no locals in scope]\"}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"workspace/executeCommand\"\n"}
+{"kind":"send","length":110,"text":"{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"workspace/executeCommand\",\"params\":{\"command\":\"repl\",\"arguments\":[\":t id\"]}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"workspace/executeCommand\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received repl command request\n"}
+{"kind":"recv","length":55,"text":"{\"jsonrpc\":\"2.0\",\"id\":5,\"result\":\"Prelude.id : a -> a\"}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"workspace/executeCommand\"\n"}
+{"kind":"send","length":113,"text":"{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"workspace/executeCommand\",\"params\":{\"command\":\"repl\",\"arguments\":[\":version\"]}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"workspace/executeCommand\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received repl command request\n"}
+{"kind":"recv","length":51,"text":"{\"jsonrpc\":\"2.0\",\"id\":6,\"result\":\"0.8.0-1c630e67c\"}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"workspace/executeCommand\"\n"}
+{"kind":"send","length":105,"text":"{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"workspace/executeCommand\",\"params\":{\"command\":\"repl\",\"arguments\":[42]}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"workspace/executeCommand\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received repl command request\n"}
+{"kind":"recv","length":88,"text":"{\"jsonrpc\":\"2.0\",\"id\":7,\"error\":{\"code\":-32602,\"message\":\"Expected String\",\"data\":null}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"workspace/executeCommand\"\n"}
+{"kind":"send","length":44,"text":"{\"jsonrpc\":\"2.0\",\"id\":8,\"method\":\"shutdown\"}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"shutdown\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received shutdown request\n"}
+{"kind":"stderr","text":"LOG INFO:Server: Server ready to be shutdown\n"}
+{"kind":"recv","length":38,"text":"{\"jsonrpc\":\"2.0\",\"id\":8,\"result\":null}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"shutdown\"\n"}
+{"kind":"send","length":33,"text":"{\"jsonrpc\":\"2.0\",\"method\":\"exit\"}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received notification for method \"exit\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received exit notification\n"}
+{"kind":"stderr","text":"LOG INFO:Server: Quitting the server...\n"}
+{"kind":"exit","code":0,"signal":null}
+{"kind":"files","written":["build/ttc/2025081600/Clean.ttc","build/ttc/2025081600/Clean.ttm"]}

@@ -594,6 +594,11 @@ export class DocumentChecks implements CheckStatusSource, SaveCheckHolds, IDispo
    * (`apply`). Kept while such a check runs.
    */
   private readonly deletions: { readonly prefix: string; readonly after: number }[] = [];
+  /**
+   * (M5) For each root (`rootKey`) whose results were dropped by `forgetRoot`, the number of the last
+   * check started before: no check up to that number of that root shows its result.
+   */
+  private readonly forgotten = new Map<string, number>();
   /** The last active editor's document that is checked, while it is open (module comment, *The active document*). */
   private lastActive: vscode.TextDocument | undefined;
   /** The root last told to the backend (`ActiveRoot`), by `rootKey` (or `pending`); `null` before the first. */
@@ -1184,6 +1189,13 @@ export class DocumentChecks implements CheckStatusSource, SaveCheckHolds, IDispo
       if (!open()) {
         return undefined;
       }
+      if (sequence <= (this.forgotten.get(rootKey(root)) ?? 0)) {
+        // Its root left IDE mode while it ran (`forgetRoot`): the result is not shown.
+        if (current()) {
+          t.loadState = t.settled;
+        }
+        return undefined;
+      }
       // Its file was deleted while the check ran: the result is not shown on it (a deleted file
       // reads as not checked, and its creation checks it again; *verification after Q20–Q22*: the
       // result cleared `deleted`, so the creation checked nothing).
@@ -1515,6 +1527,42 @@ export class DocumentChecks implements CheckStatusSource, SaveCheckHolds, IDispo
     const of = (other: Classification): boolean => key === undefined || rootKey(other) === key;
     this.askingFirst.forEach((asking) => (asking.cancelled ||= of(asking.root)));
     this.dropWaiting((w) => of(w.root), CANCELLED);
+  }
+
+  /**
+   * (M5) `root` is not checked by IDE mode any more: it went to idris2-lsp (`features/backend/follow.ts`),
+   * whose language client shows the server's problems in a collection of its own. The diagnostics the
+   * loads of `root` set here go — on every file, open or not —, its documents read as not checked, and
+   * a check of it that runs now shows no result; so the Problems view does not keep IDE mode's
+   * results, stale or doubled, beside the server's. A later check of the root (it came back to IDE
+   * mode) shows its result as usual.
+   */
+  forgetRoot(root: Classification): void {
+    const key = rootKey(root);
+    this.forgotten.set(key, this.sequence);
+    const gone: vscode.Uri[] = [];
+    this.collection.forEach((file) => {
+      if (this.appliedBy.get(file.toString()) === key) {
+        gone.push(file);
+      }
+    });
+    gone.forEach((file) => this.forget(file));
+    for (const t of this.tracked.values()) {
+      if (t.root !== undefined && rootKey(t.root) === key) {
+        this.stopTimer(t);
+        t.settled = 'idle';
+        if (t.loadState !== 'loading') {
+          t.loadState = 'idle';
+        }
+        t.packageError = undefined;
+        t.failure = undefined;
+        t.refused = false;
+        t.checkedVersion = undefined;
+        t.checkedHash = undefined;
+        t.blockedBy = [];
+      }
+    }
+    this.changed.fire();
   }
 
   /**

@@ -4,23 +4,28 @@
  * activate() builds, in this order: the log channel, M0's Help commands, `idris2.isIdrisDocument`
  * and selection ranges; then M1's chain Config → workspace trust → process runner → toolchain
  * service → project index → backend registry; then M2's consent gate, protocol trace, session
- * pool and IDE-mode backend (the registry's provider for every root), the checks with their
- * diagnostic collection, and the backend and trace commands; then M3's providers and commands
- * (hover, definition, documentation, namespaces, semantic tokens, symbols, highlights, completion,
- * inlay hints — all asking through one `DocumentQueries` — and Evaluate Selection); then M4's
- * interactive editing (commands, code actions, cycling), the holes (model, Holes view, Next /
- * Previous Hole, List Holes) with the `idris2.isIdrisWorkspace` context key, and Show Keybindings;
- * then the toolchain UI (status item and QuickPick, Setup Information, install commands,
- * notifications). deactivate() disposes all of it in reverse order, which kills every session
- * process.
+ * pool and IDE-mode backend (the registry's provider of kind `ideMode`), the checks with their
+ * diagnostic collection, and the backend and trace commands; then M5's routing (the choices of
+ * Switch Backend in the workspace state, `BackendRouting` set on the registry) and idris2-lsp (the
+ * admission of documents, the language client, the LSP backend as the registry's provider of kind
+ * `lsp`); then M3's providers and commands (hover, definition, documentation, namespaces, semantic
+ * tokens, symbols, highlights, completion, inlay hints — all asking through one `DocumentQueries` —
+ * and Evaluate Selection); then M4's interactive editing (commands, code actions, cycling), the
+ * holes (model, Holes view, Next / Previous Hole, List Holes) with the `idris2.isIdrisWorkspace`
+ * context key, and Show Keybindings; then the toolchain UI (status item and QuickPick, Setup
+ * Information, install commands, notifications) and M5's routing UI (Switch Backend, the
+ * notifications of files idris2-lsp cannot load, the copy of bamboo's settings, the restart
+ * prompts). deactivate() disposes all of it in reverse order, which kills every session process and
+ * the language server.
  *
  * Activation stays cheap: nothing here waits for a process or the file system. The toolchain
  * service starts its first scan when it is created and the UI follows its change events; no
  * session process starts before an Idris document is checked (the pool starts a session with its
  * first request). M3's providers ask only when VS Code calls them, and the `eval` session starts
  * at the first evaluation. M4's commands ask when they are run, and the holes model asks after the
- * loads the checks make. Every process goes through `core/process.ts`, which starts nothing in an
- * untrusted workspace (Restricted Mode, package.json `capabilities.untrustedWorkspaces`).
+ * loads the checks make. The language server starts with the first document the routing admits
+ * (`backend/lsp/client.ts`). Every process goes through `core/process.ts`, which starts nothing in
+ * an untrusted workspace (Restricted Mode, package.json `capabilities.untrustedWorkspaces`).
  */
 import * as fs from 'fs';
 import * as os from 'os';
@@ -30,17 +35,23 @@ import { createSessionPool } from './backend/ide/pool';
 import { ideCodec } from './backend/ide/protocol';
 import { systemClock } from './backend/ide/session';
 import type { SessionPool } from './backend/ide/types';
-import { BackendRegistry } from './backend/registry';
-import { Config, usableHomeDirectory } from './core/config';
+import { LspBackend } from './backend/lsp/backend';
+import { LspClient, nodeLanguageClients } from './backend/lsp/client';
+import { registerLanguageServerCommands } from './backend/lsp/commands';
+import { BackendChoices, BackendRegistry, BackendRouting, LspAdmission, LspProvider } from './backend/registry';
+import { Config, usableHomeDirectory, type BackendMode } from './core/config';
 import { DisposableStore } from './core/disposable';
 import { Emitter } from './core/event';
 import { createLog } from './core/log';
+import { plainText } from './core/notificationText';
 import { createProcessRunner } from './core/process';
 import type { WorkspaceTrust } from './core/trust';
 import type { ConsentGate } from './features/consent/gate';
+import { registerBackendFeatures } from './features/backend/register';
+import type { RoutingNotice } from './features/backend/types';
 import { registerConsent } from './features/consent/register';
 import { DocumentChecks } from './features/diagnostics/checks';
-import { registerBackendCommands, type BackendNotice } from './features/diagnostics/commands';
+import { registerBackendCommands, type BackendControl, type BackendNotice } from './features/diagnostics/commands';
 import { ProtocolTraceChannel, registerTraceCommands } from './features/diagnostics/trace';
 import { registerEditing } from './features/editing/register';
 import { registerEvaluation, type EvaluationOutcome, type DrawnEvaluation } from './features/eval/register';
@@ -54,12 +65,12 @@ import { registerCompletion } from './features/intelligence/completion';
 import { registerInlayHints } from './features/intelligence/inlayHints';
 import { createDocumentQueries } from './features/intelligence/queries';
 import { registerIntelligence } from './features/intelligence/register';
-import type { IntelligenceDeps } from './features/intelligence/types';
+import type { IntelligenceDeps, LoadedFileEvent, LoadNotifications } from './features/intelligence/types';
 import { registerSelectionRanges } from './features/syntax/selectionRanges';
 import { createProjectIndex } from './project/index';
 import { findIpkg } from './project/ipkg';
 import { trackIsIdrisDocumentContext } from './project/literate';
-import type { ProjectIndex, ProjectWorkspace } from './project/types';
+import type { Classification, ProjectIndex, ProjectWorkspace } from './project/types';
 import { registerInstallCommands } from './toolchain/install';
 import { registerToolchainNotifications, type Notice } from './toolchain/notifications';
 import { readRegularTextFile, readSourceFile } from './toolchain/fileSystem';
@@ -108,6 +119,12 @@ export interface TestApi {
   readonly holesTree: vscode.TreeDataProvider<HoleNode>;
   /** M4: the Holes view (its badge). */
   readonly holesView: vscode.TreeView<HoleNode>;
+  /** M5: the language client of idris2-lsp (its state; Stop, Restart). */
+  readonly lspClient: LspClient;
+  /** M5: the choices of Switch Backend (`backend/registry.ts`). */
+  readonly backendChoices: BackendChoices;
+  /** M5: the notifications of the routing's user interface, in order (`features/backend`). */
+  readonly routingNotices: readonly RoutingNotice[];
 }
 
 let store: DisposableStore | undefined;
@@ -269,8 +286,70 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
       timers: { set: (callback, ms) => setTimeout(callback, ms), clear: (handle) => clearTimeout(handle as NodeJS.Timeout) },
     }),
   );
+  // M5: Restart Backend of one root starts its `check` session (`SessionPool.restart`); not for a
+  // root IDE mode does not serve, whose project has one compiler, idris2-lsp's (ROADMAP §9 Q7).
+  const ideControl: BackendControl = {
+    activeRoots: () => ideMode.activeRoots(),
+    stop: (root) => ideMode.stop(root),
+    restart: (root) => {
+      if (root !== undefined && registry.routeFor(root).kind !== 'ideMode') {
+        log.info('Restart Backend: IDE mode does not serve this project; nothing restarted');
+        void vscode.window.showInformationMessage(
+          plainText('Idris 2: IDE mode does not serve this project, so Restart Backend starts nothing here. Idris 2: Switch Backend… chooses the backend; Restart Language Server restarts idris2-lsp.'),
+        );
+        return;
+      }
+      ideMode.restart(root);
+    },
+    onDidFail: ideMode.onDidFail,
+  };
   const backendCommands = store.add(
-    registerBackendCommands(vscode, { checks, control: ideMode, projects, toolchain, trust, log }),
+    registerBackendCommands(vscode, { checks, control: ideControl, projects, toolchain, trust, log }),
+  );
+
+  // M5: the routing between IDE mode and idris2-lsp, and the language client. Nothing here starts a
+  // process: the client starts with the first document the routing admits.
+  const choices = store.add(new BackendChoices(context.workspaceState));
+  const modeFor = (root: Classification | undefined): BackendMode =>
+    root === undefined ? config.backendMode() : config.backendMode(vscode.Uri.file(root.dir));
+  const routing = store.add(
+    new BackendRouting({ modeFor, onDidChangeMode: (listener) => config.onDidChange('backend', () => listener()), choices, toolchain }),
+  );
+  store.add(registry.setRouting(routing));
+  const admission = store.add(new LspAdmission({ trust, projects, gate: consent.gate, registry }));
+  const lspClient = store.add(
+    new LspClient({
+      api: vscode,
+      languageClients: nodeLanguageClients(),
+      ownership: admission,
+      gate: consent.gate,
+      toolchain,
+      config,
+      trust,
+      projects,
+      folders: workspaceFolders,
+      readText: (p) => readSourceFile(p).then(
+        (text) => text,
+        () => undefined,
+      ),
+      log,
+      platform: process.platform,
+      processEnv: process.env,
+      clock: { now: () => Date.now(), setTimeout: (callback, ms) => setTimeout(callback, ms), clearTimeout: (handle) => clearTimeout(handle as NodeJS.Timeout) },
+      keepNotices: context.extensionMode === vscode.ExtensionMode.Test,
+    }),
+  );
+  const lspBackend = store.add(new LspBackend({ client: lspClient, config, api: vscode, readFile: readSourceFile }));
+  const lspProvider = store.add(new LspProvider({ backend: lspBackend, client: lspClient, gate: consent.gate, projects }));
+  store.add(registry.setProvider(lspProvider));
+  store.add(
+    registerLanguageServerCommands(vscode, {
+      client: lspClient,
+      config,
+      trust,
+      acceptArgument: context.extensionMode === vscode.ExtensionMode.Test,
+      log,
+    }),
   );
 
   // M3: read-only intelligence and evaluation. Registering starts nothing: the providers ask the
@@ -299,7 +378,24 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
   );
 
   // M4: interactive editing and holes. Registering starts nothing: the commands ask when they are
-  // run (through the same DocumentQueries), the holes model after the loads the checks make.
+  // run (through the same DocumentQueries), the holes model after the loads the checks make and,
+  // since M5, after idris2-lsp's loads of the documents it has open (it publishes a file's
+  // diagnostics after each load of it).
+  const lspLoads = store.add(new Emitter<LoadedFileEvent>());
+  store.add(
+    lspClient.onDidLoad(({ uri, failed }) => {
+      projects.classify(uri.fsPath).then(
+        (root) => lspLoads.fire({ root, file: uri.fsPath, rebuilt: true, failed }),
+        (error: unknown) => log.warn(`Holes: could not classify ${uri.fsPath}: ${String(error)}`),
+      );
+    }),
+  );
+  const holeLoads: LoadNotifications = {
+    onDidLoad: (listener) => {
+      const subscriptions = [ideMode.onDidLoad(listener), lspLoads.event(listener)];
+      return { dispose: () => subscriptions.forEach((s) => s.dispose()) };
+    },
+  };
   const editing = store.add(
     registerEditing(
       vscode,
@@ -307,7 +403,7 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
       { keepOutcomes: context.extensionMode === vscode.ExtensionMode.Test },
     ),
   );
-  const holes = store.add(registerHoles(vscode, { queries: intelligenceDeps.queries, loads: ideMode, releases: ideMode, registry, log }));
+  const holes = store.add(registerHoles(vscode, { queries: intelligenceDeps.queries, loads: holeLoads, releases: ideMode, registry, log }));
   store.add(
     trackIsIdrisWorkspace({
       // One result is enough (`maxResults`): the project index lists them all itself.
@@ -353,6 +449,23 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
   );
   store.add(registerInstallCommands(vscode, { toolchain, config, platform: process.platform, homeDir }));
   const notifications = store.add(registerToolchainNotifications(vscode, toolchain, log));
+  const backendFeatures = store.add(
+    registerBackendFeatures(vscode, {
+      trust,
+      projects,
+      registry,
+      choices,
+      gate: consent.gate,
+      toolchain,
+      config,
+      modeFor,
+      ideMode,
+      checks,
+      client: lspClient,
+      globalState: context.globalState,
+      log,
+    }),
+  );
 
   log.info(`vscode-idris2 ${manifest.version ?? '(unknown version)'} activated`);
 
@@ -378,6 +491,9 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
     holes: holes.model,
     holesTree: holes.tree,
     holesView: holes.view,
+    lspClient,
+    backendChoices: choices,
+    routingNotices: backendFeatures.notices,
   };
 }
 

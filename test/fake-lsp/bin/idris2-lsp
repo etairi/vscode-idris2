@@ -1,0 +1,8 @@
+#!/bin/sh
+# Launcher for the fake idris2-lsp of the lsp suite (test/fake-lsp/README.md), with the node on PATH.
+# No arguments: the language server, which replays the recordings (server.mjs). Any argument
+# (`--version`, M1's probe): test/fake-tools' fake idris2-lsp, which answers as before.
+if [ "$#" -eq 0 ]; then
+  exec node "$(dirname "$0")/../server.mjs"
+fi
+exec node "$(dirname "$0")/../../fake-tools/fake-idris2-lsp.mjs" "$@"

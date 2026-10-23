@@ -1,25 +1,31 @@
 import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
+import { LSP_CLIENT_ID } from '../../src/backend/lsp/types';
 import {
   IDE_MODE_LIMIT_KEYS,
   IDE_MODE_SESSION_KEYS,
+  LSP_SERVER_OPTION_KEYS,
   MAX_DELAY_MS,
   MIN_CHECKING_DELAY_MS,
+  MIN_LSP_CODE_ACTION_RESULTS,
+  MIN_LSP_LONG_ACTION_TIMEOUT_MS,
   MIN_REQUEST_TIMEOUT_MS,
+  readBackendMode,
   readCheckingSettings,
   readDiagnosticsSettings,
   readEvaluationSettings,
   readIdeModeSettings,
   readInlayHintSettings,
   readKeybindingScheme,
+  readLspSettings,
   readSaveBeforeAction,
   readToolchainSettings,
   readTraceSettings,
   type ConfigurationReader,
 } from '../../src/core/config';
 
-// Consistency of package.json's M1–M4 contributions: settings (with core/config.ts, which reads
+// Consistency of package.json's M1–M5 contributions: settings (with core/config.ts, which reads
 // them), Restricted Mode, commands, menus, views, keybindings and the walkthrough. Whether each
 // command is also *registered* at run time is an integration question (test/integration/).
 
@@ -168,12 +174,27 @@ const LETTERS: Record<string, string> = {
   ']': 'idris2.nextHole',
 };
 
+/**
+ * The commands M5 contributes (ROADMAP §5 M5), in the order of the editor-title submenu: Switch
+ * Backend… and the two server commands in the backend group, Show Language Server Output in the Help
+ * group; the developer command is in `DEVELOPER_COMMANDS`.
+ */
+const M5_COMMANDS = [
+  'idris2.switchBackend',
+  'idris2.restartLanguageServer',
+  'idris2.stopLanguageServer',
+  'idris2.showLanguageServerOutput',
+];
+
 /** The command that opens the status QuickPick; every other command but the developer ones is a menu entry. */
 const STATUS_MENU_COMMAND = 'idris2.showStatusMenu';
 const SUBMENU = 'idris2.editorTitle';
 
-/** Commands for diagnosing the protocol (ROADMAP M2): category "Idris 2 (Developer)", only with the trace on. */
-const DEVELOPER_COMMANDS = ['idris2.sendRawRequest'];
+/**
+ * Commands for diagnosing the protocols (ROADMAP M2, M5): category "Idris 2 (Developer)", only with
+ * `idris2.trace.protocol` on (one developer switch, read from user settings only).
+ */
+const DEVELOPER_COMMANDS = ['idris2.sendRawRequest', 'idris2.sendRawLspCommand'];
 const DEVELOPER_WHEN = 'config.idris2.trace.protocol && isWorkspaceTrusted';
 
 /**
@@ -182,6 +203,12 @@ const DEVELOPER_WHEN = 'config.idris2.trace.protocol && isWorkspaceTrusted';
  * read by the keybindings' clauses, has one since M4: Show Keybindings lists the keys that are on.)
  */
 const WHEN_CLAUSE_SETTINGS = ['idris2.holes.showInSideBar'];
+
+/**
+ * Settings the extension never reads because a library does (M5): vscode-languageclient reads
+ * `<client id>.trace.server` itself (`backend/lsp/types.ts` `LSP_CLIENT_ID`).
+ */
+const LIBRARY_SETTINGS = [`${LSP_CLIENT_ID}.trace.server`];
 
 /** Every `when` clause of a view or of a view's welcome content. */
 const viewWhenClauses = (): string[] => [
@@ -207,12 +234,14 @@ function readAllSettings(value: (key: string) => unknown): { keys: string[]; set
     readInlayHintSettings(reader),
     readEvaluationSettings(reader),
     readSaveBeforeAction(reader),
+    readBackendMode(reader),
+    readLspSettings(reader, '/home/u'),
     readKeybindingScheme(reader),
   ];
   return { keys, settings };
 }
 
-suite('package.json (M1–M4 contributions)', () => {
+suite('package.json (M1–M5 contributions)', () => {
   suite('settings', () => {
     test('every idris2.* setting has a type, a default, a scope and a markdownDescription', () => {
       for (const [key, schema] of Object.entries(properties)) {
@@ -226,18 +255,22 @@ suite('package.json (M1–M4 contributions)', () => {
 
     test('paths and the environment are machine-overridable (ARCHITECTURE §11)', () => {
       for (const [key, schema] of Object.entries(properties)) {
-        if (key.endsWith('Path') || key === 'idris2.toolchain.env') {
+        if (key.endsWith('Path') || key === 'idris2.toolchain.env' || key === 'idris2.lsp.logFile') {
           assert.strictEqual(schema.scope, 'machine-overridable', key);
         }
       }
     });
 
-    test('core/config.ts reads exactly the contributed keys but those only the keybindings read, and the contributed defaults read as its defaults', () => {
+    test('core/config.ts reads exactly the contributed keys but those only the keybindings or a library read, and the contributed defaults read as its defaults', () => {
       const { keys, settings } = readAllSettings((key) => properties[key]?.default);
       assert.deepStrictEqual(
         [...keys].sort(),
-        Object.keys(properties).filter((key) => !WHEN_CLAUSE_SETTINGS.includes(key)).sort(),
+        Object.keys(properties)
+          .filter((key) => !WHEN_CLAUSE_SETTINGS.includes(key) && !LIBRARY_SETTINGS.includes(key))
+          .sort(),
       );
+      assert.deepStrictEqual(LIBRARY_SETTINGS, ['idris2.lsp.trace.server']);
+      assert.ok(LIBRARY_SETTINGS.every((key) => key in properties));
       // Each of those is contributed and read by a keybinding's or a view's when clause.
       const clauses = [...manifest.contributes.keybindings.map((k) => k.when ?? ''), ...viewWhenClauses()];
       for (const key of WHEN_CLAUSE_SETTINGS) {
@@ -263,6 +296,17 @@ suite('package.json (M1–M4 contributions)', () => {
         { variableTypes: true },
         { inlineResults: true, timeoutMs: 10000 },
         'always',
+        'auto',
+        {
+          logFile: '',
+          logSeverity: 'info',
+          longActionTimeoutMs: 1000,
+          maxCodeActionResults: 5,
+          showImplicits: false,
+          showMachineNames: false,
+          fullNamespace: false,
+          briefCompletions: false,
+        },
         'auto',
       ]);
       // Every value absent (a setting VS Code does not know) reads as the same defaults — but the
@@ -334,6 +378,56 @@ suite('package.json (M1–M4 contributions)', () => {
       );
     });
 
+    test('the M5 defaults: IDE mode stays the default (auto, Q7), and each server option is the server\'s own default', () => {
+      const defaults = Object.fromEntries(
+        Object.entries(properties)
+          .filter(([key]) => /^idris2\.(backend|lsp)\./.test(key))
+          .map(([key, schema]) => [key, schema.default]),
+      );
+      assert.deepStrictEqual(defaults, {
+        // ROADMAP §9 Q7, decided 2026-10-01: auto uses IDE mode whenever a usable idris2 is found.
+        'idris2.backend.mode': 'auto',
+        // idris2-lsp 9a2f0ad `defaultConfig` (Server/Configuration.idr): the log on standard error at
+        // Debug, searchLimit 5, briefCompletions off; Idris2 1c630e6 `defaultSession` (search timeout
+        // 1000 ms) and `defaultPPrint` (the three printing options off), Core/Options.idr [src]. The
+        // log level here is info, not the server's Debug, which logs every message with the files'
+        // text (user decision, 2026-10-24).
+        'idris2.lsp.logFile': '',
+        'idris2.lsp.logSeverity': 'info',
+        'idris2.lsp.longActionTimeout': 1000,
+        'idris2.lsp.maxCodeActionResults': 5,
+        'idris2.lsp.showImplicits': false,
+        'idris2.lsp.showMachineNames': false,
+        'idris2.lsp.fullNamespace': false,
+        'idris2.lsp.briefCompletions': false,
+        // vscode-languageclient 10.1.2 traces only at the channel's Trace log level and reads `off` as
+        // `messages` there, so `off` is not offered (backend/lsp/types.ts LSP_CLIENT_ID).
+        'idris2.lsp.trace.server': 'messages',
+      });
+      assert.deepStrictEqual(properties['idris2.backend.mode'].enum, ['auto', 'lsp', 'ideMode']);
+      // parseSeverity's five (lsp-lib Language/LSP/Severity.idr), as written in lower case.
+      assert.deepStrictEqual(properties['idris2.lsp.logSeverity'].enum, ['debug', 'info', 'warning', 'error', 'critical']);
+      assert.deepStrictEqual(properties['idris2.lsp.trace.server'].enum, ['messages', 'verbose']);
+      // The descriptions say what is true of the server and of the decision of 2026-10-01.
+      assert.match(properties['idris2.backend.mode'].markdownDescription ?? '', /One program per project: a feature it lacks says so and is not taken from the other\./);
+      assert.match(properties['idris2.lsp.logSeverity'].markdownDescription ?? '', /at `debug` the log holds every message the server receives, the text of your files included/);
+      assert.match(properties['idris2.lsp.logFile'].markdownDescription ?? '', /Clearing the setting takes effect when the server starts again\./);
+      assert.match(properties['idris2.lsp.trace.server'].markdownDescription ?? '', /only while that channel's log level is Trace/);
+    });
+
+    test('every idris2.lsp.* key is a server option the client sends, or the trace setting the client library reads', () => {
+      const lspKeys = Object.keys(properties)
+        .filter((key) => key.startsWith('idris2.lsp.'))
+        .map((key) => key.slice('idris2.'.length))
+        .sort();
+      assert.deepStrictEqual([...LSP_SERVER_OPTION_KEYS, 'lsp.trace.server'].sort(), lspKeys);
+      // The eight options of F20/F36, by the names the server reads (processSettings).
+      assert.deepStrictEqual(
+        LSP_SERVER_OPTION_KEYS.map((key) => key.slice('lsp.'.length)),
+        ['logFile', 'logSeverity', 'longActionTimeout', 'maxCodeActionResults', 'showImplicits', 'showMachineNames', 'fullNamespace', 'briefCompletions'],
+      );
+    });
+
     test('enums list a description per value and contain their default; bounds match core/config.ts', () => {
       for (const [key, schema] of Object.entries(properties)) {
         if (schema.enum !== undefined) {
@@ -348,6 +442,8 @@ suite('package.json (M1–M4 contributions)', () => {
       assert.strictEqual(properties['idris2.ideMode.requestTimeout'].minimum, MIN_REQUEST_TIMEOUT_MS);
       assert.strictEqual(properties['idris2.ideMode.longActionTimeout'].minimum, MIN_REQUEST_TIMEOUT_MS);
       assert.strictEqual(properties['idris2.eval.timeout'].minimum, MIN_REQUEST_TIMEOUT_MS);
+      assert.strictEqual(properties['idris2.lsp.longActionTimeout'].minimum, MIN_LSP_LONG_ACTION_TIMEOUT_MS);
+      assert.strictEqual(properties['idris2.lsp.maxCodeActionResults'].minimum, MIN_LSP_CODE_ACTION_RESULTS);
       assert.strictEqual(properties['idris2.ideMode.idleTimeout'].minimum, 0);
       assert.strictEqual(properties['idris2.ideMode.maxSessions'].minimum, 0);
       assert.strictEqual(properties['idris2.ideMode.maxBackgroundChecks'].minimum, 0);
@@ -384,7 +480,13 @@ suite('package.json (M1–M4 contributions)', () => {
           // User settings only: VS Code has no workspace keybindings either, and a workspace that
           // chose `chords` would take Ctrl+C (copy) in Idris editors on Linux (M3).
           assert.strictEqual(schema.scope, 'application', key);
-        } else if (/^idris2\.(ideMode|diagnostics|trace|inlayHints|eval|holes)\./.test(key)) {
+        } else if (key === 'idris2.backend.mode') {
+          // Per resource, like checking.*: a workspace folder may choose the backend of its projects (M5).
+          assert.strictEqual(schema.scope, 'resource', key);
+        } else if (key === 'idris2.lsp.logFile') {
+          // A path on the machine the server runs on (the paths test above).
+          assert.strictEqual(schema.scope, 'machine-overridable', key);
+        } else if (/^idris2\.(ideMode|diagnostics|trace|inlayHints|eval|holes|lsp)\./.test(key)) {
           assert.strictEqual(schema.scope, 'window', key);
         }
       }
@@ -438,18 +540,21 @@ suite('package.json (M1–M4 contributions)', () => {
       // CLAUDE.md, "Rules established by M0": such settings are restricted. The IDE-mode
       // arguments (extraArgs) and the packages passed as -p (loosePackages) are of that kind;
       // transport, isolateBuildDir and the time limits only choose among the extension's own
-      // arguments and behaviour.
+      // arguments and behaviour. So is idris2.lsp.logFile, a path the server writes to (M5);
+      // backend.mode only chooses between the tools the toolchain settings name.
       const expected = Object.keys(properties).filter(
         (key) =>
           (key.startsWith('idris2.toolchain.') && (key.endsWith('Path') || key === 'idris2.toolchain.env')) ||
           key === 'idris2.ideMode.extraArgs' ||
-          key === 'idris2.ideMode.loosePackages',
+          key === 'idris2.ideMode.loosePackages' ||
+          // M5: a file the server creates folders for and appends to.
+          key === 'idris2.lsp.logFile',
       );
       assert.deepStrictEqual(
         [...(manifest.capabilities.untrustedWorkspaces.restrictedConfigurations ?? [])].sort(),
         expected.sort(),
       );
-      assert.strictEqual(expected.length, 6);
+      assert.strictEqual(expected.length, 7);
     });
   });
 
@@ -543,7 +648,43 @@ suite('package.json (M1–M4 contributions)', () => {
         [
           ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => `0_interactive@${n}`),
           ...[1, 2, 3].map((n) => `0_interactive_holes@${n}`),
-          '3_help@4',
+          '3_help@5',
+        ],
+      );
+    });
+
+    test('the M5 commands: Switch Backend… on Idris documents, the server commands where processes may run, the output channel everywhere', () => {
+      const when = (command: string): string | undefined =>
+        manifest.contributes.menus.commandPalette.find((entry) => entry.command === command)?.when;
+      const titles = Object.fromEntries(manifest.contributes.commands.map((c) => [c.command, c.title]));
+      assert.deepStrictEqual(
+        [...M5_COMMANDS, 'idris2.sendRawLspCommand'].map((id) => titles[id]),
+        ['Switch Backend…', 'Restart Language Server', 'Stop Language Server', 'Show Language Server Output', 'Send Raw LSP executeCommand…'],
+      );
+      // Switch Backend… chooses for the active document's root, from the backends a scan found (none
+      // runs in Restricted Mode); Restart and Stop act on the window's one server; showing its output
+      // channel runs nothing.
+      assert.strictEqual(when('idris2.switchBackend'), 'idris2.isIdrisDocument && isWorkspaceTrusted');
+      assert.strictEqual(when('idris2.restartLanguageServer'), 'isWorkspaceTrusted');
+      assert.strictEqual(when('idris2.stopLanguageServer'), 'isWorkspaceTrusted');
+      assert.strictEqual(when('idris2.showLanguageServerOutput'), undefined);
+      // In the submenu (and so the status QuickPick): after Stop Backend, and the output channel after
+      // the protocol trace in the Help group.
+      const groups = Object.fromEntries(manifest.contributes.menus[SUBMENU].map((e) => [e.command, e.group]));
+      assert.deepStrictEqual(
+        M5_COMMANDS.map((id) => groups[id]),
+        ['0_backend@4', '0_backend@5', '0_backend@6', '3_help@3'],
+      );
+      assert.deepStrictEqual(
+        manifest.contributes.menus[SUBMENU].filter((e) => e.group?.startsWith('3_help@')).map((e) => [e.command, e.group]),
+        [
+          ['idris2.showOutput', '3_help@1'],
+          ['idris2.showProtocolTrace', '3_help@2'],
+          ['idris2.showLanguageServerOutput', '3_help@3'],
+          ['idris2.openSettings', '3_help@4'],
+          ['idris2.showKeybindings', '3_help@5'],
+          ['idris2.openDocumentation', '3_help@6'],
+          ['idris2.reportIssue', '3_help@7'],
         ],
       );
     });

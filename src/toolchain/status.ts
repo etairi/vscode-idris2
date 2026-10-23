@@ -13,6 +13,11 @@
  * [src]), so a round of inlay hints (about 140 requests) sent about 280 unchanged items [reasoned
  * from that code, not counted].
  *
+ * Since M5 a root served by idris2-lsp reads `Idris 2 <the server's Idris2 API version> · idris2-lsp`,
+ * with `stopped`, `failed` or `not allowed here` from the language client's state
+ * (`BackendRegistry.stateFor`) instead of a check (the client's diagnostics are its own), and a root
+ * served by nothing says why in the detail (`unserved`: idris2-lsp and no `.ipkg`).
+ *
  * When the compiler may not start in the active document's directory (the user did not allow
  * it, ROADMAP §9 2026-09-27), the item says so (`not allowed here`) and its link is **Allow…**,
  * which asks again; while the question is open — for a check, or because **Allow…** asked again
@@ -44,7 +49,7 @@
  * pure parts (`describeStatus`, `statusMenuEntries`) are unit-tested on plain Node.
  */
 import type * as vscode from 'vscode';
-import type { BackendLabel, BackendRegistry } from '../backend/registry';
+import { NO_IPKG_REASON, type BackendLabel, type BackendRegistry, type BackendState } from '../backend/registry';
 import { DisposableStore, type IDisposable } from '../core/disposable';
 import type { Log } from '../core/log';
 import { plainText, shownPath } from '../core/notificationText';
@@ -77,6 +82,14 @@ export interface StatusInput {
   readonly root: Classification | undefined;
   /** The active document's check; `undefined` when it is not checked at all (e.g. untitled). */
   readonly check?: CheckStatus;
+  /**
+   * M5: what the backend of the active document's root is doing (`BackendRegistry.stateFor`): the
+   * status of a root served by idris2-lsp, whose checks are the language client's, not the
+   * extension's (the `check` above says nothing about them).
+   */
+  readonly backend?: BackendState;
+  /** M5: why the root is served by nothing (`syntax only`), e.g. idris2-lsp for a file without an `.ipkg`. */
+  readonly unserved?: string;
 }
 
 export type StatusSeverity = 'information' | 'warning' | 'error';
@@ -199,6 +212,32 @@ function checkView(check: CheckStatus | undefined): CheckView {
   }
 }
 
+/** What the state of idris2-lsp adds to the item, for a root it serves (M5). */
+function lspView(state: BackendState | undefined): CheckView {
+  switch (state?.kind) {
+    case undefined:
+      return { severity: 'information' };
+    case 'none':
+      return { detail: 'idris2-lsp has not started', severity: 'information' };
+    case 'active':
+      return { detail: 'idris2-lsp checks the saved files; their errors and warnings are in the Problems view', severity: 'information' };
+    case 'stopped':
+      return { suffix: 'stopped', detail: 'idris2-lsp was stopped (Stop Language Server)', severity: 'information' };
+    case 'failed':
+      return { suffix: 'failed', detail: `idris2-lsp: ${state.reason}`, severity: 'error' };
+    case 'notAllowed':
+      return {
+        suffix: 'not allowed here',
+        detail:
+          `idris2-lsp may not load the files of ${shownPath(state.dir)}, which is outside the trusted workspace folders ` +
+          `(${state.reason === 'denied' ? "you chose Don't Allow" : 'the question was closed'}); highlighting only`,
+        severity: 'warning',
+        allow: state.dir,
+        consent: true,
+      };
+  }
+}
+
 function rootDetail(root: Classification | undefined): { text: string; problem: boolean } | undefined {
   if (root === undefined) {
     return undefined;
@@ -238,6 +277,10 @@ export function describeStatus(input: StatusInput): StatusView {
     return { text: 'Idris 2', detail: 'Looking for idris2…', severity: 'information', busy: true, commandTitle: SHOW_COMMANDS };
   }
   const idris2 = snapshot.idris2;
+  const lsp = input.label === 'idris2-lsp';
+  if (lsp) {
+    return describeLspStatus(input, snapshot);
+  }
   if (idris2.status === 'missing') {
     return { text: 'idris2 not found — Setup…', detail: idris2.reason, severity: 'warning', busy, commandTitle: SETUP };
   }
@@ -260,6 +303,9 @@ export function describeStatus(input: StatusInput): StatusView {
   if (snapshot.verdict?.kind === 'likelyMismatch') {
     details.push(`idris2-lsp: ${snapshot.verdict.reason}`);
   }
+  if (input.label === 'syntax only' && input.unserved !== undefined) {
+    details.push(input.unserved);
+  }
   // A check is shown only for a backend that checks (not for `syntax only`).
   const check = checkView(input.label === 'syntax only' ? undefined : input.check);
   if (check.detail !== undefined) {
@@ -279,6 +325,40 @@ export function describeStatus(input: StatusInput): StatusView {
     busy: busy || check.busy === true,
     commandTitle: check.allow === undefined ? SHOW_COMMANDS : ALLOW,
     ...(check.allow === undefined ? {} : { allow: check.allow }),
+  };
+}
+
+/**
+ * The item for a root served by idris2-lsp (M5): the version is the server's `Idris2 API`, the
+ * compiler it was built against, and the state is the client's (`lspView`), whatever the `idris2`
+ * of IDE mode is (one backend per root).
+ */
+function describeLspStatus(input: StatusInput, snapshot: ToolchainSnapshot): StatusView {
+  const server = snapshot.lsp;
+  const version = server.status === 'probed' ? ` ${server.info.apiVersion?.text ?? '(unrecognised version)'}` : '';
+  const details = [server.status === 'missing' ? 'idris2-lsp not found' : `idris2-lsp ${server.location.path}`];
+  const root = rootDetail(input.root);
+  if (root !== undefined) {
+    details.push(root.text);
+  }
+  if (snapshot.verdict?.kind === 'likelyMismatch') {
+    details.push(`idris2-lsp: ${snapshot.verdict.reason}`);
+  }
+  const view = lspView(input.backend);
+  if (view.detail !== undefined) {
+    if (view.consent === true) {
+      details.unshift(view.detail);
+    } else {
+      details.push(view.detail);
+    }
+  }
+  return {
+    text: `Idris 2${version} · idris2-lsp${view.suffix === undefined ? '' : ` · ${view.suffix}`}`,
+    detail: details.join('; '),
+    severity: worse(root?.problem === true ? 'warning' : 'information', view.severity),
+    busy: input.scanning,
+    commandTitle: view.allow === undefined ? SHOW_COMMANDS : ALLOW,
+    ...(view.allow === undefined ? {} : { allow: view.allow }),
   };
 }
 
@@ -458,6 +538,7 @@ export function registerToolchainStatus(api: StatusApi, deps: StatusDeps): Toolc
   let written: string | undefined;
   const render = (): void => {
     const snapshot = deps.toolchain.current;
+    const route = root === undefined ? undefined : deps.registry.routeFor(root);
     const view = describeStatus({
       trusted: deps.trust.isTrusted,
       scanning: deps.toolchain.scanning,
@@ -466,6 +547,8 @@ export function registerToolchainStatus(api: StatusApi, deps: StatusDeps): Toolc
       label: root === undefined && rootFor !== undefined ? deps.registry.pendingLabel() : deps.registry.labelFor(root),
       root,
       check: activeDoc === undefined ? undefined : deps.checks.statusOf(activeDoc, root),
+      backend: deps.registry.stateFor(root),
+      ...(route?.kind === 'none' ? { unserved: NO_IPKG_REASON } : {}),
     });
     const shown = `Status: ${view.text}${view.severity === 'information' ? '' : ` (${view.severity})`}`;
     if (shown !== logged) {

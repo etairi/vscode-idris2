@@ -1,0 +1,87 @@
+{"kind":"meta","format":1,"scenario":"loose-file","description":"F35: a workspace without an .ipkg (loose-file): didOpen of Vlen.idr (no diagnostics; the log says it cannot load the ipkg), then hover, documentSymbol, codeAction and metavars about it, and hover about Hello.idr, which was not opened","facts":["F35"],"server":{"version":"0.1.0-9a2f0ad6a","api":"0.8.0-1c630e67c","versionText":"Idris2 LSP: 0.1.0-9a2f0ad6a\nIdris2 API: 0.8.0-1c630e67c","executable":"~/.local/share/pack/bin/idris2-lsp"},"platform":"darwin arm64","recorded":"2026-10-01","workspace":"test/fixtures/workspaces/loose-file","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"Vlen.idr":"c9634128c0740714f3e8a8ffb097cd093522258031c8efb493bdaea0919700a8","Hello.idr":"e33e701dfc4d3a560639c3e3c52d785c38019df38d587a64cbf129768f3d3f1d"}}
+{"kind":"send","length":1663,"text":"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"processId\":null,\"clientInfo\":{\"name\":\"vscode-idris2 record-lsp-transcripts\"},\"locale\":\"en\",\"rootPath\":\"${ROOT}\",\"rootUri\":\"file://${ROOT}\",\"capabilities\":{\"workspace\":{\"applyEdit\":true,\"workspaceEdit\":{\"documentChanges\":true},\"didChangeConfiguration\":{\"dynamicRegistration\":false},\"executeCommand\":{\"dynamicRegistration\":false},\"semanticTokens\":{\"refreshSupport\":true}},\"textDocument\":{\"synchronization\":{\"dynamicRegistration\":false,\"willSave\":false,\"willSaveWaitUntil\":false,\"didSave\":true},\"hover\":{\"dynamicRegistration\":false,\"contentFormat\":[\"markdown\",\"plaintext\"]},\"publishDiagnostics\":{\"relatedInformation\":true,\"versionSupport\":false,\"tagSupport\":{\"valueSet\":[1,2]},\"codeDescriptionSupport\":true,\"dataSupport\":true},\"codeAction\":{\"dynamicRegistration\":false,\"isPreferredSupport\":true,\"codeActionLiteralSupport\":{\"codeActionKind\":{\"valueSet\":[\"\",\"quickfix\",\"refactor\",\"refactor.extract\",\"refactor.inline\",\"refactor.rewrite\",\"source\",\"source.organizeImports\"]}}}}},\"initializationOptions\":{\"logSeverity\":\"info\",\"longActionTimeout\":1000,\"maxCodeActionResults\":5,\"showImplicits\":false,\"showMachineNames\":false,\"fullNamespace\":false,\"briefCompletions\":false},\"trace\":\"off\",\"workspaceFolders\":[{\"uri\":\"file://${ROOT}\",\"name\":\"loose-file\"}]}}"}
+{"kind":"stderr","text":"LOG DEBUG:Communication.Channel: Received message: {\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"processId\":null,\"clientInfo\":{\"name\":\"vscode-idris2 record-lsp-transcripts\"},\"locale\":\"en\",\"rootPath\":\"${ROOT}\",\"rootUri\":\"file://${ROOT}\",\"capabilities\":{\"workspace\":{\"applyEdit\":true,\"workspaceEdit\":{\"documentChanges\":true},\"didChangeConfiguration\":{\"dynamicRegistration\":false},\"executeCommand\":{\"dynamicRegistration\":false},\"semanticTokens\":{\"refreshSupport\":true}},\"textDocument\":{\"synchronization\":{\"dynamicRegistration\":false,\"willSave\":false,\"willSaveWaitUntil\":false,\"didSave\":true},\"hover\":{\"dynamicRegistration\":false,\"contentFormat\":[\"markdown\",\"plaintext\"]},\"publishDiagnostics\":{\"relatedInformation\":true,\"versionSupport\":false,\"tagSupport\":{\"valueSet\":[1,2]},\"codeDescriptionSupport\":true,\"dataSupport\":true},\"codeAction\":{\"dynamicRegistration\":false,\"isPreferredSupport\":true,\"codeActionLiteralSupport\":{\"codeActionKind\":{\"valueSet\":[\"\",\"quickfix\",\"refactor\",\"refactor.extract\",\"refactor.inline\",\"refactor.rewrite\",\"source\",\"source.organizeImports\"]}}}}},\"initializationOptions\":{\"logSeverity\":\"info\",\"longActionTimeout\":1000,\"maxCodeActionResults\":5,\"showImplicits\":false,\"showMachineNames\":false,\"fullNamespace\":false,\"briefCompletions\":false},\"trace\":\"off\",\"workspaceFolders\":[{\"uri\":\"file://${ROOT}\",\"name\":\"loose-file\"}]}}\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"initialize\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received initialization request\n"}
+{"kind":"stderr","text":"LOG INFO:Request.Configuration: Long action timeout set to 1000\n"}
+{"kind":"stderr","text":"LOG INFO:Request.Configuration: Max code action results set to 5\n"}
+{"kind":"stderr","text":"LOG INFO:Request.Configuration: Show implicits set to False\n"}
+{"kind":"stderr","text":"LOG INFO:Request.Configuration: Full namespace set to False\n"}
+{"kind":"stderr","text":"LOG INFO:Server: Server initialized and configured\n"}
+{"kind":"recv","length":1290,"text":"{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"capabilities\":{\"textDocumentSync\":{\"openClose\":true,\"change\":2,\"save\":{\"includeText\":true}},\"completionProvider\":{\"triggerCharacters\":[],\"allCommitCharacters\":[]},\"hoverProvider\":true,\"signatureHelpProvider\":{},\"declarationProvider\":false,\"definitionProvider\":{\"workDoneProgress\":false},\"typeDefinitionProvider\":false,\"implementationProvider\":false,\"referencesProvider\":false,\"documentHighlightProvider\":true,\"documentSymbolProvider\":{},\"codeActionProvider\":{\"resolveProvider\":false},\"codeLensProvider\":{},\"documentLinkProvider\":{},\"colorProvider\":false,\"documentFormattingProvider\":false,\"documentRangeFormattingProvider\":false,\"renameProvider\":false,\"foldingRangeProvider\":false,\"executeCommandProvider\":{\"commands\":[\"repl\",\"exprSearchWithHints\",\"refineHoleWithHints\",\"metavars\"]},\"selectionRangeProvider\":false,\"linkedEditingRangeProvider\":false,\"callHierarchyProvider\":false,\"semanticTokensProvider\":{\"legend\":{\"tokenTypes\":[\"type\",\"function\",\"enumMember\",\"variable\",\"keyword\",\"namespace\",\"postulate\",\"module\",\"comment\"],\"tokenModifiers\":[]},\"range\":false,\"full\":true},\"monikerProvider\":false,\"workspaceSymbolProvider\":false,\"workspace\":{\"workspaceFolders\":{\"supported\":false},\"fileOperations\":{}}},\"serverInfo\":{\"name\":\"idris2-lsp\",\"version\":\"0.1\"}}}"}
+{"kind":"send","length":52,"text":"{\"jsonrpc\":\"2.0\",\"method\":\"initialized\",\"params\":{}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"initialize\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received notification for method \"initialized\"\n"}
+{"kind":"stderr","text":"LOG WARNING:Communication.Channel: Received unhandled notification for method \"initialized\"\n"}
+{"kind":"send","length":464,"text":"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/Vlen.idr\",\"languageId\":\"idris2\",\"version\":1,\"text\":\"module Vlen\\n\\nimport Data.Vect\\n\\n||| The length of a vector, by recursion (the selection-range fixture of docs/ROADMAP.md M0).\\nvlen : Vect n a -> Nat\\nvlen [] = 0\\nvlen (x :: xs) = ?rhs\\n\"}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received notification for method \"textDocument/didOpen\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received didOpen notification for file://${ROOT}/Vlen.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Server: Loading file file://${ROOT}/Vlen.idr\n"}
+{"kind":"stderr","text":"LOG ERROR:Server: Caught error which shouldn't be leaked while loading file: Error: Source file \"${ROOT}/Vlen.idr\" is not in the source directory \"\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Rebuild ${ROOT}/Vlen.idr due to errors\n"}
+{"kind":"stderr","text":"LOG ERROR:Server: Error while handling notification: Error: Source file \"${ROOT}/Vlen.idr\" is not in the source directory \"\"\n"}
+{"kind":"send","length":271,"text":"{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"textDocument/hover\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/Vlen.idr\"},\"position\":{\"line\":0,\"character\":0}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/hover\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received hover request for file://${ROOT}/Vlen.idr\n"}
+{"kind":"stderr","text":"LOG WARNING:Server: Trying to load file://${ROOT}/Vlen.idr which has errors\n"}
+{"kind":"recv","length":38,"text":"{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":null}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/hover\"\n"}
+{"kind":"send","length":244,"text":"{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"textDocument/documentSymbol\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/Vlen.idr\"}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/documentSymbol\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received documentSymbol request for file://${ROOT}/Vlen.idr\n"}
+{"kind":"stderr","text":"LOG WARNING:Server: Trying to load file://${ROOT}/Vlen.idr which has errors\n"}
+{"kind":"stderr","text":"LOG INFO:Request.DocumentSymbol: Making for file://${ROOT}/Vlen.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.DocumentSymbol: Found 0 global and 0 meta document symbols.\n"}
+{"kind":"recv","length":36,"text":"{\"jsonrpc\":\"2.0\",\"id\":3,\"result\":[]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/documentSymbol\"\n"}
+{"kind":"send","length":359,"text":"{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/Vlen.idr\"},\"range\":{\"start\":{\"line\":0,\"character\":0},\"end\":{\"line\":0,\"character\":0}},\"context\":{\"diagnostics\":[],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/Vlen.idr\n"}
+{"kind":"stderr","text":"LOG WARNING:Server: Trying to load file://${ROOT}/Vlen.idr which has errors\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Checking for file://${ROOT}/Vlen.idr at 0:0 -- 0:0\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Checking for file://${ROOT}/Vlen.idr at 0:0 -- 0:0\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Checking for file://${ROOT}/Vlen.idr at 0:0 -- 0:0\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Checking for file://${ROOT}/Vlen.idr at 0:0 -- 0:0\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Checking for file://${ROOT}/Vlen.idr at 0:0 -- 0:0\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Checking for file://${ROOT}/Vlen.idr at 0:0 -- 0:0\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Checking for file://${ROOT}/Vlen.idr at 0:0 -- 0:0\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Checking for file://${ROOT}/Vlen.idr at 0:0 -- 0:0\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Checking for file://${ROOT}/Vlen.idr at 0:0 -- 0:0\n"}
+{"kind":"recv","length":36,"text":"{\"jsonrpc\":\"2.0\",\"id\":4,\"result\":[]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":107,"text":"{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"workspace/executeCommand\",\"params\":{\"command\":\"metavars\",\"arguments\":[]}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"workspace/executeCommand\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received metavars command request\n"}
+{"kind":"stderr","text":"LOG INFO:Request.Command.Metavars: Fetching metavar\n"}
+{"kind":"stderr","text":"LOG INFO:Request.Command.Metavars: Metavars fetched, found 0\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"workspace/executeCommand\"\n"}
+{"kind":"recv","length":36,"text":"{\"jsonrpc\":\"2.0\",\"id\":5,\"result\":[]}"}
+{"kind":"send","length":272,"text":"{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"textDocument/hover\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/Hello.idr\"},\"position\":{\"line\":0,\"character\":0}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/hover\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received hover request for file://${ROOT}/Hello.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Server: Loading file file://${ROOT}/Hello.idr\n"}
+{"kind":"stderr","text":"LOG ERROR:Server: Caught error which shouldn't be leaked while loading file: Error: Source file \"${ROOT}/Hello.idr\" is not in the source directory \"\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Rebuild ${ROOT}/Hello.idr due to errors\n"}
+{"kind":"stderr","text":"LOG ERROR:Server: Error while handling request: Error: Source file \"${ROOT}/Hello.idr\" is not in the source directory \"\"\n"}
+{"kind":"recv","length":265,"text":"{\"jsonrpc\":\"2.0\",\"id\":6,\"error\":{\"code\":4,\"message\":\"Error: Source file \\\"${ROOT}/Hello.idr\\\" is not in the source directory \\\"\\\"\",\"data\":null}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/hover\"\n"}
+{"kind":"fs","action":"write","file":"Vlen.idr","sha256":"c9634128c0740714f3e8a8ffb097cd093522258031c8efb493bdaea0919700a8"}
+{"kind":"send","length":430,"text":"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didSave\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/Vlen.idr\"},\"text\":\"module Vlen\\n\\nimport Data.Vect\\n\\n||| The length of a vector, by recursion (the selection-range fixture of docs/ROADMAP.md M0).\\nvlen : Vect n a -> Nat\\nvlen [] = 0\\nvlen (x :: xs) = ?rhs\\n\"}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received notification for method \"textDocument/didSave\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received didSave notification for file://${ROOT}/Vlen.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Server: Loading file file://${ROOT}/Vlen.idr\n"}
+{"kind":"stderr","text":"LOG ERROR:Server: Caught error which shouldn't be leaked while loading file: Error: Source file \"${ROOT}/Vlen.idr\" is not in the source directory \"\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Rebuild ${ROOT}/Vlen.idr due to errors\n"}
+{"kind":"stderr","text":"LOG ERROR:Server: Error while handling notification: Error: Source file \"${ROOT}/Vlen.idr\" is not in the source directory \"\"\n"}
+{"kind":"send","length":44,"text":"{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"shutdown\"}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"shutdown\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received shutdown request\n"}
+{"kind":"stderr","text":"LOG INFO:Server: Server ready to be shutdown\n"}
+{"kind":"recv","length":38,"text":"{\"jsonrpc\":\"2.0\",\"id\":7,\"result\":null}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"shutdown\"\n"}
+{"kind":"send","length":33,"text":"{\"jsonrpc\":\"2.0\",\"method\":\"exit\"}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received notification for method \"exit\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received exit notification\n"}
+{"kind":"stderr","text":"LOG INFO:Server: Quitting the server...\n"}
+{"kind":"exit","code":0,"signal":null}
+{"kind":"files","written":[]}

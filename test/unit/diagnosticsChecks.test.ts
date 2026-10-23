@@ -1873,6 +1873,41 @@ suite('features/diagnostics/checks', () => {
     assert.deepStrictEqual(t.backend.loads.map((l) => l.doc), [b, a, b]);
   });
 
+  test('forgetRoot (M5: the root went to idris2-lsp): its results go from every file, its documents read as not checked, a check running now shows nothing; other roots keep theirs', async () => {
+    const a = new FakeDocument('/w/a/A.idr');
+    const b = new FakeDocument('/w/b/B.idr');
+    const imported = uri('/w/a/Lib.idr');
+    const t = setup({ visible: [a, b] });
+    await settle();
+    const [loadA, loadB] = t.backend.loads;
+    loadA.resolve(result([[a.uri, [{ message: 'in A', severity: ERROR }]], [imported, [{ message: 'in Lib', severity: ERROR }]]]));
+    loadB.resolve(result([[b.uri, [{ message: 'in B', severity: WARNING }]]]));
+    await settle();
+    assert.deepStrictEqual(t.collection.messages(imported), ['in Lib']);
+    assert.strictEqual(t.status(a)?.kind, 'checked');
+    // A check of A starts and is still running when its root is forgotten.
+    t.saved.fire(a);
+    await settle();
+    const running = t.backend.loads[2];
+    assert.strictEqual(running.doc, a);
+    const root: Classification = { kind: 'loose', dir: '/w/a' };
+    t.checks.forgetRoot(root);
+    assert.strictEqual(t.collection.get(a.uri), undefined, 'the open document\'s problems');
+    assert.strictEqual(t.collection.get(imported), undefined, 'a file it imports');
+    assert.deepStrictEqual(t.collection.messages(b.uri), ['in B'], 'another root keeps its own');
+    running.resolve(result([[a.uri, [{ message: 'late', severity: ERROR }]]]));
+    await settle();
+    assert.strictEqual(t.collection.get(a.uri), undefined, 'the late result of the running check');
+    assert.strictEqual(t.status(a)?.kind, 'notChecked');
+    // Back in IDE mode, a new check shows its result as usual.
+    t.saved.fire(a);
+    await settle();
+    t.backend.loads[3].resolve(result([[a.uri, [{ message: 'again', severity: ERROR }]]]));
+    await settle();
+    assert.deepStrictEqual(t.collection.messages(a.uri), ['again']);
+    assert.strictEqual(t.status(a)?.kind, 'checked');
+  });
+
   suite('the active document and idris2.ideMode.maxBackgroundChecks (ROADMAP §9 Q21)', () => {
     const clean = (doc: FakeDocument) => result([[doc.uri, []]]);
     /** The documents whose load was asked for, in order. */

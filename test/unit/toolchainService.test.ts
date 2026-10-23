@@ -41,13 +41,15 @@ function key(request: ProcessRequest): string {
 class FakeRunner implements ProcessRunner {
   readonly calls: ProcessRequest[] = [];
   responses: Record<string, ProcessResult | Error> = { ...RESPONSES };
+  /** Answers by the executable's full path and the arguments (`<path> --version`), before `responses`. */
+  byPath: Record<string, ProcessResult> = {};
   /** While set, every run waits for it. */
   gate: Promise<void> | undefined;
 
   async run(request: ProcessRequest): Promise<ProcessResult> {
     this.calls.push(request);
     await this.gate;
-    const response = this.responses[key(request)];
+    const response = this.byPath[[request.executable, ...request.args].join(' ')] ?? this.responses[key(request)];
     if (response instanceof Error) {
       throw response;
     }
@@ -284,8 +286,10 @@ suite('toolchain/service', () => {
       assert.deepStrictEqual(snapshot.idris2.searched, [WINDOWS ? `${configured}.exe` : configured]);
       assert.ok(snapshot.idris2.reason.includes('does not exist'));
     }
-    assert.deepStrictEqual(runner.calls.map(key), ['idris2-lsp --version']);
-    assert.ok(snapshot.verdict?.reason.includes('idris2 was not found'));
+    // The idris2 beside the server (M5) is run for the verdict, the configured path still names nothing.
+    assert.deepStrictEqual(runner.calls.map(key), ['idris2-lsp --version', 'idris2 --version']);
+    assert.strictEqual(snapshot.lspCompiler?.source, 'beside');
+    assert.strictEqual(snapshot.verdict?.kind, 'compatible');
   });
 
   test('idris2.toolchain.env PATH is the PATH the search reads', async () => {
@@ -348,6 +352,71 @@ suite('toolchain/service', () => {
     const next = await service.rescan('command');
     assert.strictEqual(runner.calls.length, 5);
     assert.ok(next.idris2.status === 'probed' && next.idris2.info.notRun === undefined);
+  });
+
+  suite('the compiler of the server\'s installation (M5: the server is paired with the idris2 beside it)', () => {
+    test('beside the server, in another directory than the idris2 found: probed once more, and the verdict compares with it', async () => {
+      // The development machine's layout: Homebrew 0.8.0 on PATH, pack's wrappers side by side in PACK_BIN_DIR.
+      const packBin = path.join(root, 'pack-bin');
+      const server = executable(packBin, 'idris2-lsp');
+      const beside = executable(packBin, 'idris2');
+      const { service, runner } = start({ pathDirs: [bin], settings: { lspPath: server } });
+      runner.byPath[`${server} --version`] = ok('Idris2 LSP: 0.1.0-9a2f0ad6a\nIdris2 API: 0.8.0-1c630e67c\n');
+      runner.byPath[`${beside} --version`] = ok('Idris 2, version 0.8.0-1c630e67c\n');
+      const snapshot = await settled(service);
+      assert.deepStrictEqual(
+        runner.calls.map((c) => c.executable),
+        [...Array<string>(4).fill(path.join(bin, WINDOWS ? 'idris2.exe' : 'idris2')), server, beside],
+      );
+      assert.deepStrictEqual(runner.calls[5].args, ['--version'], 'only --version of the compiler beside');
+      const paired = snapshot.lspCompiler;
+      assert.ok(paired?.source === 'beside' && !paired.sameAsIdris2 && paired.state.status === 'probed', JSON.stringify(paired));
+      assert.strictEqual(paired.state.location.path, beside);
+      assert.strictEqual(paired.state.info.version?.text, '0.8.0-1c630e67c');
+      assert.strictEqual(snapshot.verdict?.kind, 'compatible', snapshot.verdict?.reason);
+      assert.ok(snapshot.verdict?.reason.includes(beside));
+    });
+
+    test('the same file as the idris2 found: no second probe, the verdict uses that idris2', async () => {
+      const { service, runner } = start();
+      runner.responses['idris2-lsp --version'] = ok('Idris2 LSP: 0.1.0\nIdris2 API: 0.7.0\n');
+      const snapshot = await settled(service);
+      assert.strictEqual(runner.calls.length, 5);
+      assert.ok(snapshot.lspCompiler?.source === 'beside' && snapshot.lspCompiler.sameAsIdris2);
+      assert.strictEqual(snapshot.lspCompiler.state, snapshot.idris2);
+      assert.strictEqual(snapshot.verdict?.kind, 'likelyMismatch');
+    });
+
+    test('no idris2 beside the server: paired with the idris2 found, as in M1', async () => {
+      const lonely = path.join(root, 'lonely');
+      const server = executable(lonely, 'idris2-lsp');
+      const { service, runner } = start({ settings: { lspPath: server } });
+      runner.byPath[`${server} --version`] = ok('Idris2 LSP: 0.1.0\nIdris2 API: 0.8.0\n');
+      const snapshot = await settled(service);
+      assert.strictEqual(runner.calls.length, 5);
+      assert.strictEqual(snapshot.lspCompiler?.source, 'search');
+      assert.strictEqual(snapshot.lspCompiler?.state, snapshot.idris2);
+      assert.strictEqual(snapshot.verdict?.kind, 'compatible');
+    });
+
+    test('Restricted Mode: the compiler beside is located, not run', async () => {
+      const packBin = path.join(root, 'pack-bin');
+      const server = executable(packBin, 'idris2-lsp');
+      executable(packBin, 'idris2');
+      const { service, runner } = start({ trusted: false, settings: { lspPath: server } });
+      const snapshot = await settled(service);
+      assert.deepStrictEqual(runner.calls, []);
+      assert.ok(snapshot.lspCompiler?.source === 'beside' && snapshot.lspCompiler.state.status === 'located');
+      assert.strictEqual(snapshot.verdict?.kind, 'unknown');
+    });
+
+    test('no server: no compiler of its installation', async () => {
+      const { service } = start({ settings: { lspPath: path.join(root, 'nowhere', 'idris2-lsp') } });
+      const snapshot = await settled(service);
+      assert.strictEqual(snapshot.lsp.status, 'missing');
+      assert.strictEqual(snapshot.lspCompiler, undefined);
+      assert.strictEqual(snapshot.verdict, undefined);
+    });
   });
 
   test('an unexpected runner rejection is a failed tool and a scan error, not a lost scan', async () => {

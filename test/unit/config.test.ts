@@ -6,12 +6,16 @@ import {
   Config,
   expandHome,
   MAX_DELAY_MS,
+  MIN_LSP_CODE_ACTION_RESULTS,
+  MIN_LSP_LONG_ACTION_TIMEOUT_MS,
+  readBackendMode,
   readCheckingSettings,
   readDiagnosticsSettings,
   readEvaluationSettings,
   readIdeModeSettings,
   readInlayHintSettings,
   readKeybindingScheme,
+  readLspSettings,
   readSaveBeforeAction,
   readToolchainSettings,
   readTraceSettings,
@@ -428,6 +432,99 @@ suite('core/config', () => {
       change(['idris2.keybindings.scheme']);
       change(['idris2.eval.timeout']);
       assert.deepStrictEqual(calls, ['keybindings']);
+    });
+  });
+
+  suite('M5 settings (backend.mode, lsp.*)', () => {
+    test('backend.mode: auto, lsp or ideMode as written; anything else reads as the default, auto', () => {
+      assert.strictEqual(readBackendMode(section({})), 'auto');
+      for (const value of ['auto', 'lsp', 'ideMode'] as const) {
+        assert.strictEqual(readBackendMode(section({ 'backend.mode': value })), value);
+      }
+      for (const value of ['LSP', 'idemode', 'ide', '', true, 0, null, ['lsp'], {}]) {
+        assert.strictEqual(readBackendMode(section({ 'backend.mode': value })), 'auto', String(value));
+      }
+    });
+
+    test('lsp.*: the server\'s own defaults when nothing is set (idris2-lsp 9a2f0ad, Idris2 1c630e6), but logSeverity info (user decision, 2026-10-24)', () => {
+      assert.deepStrictEqual(readLspSettings(section({}), HOME), {
+        logFile: '',
+        logSeverity: 'info',
+        longActionTimeoutMs: 1000,
+        maxCodeActionResults: 5,
+        showImplicits: false,
+        showMachineNames: false,
+        fullNamespace: false,
+        briefCompletions: false,
+      });
+    });
+
+    test('lsp.*: valid values as written; logFile read as the toolchain paths are (trimmed, unquoted, ~ expanded)', () => {
+      const values = {
+        'lsp.logFile': ' "~/logs/lsp.log" ',
+        'lsp.logSeverity': 'warning',
+        'lsp.longActionTimeout': 5000,
+        'lsp.maxCodeActionResults': 12,
+        'lsp.showImplicits': true,
+        'lsp.showMachineNames': true,
+        'lsp.fullNamespace': true,
+        'lsp.briefCompletions': true,
+      };
+      assert.deepStrictEqual(readLspSettings(section(values), HOME), {
+        logFile: `${HOME}/logs/lsp.log`,
+        logSeverity: 'warning',
+        longActionTimeoutMs: 5000,
+        maxCodeActionResults: 12,
+        showImplicits: true,
+        showMachineNames: true,
+        fullNamespace: true,
+        briefCompletions: true,
+      });
+      // Without a home directory a leading ~ stays (the server then refuses the relative path).
+      assert.strictEqual(readLspSettings(section({ 'lsp.logFile': '~/x.log' }), undefined).logFile, '~/x.log');
+    });
+
+    test('lsp.*: wrong types read as the defaults; numbers below the minimum as the minimum, fractions rounded down', () => {
+      const wrong = {
+        'lsp.logFile': 7,
+        'lsp.logSeverity': 'DEBUG',
+        'lsp.longActionTimeout': '5000',
+        'lsp.maxCodeActionResults': Number.NaN,
+        'lsp.showImplicits': 'true',
+        'lsp.showMachineNames': 1,
+        'lsp.fullNamespace': null,
+        'lsp.briefCompletions': [],
+      };
+      assert.deepStrictEqual(readLspSettings(section(wrong), HOME), readLspSettings(section({}), HOME));
+      const low = readLspSettings(section({ 'lsp.longActionTimeout': 0, 'lsp.maxCodeActionResults': -3 }), HOME);
+      assert.strictEqual(low.longActionTimeoutMs, MIN_LSP_LONG_ACTION_TIMEOUT_MS);
+      assert.strictEqual(low.maxCodeActionResults, MIN_LSP_CODE_ACTION_RESULTS);
+      const fractions = readLspSettings(section({ 'lsp.longActionTimeout': 1500.7, 'lsp.maxCodeActionResults': 2.9 }), HOME);
+      assert.deepStrictEqual([fractions.longActionTimeoutMs, fractions.maxCodeActionResults], [1500, 2]);
+      // Every severity parseSeverity knows (lsp-lib Language/LSP/Severity.idr), in lower case.
+      for (const value of ['debug', 'info', 'warning', 'error', 'critical'] as const) {
+        assert.strictEqual(readLspSettings(section({ 'lsp.logSeverity': value }), HOME).logSeverity, value);
+      }
+    });
+
+    test('Config.backendMode(scope) reads the resource-scoped section for the scope, Config.lsp() the window\'s; each fires its own group', () => {
+      const values: Record<string, unknown> = { 'backend.mode': 'lsp', 'lsp.showImplicits': true };
+      const { host, scopes, change } = fakeHost(values);
+      const config = new Config(host, HOME);
+      const uri = { scheme: 'file', path: '/w/p/Main.idr' } as unknown as vscode.Uri;
+      assert.strictEqual(config.backendMode(uri), 'lsp');
+      values['backend.mode'] = 'ideMode';
+      assert.strictEqual(config.backendMode(), 'ideMode');
+      assert.strictEqual(config.lsp().showImplicits, true);
+      assert.deepStrictEqual(scopes, [uri, undefined, undefined]);
+      const calls: string[] = [];
+      config.onDidChange('backend', () => calls.push('backend'));
+      config.onDidChange('lsp', (c) => calls.push(`lsp ${c.affects('lsp.showImplicits')} ${c.affects('lsp.trace.server')}`));
+      change(['idris2.backend.mode']);
+      change(['idris2.lsp.showImplicits']);
+      change(['idris2.lsp.trace.server']);
+      change(['idris2.toolchain.lspPath']);
+      assert.deepStrictEqual(calls, ['backend', 'lsp true false', 'lsp false true']);
     });
   });
 

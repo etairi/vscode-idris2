@@ -12,7 +12,9 @@
  *    `idris2 --version`, and when that printed its version line `--ttc-version`, `--paths` and
  *    `--list-packages`, stopping after the first of these three that times out (the others are
  *    recorded as not run: each would wait for its own limit, and a scan is repeated on every
- *    settings change); then `idris2-lsp --version` — each with a 5 s limit, the tool's
+ *    settings change); then `idris2-lsp --version`; then, when an `idris2` lies beside the server
+ *    and is not the file the search found, that one's `--version` (the compiler of the server's
+ *    installation, `ServerCompiler` in `types.ts`, M5) — each with a 5 s limit, the tool's
  *    directory as working directory and `idris2.toolchain.env` as environment. pack is never
  *    run. In Restricted Mode nothing is run and a found tool is `located`;
  * 4. judges the pair (`verdict.ts`).
@@ -28,10 +30,12 @@
 import { DisposableStore } from '../core/disposable';
 import { Emitter, type Event } from '../core/event';
 import { describeFailure, overlayEnvironment, PROBE_TIMEOUT_MS } from '../core/process';
-import { discoverTool, type Discovery } from './discover';
+import * as path from 'path';
+import { discoverTool, findExecutableIn, samePath, type Discovery } from './discover';
 import { nodeFileSystem } from './fileSystem';
 import { readPackLayout } from './pack';
 import type {
+  CompilerVersionInfo,
   DiscoveryEnvironment,
   Idris2Info,
   LspInfo,
@@ -40,6 +44,7 @@ import type {
   ProcessResult,
   ProcessRunner,
   RescanReason,
+  ServerCompiler,
   ToolchainService,
   ToolchainServiceDeps,
   ToolchainSnapshot,
@@ -152,6 +157,25 @@ async function probeIdris2(
   };
 }
 
+/** The `--version` of the compiler beside idris2-lsp (`ServerCompiler`): only what the verdict needs. */
+async function probeCompilerVersion(
+  runner: ProcessRunner,
+  location: ToolLocation,
+  env: Readonly<Record<string, string>>,
+  cancelled: () => boolean,
+): Promise<ToolState<CompilerVersionInfo>> {
+  const log = new ProbeLog(runner, location, env, cancelled);
+  const result = await log.run(['--version']);
+  if (!succeeded(result)) {
+    return { status: 'failed', location, reason: failureReason('idris2 --version', result), probes: log.probes };
+  }
+  const parsed = parseIdris2Version(result.stdout);
+  if (parsed === undefined) {
+    return { status: 'failed', location, reason: `idris2 --version printed no line starting "${IDRIS2_VERSION_PREFIX}".`, probes: log.probes };
+  }
+  return { status: 'probed', location, info: { versionLine: parsed.versionLine, version: parsed.version, probes: log.probes } };
+}
+
 async function probeLsp(
   runner: ProcessRunner,
   location: ToolLocation,
@@ -222,6 +246,32 @@ async function scan(
 
   const idris2 = await probe(idris2Found, (location) => probeIdris2(deps.runner, location, settings.env, cancelled));
   const lsp = await probe(lspFound, (location) => probeLsp(deps.runner, location, settings.env, cancelled));
+  let lspCompiler: ServerCompiler | undefined;
+  if (lspFound.found) {
+    // The compiler of the server's installation (`ServerCompiler`): the idris2 in its directory.
+    const p = deps.platform === 'win32' ? path.win32 : path.posix;
+    const server = lspFound.location;
+    const beside = await findExecutableIn(p.dirname(server.path), 'idris2', env, deps.platform, nodeFileSystem);
+    if (beside === undefined) {
+      lspCompiler = { source: 'search', state: idris2 };
+    } else if (idris2Found.found && (await samePath(beside, idris2Found.location.path, deps.platform, nodeFileSystem))) {
+      lspCompiler = { source: 'beside', sameAsIdris2: true, state: idris2 };
+    } else {
+      const location: ToolLocation = {
+        kind: 'idris2',
+        path: beside,
+        source: server.source,
+        detail: `beside idris2-lsp, in ${p.dirname(server.path)}`,
+        inPackDirectory: server.inPackDirectory,
+        ...(server.packCollection === undefined ? {} : { packCollection: server.packCollection }),
+      };
+      lspCompiler = {
+        source: 'beside',
+        sameAsIdris2: false,
+        state: await probe({ found: true, location }, (at) => probeCompilerVersion(deps.runner, at, settings.env, cancelled)),
+      };
+    }
+  }
   const pack: PackState = packFound.found
     ? {
         status: 'found',
@@ -241,8 +291,9 @@ async function scan(
     settings,
     idris2,
     lsp,
+    ...(lspCompiler === undefined ? {} : { lspCompiler }),
     pack,
-    verdict: judgePair(idris2, lsp),
+    verdict: judgePair(idris2, lsp, lspCompiler),
     errors,
     finishedAt: Date.now(),
   };
@@ -379,10 +430,17 @@ class Service implements ToolchainService {
   private logSnapshot(snapshot: ToolchainSnapshot): void {
     const pack = snapshot.pack.status === 'found' ? `at ${snapshot.pack.info.location.path}` : 'not found';
     const verdict = snapshot.verdict === undefined ? '' : `; pair ${snapshot.verdict.kind}: ${snapshot.verdict.reason}`;
+    const server = snapshot.lspCompiler;
+    const serverCompiler =
+      server === undefined
+        ? ''
+        : server.source === 'search'
+          ? "; no idris2 beside idris2-lsp: it is paired with the idris2 above"
+          : `; idris2 beside idris2-lsp ${summary(server.state, (info) => info.version?.text ?? info.versionLine)}`;
     this.deps.log.info(
       `Toolchain scan ${snapshot.generation} (${snapshot.reason}${snapshot.trusted ? '' : ', Restricted Mode: nothing run'}): ` +
         `idris2 ${summary(snapshot.idris2, (info) => info.version?.text ?? info.versionLine)}; ` +
-        `idris2-lsp ${summary(snapshot.lsp, (info) => `API ${info.apiVersion?.text ?? info.apiVersionLine}`)}; pack ${pack}${verdict}`,
+        `idris2-lsp ${summary(snapshot.lsp, (info) => `API ${info.apiVersion?.text ?? info.apiVersionLine}`)}${serverCompiler}; pack ${pack}${verdict}`,
     );
     snapshot.errors.forEach((e) => this.deps.log.error(e));
   }

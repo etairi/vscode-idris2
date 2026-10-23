@@ -2,12 +2,12 @@
 
 This is the `src/` part of the repository tree in `docs/ARCHITECTURE.md` §2, annotated with the
 milestone (`docs/ROADMAP.md` §5) that creates each part. Only the files marked **skeleton**,
-**M0**, **M1**, **M2**, **M3** or **M4** exist today. Nothing else is stubbed: a folder appears when its milestone
+**M0**, **M1**, **M2**, **M3**, **M4** or **M5** exist today. Nothing else is stubbed: a folder appears when its milestone
 lands, never as an empty module.
 
 ```
 src/
-├─ extension.ts               M0–M4     activate(): log channel, Help commands, the
+├─ extension.ts               M0–M5     activate(): log channel, Help commands, the
 │                                       idris2.isIdrisDocument context key, selection ranges
 │                                       (M0); then Config → workspace trust → process runner →
 │                                       toolchain service → project index → backend registry
@@ -17,8 +17,12 @@ src/
 │                                       and commands of intelligence/ and eval/ over one
 │                                       DocumentQueries (M3); then editing/, holes/ with the
 │                                       idris2.isIdrisWorkspace key, Show Keybindings (M4);
+│                                       M5: the routing (BackendChoices, BackendRouting),
+│                                       LspAdmission, the language client, LspBackend (the
+│                                       registry's lsp provider), the language server's
+│                                       commands, the holes model following the server's loads;
 │                                       then the status item, Setup Information, install
-│                                       commands, notifications.
+│                                       commands, notifications, and features/backend.
 │                                       Waits for no process; returns a test API only in
 │                                       ExtensionMode.Test. deactivate() disposes everything in
 │                                       reverse order, which kills every session process.
@@ -35,7 +39,9 @@ src/
 │  │                                    idris2.checking.*, ideMode.*, diagnostics.*, trace.*
 │  │                                    (M2), inlayHints.*, eval.* (M3), checking.
 │  │                                    saveBeforeAction and keybindings.scheme (M4, for Show
-│  │                                    Keybindings) + change events per group
+│  │                                    Keybindings), backend.mode and the eight lsp.* server
+│  │                                    options (M5; lsp.trace.server is read by the library)
+│  │                                    + change events per group
 │  │                                    (holes.showInSideBar is read by VS Code only)
 │  ├─ event.ts                M1        Event/Emitter without vscode (unit-tested services)
 │  ├─ trust.ts                M1, M2    WorkspaceTrust: isTrusted, onDidGrant (Restricted Mode);
@@ -92,7 +98,8 @@ src/
 │  │                                    only; pack is never started)
 │  ├─ versions.ts                       parse --version, --ttc-version, --paths,
 │  │                                    --list-packages, idris2-lsp --version
-│  ├─ verdict.ts                        the idris2 / idris2-lsp pair verdict
+│  ├─ verdict.ts                        the idris2 / idris2-lsp pair verdict (M5: with the
+│  │                                    idris2 beside the server, its installation's)
 │  ├─ service.ts                        ToolchainService: scans and immutable snapshots
 │  ├─ status.ts                         LanguageStatusItem (M2: with the active document's
 │  │                                    check), status QuickPick (= the editor-title
@@ -134,10 +141,12 @@ src/
 │  │                                    EditResult (edit, choices, failed, exhausted)
 │  ├─ null.ts                 M0        NullBackend: every capability false, every call rejects
 │  │                                    with Unsupported
-│  ├─ registry.ts             M1, M2    one BackendProvider serving every root (M2: IDE mode;
-│  │                                    none → NullBackend, "syntax only"), the per-root
-│  │                                    BackendState and status label, rootKey; per-root routing
-│  │                                    and per-feature fallback arrive with M5
+│  ├─ registry.ts             M1, M2, M5 one BackendProvider of each kind serving every root
+│  │                                    (M2: IDE mode; M5: idris2-lsp, LspProvider), the per-root
+│  │                                    BackendState and status label, rootKey; M5: the routing
+│  │                                    (decideRoute, BackendRouting, the Switch Backend choices
+│  │                                    BackendChoices; no fallback per feature) and LspAdmission,
+│  │                                    which documents may reach the server
 │  ├─ ide/                    M2–M4     (M3 adds highlight, replCommand; M4 edits, holes)
 │  │  ├─ types.ts                       the contracts of the layer (types only): s-expressions,
 │  │  │                                 frames, messages, IdeCodec, Transport, IdeSession,
@@ -192,7 +201,23 @@ src/
 │  │                                    state, cancel after the write → restartCheck) and IdeMode, the
 │  │                                    registry's provider and the commands' control surface
 │  │                                    (M3: onDidLoad, warmUpCompletions)
-│  ├─ lsp/                    M5        client, commands, backend (vscode-languageclient 10.x)
+│  ├─ lsp/                    M5        idris2-lsp (vscode-languageclient 10.x)
+│  │  ├─ types.ts                       the layer's contracts (types only): server options,
+│  │  │                                 executeCommand shapes, LspOwnership, LspClientHandle
+│  │  ├─ client.ts                      LspClient: the LanguageClient and its process (through
+│  │  │                                 startLongRunningProcess, consent gate before the spawn),
+│  │  │                                 own JSON-RPC framing, backoff, Stop / Restart, settings
+│  │  │                                 forwarded, the missing-.ipkg reports, the server's loads
+│  │  ├─ middleware.ts                  ownership (DocumentSync), the last-check hooks, real
+│  │  │                                 paths (ServerPaths), coordinates, untrusted text, quick
+│  │  │                                 fixes, dirty documents
+│  │  ├─ commands.ts                    Restart / Stop Language Server, Show Language Server
+│  │  │                                 Output, Send Raw LSP executeCommand…
+│  │  ├─ edits.ts                       the edits' requests (ARCHITECTURE §3.3) and their answers,
+│  │  │                                 handed to IDE mode's plans (M4's rules); pure
+│  │  ├─ holes.ts                       metavars → Hole by IDE mode's rules; pure
+│  │  └─ backend.ts                     LspBackend: edits, next results, holes, namespaces;
+│  │                                    Unsupported, saying why, for the rest
 │  └─ cli/                    M9, M11   runner, diagnostics (text-format parser)
 ├─ features/                  one folder per feature area
 │  ├─ help/                   M0, M4
@@ -283,6 +308,15 @@ src/
 │  │  ├─ saveBeforeAction.ts            idris2.checking.saveBeforeAction
 │  │  ├─ messages.ts                    titles, needs, rephrasings, refusal texts
 │  │  └─ register.ts                    registerEditing
+│  ├─ backend/                M5        the routing's user interface (types.ts: the contracts,
+│  │  │                                 LanguageServerControl)
+│  │  ├─ switchBackend.ts               Switch Backend… (per root, workspace state)
+│  │  ├─ follow.ts                      route changes (IDE mode's sessions and problems), the
+│  │  │                                 consent question when a document is shown, the one-time
+│  │  │                                 no-.ipkg notification
+│  │  ├─ migration.ts                   the offer to copy bamboo's idris2-lsp.* settings
+│  │  ├─ restart.ts                     the restart question for a cleared idris2.lsp.logFile
+│  │  └─ register.ts                    registerBackendFeatures
 │  ├─ holes/                  M4        (types.ts: the contracts)
 │  │  ├─ model.ts                       HoleModel: the holes after each load, per file (per
 │  │  │                                 module when the compiler gives no source location)
@@ -324,7 +358,7 @@ and takes only what the feature needs (`registerHelpCommands(log, extensionId)`,
 Rules that already apply (ARCHITECTURE §2): `features/*` never import from `backend/ide` or
 `backend/lsp` directly, only from `backend/types.ts` and `backend/registry.ts` (M2: the
 commands, the trace and the checks get the IDE-mode controls as interfaces that `extension.ts`
-fills from `IdeMode`);
+fills from `IdeMode`; M5: `features/backend` gets the language client as `LanguageServerControl`);
 `core/positions.ts` is the only module that adds or subtracts 1 from a line or column (but M1's
 fallback `.ipkg` parser, `project/ipkg.ts`, which counts its lexer's positions into the 1-based
 ones the compiler prints). Every

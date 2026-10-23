@@ -155,12 +155,12 @@ function searchDirectories(environment: DiscoveryEnvironment, pack: PackLayout):
 }
 
 /**
- * Whether `a` and `b` name the same directory: compared as `directoryKey` does, else after
- * resolving symbolic links in both (e.g. a `PATH` entry `~/bin` that links to `~/.local/bin`,
+ * Whether `a` and `b` name the same directory (or file): compared as `directoryKey` does, else
+ * after resolving symbolic links in both (e.g. a `PATH` entry `~/bin` that links to `~/.local/bin`,
  * or `/tmp` and `/private/tmp` on macOS). When a path cannot be resolved, only the first
  * comparison counts.
  */
-async function sameDirectory(a: string, b: string | undefined, platform: NodeJS.Platform, fs: FileSystemProbe): Promise<boolean> {
+export async function samePath(a: string, b: string | undefined, platform: NodeJS.Platform, fs: FileSystemProbe): Promise<boolean> {
   if (b === undefined) {
     return false;
   }
@@ -174,7 +174,7 @@ async function sameDirectory(a: string, b: string | undefined, platform: NodeJS.
 /**
  * The `ToolLocation` of the executable `file` in directory `dir`, found by `source`: in
  * pack's directories when `dir` is pack's bin directory or its collection's `bin` directory
- * (`sameDirectory`).
+ * (`samePath`).
  */
 async function locate(
   tool: ToolKind,
@@ -185,13 +185,13 @@ async function locate(
   platform: NodeJS.Platform,
   fs: FileSystemProbe,
 ): Promise<ToolLocation> {
-  const inCollection = pack.collection !== undefined && (await sameDirectory(dir, pack.collectionBinDir, platform, fs));
+  const inCollection = pack.collection !== undefined && (await samePath(dir, pack.collectionBinDir, platform, fs));
   return {
     kind: tool,
     path: file,
     source: found.source,
     detail: found.detail,
-    inPackDirectory: inCollection || (await sameDirectory(dir, pack.binDir, platform, fs)),
+    inPackDirectory: inCollection || (await samePath(dir, pack.binDir, platform, fs)),
     ...(inCollection ? { packCollection: pack.collection } : {}),
   };
 }
@@ -320,6 +320,26 @@ async function discoverConfigured(
     searched: [configured],
     reason: `${key} is set to "${configured}", which is neither an absolute path${windowsHint} nor a bare command name.`,
   };
+}
+
+/**
+ * The executable `command` in the directory `dir` (on Windows with a `PATHEXT` extension, as the
+ * search tries it), or `undefined` when there is none: for the compiler beside `idris2-lsp`, which
+ * the pair verdict compares the server with (`ServerCompiler` in `types.ts`).
+ */
+export async function findExecutableIn(
+  dir: string,
+  command: string,
+  env: Environment,
+  platform: NodeJS.Platform,
+  fs: FileSystemProbe,
+): Promise<string | undefined> {
+  const p = pathApi(platform);
+  const found = await firstRunnable(
+    fileNames(command, env, platform).map((name) => p.join(dir, name)),
+    fs,
+  );
+  return 'hit' in found ? found.hit : undefined;
 }
 
 /**

@@ -1,0 +1,89 @@
+{"kind":"meta","format":1,"scenario":"literate-md","description":"E1 (Markdown): test/fixtures/ipkg/literate (lit.ipkg): didOpen of Lit/Mark.idr.md, Lit/Twice.md and Lit/Bird.lidr (bird tracks after prose): diagnostics, documentSymbol and hover in each","facts":["F11","F23"],"server":{"version":"0.1.0-9a2f0ad6a","api":"0.8.0-1c630e67c","versionText":"Idris2 LSP: 0.1.0-9a2f0ad6a\nIdris2 API: 0.8.0-1c630e67c","executable":"~/.local/share/pack/bin/idris2-lsp"},"platform":"darwin arm64","recorded":"2026-10-01","workspace":"test/fixtures/ipkg/literate","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"lit.ipkg":"c297e8b76ae051ceef42d951328e9079977eed6317968d3b193d2f37fae59bef","src/Lit/Mark.idr.md":"9747fc5b4ffe7764b3cdcd6038506525ea82601b50e32cc41ee4508c2945112f","src/Lit/Twice.md":"e9daa4c9b21419a5fcf688e659dd1d68f263109880287a8110ee95879709dfc0","src/Lit/Twice.idr":"9f59976ac4c7d2c3ecadec0dddb4b9db7e31d3f3193391c69651210ea8143b5e","src/Lit/Bird.lidr":"e4839fe9313fbf95ffaf5c95bfdcbb051e1836ec98925c00f22a8d6e86ac4f50"}}
+{"kind":"send","length":1661,"text":"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"processId\":null,\"clientInfo\":{\"name\":\"vscode-idris2 record-lsp-transcripts\"},\"locale\":\"en\",\"rootPath\":\"${ROOT}\",\"rootUri\":\"file://${ROOT}\",\"capabilities\":{\"workspace\":{\"applyEdit\":true,\"workspaceEdit\":{\"documentChanges\":true},\"didChangeConfiguration\":{\"dynamicRegistration\":false},\"executeCommand\":{\"dynamicRegistration\":false},\"semanticTokens\":{\"refreshSupport\":true}},\"textDocument\":{\"synchronization\":{\"dynamicRegistration\":false,\"willSave\":false,\"willSaveWaitUntil\":false,\"didSave\":true},\"hover\":{\"dynamicRegistration\":false,\"contentFormat\":[\"markdown\",\"plaintext\"]},\"publishDiagnostics\":{\"relatedInformation\":true,\"versionSupport\":false,\"tagSupport\":{\"valueSet\":[1,2]},\"codeDescriptionSupport\":true,\"dataSupport\":true},\"codeAction\":{\"dynamicRegistration\":false,\"isPreferredSupport\":true,\"codeActionLiteralSupport\":{\"codeActionKind\":{\"valueSet\":[\"\",\"quickfix\",\"refactor\",\"refactor.extract\",\"refactor.inline\",\"refactor.rewrite\",\"source\",\"source.organizeImports\"]}}}}},\"initializationOptions\":{\"logSeverity\":\"info\",\"longActionTimeout\":1000,\"maxCodeActionResults\":5,\"showImplicits\":false,\"showMachineNames\":false,\"fullNamespace\":false,\"briefCompletions\":false},\"trace\":\"off\",\"workspaceFolders\":[{\"uri\":\"file://${ROOT}\",\"name\":\"literate\"}]}}"}
+{"kind":"stderr","text":"LOG DEBUG:Communication.Channel: Received message: {\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"processId\":null,\"clientInfo\":{\"name\":\"vscode-idris2 record-lsp-transcripts\"},\"locale\":\"en\",\"rootPath\":\"${ROOT}\",\"rootUri\":\"file://${ROOT}\",\"capabilities\":{\"workspace\":{\"applyEdit\":true,\"workspaceEdit\":{\"documentChanges\":true},\"didChangeConfiguration\":{\"dynamicRegistration\":false},\"executeCommand\":{\"dynamicRegistration\":false},\"semanticTokens\":{\"refreshSupport\":true}},\"textDocument\":{\"synchronization\":{\"dynamicRegistration\":false,\"willSave\":false,\"willSaveWaitUntil\":false,\"didSave\":true},\"hover\":{\"dynamicRegistration\":false,\"contentFormat\":[\"markdown\",\"plaintext\"]},\"publishDiagnostics\":{\"relatedInformation\":true,\"versionSupport\":false,\"tagSupport\":{\"valueSet\":[1,2]},\"codeDescriptionSupport\":true,\"dataSupport\":true},\"codeAction\":{\"dynamicRegistration\":false,\"isPreferredSupport\":true,\"codeActionLiteralSupport\":{\"codeActionKind\":{\"valueSet\":[\"\",\"quickfix\",\"refactor\",\"refactor.extract\",\"refactor.inline\",\"refactor.rewrite\",\"source\",\"source.organizeImports\"]}}}}},\"initializationOptions\":{\"logSeverity\":\"info\",\"longActionTimeout\":1000,\"maxCodeActionResults\":5,\"showImplicits\":false,\"showMachineNames\":false,\"fullNamespace\":false,\"briefCompletions\":false},\"trace\":\"off\",\"workspaceFolders\":[{\"uri\":\"file://${ROOT}\",\"name\":\"literate\"}]}}\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"initialize\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received initialization request\n"}
+{"kind":"stderr","text":"LOG INFO:Request.Configuration: Long action timeout set to 1000\n"}
+{"kind":"stderr","text":"LOG INFO:Request.Configuration: Max code action results set to 5\n"}
+{"kind":"stderr","text":"LOG INFO:Request.Configuration: Show implicits set to False\n"}
+{"kind":"stderr","text":"LOG INFO:Request.Configuration: Full namespace set to False\n"}
+{"kind":"stderr","text":"LOG INFO:Server: Server initialized and configured\n"}
+{"kind":"recv","length":1290,"text":"{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"capabilities\":{\"textDocumentSync\":{\"openClose\":true,\"change\":2,\"save\":{\"includeText\":true}},\"completionProvider\":{\"triggerCharacters\":[],\"allCommitCharacters\":[]},\"hoverProvider\":true,\"signatureHelpProvider\":{},\"declarationProvider\":false,\"definitionProvider\":{\"workDoneProgress\":false},\"typeDefinitionProvider\":false,\"implementationProvider\":false,\"referencesProvider\":false,\"documentHighlightProvider\":true,\"documentSymbolProvider\":{},\"codeActionProvider\":{\"resolveProvider\":false},\"codeLensProvider\":{},\"documentLinkProvider\":{},\"colorProvider\":false,\"documentFormattingProvider\":false,\"documentRangeFormattingProvider\":false,\"renameProvider\":false,\"foldingRangeProvider\":false,\"executeCommandProvider\":{\"commands\":[\"repl\",\"exprSearchWithHints\",\"refineHoleWithHints\",\"metavars\"]},\"selectionRangeProvider\":false,\"linkedEditingRangeProvider\":false,\"callHierarchyProvider\":false,\"semanticTokensProvider\":{\"legend\":{\"tokenTypes\":[\"type\",\"function\",\"enumMember\",\"variable\",\"keyword\",\"namespace\",\"postulate\",\"module\",\"comment\"],\"tokenModifiers\":[]},\"range\":false,\"full\":true},\"monikerProvider\":false,\"workspaceSymbolProvider\":false,\"workspace\":{\"workspaceFolders\":{\"supported\":false},\"fileOperations\":{}}},\"serverInfo\":{\"name\":\"idris2-lsp\",\"version\":\"0.1\"}}}"}
+{"kind":"send","length":52,"text":"{\"jsonrpc\":\"2.0\",\"method\":\"initialized\",\"params\":{}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"initialize\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received notification for method \"initialized\"\n"}
+{"kind":"stderr","text":"LOG WARNING:Communication.Channel: Received unhandled notification for method \"initialized\"\n"}
+{"kind":"send","length":408,"text":"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Lit/Mark.idr.md\",\"languageId\":\"markdown\",\"version\":1,\"text\":\"# A module in a Markdown file with a double extension\\n\\n```idris\\nmodule Lit.Mark\\n\\nexport\\nmark : Nat\\nmark = 2\\n```\\n\"}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received notification for method \"textDocument/didOpen\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received didOpen notification for file://${ROOT}/src/Lit/Mark.idr.md\n"}
+{"kind":"stderr","text":"LOG INFO:Server: Loading file file://${ROOT}/src/Lit/Mark.idr.md\n"}
+{"kind":"stderr","text":"LOG INFO:Notification.Diagnostic: Sending diagnostic message for file://${ROOT}/src/Lit/Mark.idr.md\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent notification message for method \"textDocument/publishDiagnostics\"\n"}
+{"kind":"recv","length":264,"text":"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{\"uri\":\"file://${ROOT}/src/Lit/Mark.idr.md\",\"version\":1,\"diagnostics\":[]}}"}
+{"kind":"send","length":255,"text":"{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"textDocument/documentSymbol\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Lit/Mark.idr.md\"}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/documentSymbol\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received documentSymbol request for file://${ROOT}/src/Lit/Mark.idr.md\n"}
+{"kind":"stderr","text":"LOG INFO:Request.DocumentSymbol: Making for file://${ROOT}/src/Lit/Mark.idr.md\n"}
+{"kind":"stderr","text":"LOG INFO:Request.DocumentSymbol: Found 1 global and 1 meta document symbols.\n"}
+{"kind":"recv","length":590,"text":"{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":[{\"name\":\"mark\",\"kind\":12,\"location\":{\"uri\":\"file://${ROOT}/src/Lit/Mark.idr.md\",\"range\":{\"start\":{\"line\":5,\"character\":0},\"end\":{\"line\":6,\"character\":10}}}},{\"name\":\"mark\",\"kind\":13,\"location\":{\"uri\":\"file://${ROOT}/src/Lit/Mark.idr.md\",\"range\":{\"start\":{\"line\":6,\"character\":0},\"end\":{\"line\":6,\"character\":4}}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/documentSymbol\"\n"}
+{"kind":"send","length":282,"text":"{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"textDocument/hover\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Lit/Mark.idr.md\"},\"position\":{\"line\":6,\"character\":0}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/hover\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received hover request for file://${ROOT}/src/Lit/Mark.idr.md\n"}
+{"kind":"recv","length":102,"text":"{\"jsonrpc\":\"2.0\",\"id\":3,\"result\":{\"contents\":{\"kind\":\"markdown\",\"value\":\"```idris\\nmark : Nat\\n```\"}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/hover\"\n"}
+{"kind":"send","length":439,"text":"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Lit/Twice.md\",\"languageId\":\"markdown\",\"version\":1,\"text\":\"# Lit.Twice as Markdown: the compiler finds this file before Twice.idr\\n\\n```idris\\nmodule Lit.Twice\\n\\nexport\\nfromMarkdown : Nat\\nfromMarkdown = 3\\n```\\n\"}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received notification for method \"textDocument/didOpen\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received didOpen notification for file://${ROOT}/src/Lit/Twice.md\n"}
+{"kind":"stderr","text":"LOG INFO:Server: Loading file file://${ROOT}/src/Lit/Twice.md\n"}
+{"kind":"stderr","text":"LOG INFO:Notification.Diagnostic: Sending diagnostic message for file://${ROOT}/src/Lit/Twice.md\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent notification message for method \"textDocument/publishDiagnostics\"\n"}
+{"kind":"recv","length":261,"text":"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{\"uri\":\"file://${ROOT}/src/Lit/Twice.md\",\"version\":1,\"diagnostics\":[]}}"}
+{"kind":"send","length":252,"text":"{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"textDocument/documentSymbol\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Lit/Twice.md\"}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/documentSymbol\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received documentSymbol request for file://${ROOT}/src/Lit/Twice.md\n"}
+{"kind":"stderr","text":"LOG INFO:Request.DocumentSymbol: Making for file://${ROOT}/src/Lit/Twice.md\n"}
+{"kind":"stderr","text":"LOG INFO:Request.DocumentSymbol: Found 1 global and 1 meta document symbols.\n"}
+{"kind":"recv","length":601,"text":"{\"jsonrpc\":\"2.0\",\"id\":4,\"result\":[{\"name\":\"fromMarkdown\",\"kind\":12,\"location\":{\"uri\":\"file://${ROOT}/src/Lit/Twice.md\",\"range\":{\"start\":{\"line\":5,\"character\":0},\"end\":{\"line\":6,\"character\":18}}}},{\"name\":\"fromMarkdown\",\"kind\":13,\"location\":{\"uri\":\"file://${ROOT}/src/Lit/Twice.md\",\"range\":{\"start\":{\"line\":6,\"character\":0},\"end\":{\"line\":6,\"character\":12}}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/documentSymbol\"\n"}
+{"kind":"send","length":279,"text":"{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"textDocument/hover\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Lit/Twice.md\"},\"position\":{\"line\":6,\"character\":0}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/hover\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received hover request for file://${ROOT}/src/Lit/Twice.md\n"}
+{"kind":"recv","length":110,"text":"{\"jsonrpc\":\"2.0\",\"id\":5,\"result\":{\"contents\":{\"kind\":\"markdown\",\"value\":\"```idris\\nfromMarkdown : Nat\\n```\"}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/hover\"\n"}
+{"kind":"send","length":372,"text":"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Lit/Bird.lidr\",\"languageId\":\"lidr\",\"version\":1,\"text\":\"A module in bird-track style.\\n\\n> module Lit.Bird\\n>\\n> export\\n> bird : Nat\\n> bird = 1\\n\"}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received notification for method \"textDocument/didOpen\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received didOpen notification for file://${ROOT}/src/Lit/Bird.lidr\n"}
+{"kind":"stderr","text":"LOG INFO:Server: Loading file file://${ROOT}/src/Lit/Bird.lidr\n"}
+{"kind":"stderr","text":"LOG INFO:Notification.Diagnostic: Sending diagnostic message for file://${ROOT}/src/Lit/Bird.lidr\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent notification message for method \"textDocument/publishDiagnostics\"\n"}
+{"kind":"recv","length":262,"text":"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{\"uri\":\"file://${ROOT}/src/Lit/Bird.lidr\",\"version\":1,\"diagnostics\":[]}}"}
+{"kind":"send","length":253,"text":"{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"textDocument/documentSymbol\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Lit/Bird.lidr\"}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/documentSymbol\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received documentSymbol request for file://${ROOT}/src/Lit/Bird.lidr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.DocumentSymbol: Making for file://${ROOT}/src/Lit/Bird.lidr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.DocumentSymbol: Found 1 global and 1 meta document symbols.\n"}
+{"kind":"recv","length":586,"text":"{\"jsonrpc\":\"2.0\",\"id\":6,\"result\":[{\"name\":\"bird\",\"kind\":12,\"location\":{\"uri\":\"file://${ROOT}/src/Lit/Bird.lidr\",\"range\":{\"start\":{\"line\":4,\"character\":0},\"end\":{\"line\":5,\"character\":10}}}},{\"name\":\"bird\",\"kind\":13,\"location\":{\"uri\":\"file://${ROOT}/src/Lit/Bird.lidr\",\"range\":{\"start\":{\"line\":5,\"character\":0},\"end\":{\"line\":5,\"character\":4}}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/documentSymbol\"\n"}
+{"kind":"send","length":280,"text":"{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"textDocument/hover\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Lit/Bird.lidr\"},\"position\":{\"line\":5,\"character\":2}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/hover\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received hover request for file://${ROOT}/src/Lit/Bird.lidr\n"}
+{"kind":"recv","length":102,"text":"{\"jsonrpc\":\"2.0\",\"id\":7,\"result\":{\"contents\":{\"kind\":\"markdown\",\"value\":\"```idris\\nbird : Nat\\n```\"}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/hover\"\n"}
+{"kind":"send","length":280,"text":"{\"jsonrpc\":\"2.0\",\"id\":8,\"method\":\"textDocument/hover\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Lit/Bird.lidr\"},\"position\":{\"line\":5,\"character\":0}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/hover\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received hover request for file://${ROOT}/src/Lit/Bird.lidr\n"}
+{"kind":"recv","length":102,"text":"{\"jsonrpc\":\"2.0\",\"id\":8,\"result\":{\"contents\":{\"kind\":\"markdown\",\"value\":\"```idris\\nbird : Nat\\n```\"}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/hover\"\n"}
+{"kind":"send","length":44,"text":"{\"jsonrpc\":\"2.0\",\"id\":9,\"method\":\"shutdown\"}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"shutdown\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received shutdown request\n"}
+{"kind":"stderr","text":"LOG INFO:Server: Server ready to be shutdown\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"shutdown\"\n"}
+{"kind":"recv","length":38,"text":"{\"jsonrpc\":\"2.0\",\"id\":9,\"result\":null}"}
+{"kind":"send","length":33,"text":"{\"jsonrpc\":\"2.0\",\"method\":\"exit\"}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received notification for method \"exit\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received exit notification\n"}
+{"kind":"stderr","text":"LOG INFO:Server: Quitting the server...\n"}
+{"kind":"exit","code":0,"signal":null}
+{"kind":"files","written":["build/ttc/2025081600/Lit/Bird.ttc","build/ttc/2025081600/Lit/Bird.ttm","build/ttc/2025081600/Lit/Mark.ttc","build/ttc/2025081600/Lit/Mark.ttm","build/ttc/2025081600/Lit/Twice.ttc","build/ttc/2025081600/Lit/Twice.ttm"]}

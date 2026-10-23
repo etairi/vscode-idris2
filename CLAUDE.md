@@ -13,10 +13,11 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   (2026-09-28, `docs/as-built/M2.md`, likewise); M3 is implemented (2026-09-29, commits `04e96aa`
   and `263f38f`, `docs/as-built/M3.md`, likewise); M4 is implemented for IDE mode (2026-10-01,
   commit `982d2fc`, `docs/as-built/M4.md`, likewise; its LSP half — `LspBackend.edit()`,
-  `holes()` and the contract suite — is owned by M5, which ships second). The one planned stub is M0's
+  `holes()` and the contract suite — was M5's, which shipped second); M5 is implemented (2026-10-02,
+  `docs/as-built/M5.md`, likewise; not committed yet). The one planned stub is M0's
   `src/webview/goalPanel.ts` (an empty second esbuild entry, ROADMAP M0 "Out"), which M7
   replaces.
-- `docs/as-built/` — what was built: one file per finished milestone (`M0.md` … `M4.md`) with
+- `docs/as-built/` — what was built: one file per finished milestone (`M0.md` … `M5.md`) with
   its deviations from ROADMAP §5 and ARCHITECTURE, measurements, experiments,
   review rounds and gate runs; `README.md` there explains the files and how to read their
   references. Moved out of ROADMAP and ARCHITECTURE on 2026-09-28 so that those two stay
@@ -79,6 +80,15 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   Idris docs' Vim ones; **Q26** Next Result (`n`) continues the document's cycle of either kind.
   **The `eval` session keeps its highlighting output**: no `(:enable-syntax :False)` (the reload
   cost it would save is accepted; the rule "nothing but evaluations goes to it" already forbids it).
+  Decided on 2026-10-01 for M5 (ROADMAP §9): **IDE mode stays the default** (Q7: `auto` takes
+  idris2-lsp only when no usable `idris2` is found; one backend per project, no fallback per
+  feature; **Switch Backend…** per root); **pack outside `PATH`** (the server named by path in tests;
+  the pair verdict pairs the server with the `idris2` beside it); **M4's editing rules hold on LSP**
+  (the contract suite); **bounded reviews** (fix rounds until none finds a high or medium issue, at
+  most three, then one final review fixing only high findings and regressions). Decided on
+  2026-10-24 (ROADMAP §9): `idris2.lsp.logSeverity` defaults to `info` (the server's `debug` logs
+  the files' text); M5's review was done by one reviewer in the session, after the workflow's
+  reviewers hit the workspace's API usage limit.
 - Test corpora (`test/corpus/corpus.json`, fetched by `scripts/fetch-corpus.mjs` into the
   git-ignored `.corpus/`): `idris-compiler-tools` (MIT, Jan Serwatka) and the Idris 2 v0.8.0
   libraries (BSD-3, Edwin Brady) may be excerpted into fixtures, each excerpt with an attribution
@@ -98,13 +108,18 @@ npm run test:corpus   # fetch the pinned corpora (network) and tokenise them; wi
                       # IDRIS2_LEXER_ORACLE=1 also compare with the 0.8.0 lexer (needs idris2)
 npm test              # pretest (compile-tests + compile) + vscode-test (.vscode-test.mjs):
                       # the suites integration, simple-ipkg, toolchain-path, diagnostics,
-                      # loose-stdio, consent, intelligence, intelligence-loose, editing, holes
-                      # (fake tools; the fake idris2 replays transcripts)
-npm run test:e2e      # compile + the e2e suite against the real idris2 on PATH
+                      # loose-stdio, consent, intelligence, intelligence-loose, editing, holes,
+                      # lsp (fake tools; the fake idris2 replays transcripts, the fake idris2-lsp
+                      # of test/fake-lsp the LSP recordings)
+npm run test:e2e      # compile + the e2e suite against the real idris2 on PATH (not lsp* files)
+npm run test:e2e:lsp  # compile + the e2e-lsp suite; needs IDRIS2_LSP=<absolute path of a server>
+                      # (here PACK_BIN_DIR=$HOME/.local/share/pack/bin IDRIS2_LSP=$PACK_BIN_DIR/idris2-lsp)
 npm run check:fixtures        # idris2 --check / --dump-ipkg-json on every fixture and snippet
                               # expansion (temp copy); the broken fixtures must fail as listed
 npm run record:transcripts    # record the IDE-mode transcripts (test/fixtures/transcripts/<ver>/)
                               # from the idris2 on PATH (IDRIS2=<path>), one process at a time
+npm run record:lsp-transcripts # record the idris2-lsp sessions (test/fixtures/lsp-transcripts/<ver>/)
+                              # from IDRIS2_LSP=<server> (and PACK_BIN_DIR), one server at a time
 npm run docs:graph:check      # ROADMAP §4 graph == docs/milestones.yaml (docs:graph rewrites)
 npm run build:grammar                  # syntaxes/src/idris2.grammar.mjs → syntaxes/idris2.tmLanguage.json
 npm run build:language-configuration   # → language-configuration/{idris2,lidr,ipkg}.json
@@ -170,10 +185,17 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
   `--user-data-dir=<checkout>/.vscode-test/user-data` explicitly, which is also test-electron's
   default; the protection is the short checkout path, so keep the checkout short and never move
   that directory somewhere long.
-- On this machine: Node v24.13.0, npm 11.11.0, Idris 2 0.8.0 at `/opt/homebrew/bin/idris2`
-  (no `idris2-lsp`, no `pack`), VS Code 1.139 with the CLI at
+- On this machine: Node v24.13.0, npm 11.11.0, Idris 2 0.8.0 at `/opt/homebrew/bin/idris2` (the
+  `idris2` on `PATH`), VS Code 1.139 with the CLI at
   `/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code` (not on PATH).
-  Fixtures are checked with `npm run check:fixtures` (see above).
+  Fixtures are checked with `npm run check:fixtures` (see above). Since 2026-10-01 (M5, approved by
+  the user) pack `6baee7d` (collection `nightly-261002`, its compiler `0.8.0-1c630e67c`) and
+  idris2-lsp `9a2f0ad` are installed **outside `PATH`**: state in `~/.local/state/pack`, wrappers in
+  `PACK_BIN_DIR=$HOME/.local/share/pack/bin`. pack reads `PACK_BIN_DIR` at every run and falls back
+  to `~/.local/bin`, which is on `PATH` ahead of Homebrew, so **every pack command, starting either
+  wrapper included, runs with `PACK_BIN_DIR` set**; never install, update or remove anything with
+  pack unless asked. One server is three processes (the wrapper, its launcher, Chez); count servers
+  with `pgrep -f idris2-lsp_app/idris2-lsp.so`.
 
 ## Rules established by M0
 
@@ -231,8 +253,9 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
 - `.vscode-test.mjs` gives each suite its own profile and passes `--force-disable-user-env`;
   keep both (without the flag the Extension Host takes the login shell's `PATH`, observed).
   Integration tests that change a setting restore it.
-- pack is not installed on the development machine until M5 (ROADMAP §9 Q2): pack facts are
-  [doc]/[src] and tested only against simulated layouts (`test/fake-tools/packLayout.ts`).
+- pack was not installed on the development machine until M5 (ROADMAP §9 Q2), so the M1 pack facts
+  are [doc]/[src] and tested against simulated layouts (`test/fake-tools/packLayout.ts`); M5 saw the
+  installed layout (`docs/as-built/M5.md`, *Installation*).
 - On this machine `ls` is aliased to `eza` in the shells the agents get, and it hung without a
   terminal (2026-09-27); scripts use `/bin/ls`.
 
@@ -468,6 +491,55 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
   (`idris2.holes.focus`, `.open`, `.removeView`, `.resetViewLocation`, `.toggleVisibility`); tests
   that list the extension's commands leave them out.
 
+## Rules established by M5
+
+- **One backend per root.** `backend/registry.ts` routes every root (`decideRoute`: the root's
+  **Switch Backend…** choice, else `idris2.backend.mode`); a feature the chosen backend lacks answers
+  `Unsupported` with the reason — never a silent no-op, never the other backend's answer. A root that
+  leaves IDE mode has its waiting checks dropped, its sessions stopped and its problems removed
+  (`features/backend/follow.ts`, `DocumentChecks.forgetRoot`); Restart Backend refuses a root IDE
+  mode does not serve.
+- **Only `LspAdmission` lets a document reach the server** (the `LspOwnership` of
+  `backend/lsp/types.ts`): trusted workspace, a `file:` Idris document of a root with an `.ipkg`
+  routed to idris2-lsp, whose folder is inside a trusted workspace folder or allowed by the consent
+  gate (`recheck`, which never asks). `didOpen`/`didChange`/`didSave`/`didClose` and **every request**
+  go through it (the server builds any file a request names); the middleware's last-check hooks
+  refuse anything else (`middleware.ts` `DocumentSync`). Never send the server a message about a
+  document outside that path. The consent question for such a root is asked when one of its
+  documents is shown (`follow.ts`).
+- **The server process** is started only by `client.ts` through `core/process.ts`
+  `startLongRunningProcess` (`ServerOptions` as a function), in the trusted workspace folder that holds
+  the root (else the root's allowed folder), in the real path the gate judged right before the spawn.
+  The extension frames the server's stdout itself (`FramedMessageReader`: `%logging` writes to it).
+  Only the library features of `CLIENT_FEATURES` are registered; the server's `applyEdit`,
+  `showDocument`, dynamic registrations and window messages never act or reach a notification.
+- **Paths**: a `file:` document is sent as the real path of its folder joined with its name, and the
+  server's URIs are mapped back (`middleware.ts` `ServerPaths`); a request built by hand uses
+  `LspClientHandle.serverUri`, an answer's URI `documentUri`. The server refuses a file whose path is
+  not below the physical path of its working directory.
+- **Server text is untrusted** (the M3 rule): hovers, completion items, signature help, symbols and
+  quick-fix titles are rebuilt by the middleware through `core/untrustedText.ts`, without commands or
+  extra edits; a quick fix is kept only for a diagnostic VS Code passed, with an edit of its own
+  document, and none in a bird-track or Org file.
+- **M4's editing rules hold on LSP** (`backend/lsp/edits.ts`): the server's edit is never applied as
+  it is; its answer goes through IDE mode's plan (`backend/ide/edits.ts`). The contract suite
+  (`test/unit/contract.test.ts`) asserts that both backends give the same text for the same fixture;
+  a difference needs its own pinned test with the reason (`docs/as-built/M5.md`, *Contract*).
+- `features/backend` gets the language client only as `LanguageServerControl` (`types.ts`), as M2's
+  features get IDE mode as interfaces; `extension.ts` fills them.
+- **LSP recordings** (`test/fixtures/lsp-transcripts/<version>/*.jsonl`) are recorded only by
+  `npm run record:lsp-transcripts` from the real server, one at a time, never written by hand; each
+  carries the SHA-256 of the fixture files it read. `test/fixtures/workspaces/lsp-ipkg` is a
+  byte-for-byte copy of `simple-ipkg` and of M4's editing fixtures of `broken/`; keep
+  `lsp-ipkg/simple.ipkg` identical to `simple-ipkg/simple.ipkg` (the fake `idris2`'s recorded
+  `--dump-ipkg-json` is keyed by its hash). The `lsp` suite runs the fake server
+  (`test/fake-lsp`); the `e2e-lsp` suite runs the real one named by `IDRIS2_LSP`, on a copy outside
+  the repository.
+- `idris2.lsp.trace.server` is the one setting not read through `core/config.ts`: the library reads
+  `<client id>.trace.server` itself (`LSP_CLIENT_ID = 'idris2.lsp'`).
+- The bundle contains vscode-languageclient and its dependencies: a new bundled runtime dependency
+  needs its licence in `THIRD_PARTY_NOTICES.md` (the packages are in `dist/extension.js.map`).
+
 ## Platforms
 
 - Supported: macOS and Linux (and Windows through WSL, which is Linux). **Native Windows is
@@ -487,7 +559,12 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
   never on the corpora or the Idris 2 libraries (the lexer oracle compiles only
   `LexDump.idr` and runs the resulting lexer over them). The one approved exception (user,
   2026-09-28): `scripts/measure-first-load.mjs` on a copy of Idris 2's `contrib` under `/tmp`,
-  one process at a time (`docs/measurements/first-load.md`). This machine has 16 GB, and parallel
+  one process at a time (`docs/measurements/first-load.md`). A second approved exception (user,
+  2026-10-01, M5): pack's installs of its compiler and of idris2-lsp compiled the Idris 2 libraries
+  once, one process at a time (logs `/tmp/vi2-m5/pack-install.log`, 964 s, 2,405,318,656 bytes
+  maximum resident; `/tmp/vi2-m5/lsp-install.log`, 89.9 s, 2,433,728,512 bytes). An `idris2-lsp`
+  server is a compiler too: never run one beside another compiler process, but for E21's recorder
+  run. This machine has 16 GB, and parallel
   compiler runs have taken it down (2026-09-27). `check:fixtures` and the lexer oracle spawn
   `idris2` one file at a time (`spawnSync`) and honour `IDRIS2=<path>`, so a wrapper running
   `timeout 120 idris2 "$@"` adds a time limit. Start only one VS Code test instance at a time.

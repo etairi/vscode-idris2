@@ -6,8 +6,9 @@
  * Setup Information is a read-only virtual Markdown document (scheme `idris2-setup`) that says
  * what the last toolchain scan found and how: each executable's path and the search step that
  * found it, every command the scan ran with its raw output and the values parsed from it
- * (`idris2 --version`, `--ttc-version`, `--paths`, `--list-packages`, `idris2-lsp --version`),
- * pack's layout and collection, the pair verdict with its reason, the workspace trust state, the
+ * (`idris2 --version`, `--ttc-version`, `--paths`, `--list-packages`, `idris2-lsp --version`, and
+ * since M5 the `--version` of the compiler beside the server), pack's layout and collection, the
+ * pair verdict with its reason and the compiler it compared the server with, the workspace trust state, the
  * projects in the workspace and the active document's root, and the extension, VS Code and OS
  * versions. It is refreshed whenever the toolchain snapshot, the project index or the trust
  * state changes. Report Issue… opens VS Code's issue reporter for this extension with that text
@@ -27,10 +28,12 @@ import type { WorkspaceTrust } from '../core/trust';
 import { isIdrisDocument } from '../project/literate';
 import type { Classification, IpkgDependency, ProjectIndex, ProjectRoot } from '../project/types';
 import type {
+  CompilerVersionInfo,
   Idris2Info,
   LspInfo,
   PackState,
   ProbeRecord,
+  ServerCompiler,
   ToolchainService,
   ToolchainSnapshot,
   ToolLocation,
@@ -224,6 +227,26 @@ function describeLsp(info: LspInfo): string[] {
   ];
 }
 
+function describeCompilerVersion(info: CompilerVersionInfo): string[] {
+  return [`- Version line: ${code(info.versionLine)}`, `- Version: ${describeVersion(info.version)}`];
+}
+
+/** The compiler the verdict pairs the server with (`ServerCompiler`); nothing when no server was found. */
+function describeServerCompiler(server: ServerCompiler | undefined): string[] {
+  const heading = "## The compiler of idris2-lsp's installation";
+  if (server === undefined) {
+    return [];
+  }
+  if (server.source === 'search') {
+    return [heading, '', '- No `idris2` lies beside idris2-lsp, so the pair verdict compares the server with the `idris2` above.', ''];
+  }
+  if (server.sameAsIdris2) {
+    return [heading, '', '- The `idris2` beside idris2-lsp is the `idris2` above.', ''];
+  }
+  // `describeTool` names the probes `idris2 …`; its own heading is replaced.
+  return [heading, ...describeTool('idris2', server.state, describeCompilerVersion, (info) => info.probes).slice(1), ''];
+}
+
 function describePack(state: PackState): string[] {
   const lines = ['## pack', ''];
   if (state.status === 'missing') {
@@ -379,9 +402,10 @@ export function renderSetupInformation(input: SetupInput): string {
       '',
       ...describeTool('idris2-lsp', snapshot.lsp, describeLsp, (info) => info.probes),
       '',
+      ...describeServerCompiler(snapshot.lspCompiler),
       ...describePack(snapshot.pack),
       '',
-      '## Pair verdict (idris2-lsp and idris2)',
+      '## Pair verdict (idris2-lsp and its compiler)',
       '',
       snapshot.verdict === undefined
         ? 'No idris2-lsp was found, so there is no pair to judge.'

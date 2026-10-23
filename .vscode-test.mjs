@@ -37,10 +37,31 @@
 //   holes           (M4) test/fixtures/workspaces/holes: loose files, Main.idr importing Base.idr,
 //                   a hole `todo` in each (E16); out/test/integration/holes/*; fake tools, stdio:
 //                   the Holes view, Next/Previous Hole, List Holes, Show Keybindings
-//   e2e             test/fixtures/workspaces/simple-ipkg; out/test/e2e/** (M1–M4 files);
-//                   the real toolchain (no toolchain settings, the runner's PATH). Only part of the
-//                   configuration when IDRIS2_E2E=1 or when run as `npm run test:e2e`, so
+//   lsp             (M5) test/fixtures/workspaces/lsp-ipkg: the .ipkg root the LSP recordings are
+//                   made in (scripts/record-lsp-transcripts.mjs: simple-ipkg's modules and M4's
+//                   editing fixtures), opened as its own workspace folder; out/test/integration/lsp/*;
+//                   the fake tools, but idris2-lsp = test/fake-lsp/bin/idris2-lsp, the fake language
+//                   server (it answers --version as test/fake-tools' fake does, and serves when
+//                   started without arguments), which replays the recordings of
+//                   `npm run record:lsp-transcripts` in FAKE_IDRIS2_LSP_TRANSCRIPTS =
+//                   test/fixtures/lsp-transcripts/<server version> (0.1.0-9a2f0ad6a, which the
+//                   fakes print). idris2.backend.mode = lsp in user settings (tests that check another
+//                   mode change it and restore it). Files of other fixture workspaces opened from
+//                   here are roots outside the workspace folder (a loose file for the no-.ipkg
+//                   notification; another package for the consent rule of ROADMAP M5)
+//   e2e             test/fixtures/workspaces/simple-ipkg; out/test/e2e/**, but the lsp* files (M1–M4
+//                   files); the real toolchain (no toolchain settings, the runner's PATH). Only part of
+//                   the configuration when IDRIS2_E2E=1 or when run as `npm run test:e2e`, so
 //                   `npm test` needs no compiler; the suite's own environment has IDRIS2_E2E=1.
+//   e2e-lsp         (M5) test/fixtures/workspaces/lsp-ipkg; out/test/e2e/**/lsp*; the real
+//                   idris2-lsp named by IDRIS2_LSP (an absolute path, e.g. pack's wrapper
+//                   ~/.local/share/pack/bin/idris2-lsp, which is not on PATH), given to the extension
+//                   as idris2.toolchain.lspPath with idris2.backend.mode = lsp; idris2 is the
+//                   runner's PATH one. Only part of the configuration when IDRIS2_LSP is set and the
+//                   run is `npm run test:e2e:lsp` (or IDRIS2_E2E=1), so CI without a server skips it.
+//                   pack's wrappers run pack, which reads PACK_BIN_DIR at every run: set it on the
+//                   command line when pack's bin directory is not ~/.local/bin (the runner's
+//                   environment reaches every process the extension starts).
 //
 // test-cli runs the suites one after another, each in its own VS Code instance [src:
 // @vscode/test-cli 0.0.15 out/bin.mjs 117-122]. Each suite has its own profile (user-data-dir), rewritten below before every run, so settings a test
@@ -63,7 +84,7 @@
 // starts; a test can point one session elsewhere through idris2.toolchain.env, which the
 // extension overlays on its own environment.
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { delimiter, dirname, resolve } from 'node:path';
+import { delimiter, dirname, isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from '@vscode/test-cli';
 
@@ -110,6 +131,16 @@ const FAKE_TOOL_SETTINGS = {
 // FAKE_IDRIS2_VERSION says otherwise (test/fake-tools/README.md).
 const FAKE_ENV = { FAKE_IDRIS2_TRANSCRIPTS: resolve(root, 'test/fixtures/transcripts/0.8.0') };
 
+// (M5) The recordings the fake language server replays: `npm run record:lsp-transcripts` writes them
+// from the real idris2-lsp, into a directory named after its version (`Idris2 LSP: 0.1.0-9a2f0ad6a`,
+// which the fakes print unless FAKE_IDRIS2_LSP_VERSION says otherwise).
+const FAKE_LSP_ENV = {
+  FAKE_IDRIS2_LSP_TRANSCRIPTS: resolve(root, 'test/fixtures/lsp-transcripts/0.1.0-9a2f0ad6a'),
+};
+// (M5) The fake language server of the lsp suite (test/fake-lsp); the other suites keep the
+// fake-tools idris2-lsp, which answers --version only.
+const FAKE_LSP_SERVER = resolve(root, 'test/fake-lsp/bin/idris2-lsp');
+
 /** Creates (or resets) the profile `.vscode-test/<name>` with `settings` as its user settings. */
 function profile(name, settings) {
   const dir = userDataDir(name);
@@ -145,6 +176,14 @@ function launchArgs(userData) {
 const pathKey = Object.keys(process.env).find((key) => key.toUpperCase() === 'PATH') ?? 'PATH';
 
 const e2eEnabled = process.env.IDRIS2_E2E === '1' || process.env.npm_lifecycle_event === 'test:e2e';
+
+// (M5) The real language server of the e2e-lsp suite: IDRIS2_LSP, an absolute path.
+const lspServer = process.env.IDRIS2_LSP ?? '';
+const e2eLspEnabled =
+  lspServer !== '' && (process.env.IDRIS2_E2E === '1' || process.env.npm_lifecycle_event === 'test:e2e:lsp');
+if (e2eLspEnabled && !isAbsolute(lspServer)) {
+  throw new Error(`IDRIS2_LSP must be an absolute path to idris2-lsp, not ${JSON.stringify(lspServer)}.`);
+}
 
 // `failZero`: test-cli 0.0.15 reports a suite whose `files` match nothing as passing ("0
 // passing", exit 0; observed 2026-09-27), so a renamed test directory would silently stop
@@ -238,15 +277,49 @@ export default defineConfig([
     launchArgs: launchArgs(profile('user-data-holes', { ...BASE_SETTINGS, ...FAKE_TOOL_SETTINGS })),
     mocha,
   },
+  {
+    label: 'lsp',
+    files: 'out/test/integration/lsp/*.test.js',
+    workspaceFolder: 'test/fixtures/workspaces/lsp-ipkg',
+    env: { ...FAKE_ENV, ...FAKE_LSP_ENV },
+    launchArgs: launchArgs(
+      profile('user-data-lsp', {
+        ...BASE_SETTINGS,
+        ...FAKE_TOOL_SETTINGS,
+        'idris2.toolchain.lspPath': FAKE_LSP_SERVER,
+        'idris2.backend.mode': 'lsp',
+      }),
+    ),
+    mocha,
+  },
   ...(e2eEnabled
     ? [
         {
           label: 'e2e',
-          files: 'out/test/e2e/**/*.test.js',
+          // The lsp* files are the e2e-lsp suite's (below); `!(…)` is glob's extglob.
+          files: 'out/test/e2e/**/!(lsp*).test.js',
           workspaceFolder: 'test/fixtures/workspaces/simple-ipkg',
           env: { IDRIS2_E2E: '1' },
           launchArgs: launchArgs(profile('user-data-e2e', BASE_SETTINGS)),
           mocha: { ...mocha, timeout: 60000 },
+        },
+      ]
+    : []),
+  ...(e2eLspEnabled
+    ? [
+        {
+          label: 'e2e-lsp',
+          files: 'out/test/e2e/**/lsp*.test.js',
+          workspaceFolder: 'test/fixtures/workspaces/lsp-ipkg',
+          env: { IDRIS2_E2E: '1', IDRIS2_LSP: lspServer },
+          launchArgs: launchArgs(
+            profile('user-data-e2e-lsp', {
+              ...BASE_SETTINGS,
+              'idris2.toolchain.lspPath': lspServer,
+              'idris2.backend.mode': 'lsp',
+            }),
+          ),
+          mocha: { ...mocha, timeout: 120000 },
         },
       ]
     : []),

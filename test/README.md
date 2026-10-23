@@ -2,16 +2,16 @@
 
 The testing layers of `docs/ARCHITECTURE.md` §12 and the `test/` tree of §2, annotated with the
 milestone (`docs/ROADMAP.md` §5) that adds each part. Parts marked **M0**, **M1**, **M2**, **M3**,
-**M4** or **skeleton** exist.
+**M4**, **M5** or **skeleton** exist.
 
 | Layer | Runner | Needs | Exists | Added by |
 |---|---|---|---|---|
-| Unit | mocha on Node, `npm run test:unit` | nothing (Node spawns the fake tools and `/bin/sh`) | **M0**, **M1**, **M2**, **M3**, **M4** (lists below) | M9 (CLI parser), M11, M13 |
+| Unit | mocha on Node, `npm run test:unit` | nothing (Node spawns the fake tools and `/bin/sh`) | **M0**, **M1**, **M2**, **M3**, **M4**, **M5** (lists below) | M9 (CLI parser), M11, M13 |
 | Grammar | `vscode-textmate` + `vscode-oniguruma` snapshots, `npm run test:grammar` | nothing | **M0** (`grammar/`, harness `grammar/harness.ts`) | injections: M12 |
-| Integration | `@vscode/test-cli` (Electron), `npm test`, one suite per fixture workspace | VS Code download | **M0** (suite `integration` on `fixtures/workspaces/loose-file`), **M1** (the same suite with the fake tools; suites `simple-ipkg` and `toolchain-path`), **M2** (suites `diagnostics`, `loose-stdio`, `consent`; the fake compiler replays the transcripts), **M3** (suites `intelligence`, `intelligence-loose`; tests in `integration` and `diagnostics`), **M4** (suites `editing`, `holes`; the M4 letters in `intelligence-loose`) | fake LSP driven suites: M5; every UI milestone |
-| E2E | same runner, `npm run test:e2e` (suite `e2e`, only with `IDRIS2_E2E=1` or that script) | real `idris2` (+ `idris2-lsp`) | **M1** (`e2e/`, on `fixtures/workspaces/simple-ipkg`), **M2** (protocol facts, sessions, fake parity, E21), **M3** (the M3 acceptance, E14, the IO rendering, the REPL parser's commands), **M4** (the IDE-mode acceptance of M4) | every milestone adds at least one |
-| Contract | mocha suite parameterised over backends | as above | no | M5 (whichever of M4/M5 ships second; M4 shipped first) |
-| Manual | `docs/checklists/Mn.md` | — | **M0**, **M1**, **M2**, **M3**, **M4** (`docs/checklists/M0.md` … `M4.md`) | each milestone |
+| Integration | `@vscode/test-cli` (Electron), `npm test`, one suite per fixture workspace | VS Code download | **M0** (suite `integration` on `fixtures/workspaces/loose-file`), **M1** (the same suite with the fake tools; suites `simple-ipkg` and `toolchain-path`), **M2** (suites `diagnostics`, `loose-stdio`, `consent`; the fake compiler replays the transcripts), **M3** (suites `intelligence`, `intelligence-loose`; tests in `integration` and `diagnostics`), **M4** (suites `editing`, `holes`; the M4 letters in `intelligence-loose`), **M5** (suite `lsp`, driven by the fake language server) | every UI milestone |
+| E2E | same runner, `npm run test:e2e` (suite `e2e`, only with `IDRIS2_E2E=1` or that script) | real `idris2` (+ `idris2-lsp`) | **M1** (`e2e/`, on `fixtures/workspaces/simple-ipkg`), **M2** (protocol facts, sessions, fake parity, E21), **M3** (the M3 acceptance, E14, the IO rendering, the REPL parser's commands), **M4** (the IDE-mode acceptance of M4), **M5** (suite `e2e-lsp`, `npm run test:e2e:lsp` with `IDRIS2_LSP`: the real idris2-lsp) | every milestone adds at least one |
+| Contract | mocha on Node, `unit/contract.test.ts` | nothing (the IDE-mode transcripts and the idris2-lsp recordings) | **M5** (M4 shipped first, so the suite is M5's) | each editing milestone |
+| Manual | `docs/checklists/Mn.md` | — | **M0** … **M5** (`docs/checklists/M0.md` … `M5.md`) | each milestone |
 
 ```
 test/
@@ -21,13 +21,15 @@ test/
 │                                       idris2-scopes.md (scope inventory + limits, kept in sync by a test)
 ├─ corpus/                    M0        corpus.json (pinned repositories, fetched into .corpus/),
 │                                       lexer-oracle/LexDump.idr (the 0.8.0 lexer as reference)
-├─ integration/               M0–M4     @vscode/test-cli suites per fixture workspace: the top-level
+├─ integration/               M0–M5     @vscode/test-cli suites per fixture workspace: the top-level
 │                                       *.test.ts (suite integration), simple-ipkg/, path/
 │                                       (suite toolchain-path), diagnostics/, loose-stdio/,
 │                                       consent/ (M2), intelligence/, intelligence-loose/ (M3),
-│                                       editing/, holes/ (M4); support.ts is their shared helper
-├─ e2e/                       M1–M4     real idris2 (IDRIS2_E2E=1); ideDriver.ts drives IDE-mode
-│                                       sessions of it (M2)
+│                                       editing/, holes/ (M4), lsp/ (M5); support.ts is their
+│                                       shared helper
+├─ e2e/                       M1–M5     real idris2 (IDRIS2_E2E=1); ideDriver.ts drives IDE-mode
+│                                       sessions of it (M2); lsp.test.ts the real idris2-lsp
+│                                       (M5, suite e2e-lsp)
 ├─ fake-idris2/               M0 (handshake + :version), M1 (recorded --ttc-version, --paths,
 │                                       --list-packages, --dump-ipkg-json), M2 (transcript replay
 │                                       over stdio + socket, injected faults, a command-line log;
@@ -38,11 +40,18 @@ test/
 │                                       FAKE_IDRIS2_IDE_DELAY)
 ├─ fake-tools/                M1        launchers (sh + .cmd) of the fake idris2, idris2-lsp
 │                                       (--version) and pack; fault modes; simulated pack layouts
-├─ fake-lsp/                  M5        Node script (vscode-languageserver) replaying JSON-RPC
+├─ fake-lsp/                  M5        the fake idris2-lsp: bin/idris2-lsp (sh launcher; --version
+│                                       goes to fake-tools' fake), server.mjs (framing, logs, the
+│                                       missing-ipkg fault), replay.mjs (which recording answers a
+│                                       message); plain Node, README.md
 └─ fixtures/
    ├─ transcripts/<idris2-version>/*.jsonl   M2   recorded IDE-mode sessions (65 for 0.8.0), by
    │                                                scripts/record-transcripts.mjs; format and
    │                                                scenarios in transcripts/README.md
+   ├─ lsp-transcripts/<server-version>/*.jsonl M5  recorded idris2-lsp sessions (19 for
+   │                                                0.1.0-9a2f0ad6a), by
+   │                                                scripts/record-lsp-transcripts.mjs; format and
+   │                                                scenarios in lsp-transcripts/README.md
    ├─ cli/<idris2-version>/*.txt              M9   recorded --check/--build output
    ├─ ipkg/                                   M1   package files of the ipkg reader tests, each with
    │                                                its --dump-ipkg-json output recorded in
@@ -89,6 +98,9 @@ test/
       │                                 broken ones are in check:fixtures' EXPECTED_PROBLEMS
       ├─ holes/               M4        loose files: Main.idr imports Base.idr, a hole todo in each (E16)
       ├─ holes-ipkg/          M4        the same as a package (holes.ipkg, src/Holes/*), for E16
+      ├─ lsp-ipkg/            M5        the idris2-lsp recordings' package: simple-ipkg's files and
+      │                                 broken/'s Clean, Ambig, Part, Plain, Edits.idr and Lit2.lidr
+      │                                 in src/, byte for byte (Part.idr in EXPECTED_PROBLEMS)
       ├─ literate/            M12 (Lit3.lidr and the .md, .tex, .org, .typ hosts); M3's acceptance
       │                                 names literate/Lit.lidr and uses loose-file/Lit.lidr; M4's
       │                                 names literate/Lit2.lidr and uses broken/Lit2.lidr
@@ -521,6 +533,65 @@ No compiler runs in them; M4 added 23 recordings to `fixtures/transcripts/0.8.0`
   `fakeIdris2Replay.test.ts` (held-back answers; queries, `:missing` among them, left out of the
   replay's matching),
   `statusItem.test.ts`, `nullBackend.test.ts`.
+
+## Unit tests of the M5 code (`unit/`)
+
+No compiler or server runs in them; the idris2-lsp recordings (`fixtures/lsp-transcripts/`) and the
+IDE-mode transcripts are their ground truth.
+
+- `lspClient.test.ts` — `backend/lsp/client.ts`: the server options (flat), the missing-`.ipkg`
+  forms (code 4 live, code 3 source; the log line), log levels, the window messages, the library
+  features kept, the selector; the framing (the `%logging` recording, any chunking, non-ASCII
+  bodies); the lifecycle (starts only for an admitted document, in its workspace folder and the real
+  path the gate judged; Restricted Mode; the gate's refusal before the spawn; the backoff and
+  give-up; Stop and Restart; the restart question after a scan); requests (refused unadmitted, `repl`
+  refused by `replCommandRefusal`, error responses, cancellation); the server's loads; the paths.
+- `lspClientCommands.test.ts` — `commands.ts`: Restart, Stop, Show Output, the raw command (only with
+  `idris2.trace.protocol`, typed text only, the answer in the channel).
+- `lspMiddleware.test.ts` — `middleware.ts`: coordinates (bird tracks, code points, tokens),
+  untrusted text (hover, completion, signature help), ownership (`DocumentSync`: didOpen only when
+  admitted, the held-back opens, clean again, reconcile, the last-check hooks, `didClose`), the
+  paths (`ServerPaths`), the answers (diagnostics and the loads, definitions, symbols, dirty semantic
+  tokens, quick fixes).
+- `lspEdits.test.ts`, `lspHoles.test.ts`, `lspBackend.test.ts` — `edits.ts`, `holes.ts`,
+  `backend.ts` over the recordings (`support/lspReplies.ts` replays them): each kind's request and
+  answer, the checks of the answer's place, the refusals, the searches and their limit, the holes'
+  locations, the namespace listing, what the backend does not answer.
+- `contract.test.ts` — the same edit from both backends on byte-identical fixtures gives the same
+  result, and each difference is pinned (`docs/as-built/M5.md`, *Contract*).
+- `routing.test.ts`, `routingFollow.test.ts`, `routingStatus.test.ts`, `routingRestart.test.ts`,
+  `switchBackend.test.ts`, `migration.test.ts`, `verdictInstallation.test.ts` — `registry.ts`'s
+  policy, `LspAdmission` and status; `features/backend` (route changes, the consent question when a
+  document is shown, the no-`.ipkg` notification, the `logFile` restart question, Switch Backend's
+  options, bamboo's key map); the pair verdict with the `idris2` beside the server.
+- `fakeLsp.test.ts` — `fake-lsp/`: every recording replayed byte for byte through the process, the
+  matching rules, the logs, the fault, the launcher.
+- Extended: `config.test.ts` (the M5 settings), `manifest.test.ts` (commands, settings, scopes,
+  `restrictedConfigurations`), `diagnosticsChecks.test.ts` (`forgetRoot`), `toolchainService.test.ts`,
+  `setupInformation.test.ts`, `statusItem.test.ts`, `backendRegistry.test.ts`.
+
+## Integration suite of M5 (`integration/lsp/`)
+
+Suite `lsp`, workspace `fixtures/workspaces/lsp-ipkg`, `idris2.backend.mode` `lsp` and
+`idris2.toolchain.lspPath` = `fake-lsp/bin/idris2-lsp` in its profile. `support.ts` switches the
+fake's logs on (`FAKE_IDRIS2_LSP_LOG`, `FAKE_IDRIS2_LSP_MESSAGE_LOG`, through `idris2.toolchain.env`)
+and finds the fake's processes. `start.test.ts` runs first: `auto` starts no server, `lsp` starts
+one in the workspace folder, `initializationOptions` and `didChangeConfiguration` flat, Stop and
+Restart. `routing.test.ts`: Switch Backend (the document closed on the server, nothing more sent), a
+loose file's one-time notification, the code-3 fault's notification, a package outside the workspace
+folder not sent while its folder is not allowed. `migration.test.ts`: bamboo's settings copied.
+`editing.test.ts`: M4's commands over the fake give IDE mode's texts, one undo step each, Next
+Result's limit, Add Missing Cases, an undo back to the saved text. `documents.test.ts`: the hover as
+untrusted text, a dirty document's cancelled tokens without a notification.
+
+## E2E suite of M5 (`e2e/lsp.test.ts`)
+
+Suite `e2e-lsp` (`npm run test:e2e:lsp`, only with `IDRIS2_LSP`): the real server on a copy of
+`lsp-ipkg` outside the workspace folder (the test allows its folder): the pair verdict with the
+server's own compiler, hover saved and unsaved, `metavars` and the Holes view, M4's commands on
+`Clean.idr` (IDE mode's texts), Refine with `S` and with an ambiguous name, Proof Search to its
+limit, Add Missing Cases on `Part.idr`, an undo back to the saved text, and a stub server's
+mismatching API version (M1's notification).
 
 ## Integration suites of M4 (`integration/`)
 

@@ -1,5 +1,5 @@
 # Continuous integration for vscode-idris2, per docs/ROADMAP.md §7.2 and docs/ARCHITECTURE.md §13
-# as they apply to M4:
+# as they apply to M5:
 #   ubuntu-latest   types, lint, unit, grammar, the §4 graph check, integration (xvfb), `vsce
 #                   package` (the .vsix is uploaded as an artifact), and the grammar corpus test,
 #                   which fetches a pinned third-party repository (needs network)
@@ -13,17 +13,24 @@
 # needs MSYS2 to build there, and Windows users are pointed to WSL, where the extension runs on
 # Linux. The Windows code paths that exist are exercised only by unit tests that simulate
 # process.platform = 'win32' on macOS and Linux.
-# "Integration" is every suite of .vscode-test.mjs except e2e — M1's `integration`, `simple-ipkg`
-# and `toolchain-path`, and M2's `diagnostics` (socket transport, the opt-in), `loose-stdio`
-# (stdio, the default since ROADMAP §9 Q20) and `consent`, M3's `intelligence` and
-# `intelligence-loose`, and M4's `editing` and `holes` — all driven by the fake tools of
+# "Integration" is every suite of .vscode-test.mjs but e2e and e2e-lsp — M1's `integration`,
+# `simple-ipkg` and `toolchain-path`, and M2's `diagnostics` (socket transport, the opt-in),
+# `loose-stdio` (stdio, the default since ROADMAP §9 Q20) and `consent`, M3's `intelligence` and
+# `intelligence-loose`, M4's `editing` and `holes`, and M5's `lsp` — all driven by the fake tools of
 # test/fake-tools; the fake compiler answers IDE
 # mode from the transcripts recorded from the real one (FAKE_IDRIS2_TRANSCRIPTS, set by
-# .vscode-test.mjs). The `diagnostics` suite exercises the extension's
+# .vscode-test.mjs), and in the `lsp` suite the fake language server of test/fake-lsp answers the
+# Language Server Protocol from the recordings of the real idris2-lsp (FAKE_IDRIS2_LSP_TRANSCRIPTS).
+# The `diagnostics` suite exercises the extension's
 # socket transport against the fake's. No job before the macOS e2e
 # step has a real idris2 on PATH. The e2e tests that compare the compiler with the recordings
 # (test/fixtures/transcripts/0.8.0) are skipped, and reported as pending, when Homebrew installs
 # another version; the protocol facts still run against it.
+# The LSP e2e suite (`npm run test:e2e:lsp`, test/e2e/lsp*.test.ts against the real idris2-lsp) does
+# not run here: no job has a server (idris2-lsp's main branch is not expected to build against the
+# release compiler Homebrew installs, ROADMAP §0 F21, an inference from the source; pack built a development compiler and the server in
+# about 18 minutes on the development machine, docs/as-built/M5.md), and .vscode-test.mjs leaves the
+# suite out wherever IDRIS2_LSP is unset.
 # `npm test` runs `pretest` first (compile-tests, check-types, lint, esbuild bundle), so the
 # integration step repeats type-checking and lint on purpose: the separate steps name the
 # failing stage.

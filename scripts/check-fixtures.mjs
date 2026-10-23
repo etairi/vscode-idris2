@@ -291,6 +291,9 @@ const EXPECTED_PROBLEMS = {
   'workspaces/broken/Part.idr': ['Error: g is not covering.', 'Part:3:1--3:15', 'Error: main is not covering.', 'Part:6:1--6:13'],
   'workspaces/broken/UsesBad.idr': ['Error: While processing right hand side of f. When unifying:', 'Bad:4:7--4:12'],
   'workspaces/broken/bad-ipkg/bad.ipkg': ['Error: Unrecognised property "pkgs".', '"bad.ipkg":3:1--3:5'],
+  // (M5) A byte-for-byte copy of broken/Part.idr in the idris2-lsp recordings' package (the recorder
+  // checked it with Homebrew 0.8.0 and pack's compiler: the same lines).
+  'workspaces/lsp-ipkg/src/Part.idr': ['Error: g is not covering.', 'Part:3:1--3:15', 'Error: main is not covering.', 'Part:6:1--6:13'],
 };
 
 /** The `Error:`/`Warning:` lines and the location lines (`Mod:L:C--L:C`, `"x.ipkg":L:C--L:C`) of `output`. */

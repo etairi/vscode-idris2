@@ -1,0 +1,6 @@
+package simple
+version = 0.1.0
+sourcedir = "src"
+depends = contrib
+modules = Foo.A
+        , Foo.B

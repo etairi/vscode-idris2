@@ -1,0 +1,748 @@
+{"kind":"meta","format":1,"scenario":"edits-shapes","description":"E15 over LSP, Edits.idr: Add Clause and Generate Definition on each line of a three-line type declaration; Case Split and the hole commands on a clause continued over the next lines, in a where block, in a with block, on an operator, with the hole in a let, in case alternatives (also on one line) and under an application","facts":["F34"],"server":{"version":"0.1.0-9a2f0ad6a","api":"0.8.0-1c630e67c","versionText":"Idris2 LSP: 0.1.0-9a2f0ad6a\nIdris2 API: 0.8.0-1c630e67c","executable":"~/.local/share/pack/bin/idris2-lsp"},"platform":"darwin arm64","recorded":"2026-10-01","workspace":"test/fixtures/workspaces/lsp-ipkg","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"src/Edits.idr":"900f7a030ad29c858ae028bb55bbcac5390c03c609a5c5d636ead5d99fb6e628"}}
+{"kind":"send","length":1661,"text":"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"processId\":null,\"clientInfo\":{\"name\":\"vscode-idris2 record-lsp-transcripts\"},\"locale\":\"en\",\"rootPath\":\"${ROOT}\",\"rootUri\":\"file://${ROOT}\",\"capabilities\":{\"workspace\":{\"applyEdit\":true,\"workspaceEdit\":{\"documentChanges\":true},\"didChangeConfiguration\":{\"dynamicRegistration\":false},\"executeCommand\":{\"dynamicRegistration\":false},\"semanticTokens\":{\"refreshSupport\":true}},\"textDocument\":{\"synchronization\":{\"dynamicRegistration\":false,\"willSave\":false,\"willSaveWaitUntil\":false,\"didSave\":true},\"hover\":{\"dynamicRegistration\":false,\"contentFormat\":[\"markdown\",\"plaintext\"]},\"publishDiagnostics\":{\"relatedInformation\":true,\"versionSupport\":false,\"tagSupport\":{\"valueSet\":[1,2]},\"codeDescriptionSupport\":true,\"dataSupport\":true},\"codeAction\":{\"dynamicRegistration\":false,\"isPreferredSupport\":true,\"codeActionLiteralSupport\":{\"codeActionKind\":{\"valueSet\":[\"\",\"quickfix\",\"refactor\",\"refactor.extract\",\"refactor.inline\",\"refactor.rewrite\",\"source\",\"source.organizeImports\"]}}}}},\"initializationOptions\":{\"logSeverity\":\"info\",\"longActionTimeout\":1000,\"maxCodeActionResults\":5,\"showImplicits\":false,\"showMachineNames\":false,\"fullNamespace\":false,\"briefCompletions\":false},\"trace\":\"off\",\"workspaceFolders\":[{\"uri\":\"file://${ROOT}\",\"name\":\"lsp-ipkg\"}]}}"}
+{"kind":"stderr","text":"LOG DEBUG:Communication.Channel: Received message: {\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"processId\":null,\"clientInfo\":{\"name\":\"vscode-idris2 record-lsp-transcripts\"},\"locale\":\"en\",\"rootPath\":\"${ROOT}\",\"rootUri\":\"file://${ROOT}\",\"capabilities\":{\"workspace\":{\"applyEdit\":true,\"workspaceEdit\":{\"documentChanges\":true},\"didChangeConfiguration\":{\"dynamicRegistration\":false},\"executeCommand\":{\"dynamicRegistration\":false},\"semanticTokens\":{\"refreshSupport\":true}},\"textDocument\":{\"synchronization\":{\"dynamicRegistration\":false,\"willSave\":false,\"willSaveWaitUntil\":false,\"didSave\":true},\"hover\":{\"dynamicRegistration\":false,\"contentFormat\":[\"markdown\",\"plaintext\"]},\"publishDiagnostics\":{\"relatedInformation\":true,\"versionSupport\":false,\"tagSupport\":{\"valueSet\":[1,2]},\"codeDescriptionSupport\":true,\"dataSupport\":true},\"codeAction\":{\"dynamicRegistration\":false,\"isPreferredSupport\":true,\"codeActionLiteralSupport\":{\"codeActionKind\":{\"valueSet\":[\"\",\"quickfix\",\"refactor\",\"refactor.extract\",\"refactor.inline\",\"refactor.rewrite\",\"source\",\"source.organizeImports\"]}}}}},\"initializationOptions\":{\"logSeverity\":\"info\",\"longActionTimeout\":1000,\"maxCodeActionResults\":5,\"showImplicits\":false,\"showMachineNames\":false,\"fullNamespace\":false,\"briefCompletions\":false},\"trace\":\"off\",\"workspaceFolders\":[{\"uri\":\"file://${ROOT}\",\"name\":\"lsp-ipkg\"}]}}\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"initialize\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received initialization request\n"}
+{"kind":"stderr","text":"LOG INFO:Request.Configuration: Long action timeout set to 1000\n"}
+{"kind":"stderr","text":"LOG INFO:Request.Configuration: Max code action results set to 5\n"}
+{"kind":"stderr","text":"LOG INFO:Request.Configuration: Show implicits set to False\n"}
+{"kind":"stderr","text":"LOG INFO:Request.Configuration: Full namespace set to False\n"}
+{"kind":"stderr","text":"LOG INFO:Server: Server initialized and configured\n"}
+{"kind":"recv","length":1290,"text":"{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"capabilities\":{\"textDocumentSync\":{\"openClose\":true,\"change\":2,\"save\":{\"includeText\":true}},\"completionProvider\":{\"triggerCharacters\":[],\"allCommitCharacters\":[]},\"hoverProvider\":true,\"signatureHelpProvider\":{},\"declarationProvider\":false,\"definitionProvider\":{\"workDoneProgress\":false},\"typeDefinitionProvider\":false,\"implementationProvider\":false,\"referencesProvider\":false,\"documentHighlightProvider\":true,\"documentSymbolProvider\":{},\"codeActionProvider\":{\"resolveProvider\":false},\"codeLensProvider\":{},\"documentLinkProvider\":{},\"colorProvider\":false,\"documentFormattingProvider\":false,\"documentRangeFormattingProvider\":false,\"renameProvider\":false,\"foldingRangeProvider\":false,\"executeCommandProvider\":{\"commands\":[\"repl\",\"exprSearchWithHints\",\"refineHoleWithHints\",\"metavars\"]},\"selectionRangeProvider\":false,\"linkedEditingRangeProvider\":false,\"callHierarchyProvider\":false,\"semanticTokensProvider\":{\"legend\":{\"tokenTypes\":[\"type\",\"function\",\"enumMember\",\"variable\",\"keyword\",\"namespace\",\"postulate\",\"module\",\"comment\"],\"tokenModifiers\":[]},\"range\":false,\"full\":true},\"monikerProvider\":false,\"workspaceSymbolProvider\":false,\"workspace\":{\"workspaceFolders\":{\"supported\":false},\"fileOperations\":{}}},\"serverInfo\":{\"name\":\"idris2-lsp\",\"version\":\"0.1\"}}}"}
+{"kind":"send","length":52,"text":"{\"jsonrpc\":\"2.0\",\"method\":\"initialized\",\"params\":{}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"initialize\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received notification for method \"initialized\"\n"}
+{"kind":"stderr","text":"LOG WARNING:Communication.Channel: Received unhandled notification for method \"initialized\"\n"}
+{"kind":"send","length":2180,"text":"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\",\"languageId\":\"idris2\",\"version\":1,\"text\":\"module Edits\\n\\nimport Data.Vect\\n\\n-- E15 (docs/ROADMAP.md §9): the shapes whose replacement ranges M4's edits must get right.\\n\\n-- A type declaration over three lines, without clauses.\\nzip3 : Vect n a ->\\n       Vect n b -> Vect n c ->\\n       Vect n (a, b, c)\\n\\n-- Clauses continued over the next lines.\\ncount : List a -> Nat\\ncount xs =\\n  ?count_rhs\\n\\nstep : Nat -> Nat -> Nat\\nstep m\\n     n\\n  = ?step_rhs\\n\\n-- A clause in a where block.\\nsumAll : List Nat -> Nat\\nsumAll xs = go 0 xs\\n  where\\n    go : Nat -> List Nat -> Nat\\n    go acc ys = ?go_rhs\\n\\n-- A with block.\\nclassify : Nat -> String\\nclassify n with (n > 10)\\n  classify n | True = ?classify_big\\n  classify n | False = ?classify_small\\n\\n-- An operator, declared and defined, and one declared only.\\nprivate infixr 5 <&&>, <||>\\n\\n(<&&>) : Bool -> Bool -> Bool\\nx <&&> y = ?op_rhs\\n\\n(<||>) : Bool -> Bool -> Bool\\n\\n-- Holes inside let and case.\\nwithLet : Nat -> Nat\\nwithLet n = let m = S n in ?let_rhs\\n\\nwithCase : Maybe Nat -> Nat\\nwithCase mn = case mn of\\n  Nothing => ?case_nothing\\n  Just k => ?case_just\\n\\ninline : Nat -> Nat\\ninline n = case n of m => ?inline_rhs\\n\\n-- A hole that is not the whole right-hand side.\\nunder : Nat -> Nat\\nunder n = S ?under_rhs\\n\\n-- Searches with few results or none, and a declaration without clauses.\\nchoose : Bool -> Bool -> Bool\\nchoose x y = ?choose_rhs\\n\\ndescribe : Nat -> String\\ndescribe n = \\\"n\\\"\\n\\nisBig : Nat -> Bool\\nisBig n = n > 10\\n\\ncheck : Nat -> Bool\\ncheck n = ?check_rhs\\n\\nlabel : Nat -> String\\nlabel n = ?label_rhs\\n\\nswap : (a, b) -> (b, a)\\n\\npair : a -> b -> (a, b)\\npair x y = ?pair_rhs\\n\\nfun : Nat -> Nat\\nfun = ?fun_rhs\\n\\n-- A prime and non-ASCII letters in names.\\nprimed : Nat -> Nat\\nprimed x' = ?h'\\n\\nδ : Nat -> Nat\\nδ x₁ = ?ε\\n\\n-- Missing cases without a coverage error.\\npartial\\nboth : Bool -> Bool -> Nat\\nboth True True = 1\\n\"}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received notification for method \"textDocument/didOpen\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received didOpen notification for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Server: Loading file file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Notification.Diagnostic: Sending diagnostic message for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent notification message for method \"textDocument/publishDiagnostics\"\n"}
+{"kind":"recv","length":258,"text":"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{\"uri\":\"file://${ROOT}/src/Edits.idr\",\"version\":1,\"diagnostics\":[]}}"}
+{"kind":"send","length":402,"text":"{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":7,\"character\":0},\"end\":{\"line\":7,\"character\":0}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.AddClause\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Checking for file://${ROOT}/src/Edits.idr at 7:0 -- 7:0\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":377,"text":"{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":[{\"title\":\"Add clause\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":10,\"character\":0},\"end\":{\"line\":10,\"character\":0}},\"newText\":\"zip3 xs ys zs = ?zip3_rhs\\n\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":402,"text":"{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":8,\"character\":7},\"end\":{\"line\":8,\"character\":7}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.AddClause\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Checking for file://${ROOT}/src/Edits.idr at 8:7 -- 8:7\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":377,"text":"{\"jsonrpc\":\"2.0\",\"id\":3,\"result\":[{\"title\":\"Add clause\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":10,\"character\":0},\"end\":{\"line\":10,\"character\":0}},\"newText\":\"zip3 xs ys zs = ?zip3_rhs\\n\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":402,"text":"{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":9,\"character\":7},\"end\":{\"line\":9,\"character\":7}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.AddClause\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Checking for file://${ROOT}/src/Edits.idr at 9:7 -- 9:7\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":377,"text":"{\"jsonrpc\":\"2.0\",\"id\":4,\"result\":[{\"title\":\"Add clause\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":10,\"character\":0},\"end\":{\"line\":10,\"character\":0}},\"newText\":\"zip3 xs ys zs = ?zip3_rhs\\n\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":404,"text":"{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":7,\"character\":0},\"end\":{\"line\":7,\"character\":0}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.GenerateDef\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Checking for file://${ROOT}/src/Edits.idr at 7:0 -- 7:0\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":2405,"text":"{\"jsonrpc\":\"2.0\",\"id\":5,\"result\":[{\"title\":\"Generate definition #1 as ~ zip3 (x :: xs) (y :: ys) (z :: zs) = (x, (y, z)) : ...\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":10,\"character\":0},\"end\":{\"line\":10,\"character\":0}},\"newText\":\"zip3 [] ys zs = []\\nzip3 (x :: xs) (y :: ys) (z :: zs) = (x, (y, z)) :: zip3 xs ys zs\\n\"}]}}},{\"title\":\"Generate definition #2 as ~ zip3 (x :: xs) (z :: ys) (y :: zs) = (x, (z, y)) : ...\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":10,\"character\":0},\"end\":{\"line\":10,\"character\":0}},\"newText\":\"zip3 [] ys zs = []\\nzip3 (x :: xs) (z :: ys) (y :: zs) = (x, (z, y)) :: zip3 xs ys zs\\n\"}]}}},{\"title\":\"Generate definition #3 as ~ zip3 (x :: xs) (y :: ys) (z :: zs) = (x, (y, z)) : ...\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":10,\"character\":0},\"end\":{\"line\":10,\"character\":0}},\"newText\":\"zip3 [] [] zs = []\\nzip3 (x :: xs) (y :: ys) (z :: zs) = (x, (y, z)) :: zip3 xs ys zs\\n\"}]}}},{\"title\":\"Generate definition #4 as ~ zip3 (x :: xs) (y :: ys) (z :: zs) = (x, (y, z)) : ...\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":10,\"character\":0},\"end\":{\"line\":10,\"character\":0}},\"newText\":\"zip3 [] [] [] = []\\nzip3 (x :: xs) (y :: ys) (z :: zs) = (x, (y, z)) :: zip3 xs ys zs\\n\"}]}}},{\"title\":\"Generate definition #5 as ~ zip3 (x :: xs) (y :: ys) (z :: zs) = (x, (y, z)) : ...\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":10,\"character\":0},\"end\":{\"line\":10,\"character\":0}},\"newText\":\"zip3 [] ys [] = []\\nzip3 (x :: xs) (y :: ys) (z :: zs) = (x, (y, z)) :: zip3 xs ys zs\\n\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":404,"text":"{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":9,\"character\":7},\"end\":{\"line\":9,\"character\":7}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.GenerateDef\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Checking for file://${ROOT}/src/Edits.idr at 9:7 -- 9:7\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":2405,"text":"{\"jsonrpc\":\"2.0\",\"id\":6,\"result\":[{\"title\":\"Generate definition #1 as ~ zip3 (x :: xs) (y :: ys) (z :: zs) = (x, (y, z)) : ...\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":10,\"character\":0},\"end\":{\"line\":10,\"character\":0}},\"newText\":\"zip3 [] ys zs = []\\nzip3 (x :: xs) (y :: ys) (z :: zs) = (x, (y, z)) :: zip3 xs ys zs\\n\"}]}}},{\"title\":\"Generate definition #2 as ~ zip3 (x :: xs) (z :: ys) (y :: zs) = (x, (z, y)) : ...\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":10,\"character\":0},\"end\":{\"line\":10,\"character\":0}},\"newText\":\"zip3 [] ys zs = []\\nzip3 (x :: xs) (z :: ys) (y :: zs) = (x, (z, y)) :: zip3 xs ys zs\\n\"}]}}},{\"title\":\"Generate definition #3 as ~ zip3 (x :: xs) (y :: ys) (z :: zs) = (x, (y, z)) : ...\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":10,\"character\":0},\"end\":{\"line\":10,\"character\":0}},\"newText\":\"zip3 [] [] zs = []\\nzip3 (x :: xs) (y :: ys) (z :: zs) = (x, (y, z)) :: zip3 xs ys zs\\n\"}]}}},{\"title\":\"Generate definition #4 as ~ zip3 (x :: xs) (y :: ys) (z :: zs) = (x, (y, z)) : ...\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":10,\"character\":0},\"end\":{\"line\":10,\"character\":0}},\"newText\":\"zip3 [] [] [] = []\\nzip3 (x :: xs) (y :: ys) (z :: zs) = (x, (y, z)) :: zip3 xs ys zs\\n\"}]}}},{\"title\":\"Generate definition #5 as ~ zip3 (x :: xs) (y :: ys) (z :: zs) = (x, (y, z)) : ...\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":10,\"character\":0},\"end\":{\"line\":10,\"character\":0}},\"newText\":\"zip3 [] ys [] = []\\nzip3 (x :: xs) (y :: ys) (z :: zs) = (x, (y, z)) :: zip3 xs ys zs\\n\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":404,"text":"{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":13,\"character\":6},\"end\":{\"line\":13,\"character\":6}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.CaseSplit\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Checking for file://${ROOT}/src/Edits.idr at 13:6 -- 13:6\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":387,"text":"{\"jsonrpc\":\"2.0\",\"id\":7,\"result\":[{\"title\":\"Case split on ?xs\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":13,\"character\":0},\"end\":{\"line\":13,\"character\":10}},\"newText\":\"count [] =\\ncount (x :: xs) =\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":404,"text":"{\"jsonrpc\":\"2.0\",\"id\":8,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":14,\"character\":2},\"end\":{\"line\":14,\"character\":2}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.extract.MakeLemma\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Checking for file://${ROOT}/src/Edits.idr at 14:2 -- 14:2\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":509,"text":"{\"jsonrpc\":\"2.0\",\"id\":8,\"result\":[{\"title\":\"Make lemma for hole ?Edits.count_rhs\",\"kind\":\"refactor.extract\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":11,\"character\":0},\"end\":{\"line\":11,\"character\":0}},\"newText\":\"count_rhs : List a -> Nat\\n\\n\"},{\"range\":{\"start\":{\"line\":14,\"character\":2},\"end\":{\"line\":14,\"character\":12}},\"newText\":\"count_rhs xs\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":403,"text":"{\"jsonrpc\":\"2.0\",\"id\":9,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":14,\"character\":2},\"end\":{\"line\":14,\"character\":2}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.MakeCase\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Checking for file://${ROOT}/src/Edits.idr at 14:2 -- 14:2\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":412,"text":"{\"jsonrpc\":\"2.0\",\"id\":9,\"result\":[{\"title\":\"Make case for hole ?count_rhs\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":14,\"character\":0},\"end\":{\"line\":14,\"character\":12}},\"newText\":\"  case _ of\\n       case_val => ?count_rhs\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":404,"text":"{\"jsonrpc\":\"2.0\",\"id\":10,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":14,\"character\":2},\"end\":{\"line\":14,\"character\":2}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.MakeWith\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Checking for file://${ROOT}/src/Edits.idr at 14:2 -- 14:2\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":440,"text":"{\"jsonrpc\":\"2.0\",\"id\":10,\"result\":[{\"title\":\"Make with for hole ?Edits.count_rhs\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":14,\"character\":0},\"end\":{\"line\":14,\"character\":11}},\"newText\":\"  ?count_rhswith (_)\\n    ?count_rhs| with_pat = ?count_rhs_rhs\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":405,"text":"{\"jsonrpc\":\"2.0\",\"id\":11,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":17,\"character\":5},\"end\":{\"line\":17,\"character\":5}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.CaseSplit\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Checking for file://${ROOT}/src/Edits.idr at 17:5 -- 17:5\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":375,"text":"{\"jsonrpc\":\"2.0\",\"id\":11,\"result\":[{\"title\":\"Case split on ?m\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":17,\"character\":0},\"end\":{\"line\":17,\"character\":6}},\"newText\":\"step 0\\nstep (S k)\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":405,"text":"{\"jsonrpc\":\"2.0\",\"id\":12,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":18,\"character\":5},\"end\":{\"line\":18,\"character\":5}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.CaseSplit\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Checking for file://${ROOT}/src/Edits.idr at 18:5 -- 18:5\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":375,"text":"{\"jsonrpc\":\"2.0\",\"id\":12,\"result\":[{\"title\":\"Case split on ?n\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":18,\"character\":0},\"end\":{\"line\":18,\"character\":6}},\"newText\":\"     0\\n     (S k)\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":405,"text":"{\"jsonrpc\":\"2.0\",\"id\":13,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":16,\"character\":0},\"end\":{\"line\":16,\"character\":0}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.AddClause\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Checking for file://${ROOT}/src/Edits.idr at 16:0 -- 16:0\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":373,"text":"{\"jsonrpc\":\"2.0\",\"id\":13,\"result\":[{\"title\":\"Add clause\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":17,\"character\":0},\"end\":{\"line\":17,\"character\":0}},\"newText\":\"step k j = ?step_rhs\\n\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":405,"text":"{\"jsonrpc\":\"2.0\",\"id\":14,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":19,\"character\":4},\"end\":{\"line\":19,\"character\":4}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.extract.MakeLemma\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Checking for file://${ROOT}/src/Edits.idr at 19:4 -- 19:4\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":512,"text":"{\"jsonrpc\":\"2.0\",\"id\":14,\"result\":[{\"title\":\"Make lemma for hole ?Edits.step_rhs\",\"kind\":\"refactor.extract\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":16,\"character\":0},\"end\":{\"line\":16,\"character\":0}},\"newText\":\"step_rhs : Nat -> Nat -> Nat\\n\\n\"},{\"range\":{\"start\":{\"line\":19,\"character\":4},\"end\":{\"line\":19,\"character\":13}},\"newText\":\"step_rhs n m\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":404,"text":"{\"jsonrpc\":\"2.0\",\"id\":15,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":19,\"character\":4},\"end\":{\"line\":19,\"character\":4}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.MakeCase\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Checking for file://${ROOT}/src/Edits.idr at 19:4 -- 19:4\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":415,"text":"{\"jsonrpc\":\"2.0\",\"id\":15,\"result\":[{\"title\":\"Make case for hole ?step_rhs\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":19,\"character\":0},\"end\":{\"line\":19,\"character\":13}},\"newText\":\"  = case _ of\\n         case_val => ?step_rhs\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":404,"text":"{\"jsonrpc\":\"2.0\",\"id\":16,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":19,\"character\":4},\"end\":{\"line\":19,\"character\":4}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.MakeWith\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Checking for file://${ROOT}/src/Edits.idr at 19:4 -- 19:4\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":418,"text":"{\"jsonrpc\":\"2.0\",\"id\":16,\"result\":[{\"title\":\"Make with for hole ?Edits.step_rhs\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":19,\"character\":0},\"end\":{\"line\":19,\"character\":12}},\"newText\":\"  with (_)\\n    | with_pat = ?step_rhs_rhs\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":407,"text":"{\"jsonrpc\":\"2.0\",\"id\":17,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":26,\"character\":11},\"end\":{\"line\":26,\"character\":11}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.CaseSplit\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Checking for file://${ROOT}/src/Edits.idr at 26:11 -- 26:11\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"recv","length":418,"text":"{\"jsonrpc\":\"2.0\",\"id\":17,\"result\":[{\"title\":\"Case split on ?ys\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":26,\"character\":0},\"end\":{\"line\":26,\"character\":23}},\"newText\":\"    go acc [] = ?go_rhs_0\\n    go acc (x :: ys) = ?go_rhs_1\"}]}}}]}"}
+{"kind":"send","length":405,"text":"{\"jsonrpc\":\"2.0\",\"id\":18,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":25,\"character\":4},\"end\":{\"line\":25,\"character\":4}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.AddClause\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Checking for file://${ROOT}/src/Edits.idr at 25:4 -- 25:4\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":374,"text":"{\"jsonrpc\":\"2.0\",\"id\":18,\"result\":[{\"title\":\"Add clause\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":26,\"character\":0},\"end\":{\"line\":26,\"character\":0}},\"newText\":\"    go k ks = ?go_rhs\\n\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":407,"text":"{\"jsonrpc\":\"2.0\",\"id\":19,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":26,\"character\":16},\"end\":{\"line\":26,\"character\":16}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.extract.MakeLemma\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Checking for file://${ROOT}/src/Edits.idr at 26:16 -- 26:16\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":530,"text":"{\"jsonrpc\":\"2.0\",\"id\":19,\"result\":[{\"title\":\"Make lemma for hole ?Edits.go_rhs\",\"kind\":\"refactor.extract\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":21,\"character\":0},\"end\":{\"line\":21,\"character\":0}},\"newText\":\"go_rhs : List Nat -> List Nat -> Nat -> Nat\\n\\n\"},{\"range\":{\"start\":{\"line\":26,\"character\":16},\"end\":{\"line\":26,\"character\":23}},\"newText\":\"go_rhs xs ys acc\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":406,"text":"{\"jsonrpc\":\"2.0\",\"id\":20,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":26,\"character\":16},\"end\":{\"line\":26,\"character\":16}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.MakeCase\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Checking for file://${ROOT}/src/Edits.idr at 26:16 -- 26:16\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":435,"text":"{\"jsonrpc\":\"2.0\",\"id\":20,\"result\":[{\"title\":\"Make case for hole ?go_rhs\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":26,\"character\":0},\"end\":{\"line\":26,\"character\":23}},\"newText\":\"    go acc ys = case _ of\\n                     case_val => ?go_rhs\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":406,"text":"{\"jsonrpc\":\"2.0\",\"id\":21,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":26,\"character\":16},\"end\":{\"line\":26,\"character\":16}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.MakeWith\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Checking for file://${ROOT}/src/Edits.idr at 26:16 -- 26:16\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":438,"text":"{\"jsonrpc\":\"2.0\",\"id\":21,\"result\":[{\"title\":\"Make with for hole ?Edits.go_rhs\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":26,\"character\":0},\"end\":{\"line\":26,\"character\":22}},\"newText\":\"    go acc ys with (_)\\n      go acc ys | with_pat = ?go_rhs_rhs\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":407,"text":"{\"jsonrpc\":\"2.0\",\"id\":22,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":31,\"character\":11},\"end\":{\"line\":31,\"character\":11}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.CaseSplit\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Checking for file://${ROOT}/src/Edits.idr at 31:11 -- 31:11\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":438,"text":"{\"jsonrpc\":\"2.0\",\"id\":22,\"result\":[{\"title\":\"Case split on ?n\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":31,\"character\":0},\"end\":{\"line\":31,\"character\":35}},\"newText\":\"  classify 0 | True = ?classify_big_0\\n  classify (S k) | True = ?classify_big_1\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":405,"text":"{\"jsonrpc\":\"2.0\",\"id\":23,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":29,\"character\":0},\"end\":{\"line\":29,\"character\":0}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.AddClause\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Checking for file://${ROOT}/src/Edits.idr at 29:0 -- 29:0\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":379,"text":"{\"jsonrpc\":\"2.0\",\"id\":23,\"result\":[{\"title\":\"Add clause\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":30,\"character\":0},\"end\":{\"line\":30,\"character\":0}},\"newText\":\"classify k = ?classify_rhs\\n\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":407,"text":"{\"jsonrpc\":\"2.0\",\"id\":24,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":31,\"character\":22},\"end\":{\"line\":31,\"character\":22}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.extract.MakeLemma\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Checking for file://${ROOT}/src/Edits.idr at 31:22 -- 31:22\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":519,"text":"{\"jsonrpc\":\"2.0\",\"id\":24,\"result\":[{\"title\":\"Make lemma for hole ?Edits.classify_big\",\"kind\":\"refactor.extract\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":28,\"character\":0},\"end\":{\"line\":28,\"character\":0}},\"newText\":\"classify_big : Nat -> String\\n\\n\"},{\"range\":{\"start\":{\"line\":31,\"character\":22},\"end\":{\"line\":31,\"character\":35}},\"newText\":\"classify_big n\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":406,"text":"{\"jsonrpc\":\"2.0\",\"id\":25,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":31,\"character\":22},\"end\":{\"line\":31,\"character\":22}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.MakeCase\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Checking for file://${ROOT}/src/Edits.idr at 31:22 -- 31:22\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":459,"text":"{\"jsonrpc\":\"2.0\",\"id\":25,\"result\":[{\"title\":\"Make case for hole ?classify_big\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":31,\"character\":0},\"end\":{\"line\":31,\"character\":35}},\"newText\":\"  classify n | True = case _ of\\n                           case_val => ?classify_big\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":406,"text":"{\"jsonrpc\":\"2.0\",\"id\":26,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":31,\"character\":22},\"end\":{\"line\":31,\"character\":22}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.MakeWith\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Checking for file://${ROOT}/src/Edits.idr at 31:22 -- 31:22\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":462,"text":"{\"jsonrpc\":\"2.0\",\"id\":26,\"result\":[{\"title\":\"Make with for hole ?Edits.classify_big\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":31,\"character\":0},\"end\":{\"line\":31,\"character\":34}},\"newText\":\"  classify n | True with (_)\\n    classify n | True | with_pat = ?classify_big_rhs\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":405,"text":"{\"jsonrpc\":\"2.0\",\"id\":27,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":38,\"character\":0},\"end\":{\"line\":38,\"character\":0}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.CaseSplit\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Checking for file://${ROOT}/src/Edits.idr at 38:0 -- 38:0\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":407,"text":"{\"jsonrpc\":\"2.0\",\"id\":27,\"result\":[{\"title\":\"Case split on ?x\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":38,\"character\":0},\"end\":{\"line\":38,\"character\":18}},\"newText\":\"False <&&> y = ?op_rhs_0\\nTrue <&&> y = ?op_rhs_1\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":405,"text":"{\"jsonrpc\":\"2.0\",\"id\":28,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":38,\"character\":7},\"end\":{\"line\":38,\"character\":7}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.CaseSplit\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Checking for file://${ROOT}/src/Edits.idr at 38:7 -- 38:7\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":407,"text":"{\"jsonrpc\":\"2.0\",\"id\":28,\"result\":[{\"title\":\"Case split on ?y\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":38,\"character\":0},\"end\":{\"line\":38,\"character\":18}},\"newText\":\"x <&&> False = ?op_rhs_0\\nx <&&> True = ?op_rhs_1\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":405,"text":"{\"jsonrpc\":\"2.0\",\"id\":29,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":37,\"character\":0},\"end\":{\"line\":37,\"character\":0}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.AddClause\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Checking for file://${ROOT}/src/Edits.idr at 37:0 -- 37:0\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":373,"text":"{\"jsonrpc\":\"2.0\",\"id\":29,\"result\":[{\"title\":\"Add clause\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":38,\"character\":0},\"end\":{\"line\":38,\"character\":0}},\"newText\":\"(<&&>) x y = ?op_rhs\\n\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":405,"text":"{\"jsonrpc\":\"2.0\",\"id\":30,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":40,\"character\":0},\"end\":{\"line\":40,\"character\":0}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.AddClause\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Checking for file://${ROOT}/src/Edits.idr at 40:0 -- 40:0\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":373,"text":"{\"jsonrpc\":\"2.0\",\"id\":30,\"result\":[{\"title\":\"Add clause\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":41,\"character\":0},\"end\":{\"line\":41,\"character\":0}},\"newText\":\"(<||>) x y = ?op_rhs\\n\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":407,"text":"{\"jsonrpc\":\"2.0\",\"id\":31,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":38,\"character\":11},\"end\":{\"line\":38,\"character\":11}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.extract.MakeLemma\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Checking for file://${ROOT}/src/Edits.idr at 38:11 -- 38:11\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":510,"text":"{\"jsonrpc\":\"2.0\",\"id\":31,\"result\":[{\"title\":\"Make lemma for hole ?Edits.op_rhs\",\"kind\":\"refactor.extract\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":37,\"character\":0},\"end\":{\"line\":37,\"character\":0}},\"newText\":\"op_rhs : Bool -> Bool -> Bool\\n\\n\"},{\"range\":{\"start\":{\"line\":38,\"character\":11},\"end\":{\"line\":38,\"character\":18}},\"newText\":\"op_rhs y x\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":406,"text":"{\"jsonrpc\":\"2.0\",\"id\":32,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":38,\"character\":11},\"end\":{\"line\":38,\"character\":11}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.MakeCase\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Checking for file://${ROOT}/src/Edits.idr at 38:11 -- 38:11\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":425,"text":"{\"jsonrpc\":\"2.0\",\"id\":32,\"result\":[{\"title\":\"Make case for hole ?op_rhs\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":38,\"character\":0},\"end\":{\"line\":38,\"character\":18}},\"newText\":\"x <&&> y = case _ of\\n                case_val => ?op_rhs\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":406,"text":"{\"jsonrpc\":\"2.0\",\"id\":33,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":38,\"character\":11},\"end\":{\"line\":38,\"character\":11}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.MakeWith\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Checking for file://${ROOT}/src/Edits.idr at 38:11 -- 38:11\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":428,"text":"{\"jsonrpc\":\"2.0\",\"id\":33,\"result\":[{\"title\":\"Make with for hole ?Edits.op_rhs\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":38,\"character\":0},\"end\":{\"line\":38,\"character\":17}},\"newText\":\"x <&&> y with (_)\\n  x <&&> y | with_pat = ?op_rhs_rhs\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":405,"text":"{\"jsonrpc\":\"2.0\",\"id\":34,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":44,\"character\":8},\"end\":{\"line\":44,\"character\":8}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.CaseSplit\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Checking for file://${ROOT}/src/Edits.idr at 44:8 -- 44:8\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":37,"text":"{\"jsonrpc\":\"2.0\",\"id\":34,\"result\":[]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":407,"text":"{\"jsonrpc\":\"2.0\",\"id\":35,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":44,\"character\":27},\"end\":{\"line\":44,\"character\":27}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.extract.MakeLemma\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Checking for file://${ROOT}/src/Edits.idr at 44:27 -- 44:27\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":510,"text":"{\"jsonrpc\":\"2.0\",\"id\":35,\"result\":[{\"title\":\"Make lemma for hole ?Edits.let_rhs\",\"kind\":\"refactor.extract\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":42,\"character\":0},\"end\":{\"line\":42,\"character\":0}},\"newText\":\"let_rhs : Nat -> Nat -> Nat\\n\\n\"},{\"range\":{\"start\":{\"line\":44,\"character\":27},\"end\":{\"line\":44,\"character\":35}},\"newText\":\"let_rhs n m\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":406,"text":"{\"jsonrpc\":\"2.0\",\"id\":36,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":44,\"character\":27},\"end\":{\"line\":44,\"character\":27}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.MakeCase\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Checking for file://${ROOT}/src/Edits.idr at 44:27 -- 44:27\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":459,"text":"{\"jsonrpc\":\"2.0\",\"id\":36,\"result\":[{\"title\":\"Make case for hole ?let_rhs\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":44,\"character\":0},\"end\":{\"line\":44,\"character\":35}},\"newText\":\"withLet n = let m = S n in case _ of\\n                                case_val => ?let_rhs\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":406,"text":"{\"jsonrpc\":\"2.0\",\"id\":37,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":44,\"character\":27},\"end\":{\"line\":44,\"character\":27}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.MakeWith\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Checking for file://${ROOT}/src/Edits.idr at 44:27 -- 44:27\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":432,"text":"{\"jsonrpc\":\"2.0\",\"id\":37,\"result\":[{\"title\":\"Make with for hole ?Edits.let_rhs\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":44,\"character\":0},\"end\":{\"line\":44,\"character\":34}},\"newText\":\"withLet n with (_)\\n  withLet n | with_pat = ?let_rhs_rhs\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":405,"text":"{\"jsonrpc\":\"2.0\",\"id\":38,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":49,\"character\":7},\"end\":{\"line\":49,\"character\":7}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.CaseSplit\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Checking for file://${ROOT}/src/Edits.idr at 49:7 -- 49:7\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":412,"text":"{\"jsonrpc\":\"2.0\",\"id\":38,\"result\":[{\"title\":\"Case split on ?k\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":49,\"character\":0},\"end\":{\"line\":49,\"character\":22}},\"newText\":\"  Just 0 => ?case_just_0\\n  Just (S k) => ?case_just_1\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":407,"text":"{\"jsonrpc\":\"2.0\",\"id\":39,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":48,\"character\":13},\"end\":{\"line\":48,\"character\":13}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.extract.MakeLemma\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Checking for file://${ROOT}/src/Edits.idr at 48:13 -- 48:13\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":523,"text":"{\"jsonrpc\":\"2.0\",\"id\":39,\"result\":[{\"title\":\"Make lemma for hole ?Edits.case_nothing\",\"kind\":\"refactor.extract\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":46,\"character\":0},\"end\":{\"line\":46,\"character\":0}},\"newText\":\"case_nothing : Maybe Nat -> Nat\\n\\n\"},{\"range\":{\"start\":{\"line\":48,\"character\":13},\"end\":{\"line\":48,\"character\":26}},\"newText\":\"case_nothing mn\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":406,"text":"{\"jsonrpc\":\"2.0\",\"id\":40,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":48,\"character\":13},\"end\":{\"line\":48,\"character\":13}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.MakeCase\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Checking for file://${ROOT}/src/Edits.idr at 48:13 -- 48:13\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":441,"text":"{\"jsonrpc\":\"2.0\",\"id\":40,\"result\":[{\"title\":\"Make case for hole ?case_nothing\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":48,\"character\":0},\"end\":{\"line\":48,\"character\":26}},\"newText\":\"  Nothing => case _ of\\n                  case_val => ?case_nothing\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":406,"text":"{\"jsonrpc\":\"2.0\",\"id\":41,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":48,\"character\":13},\"end\":{\"line\":48,\"character\":13}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.MakeWith\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Checking for file://${ROOT}/src/Edits.idr at 48:13 -- 48:13\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":442,"text":"{\"jsonrpc\":\"2.0\",\"id\":41,\"result\":[{\"title\":\"Make with for hole ?Edits.case_nothing\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":48,\"character\":0},\"end\":{\"line\":48,\"character\":25}},\"newText\":\"  Nothing with (_)\\n    Nothing | with_pat = ?case_nothing_rhs\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":407,"text":"{\"jsonrpc\":\"2.0\",\"id\":42,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":49,\"character\":12},\"end\":{\"line\":49,\"character\":12}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.extract.MakeLemma\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Checking for file://${ROOT}/src/Edits.idr at 49:12 -- 49:12\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":523,"text":"{\"jsonrpc\":\"2.0\",\"id\":42,\"result\":[{\"title\":\"Make lemma for hole ?Edits.case_just\",\"kind\":\"refactor.extract\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":46,\"character\":0},\"end\":{\"line\":46,\"character\":0}},\"newText\":\"case_just : Nat -> Maybe Nat -> Nat\\n\\n\"},{\"range\":{\"start\":{\"line\":49,\"character\":12},\"end\":{\"line\":49,\"character\":22}},\"newText\":\"case_just k mn\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":406,"text":"{\"jsonrpc\":\"2.0\",\"id\":43,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":49,\"character\":12},\"end\":{\"line\":49,\"character\":12}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.MakeCase\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Checking for file://${ROOT}/src/Edits.idr at 49:12 -- 49:12\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":433,"text":"{\"jsonrpc\":\"2.0\",\"id\":43,\"result\":[{\"title\":\"Make case for hole ?case_just\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":49,\"character\":0},\"end\":{\"line\":49,\"character\":22}},\"newText\":\"  Just k => case _ of\\n                 case_val => ?case_just\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":406,"text":"{\"jsonrpc\":\"2.0\",\"id\":44,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":49,\"character\":12},\"end\":{\"line\":49,\"character\":12}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.MakeWith\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Checking for file://${ROOT}/src/Edits.idr at 49:12 -- 49:12\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":434,"text":"{\"jsonrpc\":\"2.0\",\"id\":44,\"result\":[{\"title\":\"Make with for hole ?Edits.case_just\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":49,\"character\":0},\"end\":{\"line\":49,\"character\":21}},\"newText\":\"  Just k with (_)\\n    Just k | with_pat = ?case_just_rhs\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":407,"text":"{\"jsonrpc\":\"2.0\",\"id\":45,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":52,\"character\":21},\"end\":{\"line\":52,\"character\":21}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.CaseSplit\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Checking for file://${ROOT}/src/Edits.idr at 52:21 -- 52:21\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"recv","length":442,"text":"{\"jsonrpc\":\"2.0\",\"id\":45,\"result\":[{\"title\":\"Case split on ?m\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":52,\"character\":0},\"end\":{\"line\":52,\"character\":37}},\"newText\":\"inline n = case n of 0 => ?inline_rhs_0\\n                     (S k) => ?inline_rhs_1\"}]}}}]}"}
+{"kind":"send","length":407,"text":"{\"jsonrpc\":\"2.0\",\"id\":46,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":52,\"character\":26},\"end\":{\"line\":52,\"character\":26}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.extract.MakeLemma\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Checking for file://${ROOT}/src/Edits.idr at 52:26 -- 52:26\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":519,"text":"{\"jsonrpc\":\"2.0\",\"id\":46,\"result\":[{\"title\":\"Make lemma for hole ?Edits.inline_rhs\",\"kind\":\"refactor.extract\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":51,\"character\":0},\"end\":{\"line\":51,\"character\":0}},\"newText\":\"inline_rhs : Nat -> Nat -> Nat\\n\\n\"},{\"range\":{\"start\":{\"line\":52,\"character\":26},\"end\":{\"line\":52,\"character\":37}},\"newText\":\"inline_rhs m n\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":406,"text":"{\"jsonrpc\":\"2.0\",\"id\":47,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":52,\"character\":26},\"end\":{\"line\":52,\"character\":26}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.MakeCase\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Checking for file://${ROOT}/src/Edits.idr at 52:26 -- 52:26\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":463,"text":"{\"jsonrpc\":\"2.0\",\"id\":47,\"result\":[{\"title\":\"Make case for hole ?inline_rhs\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":52,\"character\":0},\"end\":{\"line\":52,\"character\":37}},\"newText\":\"inline n = case n of m => case _ of\\n                               case_val => ?inline_rhs\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":406,"text":"{\"jsonrpc\":\"2.0\",\"id\":48,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":52,\"character\":26},\"end\":{\"line\":52,\"character\":26}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.MakeWith\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Checking for file://${ROOT}/src/Edits.idr at 52:26 -- 52:26\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":436,"text":"{\"jsonrpc\":\"2.0\",\"id\":48,\"result\":[{\"title\":\"Make with for hole ?Edits.inline_rhs\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":52,\"character\":0},\"end\":{\"line\":52,\"character\":36}},\"newText\":\"inline n with (_)\\n  inline n | with_pat = ?inline_rhs_rhs\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":405,"text":"{\"jsonrpc\":\"2.0\",\"id\":49,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":56,\"character\":6},\"end\":{\"line\":56,\"character\":6}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.CaseSplit\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Checking for file://${ROOT}/src/Edits.idr at 56:6 -- 56:6\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"recv","length":37,"text":"{\"jsonrpc\":\"2.0\",\"id\":49,\"result\":[]}"}
+{"kind":"send","length":407,"text":"{\"jsonrpc\":\"2.0\",\"id\":50,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":56,\"character\":12},\"end\":{\"line\":56,\"character\":12}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.extract.MakeLemma\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Checking for file://${ROOT}/src/Edits.idr at 56:12 -- 56:12\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":509,"text":"{\"jsonrpc\":\"2.0\",\"id\":50,\"result\":[{\"title\":\"Make lemma for hole ?Edits.under_rhs\",\"kind\":\"refactor.extract\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":54,\"character\":0},\"end\":{\"line\":54,\"character\":0}},\"newText\":\"under_rhs : Nat -> Nat\\n\\n\"},{\"range\":{\"start\":{\"line\":56,\"character\":12},\"end\":{\"line\":56,\"character\":22}},\"newText\":\"(under_rhs n)\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":406,"text":"{\"jsonrpc\":\"2.0\",\"id\":51,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":56,\"character\":12},\"end\":{\"line\":56,\"character\":12}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.MakeCase\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Checking for file://${ROOT}/src/Edits.idr at 56:12 -- 56:12\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"recv","length":436,"text":"{\"jsonrpc\":\"2.0\",\"id\":51,\"result\":[{\"title\":\"Make case for hole ?under_rhs\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":56,\"character\":0},\"end\":{\"line\":56,\"character\":22}},\"newText\":\"under n = S (case _ of\\n                  case_val => ?under_rhs)\"}]}}}]}"}
+{"kind":"send","length":406,"text":"{\"jsonrpc\":\"2.0\",\"id\":52,\"method\":\"textDocument/codeAction\",\"params\":{\"textDocument\":{\"uri\":\"file://${ROOT}/src/Edits.idr\"},\"range\":{\"start\":{\"line\":56,\"character\":12},\"end\":{\"line\":56,\"character\":12}},\"context\":{\"diagnostics\":[],\"only\":[\"refactor.rewrite.MakeWith\"],\"triggerKind\":1}}}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"textDocument/codeAction\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received codeAction request for file://${ROOT}/src/Edits.idr\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.ExprSearch: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.CaseSplit: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeLemma: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeWith: Checking for file://${ROOT}/src/Edits.idr at 56:12 -- 56:12\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.AddClause: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.MakeCase: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.Intro: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDef: Skipped\n"}
+{"kind":"stderr","text":"LOG INFO:Request.CodeAction.GenerateDefNext: Skipped\n"}
+{"kind":"recv","length":432,"text":"{\"jsonrpc\":\"2.0\",\"id\":52,\"result\":[{\"title\":\"Make with for hole ?Edits.under_rhs\",\"kind\":\"refactor.rewrite\",\"edit\":{\"changes\":{\"file://${ROOT}/src/Edits.idr\":[{\"range\":{\"start\":{\"line\":56,\"character\":0},\"end\":{\"line\":56,\"character\":21}},\"newText\":\"under n with (_)\\n  under n | with_pat = ?under_rhs_rhs\"}]}}}]}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"textDocument/codeAction\"\n"}
+{"kind":"send","length":45,"text":"{\"jsonrpc\":\"2.0\",\"id\":53,\"method\":\"shutdown\"}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received request for method \"shutdown\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received shutdown request\n"}
+{"kind":"stderr","text":"LOG INFO:Server: Server ready to be shutdown\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Sent response message for method \"shutdown\"\n"}
+{"kind":"recv","length":39,"text":"{\"jsonrpc\":\"2.0\",\"id\":53,\"result\":null}"}
+{"kind":"send","length":33,"text":"{\"jsonrpc\":\"2.0\",\"method\":\"exit\"}"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received notification for method \"exit\"\n"}
+{"kind":"stderr","text":"LOG INFO:Communication.Channel: Received exit notification\n"}
+{"kind":"stderr","text":"LOG INFO:Server: Quitting the server...\n"}
+{"kind":"exit","code":0,"signal":null}
+{"kind":"files","written":["build/ttc/2025081600/Edits.ttc","build/ttc/2025081600/Edits.ttm"]}

@@ -10,7 +10,9 @@
  * of the keybindings in `package.json` read (and, since M4, **Idris 2: Show Keybindings**,
  * `Config.keybindingScheme`); M4 adds `idris2.checking.saveBeforeAction` (`Config.saveBeforeAction`)
  * and `idris2.holes.showInSideBar`, which only the `when` clause of the Holes view reads, so it has
- * no accessor here. The module has no runtime dependency on `vscode` (one type import):
+ * no accessor here; M5 adds `idris2.backend.mode` (`Config.backendMode`) and `idris2.lsp.*`
+ * (`Config.lsp`), except `idris2.lsp.trace.server`, which the language client library reads itself
+ * (`backend/lsp/types.ts` `LSP_CLIENT_ID`). The module has no runtime dependency on `vscode` (one type import):
  * `extension.ts` passes `vscode.workspace` as the `ConfigurationHost`, unit tests pass a fake.
  *
  * Values are validated here, so that callers never see a wrongly typed value from a
@@ -41,7 +43,9 @@ export type ConfigurationGroup =
   | 'trace'
   | 'inlayHints'
   | 'eval'
-  | 'keybindings';
+  | 'keybindings'
+  | 'backend'
+  | 'lsp';
 
 /** `idris2.toolchain.*` (ARCHITECTURE §11, M1). */
 export interface ToolchainSettings {
@@ -95,8 +99,8 @@ export interface SettingsChange {
 
 /**
  * What `vscode.workspace` offers that this module uses. `scope` is passed for the settings whose
- * scope is `resource` (`idris2.checking.*`), so that a folder's value applies to its documents;
- * the other groups are read without one.
+ * scope is `resource` (`idris2.checking.*`, `idris2.backend.mode`), so that a folder's value
+ * applies to its documents; the other groups are read without one.
  */
 export interface ConfigurationHost {
   getConfiguration(section: string, scope?: ConfigurationScope): ConfigurationReader;
@@ -520,6 +524,123 @@ export function readKeybindingScheme(section: ConfigurationReader): KeybindingSc
   return KEYBINDING_SCHEMES.find((scheme) => scheme === text);
 }
 
+// -------------------------------------------------------------------------------------------
+// M5: the backend policy and idris2-lsp (ARCHITECTURE §3.2, §4, §11; ROADMAP M5 and §9 Q7,
+// decided by the user on 2026-10-01)
+// -------------------------------------------------------------------------------------------
+
+/**
+ * `idris2.backend.mode` (`resource` scope, so that a workspace folder may choose for its projects;
+ * the user's decision of 2026-10-01 on Q7):
+ * - `auto` (the default): IDE mode for every root when a usable `idris2` is found; idris2-lsp only
+ *   when no usable `idris2` is found but a usable `idris2-lsp` is, and only for a root with an
+ *   `.ipkg` (the server loads a file only when `findIpkg` finds one, F20, F35);
+ * - `lsp`: idris2-lsp for every root with an `.ipkg`; a loose file is not checked, and gets the
+ *   one-time "no `.ipkg`" notification, which offers IDE mode for its folder;
+ * - `ideMode`: IDE mode for every root.
+ * **Idris 2: Switch Backend…** records a choice per root in workspace state, which comes before the
+ * setting. One backend per root, no secondary one: a feature the chosen backend lacks is
+ * unavailable with a message (ARCHITECTURE §3.1). What "usable" means and how the routing applies
+ * the policy is `backend/registry.ts`'s.
+ */
+export type BackendMode = 'auto' | 'lsp' | 'ideMode';
+
+const BACKEND_MODES: readonly BackendMode[] = ['auto', 'lsp', 'ideMode'];
+
+/** Reads and validates `idris2.backend.mode` from the `idris2` section: an unknown value reads as `auto`. */
+export function readBackendMode(section: ConfigurationReader): BackendMode {
+  return enumSetting(section.get('backend.mode'), BACKEND_MODES, 'auto');
+}
+
+/**
+ * The severities idris2-lsp's `logSeverity` option accepts: `parseSeverity` upper-cases the text
+ * and knows `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`, ignoring anything else (lsp-lib
+ * `512504c` `Language/LSP/Severity.idr` [src]).
+ */
+export type LspLogSeverity = 'debug' | 'info' | 'warning' | 'error' | 'critical';
+
+const LSP_LOG_SEVERITIES: readonly LspLogSeverity[] = ['debug', 'info', 'warning', 'error', 'critical'];
+
+/**
+ * The eight server options of `idris2.lsp.*` (ROADMAP M5, F20, F36). Each default is the server's
+ * own [src: idris2-lsp `9a2f0ad`, Idris2 `1c630e6`]: the log goes to standard error at `Debug`
+ * (`defaultConfig`, `Server/Configuration.idr`), `searchLimit` is 5 (same), the compiler's search
+ * time limit is 1000 ms (`defaultSession`, `Core/Options.idr`), the three printing options are off
+ * (`defaultPPrint`, same file), `briefCompletions` is off (`defaultConfig`). The server reads them
+ * from the top level of `initializationOptions` and of `workspace/didChangeConfiguration`'s
+ * `settings` (`processSettings`, `Server/ProcessMessage.idr` 137–189); `backend/lsp/types.ts`
+ * `LspServerOptions` is the object the client sends.
+ */
+export interface LspSettings {
+  /**
+   * `idris2.lsp.logFile`: `''` (the default) for none — the server then logs to its standard error.
+   * Otherwise the value as `ToolchainSettings.idris2Path` reads one (trimmed, unquoted, a leading `~`
+   * expanded). The server takes only an absolute path, creates its folder and opens it for
+   * appending (`changeLogFile`, `Server/Log.idr` 106–117 [src]).
+   */
+  readonly logFile: string;
+  /** `idris2.lsp.logSeverity`: the lowest severity the server logs. */
+  readonly logSeverity: LspLogSeverity;
+  /**
+   * `idris2.lsp.longActionTimeout`, ms, at least `MIN_LSP_LONG_ACTION_TIMEOUT_MS`: the compiler's
+   * search time limit in the server (`setSearchTimeout`), which bounds an expression search and a
+   * definition search (`searchN`, `exprSearch`, `TTImp/Interactive/ExprSearch.idr` 61, 878;
+   * `makeDefN`, `GenerateDef.idr` 314 [src]).
+   */
+  readonly longActionTimeoutMs: number;
+  /**
+   * `idris2.lsp.maxCodeActionResults`, at least `MIN_LSP_CODE_ACTION_RESULTS`: the server's
+   * `searchLimit`, the most results of an expression search or a definition search
+   * (`Language/LSP/CodeAction/{ExprSearch,GenerateDef,GenerateDefNext}.idr` [src]).
+   */
+  readonly maxCodeActionResults: number;
+  readonly showImplicits: boolean;
+  readonly showMachineNames: boolean;
+  readonly fullNamespace: boolean;
+  readonly briefCompletions: boolean;
+}
+
+/** The smallest `idris2.lsp.longActionTimeout` (ms); also the schema's `minimum` in package.json. */
+export const MIN_LSP_LONG_ACTION_TIMEOUT_MS = 1;
+/** The smallest `idris2.lsp.maxCodeActionResults`; also the schema's `minimum` in package.json. */
+export const MIN_LSP_CODE_ACTION_RESULTS = 1;
+
+/**
+ * The `idris2.lsp.*` keys that are server options: the client sends them at start
+ * (`initializationOptions`) and on every change (`workspace/didChangeConfiguration`), and a change
+ * restarts nothing. `test/unit/manifest.test.ts` checks that these and `lsp.trace.server`, which the
+ * language client library reads itself, are all the `idris2.lsp.*` keys.
+ */
+export const LSP_SERVER_OPTION_KEYS: readonly string[] = [
+  'lsp.logFile',
+  'lsp.logSeverity',
+  'lsp.longActionTimeout',
+  'lsp.maxCodeActionResults',
+  'lsp.showImplicits',
+  'lsp.showMachineNames',
+  'lsp.fullNamespace',
+  'lsp.briefCompletions',
+];
+
+/** A count of at least `minimum`: a finite number is rounded down and read as at least `minimum`; anything else as `fallback`. */
+function countSetting(value: unknown, minimum: number, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? Math.max(minimum, Math.floor(value)) : fallback;
+}
+
+/** Reads and validates `idris2.lsp.*` (but `trace.server`) from the `idris2` section; booleans are on only when `true`. */
+export function readLspSettings(section: ConfigurationReader, homeDir: string | undefined): LspSettings {
+  return {
+    logFile: pathSetting(section.get('lsp.logFile'), homeDir),
+    logSeverity: enumSetting(section.get('lsp.logSeverity'), LSP_LOG_SEVERITIES, 'info'),
+    longActionTimeoutMs: countSetting(section.get('lsp.longActionTimeout'), MIN_LSP_LONG_ACTION_TIMEOUT_MS, 1000),
+    maxCodeActionResults: countSetting(section.get('lsp.maxCodeActionResults'), MIN_LSP_CODE_ACTION_RESULTS, 5),
+    showImplicits: section.get('lsp.showImplicits') === true,
+    showMachineNames: section.get('lsp.showMachineNames') === true,
+    fullNamespace: section.get('lsp.fullNamespace') === true,
+    briefCompletions: section.get('lsp.briefCompletions') === true,
+  };
+}
+
 /**
  * The settings as the rest of the extension sees them. Reads are not cached: each call
  * reflects the current value, so callers read again after `onDidChange` fires.
@@ -571,6 +692,19 @@ export class Config {
 
   evaluation(): EvaluationSettings {
     return readEvaluationSettings(this.host.getConfiguration(CONFIGURATION_SECTION));
+  }
+
+  /**
+   * `idris2.backend.mode` for `scope` (a root's folder or a document's URI): `resource`-scoped, so a
+   * workspace folder may set its own; without a scope, the window's value.
+   */
+  backendMode(scope?: ConfigurationScope): BackendMode {
+    return readBackendMode(this.host.getConfiguration(CONFIGURATION_SECTION, scope));
+  }
+
+  /** `idris2.lsp.*` but `trace.server` (`readLspSettings`). */
+  lsp(): LspSettings {
+    return readLspSettings(this.host.getConfiguration(CONFIGURATION_SECTION), this.homeDir);
   }
 
   /**

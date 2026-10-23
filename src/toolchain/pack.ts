@@ -2,11 +2,15 @@
  * pack's directories and current collection (`toolchain/pack.ts`, ROADMAP M1), read from the
  * file system only: the extension never starts pack (principle 8; D22), and nothing in M1 needs
  * its output. (pack's own `idris2` and `idris2-lsp` wrappers run pack whenever they run, so
- * probing a pack-installed `idris2` runs pack indirectly; `toolchain/types.ts`.) pack is not
- * installed on the development machine (ROADMAP §9: installed only in M5), so everything here
- * was read, not observed, in idris2-pack `6baee7d` (2026-09-08):
- * README.md and INSTALL.md [doc], and the source [src]. The two disagree in places; where they
- * do, the code follows the source and says so.
+ * probing a pack-installed `idris2` runs pack indirectly; `toolchain/types.ts`.) Everything here
+ * was read in idris2-pack `6baee7d` (2026-09-08): README.md and INSTALL.md [doc], and the source
+ * [src]. The two disagree in places; where they do, the code follows the source and says so.
+ * pack was installed on the development machine in M5 (2026-10-01, with `PACK_BIN_DIR` set,
+ * docs/as-built/M5.md), and its layout there agrees with the source [live, read from the file
+ * system]: the wrappers `idris2` and `idris2-lsp` in the bin directory, the collection
+ * (`nightly-261002`) in `<state>/pack.toml`, installs under `<state>/install/<idris2 commit>/`, no
+ * `<state>/install/<collection>/bin`. One difference from the text below: `pack` in the bin
+ * directory was not a symbolic link but pack's own launcher script beside its `pack_app` folder.
  *
  * Directories (`getPackDirs`, `src/Pack/Config/Environment.idr` 313–350 [src]; INSTALL.md
  * 41–57 [doc]); a variable counts only when it holds an absolute path (pack parses it as a

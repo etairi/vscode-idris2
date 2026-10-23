@@ -39,6 +39,15 @@ language with first-class dependent types.
 - Comment toggling, bracket matching, indentation on Enter, folding, Expand Selection
 - Snippets for common declarations and `.ipkg` files
 
+**The language server, idris2-lsp** (optional)
+- A package can be served by [idris2-lsp](https://github.com/idris-community/idris2-lsp) instead of
+  the compiler's IDE mode: `idris2.backend.mode` (`lsp`), or **Switch Backend…** for one project.
+  IDE mode stays the default; one program serves a project, never both
+- The server's hover, completion, signature help, definition, Outline, highlighting and quick fixes;
+  the editing commands and the Holes view under the same rules as in IDE mode
+- **Restart / Stop Language Server**, **Show Language Server Output**; an offer to copy the settings
+  of the `bamboo.idris2-lsp` extension
+
 **Toolchain**
 - Finds `idris2`, `idris2-lsp` and `pack`; **Show Setup Information** reports what was found
 - Install commands typed into a terminal — nothing runs until you press Enter
@@ -114,6 +123,8 @@ title bar of an Idris file.
 | Proof Search, Next Result, Generate Definition, Next Definition | Fill a hole or write a definition; the next candidate |
 | Next Hole, Previous Hole, List Holes | Move between the holes of the file; list the compiler's holes |
 | Restart Backend, Stop Backend | Restart or stop the compiler of this project or of all projects |
+| Switch Backend… | IDE mode or idris2-lsp for the project of the current file, remembered for this workspace |
+| Restart Language Server, Stop Language Server, Show Language Server Output | idris2-lsp's process and its log |
 | Show Setup Information, Rescan Toolchain | What was found and how; search again |
 | Install Idris 2…, Install pack…, Install or Update idris2-lsp with pack | Type the install command into a terminal, or open the instructions |
 | Manage Allowed Folders… | Revoke folders outside the workspace where the compiler may always start |
@@ -128,6 +139,8 @@ The ones you are most likely to change; all of them are in the Settings UI (sear
 | Setting | Default | Description |
 |---|---|---|
 | `idris2.toolchain.idris2Path` | `""` | Path to `idris2`; empty: search `PATH`, pack's directories and the usual places |
+| `idris2.toolchain.lspPath` | `""` | Path to `idris2-lsp`, likewise |
+| `idris2.backend.mode` | `"auto"` | `auto` (IDE mode when `idris2` is found), `lsp` (idris2-lsp for packages), `ideMode` |
 | `idris2.checking.trigger` | `"onSave"` | `onSave`, `afterDelay` (also saves your files after a pause in typing), `manual` |
 | `idris2.checking.saveBeforeAction` | `"always"` | An editing command saves the file first; `prompt` asks, `never` asks you to save |
 | `idris2.ideMode.loosePackages` | `[]` | Packages for files without an `.ipkg`, e.g. `["contrib"]` |
@@ -154,6 +167,9 @@ The ones you are most likely to change; all of them are in the Settings UI (sear
 - **Refine Hole…** checks the expression you type the same way, so it can run such code too.
 - Interactive editing sends a name from the file only if it is an Idris name, and applies an
   answer only to the file it asked about, only if that file has not changed since.
+- idris2-lsp, when it serves a project, starts in your workspace folder (or a folder you allowed) and
+  is sent the files of a folder outside the workspace only after you allowed that folder, as the
+  compiler is; its answers are shown as text, without links.
 
 What runs where, and how compiler text is shown: [guide](docs/guide.md#privacy-and-security).
 
@@ -172,14 +188,17 @@ What runs where, and how compiler text is shown: [guide](docs/guide.md#privacy-a
 - Literate files need LF line ends: with CRLF a `.lidr` does not compile, and a Markdown one
   compiles with its lines shifted. Click `CRLF` in the status bar to switch.
 - Warnings appear only when the compiler rebuilds a file; an up-to-date file reads `up to date`.
-- pack and idris2-lsp support has been tested against simulated installations only.
+- idris2-lsp was tested with the server pack installs (idris2-lsp `9a2f0ad` on Idris 2 `1c630e6`);
+  it loads only files of a package (`.ipkg`). Over it there is no Evaluate Selection, no
+  documentation lookup and no inlay hints, and Refine Hole… cannot offer the alternatives of an
+  ambiguous name: the commands say so.
 
 The full list is in the [guide](docs/guide.md#known-limitations).
 
 ## Roadmap
 
-A goal panel, check-as-you-type, idris2-lsp, REPL and build integration, literate Markdown and
-LaTeX, Unicode input: see [docs/ROADMAP.md](docs/ROADMAP.md).
+A goal panel, check-as-you-type, REPL and build integration, literate Markdown and LaTeX, Unicode
+input: see [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Contributing
 

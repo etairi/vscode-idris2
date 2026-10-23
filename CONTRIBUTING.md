@@ -27,10 +27,13 @@ fills in the setup information for you.
 - Node.js 24 and npm.
 - Visual Studio Code 1.138 or newer.
 - `idris2` (0.8.0 was used) only for the end-to-end suite, `npm run check:fixtures`,
-  `npm run record:transcripts` and the lexer comparison. Unit, grammar and integration tests
-  need no Idris installation: the integration suites use the fake `idris2`, `idris2-lsp` and
-  `pack` in `test/fake-tools/`, and the fake `idris2` answers IDE-mode requests with the replies
-  recorded from the real compiler (`test/fixtures/transcripts/`).
+  `npm run record:transcripts` and the lexer comparison; `idris2-lsp` (the one pack installs) only
+  for the LSP end-to-end suite and `npm run record:lsp-transcripts`. Unit, grammar and integration
+  tests need no Idris installation: the integration suites use the fake `idris2`, `idris2-lsp` and
+  `pack` in `test/fake-tools/`, the fake `idris2` answers IDE-mode requests with the replies
+  recorded from the real compiler (`test/fixtures/transcripts/`), and the fake language server in
+  `test/fake-lsp/` replays the sessions recorded from the real server
+  (`test/fixtures/lsp-transcripts/`).
 
 ## Build and run
 
@@ -52,14 +55,16 @@ npm run test:unit      # mocha on Node, no VS Code
 npm run test:grammar   # TextMate snapshots, scope assertions and a timing budget
 npm test               # integration suites in VS Code (downloaded into .vscode-test/)
 npm run test:e2e       # end-to-end against the real idris2 on PATH
+IDRIS2_LSP=<absolute path> npm run test:e2e:lsp   # end-to-end against a real idris2-lsp
 npm run test:corpus    # tokenise pinned real-world repositories (needs network); CI runs it
 IDRIS2_LEXER_ORACLE=1 npm run test:corpus   # also compare token by token with the Idris 2 lexer
 npm run check:fixtures # idris2 --check / --dump-ipkg-json on every fixture and snippet
 npm run docs:graph:check  # docs/ROADMAP.md §4 matches docs/milestones.yaml
 npm run record:transcripts # re-record the IDE-mode transcripts with the idris2 on PATH
+npm run record:lsp-transcripts # re-record the idris2-lsp sessions (IDRIS2_LSP=<server>)
 ```
 
-`npm test` runs ten suites, each in its own VS Code instance: `integration`, `simple-ipkg` and
+`npm test` runs eleven suites, each in its own VS Code instance: `integration`, `simple-ipkg` and
 `toolchain-path` (toolchain and project discovery), and `diagnostics` (the `broken` workspace over
 the socket transport, chosen in the suite's user settings), `loose-stdio` (loose files over standard
 input and output, the default, in a workspace whose own settings ask for the socket in vain),
@@ -67,14 +72,22 @@ input and output, the default, in a workspace whose own settings ask for the soc
 (hover, definition, documentation, semantic tokens on `simple-ipkg`), `intelligence-loose` (inlay
 hints, completion, evaluation and the keyboard shortcuts on `broken`), `editing` (the interactive
 editing commands, their light bulb and cycling, and `saveBeforeAction` on `broken`) and `holes` (the
-Holes view, Next / Previous Hole, List Holes and Show Keybindings on the `holes` workspace). The
+Holes view, Next / Previous Hole, List Holes and Show Keybindings on the `holes` workspace), and
+`lsp` (the language client, the routing between the two backends, the editing commands over
+idris2-lsp and the copy of bamboo's settings, on the `lsp-ipkg` package, against the fake language
+server, whose `FAKE_IDRIS2_LSP_LOG` and `FAKE_IDRIS2_LSP_MESSAGE_LOG` show what reached it). The
 fake compiler tells a checking process from an evaluating one by its build directory and answers
 each only from the recordings made in that role, ignoring queries such as `:name-at` when it matches
 a session's history against the recordings; `FAKE_IDRIS2_REQUEST_LOG` logs the requests each process
 read, and `FAKE_IDRIS2_IDE_DELAY=<command>=<ms>` holds back the answers to a command's requests. The
 e2e suite runs the protocol facts of `docs/ROADMAP.md` §0 against the real compiler, the extension's
 own sessions (over stdio, and over the socket when opted into), a comparison of the fake compiler
-with the real one, and the M3 and M4 features.
+with the real one, and the M3 and M4 features. The LSP e2e suite (`test/e2e/lsp*.test.ts`, the
+`e2e-lsp` entry of `.vscode-test.mjs`) runs only when `IDRIS2_LSP` names a server: it opens a copy
+of `lsp-ipkg` outside the workspace folder, so nothing is built in the repository. pack's wrappers
+run pack, which reads `PACK_BIN_DIR` at every start: with pack's bin directory elsewhere than
+`~/.local/bin`, put it on the command line (`PACK_BIN_DIR=… IDRIS2_LSP=…/idris2-lsp npm run
+test:e2e:lsp`). CI has no server and skips the suite.
 
 **One lexer.** `src/core/idrisLexer.ts` is the compiler's lexer ported rule by rule. The syntax
 features (`lex()`) run it on whole texts, and the editing commands' line reader
@@ -128,6 +141,18 @@ diff. A scenario recorded in the evaluation role (`eval-*`) is started with the 
 command line (`--build-dir …/.vscode-idris2-eval`), and the fake replays it only to such a
 process.
 
+## idris2-lsp recordings
+
+`test/fixtures/lsp-transcripts/<server version>/` holds sessions of the real language server,
+recorded by `npm run record:lsp-transcripts` (`IDRIS2_LSP=<server>`, and `PACK_BIN_DIR` for pack's
+wrapper), one server at a time; format and scenarios in
+[test/fixtures/lsp-transcripts/README.md](test/fixtures/lsp-transcripts/README.md). The fake
+language server, the LSP backend's unit tests and the contract suite (the same edits from both
+backends) read them. Each carries the SHA-256 of the fixture files it read: after changing a file of
+`test/fixtures/workspaces/lsp-ipkg`, which is a byte-for-byte copy of `simple-ipkg` and of M4's
+editing fixtures in `broken/`, record its scenarios again. Keep `lsp-ipkg/simple.ipkg` identical to
+`simple-ipkg/simple.ipkg`: the fake `idris2`'s recorded `--dump-ipkg-json` is keyed by its hash.
+
 ## Test corpora and licences
 
 The corpus test fetches `edwinb/Yaffle`, `JankaGramofonomanka/idris-compiler-tools` and the
@@ -156,8 +181,13 @@ before M3, their method and their limits are in
 ## Trying a packaged extension
 
 To try a `.vsix` without touching your own VS Code profile, follow
-[docs/checklists/M4.md](docs/checklists/M4.md) (or `M1.md` … `M3.md`): it installs the package
+[docs/checklists/M5.md](docs/checklists/M5.md) (or `M1.md` … `M4.md`): it installs the package
 into separate `--user-data-dir`, `--extensions-dir` and `--shared-data-dir` directories.
+
+The bundle (`dist/extension.js`) contains vscode-languageclient and its dependencies. A new runtime
+dependency that esbuild bundles needs its licence in `THIRD_PARTY_NOTICES.md`, which ships in the
+`.vsix`; the packages in the bundle are the `node_modules` entries of `dist/extension.js.map`'s
+`sources`.
 
 ## Releasing
 

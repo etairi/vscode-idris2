@@ -4,6 +4,26 @@ All notable changes to the "Idris 2" extension (`vscode-idris2`) are documented 
 The format follows [Keep a Changelog](https://keepachangelog.com/); the extension's version is
 independent of Idris 2 releases (`docs/ROADMAP.md` §7.4).
 
+## [Unreleased]
+
+### Added
+
+- **idris2-lsp as a backend** (milestone M5): a package can be served by the language server
+  idris2-lsp instead of the compiler's IDE mode — `idris2.backend.mode` set to `lsp`, or **Switch
+  Backend…** for one project (remembered for the workspace). IDE mode stays the default; `auto`
+  takes the server only when no usable `idris2` is found. One program serves a project.
+- Over idris2-lsp: hover, completion, signature help, Go to Definition, the Outline, highlights,
+  semantic highlighting, the server's problems and quick fixes, and the editing commands and the
+  Holes view under the same rules as in IDE mode. Evaluate Selection, documentation and inlay hints
+  are not available there, and say so.
+- **Restart Language Server**, **Stop Language Server**, **Show Language Server Output**, the
+  server's eight options as `idris2.lsp.*` settings, and an offer to copy the settings of the
+  `bamboo.idris2-lsp` extension. A file without an `.ipkg` under `lsp` gets a one-time notification
+  that offers IDE mode for its folder.
+- The language server is checked against the `idris2` of its own installation (pack's), not the one
+  on `PATH`. Its log level defaults to `info`, which does not log your files' text
+  (`idris2.lsp.logSeverity`).
+
 ## [0.1.0] - 2026-10-01
 
 The first pre-release, on the Visual Studio Marketplace and Open VSX (`etairi.vscode-idris2`). It

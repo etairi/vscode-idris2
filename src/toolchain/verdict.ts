@@ -1,9 +1,20 @@
 /**
  * The pair verdict (`toolchain/verdict.ts`; ROADMAP M1 technical approach, D20): does the
- * `idris2-lsp` that was found fit the `idris2` that was found? A heuristic: the server links
+ * `idris2-lsp` that was found fit the compiler it goes with? A heuristic: the server links
  * the compiler as a library, and the only version it reports is that library's
  * (`Idris2 API: …`, `versions.ts`); the real coupling is the compiler commit and TTC format it
  * was built with (F21, F22), which no flag prints (U1.2).
+ *
+ * **Which compiler (M5).** The user decided on 2026-10-01 that the server is paired with the
+ * compiler of its own installation, not with the `idris2` on `PATH`: one compiler serves a project
+ * (IDE mode or idris2-lsp, `backend/registry.ts`), and the server uses its installation's libraries
+ * whatever `idris2` the search finds (pack's wrapper sets `IDRIS2_PACKAGE_PATH`, `IDRIS2_LIBS` and
+ * `IDRIS2_DATA` for it [live: read in the wrapper pack wrote on the development machine,
+ * 2026-10-01]). That compiler is the `idris2`
+ * beside the server (`ServerCompiler` in `types.ts`, which says why): when one exists the verdict
+ * compares the server with it (`judgeWithInstallation`), and the explanations below, which are
+ * about the layout of two separately found tools, do not apply. When none exists, the server is
+ * compared with the `idris2` the search found, as in M1:
  *
  * - No `idris2-lsp` found: no verdict (`undefined`), there is no pair.
  * - Both probed and both versions parsed: **compatible iff the API version text equals the
@@ -42,7 +53,7 @@
  * repositories; the heuristic accepts that risk, as the text comparison accepts two untagged
  * builds.
  */
-import type { Idris2Info, LspInfo, ToolLocation, ToolState, ToolVersion, Verdict } from './types';
+import type { CompilerVersionInfo, Idris2Info, LspInfo, ServerCompiler, ToolLocation, ToolState, ToolVersion, Verdict } from './types';
 
 /** A hexadecimal commit abbreviation: 7 (Nix's `shortRev`) to 40 digits. */
 const COMMIT_TAG = /^[0-9a-f]{7,40}$/;
@@ -84,7 +95,7 @@ function mismatchReason(
   return `${versions}.`;
 }
 
-function unusable(tool: 'idris2' | 'idris2-lsp', state: Exclude<ToolState<unknown>, { status: 'probed' }>): string {
+function unusable(tool: string, state: Exclude<ToolState<unknown>, { status: 'probed' }>): string {
   switch (state.status) {
     case 'missing':
       return `${tool} was not found.`;
@@ -95,10 +106,58 @@ function unusable(tool: 'idris2' | 'idris2-lsp', state: Exclude<ToolState<unknow
   }
 }
 
-/** The verdict on the pair `idris2` + `idris2-lsp` (see the module comment). */
-export function judgePair(idris2: ToolState<Idris2Info>, lsp: ToolState<LspInfo>): Verdict | undefined {
+/** Whether the two version texts count as one version (module comment); the reason's tail when they do. */
+function sameVersion(compiler: ToolVersion, api: ToolVersion): string | undefined {
+  if (api.text === compiler.text) {
+    return '';
+  }
+  const prefix = sameCommitPrefix(compiler, api);
+  return prefix === undefined ? undefined : `, with tags that abbreviate the same commit hash (${prefix}…) to different lengths`;
+}
+
+/** The verdict on the server and the `idris2` beside it (module comment, *Which compiler*). */
+function judgeWithInstallation(compiler: ToolState<CompilerVersionInfo>, lsp: ToolState<LspInfo>): Verdict {
+  const named = compiler.status === 'missing' ? 'the idris2 beside idris2-lsp' : `the idris2 beside idris2-lsp (${compiler.location.path})`;
+  if (compiler.status !== 'probed') {
+    return { kind: 'unknown', reason: unusable(named, compiler) };
+  }
+  if (lsp.status !== 'probed') {
+    return { kind: 'unknown', reason: unusable('idris2-lsp', lsp) };
+  }
+  const version = compiler.info.version;
+  if (version === undefined) {
+    return { kind: 'unknown', reason: `${named} printed a version this extension does not recognise ("${compiler.info.versionLine}").` };
+  }
+  const api = lsp.info.apiVersion;
+  if (api === undefined) {
+    return {
+      kind: 'unknown',
+      reason: `idris2-lsp printed an API version this extension does not recognise ("${lsp.info.apiVersionLine}").`,
+    };
+  }
+  const same = sameVersion(version, api);
+  if (same !== undefined) {
+    return {
+      kind: 'compatible',
+      reason: `idris2-lsp was built against Idris 2 API ${api.text}, and ${named} is ${version.text}${same}: the compiler of its installation.`,
+    };
+  }
+  return {
+    kind: 'likelyMismatch',
+    reason: `idris2-lsp was built against Idris 2 API ${api.text}, but ${named}, the compiler of its installation, is ${version.text}.`,
+  };
+}
+
+/**
+ * The verdict on `idris2-lsp` and the compiler it goes with (see the module comment): the one of its
+ * installation when `server` says one is beside it, else `idris2`, the one the search found.
+ */
+export function judgePair(idris2: ToolState<Idris2Info>, lsp: ToolState<LspInfo>, server?: ServerCompiler): Verdict | undefined {
   if (lsp.status === 'missing') {
     return undefined;
+  }
+  if (server?.source === 'beside') {
+    return judgeWithInstallation(server.state, lsp);
   }
   if (idris2.status !== 'probed') {
     return { kind: 'unknown', reason: unusable('idris2', idris2) };

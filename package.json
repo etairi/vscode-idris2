@@ -1,7 +1,7 @@
 {
   "name": "vscode-idris2",
   "displayName": "Idris 2",
-  "description": "Idris 2 language support: the compiler's errors and warnings, types and documentation on hover, go to definition, completion, semantic highlighting, inlay hints, evaluation of expressions, interactive editing with holes (case split, proof search, generate definition and more) and a list of holes, syntax highlighting, editing support, snippets and toolchain detection.",
+  "description": "Idris 2 language support: the compiler's errors and warnings, types and documentation on hover, go to definition, completion, semantic highlighting, inlay hints, evaluation of expressions, interactive editing with holes (case split, proof search, generate definition and more) and a list of holes, syntax highlighting, editing support, snippets and toolchain detection; idris2-lsp can serve a project instead of the compiler's IDE mode.",
   "version": "0.1.0",
   "publisher": "etairi",
   "license": "MIT",
@@ -46,14 +46,15 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": "limited",
-      "description": "In Restricted Mode the extension runs no program: it does not start idris2, idris2-lsp or pack, not even to read their versions or to check a file, and it reads .ipkg files with a limited built-in reader instead of the compiler. Highlighting, snippets and editing support work as usual. Workspace values of the idris2.toolchain paths and environment and of idris2.ideMode.loosePackages and idris2.ideMode.extraArgs apply only once the workspace is trusted.",
+      "description": "In Restricted Mode the extension runs no program: it does not start idris2, idris2-lsp or pack, not even to read their versions or to check a file, and it reads .ipkg files with a limited built-in reader instead of the compiler. Highlighting, snippets and editing support work as usual. Workspace values of the idris2.toolchain paths and environment, of idris2.ideMode.loosePackages and idris2.ideMode.extraArgs, and of idris2.lsp.logFile apply only once the workspace is trusted.",
       "restrictedConfigurations": [
         "idris2.toolchain.idris2Path",
         "idris2.toolchain.lspPath",
         "idris2.toolchain.packPath",
         "idris2.toolchain.env",
         "idris2.ideMode.loosePackages",
-        "idris2.ideMode.extraArgs"
+        "idris2.ideMode.extraArgs",
+        "idris2.lsp.logFile"
       ]
     }
   },
@@ -158,6 +159,23 @@
           "scope": "machine-overridable",
           "order": 5,
           "markdownDescription": "Environment variables for the `idris2`, `idris2-lsp` and `pack` processes the extension starts, for example `{ \"IDRIS2_PREFIX\": \"/opt/idris2\" }`. Each entry replaces the inherited variable of the same name; values are used as written, without `~` or variable expansion. The search for the executables reads `PATH` (and `PATHEXT` on Windows) and pack's `HOME`, `XDG_*` and `PACK_*` directory variables from this environment too. A workspace value applies only in a trusted workspace."
+        },
+        "idris2.backend.mode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "lsp",
+            "ideMode"
+          ],
+          "default": "auto",
+          "scope": "resource",
+          "order": 6,
+          "markdownEnumDescriptions": [
+            "IDE mode for every project when a usable `idris2` is found; otherwise idris2-lsp for a project with an `.ipkg` file, when a usable `idris2-lsp` is found.",
+            "idris2-lsp for every project with an `.ipkg` file. A file without one is not checked: a notification says so, once, and offers IDE mode for its folder.",
+            "IDE mode (`idris2 --ide-mode`) for every project."
+          ],
+          "markdownDescription": "Which program checks the files of a project (the folder of an `.ipkg` file, or a loose file's folder): the compiler's IDE mode (`idris2 --ide-mode`) or the language server idris2-lsp, which loads a file only when an `.ipkg` file is in its folder or a folder above. One program per project: a feature it lacks says so and is not taken from the other. **Idris 2: Switch Backend…** chooses for one project; that choice is remembered for this workspace and comes before this setting."
         },
         "idris2.checking.trigger": {
           "type": "string",
@@ -349,7 +367,94 @@
           "default": false,
           "scope": "application",
           "order": 40,
-          "markdownDescription": "Record every message exchanged with the compiler's IDE mode in the output channel \"Idris 2: Protocol Trace\" (**Idris 2: Show Protocol Trace**), and enable **Idris 2 (Developer): Send Raw Protocol Request…**. For diagnosing problems: the trace contains your source text and file paths, and stays on this machine. User settings only: neither a workspace nor a remote machine's settings can turn it on."
+          "markdownDescription": "Record every message exchanged with the compiler's IDE mode in the output channel \"Idris 2: Protocol Trace\" (**Idris 2: Show Protocol Trace**), and enable the developer commands **Idris 2 (Developer): Send Raw Protocol Request…** and **Send Raw LSP executeCommand…**. For diagnosing problems: the trace contains your source text and file paths, and stays on this machine. User settings only: neither a workspace nor a remote machine's settings can turn it on."
+        },
+        "idris2.lsp.logFile": {
+          "type": "string",
+          "default": "",
+          "scope": "machine-overridable",
+          "order": 41,
+          "markdownDescription": "Absolute path of a file idris2-lsp appends its log to; a leading `~` stands for your home directory. Empty (the default): it writes its log to its standard error, which **Idris 2: Show Language Server Output** shows. idris2-lsp creates the file's folder if it does not exist and ignores a relative path (it logs an error). Clearing the setting takes effect when the server starts again. A workspace value applies only in a trusted workspace."
+        },
+        "idris2.lsp.logSeverity": {
+          "type": "string",
+          "enum": [
+            "debug",
+            "info",
+            "warning",
+            "error",
+            "critical"
+          ],
+          "default": "info",
+          "scope": "window",
+          "order": 42,
+          "markdownEnumDescriptions": [
+            "Everything, including every message the server receives, with the text of your files.",
+            "Progress messages and above.",
+            "Warnings (such as an unsupported request or a wrong setting) and above.",
+            "Errors and critical errors.",
+            "Critical errors only."
+          ],
+          "markdownDescription": "The lowest severity of the lines idris2-lsp writes to its log (`#idris2.lsp.logFile#`, else **Idris 2: Show Language Server Output**). The default here is `info`, which logs file paths, requests, settings and errors; the server's own default is `debug`, and at `debug` the log holds every message the server receives, the text of your files included. The log stays on this machine."
+        },
+        "idris2.lsp.longActionTimeout": {
+          "type": "integer",
+          "default": 1000,
+          "minimum": 1,
+          "scope": "window",
+          "order": 43,
+          "markdownDescription": "Milliseconds idris2-lsp gives one search for an expression or a definition (the compiler's search time limit), as for its **Expression search** and **Generate definition** code actions. 1000 is the server's own default."
+        },
+        "idris2.lsp.maxCodeActionResults": {
+          "type": "integer",
+          "default": 5,
+          "minimum": 1,
+          "scope": "window",
+          "order": 44,
+          "markdownDescription": "The most results idris2-lsp computes for one search for an expression or a definition; its code actions offer one per result. 5 is the server's own default."
+        },
+        "idris2.lsp.showImplicits": {
+          "type": "boolean",
+          "default": false,
+          "scope": "window",
+          "order": 45,
+          "markdownDescription": "Show implicit arguments in the types idris2-lsp prints. Off is the server's own default."
+        },
+        "idris2.lsp.showMachineNames": {
+          "type": "boolean",
+          "default": false,
+          "scope": "window",
+          "order": 46,
+          "markdownDescription": "Show the names the compiler generates in the types idris2-lsp prints. Off is the server's own default."
+        },
+        "idris2.lsp.fullNamespace": {
+          "type": "boolean",
+          "default": false,
+          "scope": "window",
+          "order": 47,
+          "markdownDescription": "Print names with their full namespace in the types idris2-lsp prints. Off is the server's own default."
+        },
+        "idris2.lsp.briefCompletions": {
+          "type": "boolean",
+          "default": false,
+          "scope": "window",
+          "order": 48,
+          "markdownDescription": "Insert only the name when you accept a completion of idris2-lsp. Off (the server's own default): a function with explicit arguments is inserted applied to a hole for each, in parentheses."
+        },
+        "idris2.lsp.trace.server": {
+          "type": "string",
+          "enum": [
+            "messages",
+            "verbose"
+          ],
+          "default": "messages",
+          "scope": "window",
+          "order": 49,
+          "markdownEnumDescriptions": [
+            "The method of each message, and the id of a request or response.",
+            "Each message with its content."
+          ],
+          "markdownDescription": "How much the language client writes about the messages it exchanges with idris2-lsp to the output channel \"Idris 2 Language Server\". It writes them only while that channel's log level is Trace (**Developer: Set Log Level…**). The messages contain the text of your files and their paths, and stay on this machine."
         }
       }
     },
@@ -573,6 +678,32 @@
         "command": "idris2.showKeybindings",
         "title": "Show Keybindings",
         "category": "Idris 2"
+      },
+      {
+        "command": "idris2.switchBackend",
+        "title": "Switch Backend…",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.restartLanguageServer",
+        "title": "Restart Language Server",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.stopLanguageServer",
+        "title": "Stop Language Server",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.showLanguageServerOutput",
+        "title": "Show Language Server Output",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.sendRawLspCommand",
+        "title": "Send Raw LSP executeCommand…",
+        "category": "Idris 2 (Developer)",
+        "enablement": "config.idris2.trace.protocol && isWorkspaceTrusted"
       }
     ],
     "submenus": [
@@ -691,6 +822,22 @@
         {
           "command": "idris2.listHoles",
           "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.switchBackend",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.restartLanguageServer",
+          "when": "isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.stopLanguageServer",
+          "when": "isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.sendRawLspCommand",
+          "when": "config.idris2.trace.protocol && isWorkspaceTrusted"
         }
       ],
       "editor/title": [
@@ -712,6 +859,18 @@
         {
           "command": "idris2.stopBackend",
           "group": "0_backend@3"
+        },
+        {
+          "command": "idris2.switchBackend",
+          "group": "0_backend@4"
+        },
+        {
+          "command": "idris2.restartLanguageServer",
+          "group": "0_backend@5"
+        },
+        {
+          "command": "idris2.stopLanguageServer",
+          "group": "0_backend@6"
         },
         {
           "command": "idris2.typeAtCursor",
@@ -832,20 +991,24 @@
           "group": "3_help@2"
         },
         {
-          "command": "idris2.openSettings",
+          "command": "idris2.showLanguageServerOutput",
           "group": "3_help@3"
         },
         {
-          "command": "idris2.showKeybindings",
+          "command": "idris2.openSettings",
           "group": "3_help@4"
         },
         {
-          "command": "idris2.openDocumentation",
+          "command": "idris2.showKeybindings",
           "group": "3_help@5"
         },
         {
-          "command": "idris2.reportIssue",
+          "command": "idris2.openDocumentation",
           "group": "3_help@6"
+        },
+        {
+          "command": "idris2.reportIssue",
+          "group": "3_help@7"
         }
       ]
     },
@@ -1184,6 +1347,7 @@
     "pretest": "npm run compile-tests && npm run compile",
     "test": "vscode-test",
     "test:e2e": "npm run compile-tests && npm run compile && vscode-test --label e2e",
+    "test:e2e:lsp": "npm run compile-tests && npm run compile && vscode-test --label e2e-lsp",
     "test:unit": "npm run compile-tests && mocha --ui tdd \"out/test/unit/**/*.test.js\"",
     "build:grammar": "node scripts/build-grammar.mjs",
     "build:language-configuration": "node scripts/build-language-configuration.mjs",
@@ -1192,7 +1356,8 @@
     "check:fixtures": "node scripts/check-fixtures.mjs",
     "docs:graph": "node scripts/deps-graph.mjs --write",
     "docs:graph:check": "node scripts/deps-graph.mjs --check",
-    "record:transcripts": "node scripts/record-transcripts.mjs"
+    "record:transcripts": "node scripts/record-transcripts.mjs",
+    "record:lsp-transcripts": "node scripts/record-lsp-transcripts.mjs"
   },
   "dependencies": {
     "vscode-languageclient": "^10.1.1"

@@ -9,6 +9,7 @@ is also described in the Settings UI: search for `@ext:etairi.vscode-idris2`.
 - [Holes and interactive editing](#holes-and-interactive-editing)
 - [Keyboard shortcuts](#keyboard-shortcuts)
 - [Editing](#editing)
+- [The language server, idris2-lsp](#the-language-server-idris2-lsp)
 - [Toolchain](#toolchain)
 - [Settings in depth](#settings-in-depth)
 - [Resource use](#resource-use)
@@ -348,6 +349,77 @@ docs; Emacs idris-mode's `C-c C-a`, `C-c C-s` and `C-c C-e` run other commands h
 - The grammar's known limits (rare layouts) are listed in
   [test/grammar/idris2-scopes.md](../test/grammar/idris2-scopes.md).
 
+## The language server, idris2-lsp
+
+A project can be served by [idris2-lsp](https://github.com/idris-community/idris2-lsp) instead of
+the compiler's IDE mode. One program serves a project, never both: what the chosen one cannot do is
+unavailable there, and the command says so.
+
+| `idris2.backend.mode` | A package (a folder with an `.ipkg`) | A file without an `.ipkg` |
+|---|---|---|
+| `auto` (default) | IDE mode while `idris2` is found; idris2-lsp only when `idris2` is not usable and a usable `idris2-lsp` is | IDE mode |
+| `lsp` | idris2-lsp | nothing: a notification, once, offers **Use IDE Mode for This Folder** |
+| `ideMode` | IDE mode | IDE mode |
+
+- **Switch Backend…** chooses for the project of the active file, among the programs found;
+  the choice is remembered for this workspace and comes before the setting. **Follow the Setting**
+  forgets it.
+- The language status reads `Idris 2 <the server's Idris 2 version> · idris2-lsp`, with `· stopped`,
+  `· failed` or `· not allowed here` when it applies; a file nothing serves reads `syntax only`.
+- **Finding the server.** pack installs it (`pack install-app idris2-lsp`, also **Install or Update
+  idris2-lsp with pack**). The search looks on `PATH` and in pack's bin directory: `~/.local/bin`,
+  or `PACK_BIN_DIR` when that is set in the environment VS Code starts with or in
+  `idris2.toolchain.env`; `idris2.toolchain.lspPath` names it directly. The server is checked against
+  the `idris2` in its own folder (pack puts its compiler there), not the one on `PATH`; **Show Setup
+  Information** shows both.
+- **One server per window**, started with the first file it serves, in the workspace folder (or
+  the folder you allowed, see [Folders outside the workspace](#folders-outside-the-workspace)). It
+  restarts itself after a crash at most three times in five minutes. **Stop Language Server** keeps
+  it stopped until **Restart Language Server**; **Show Language Server Output** shows its log.
+- **What it answers**: hover (the type), completion, signature help, Go to Definition, the Outline,
+  highlights of a name, semantic highlighting, its problems, and its quick fixes. The editing
+  commands, the light bulb's editing actions, Add Missing Cases and the Holes view work as in IDE
+  mode, under the same rules (always bracket, the layout refusal, one undo step).
+- **Not over idris2-lsp**: Evaluate Selection (the server evaluates in the file it loaded last,
+  which can be another open file, and cannot stop an evaluation without a restart), Show
+  Documentation and Docs at Cursor (it has no documentation lookup), Type at Cursor (use the hover),
+  inlay hints.
+
+**How it differs from IDE mode**
+
+- It loads only files of a package. A file without an `.ipkg` gets the notification above.
+- A file with unsaved changes gets no answers (an empty hover, no semantic tokens) until it is
+  saved; an undo back to the saved text is enough.
+- Proof Search and Generate Definition give at most `idris2.lsp.maxCodeActionResults` results (5);
+  Next Result and Next Definition then say so. Generate Definition's definitions come in another
+  order than IDE mode's, and its first can be another.
+- Refine Hole… with an ambiguous name says that the server reports no alternatives; IDE mode lists
+  them.
+- Two holes of one name in two modules are told apart (by position); IDE mode refuses them.
+- Case Split, Add Clause and Generate Definition are not refused after a check with errors, as IDE
+  mode refuses them; the server answered Add Clause in a file with coverage errors.
+- The server writes its build files into the package's build directory (`build/ttc`, or the
+  `.ipkg`'s `builddir`), shared with your own builds; it has no isolated directory like IDE mode's
+  `build/.vscode-idris2`.
+
+**Settings** (`idris2.lsp.*`, the server's own options, sent at once when changed):
+
+| Setting | Default | Description |
+|---|---|---|
+| `idris2.lsp.logSeverity` | `"info"` | The server's log level: file paths, requests, settings and errors; at `debug` (the server's own default) it logs every message, your files' text included |
+| `idris2.lsp.logFile` | `""` | A file for the log instead of the output channel; clearing it takes effect at the next start (a restart is offered) |
+| `idris2.lsp.longActionTimeout` | `1000` | Milliseconds per search |
+| `idris2.lsp.maxCodeActionResults` | `5` | Results per search |
+| `idris2.lsp.showImplicits`, `showMachineNames`, `fullNamespace` | `false` | How types are printed |
+| `idris2.lsp.briefCompletions` | `false` | Insert only the name of a completion |
+| `idris2.lsp.trace.server` | `"messages"` | How much the client writes about the messages (only while the channel's level is Trace) |
+
+A new `idris2.toolchain.lspPath`, `env` or `preferPack` that finds another server or environment
+offers to restart it. With settings of the `bamboo.idris2-lsp` extension (`idris2-lsp.*`) present,
+a notification offers to copy them (once per set of values; **Don't Ask Again**); `loglevel` becomes
+`logSeverity`, `path` becomes `idris2.toolchain.lspPath`, and values without a counterpart (a
+`logFile` of `stderr`, a trace `off`) are not copied.
+
 ## Toolchain
 
 - The extension finds `idris2`, `idris2-lsp` and `pack`, shows the compiler version in the
@@ -444,8 +516,8 @@ In an untrusted workspace the extension runs no program at all — not even to r
 reads `.ipkg` files with a limited built-in reader. Highlighting, snippets and the other editing
 aids work, and so do Next / Previous Hole; interactive editing and the Holes view need a trusted
 workspace. The
-workspace's values of the `idris2.toolchain.*` paths and environment, `loosePackages` and
-`extraArgs` apply only once the workspace is trusted.
+workspace's values of the `idris2.toolchain.*` paths and environment, `loosePackages`,
+`extraArgs` and `idris2.lsp.logFile` apply only once the workspace is trusted.
 
 ### What runs where
 
@@ -454,6 +526,11 @@ workspace's values of the `idris2.toolchain.*` paths and environment, `loosePack
   own directories. It never starts `pack` itself.
 - To check files it runs `idris2` in IDE mode **in the project's directory** — the folder of the
   `.ipkg`, or of a file without one — because the compiler reads the package from there.
+- idris2-lsp, for the projects it serves, runs in the workspace folder (or a folder you allowed)
+  and moves into each file's folder itself. It is sent a file only when the file's folder lies in a
+  trusted workspace folder or you allowed it, as for the compiler; requests count too, since the
+  server checks any file it is asked about. Its answers are shown as text, never as links or
+  commands; it cannot change your files except through the edits you ask for.
 - With pack's `idris2`, pack also reads the `pack.toml` of every folder above the one the
   compiler starts in, also above a trusted workspace folder, which the extension does not ask
   about. What such a file can make pack do has not been examined.
@@ -642,6 +719,15 @@ It is written to an output channel, which VS Code also keeps as a file in its lo
 - **Resource use** is not limited by default, and two windows on one project share a build
   directory: see [Resource use](#resource-use).
 - **Native Windows** is not supported (Idris 2 itself needs MSYS2 to build there); use WSL.
-- **pack and idris2-lsp** support has been tested against simulated installations only.
+- **idris2-lsp** was tested with one server (idris2-lsp `9a2f0ad` on Idris 2 `1c630e6`, installed by
+  pack `6baee7d`). See [The language server](#the-language-server-idris2-lsp) for what it does not
+  do. Beyond that:
+  - The Holes view lists an idris2-lsp project's holes after the server's check of the file (open,
+    save); the server answers for the file it loaded last, so with several files of one project open
+    a listing can briefly be another file's, until the file is checked again.
+  - **Send Raw Protocol Request** on a project idris2-lsp serves starts an IDE-mode compiler for it.
+  - A file's `.ipkg` deleted while the server runs is not noticed by the server, which goes on
+    loading its files with the old options and writes build files beside them; reopen the folder or
+    restart the language server.
 - **The grammar's** known limits (rare layouts) are listed in
   [test/grammar/idris2-scopes.md](../test/grammar/idris2-scopes.md).
