@@ -1,10 +1,12 @@
 /**
- * The session pool (docs/ARCHITECTURE.md §4, §5; ROADMAP M2, M3): one `IdeSession` per root and
- * role (`check` since M2, `eval` since M3; `types.ts` `SessionRole`), created when first asked for
- * and started by its first request. The contract is `SessionPool` in `types.ts`; `extension.ts`
- * creates the pool with `createSessionPool` and disposes it in `deactivate()`, which kills every
- * session process at once. Both roles go through the same `prepare` before every spawn (below),
- * in the same directory, with the same transport rule and time limits.
+ * The session pool (docs/ARCHITECTURE.md §4, §5; ROADMAP M2, M3, M6): one `IdeSession` per root and
+ * role (`check` since M2, `eval` since M3, `shadow` since M6; `types.ts` `SessionRole`), created when
+ * first asked for and started by its first request. The contract is `SessionPool` in `types.ts`;
+ * `extension.ts` creates the pool with `createSessionPool` and disposes it in `deactivate()`, which
+ * kills every session process at once. Every role goes through the same `prepare` before every spawn
+ * (below), with the same transport rule and time limits; the `check` and `eval` sessions in the same
+ * directory, the `shadow` session in its root's shadow directory (`shadowDirectory`, under
+ * `SessionPoolDeps.shadowBase`), whose consent the gate judges on the root's own directory.
  *
  * - **Command line** (ARCHITECTURE §5.2, `sessionLaunch`): the `idris2` of the current toolchain
  *   snapshot (its `probed` location) with `--ide-mode` (the default on every platform) or, when
@@ -90,10 +92,17 @@
  *   by itself**: it is stopped, not restarted, when its command line changes (cause `reconfigure`,
  *   *Restarts*) and by the two Restart Backend commands, and it does not restart after its
  *   process ended unexpectedly (`session.ts`, *Unexpected ends*), so that no evaluation process
- *   runs that no evaluation asked for (*review of M3*).
+ *   runs that no evaluation asked for (*review of M3*). **A `shadow` session (M6) likewise**: stopped
+ *   instead of restarted, also when its root's package can no longer have one (`shadowPackage`'s
+ *   problem), idle after at most `EVAL_IDLE_TIMEOUT_MS`; `stopShadows(root?)` stops the shadow
+ *   sessions only (`idris2.checkOnType.enabled` changed), `restartShadow(root)` restarts a busy one
+ *   (a check of unsaved text that a newer text replaced has run long, `backend.ts`). Its command line:
+ *   `sessionLaunch`'s `shadow` branch (no `-p` for the package's `depends`, which the shadow
+ *   directory's package file gives, `shadow.ts`), and its first request to every process is
+ *   `(:enable-syntax :False)` (`session.ts`, *First request*).
  * - **At most `idris2.ideMode.maxSessions`** (ROADMAP §9 Q21; `0`, the default, is no limit and
  *   changes nothing above). A `check` session counts while it has a process or is getting one
- *   (`starting`, `ready`, `busy`, `restarting`); an `eval` session — a process of the same size (it
+ *   (`starting`, `ready`, `busy`, `restarting`); an `eval` or `shadow` session — a process of the same size (it
  *   loads the same modules; a `check` session took 206–278 MiB on `contrib`,
  *   docs/measurements/first-load.md [live]) — only while it is also `idle`. One that is being
  *   started or evaluating is left out, so that an evaluation never stops another session to make
@@ -103,7 +112,7 @@
  *   as `rebuilt` and drops its kept answers) and stopped the evaluation session in turn
  *   [unit-level, the reviewer's probe with the real pool]. While more count than the limit, the pool stops, with
  *   cause `evicted`, sessions that are `idle` (`IdeSession.idle`: `ready`, nothing in flight or
- *   waiting): first the `eval` sessions, the active root's included, then the `check` sessions that
+ *   waiting): first the `eval` and `shadow` sessions, the active root's included, then the `check` sessions that
  *   are not the active root's (`setActiveRoot`), each group least recently used first, until the
  *   count is within the limit or no such session is left. The `eval` sessions go first because
  *   they are the lesser role (a stopped one costs the next evaluation a start and a load, while a
@@ -136,6 +145,8 @@ import type { Classification } from '../../project/types';
 import type { ToolchainSnapshot } from '../../toolchain/types';
 import { rootKey } from '../registry';
 import { createSession, DEFAULT_SESSION_TIMING, systemClock, type Clock, type ManagedSession, type SessionTiming, type SpawnPlan } from './session';
+import { enableSyntax } from './protocol';
+import { SHADOW_BUILD_DIR, shadowDirectoryOf, shadowPackage } from './shadow';
 import { createTransport } from './transport';
 import type {
   IdeSession,
@@ -253,6 +264,11 @@ export function sessionLaunch(input: {
   readonly env: Readonly<Record<string, string>>;
   readonly settings: IdeModeSettings;
   readonly platform: NodeJS.Platform;
+  /**
+   * The `shadow` role (`types.ts` `SessionRole`): the `check` session's TTC directory, and the
+   * `IDRIS2_PATH` the process would otherwise have.
+   */
+  readonly shadow?: { readonly checkTtc: string; readonly inheritedPath?: string };
 }): SessionLaunch {
   const { root, cwd, settings } = input;
   const transport = settings.transport;
@@ -261,6 +277,14 @@ export function sessionLaunch(input: {
     for (const pkg of settings.loosePackages) {
       args.push('-p', pkg);
     }
+  }
+  if (input.role === 'shadow' && input.shadow !== undefined) {
+    const pathApi = input.platform === 'win32' ? path.win32 : path.posix;
+    // The package's `depends` and `opts` come from the shadow directory's package file (`shadow.ts`).
+    // The extension's `--build-dir` last: on a command line the last one wins (`buildDirOption`).
+    args.push(...settings.extraArgs, '--build-dir', pathApi.join(cwd, SHADOW_BUILD_DIR));
+    const searchPath = [input.shadow.checkTtc, input.shadow.inheritedPath].filter((p): p is string => p !== undefined && p !== '').join(input.platform === 'win32' ? ';' : ':');
+    return { executable: input.idris2, args, cwd, env: { ...input.env, IDRIS2_PATH: searchPath }, transport };
   }
   const base = input.buildBase ?? cwd;
   if (input.role === 'eval') {
@@ -392,6 +416,27 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
     if (idris2.status !== 'probed') {
       return undefined;
     }
+    const settings = deps.config.ideMode();
+    if (role === 'shadow') {
+      const cwd = shadowDirectory(root);
+      if (cwd === undefined || 'problem' in shadowPackage(root, settings.extraArgs)) {
+        return undefined;
+      }
+      const pathApi = deps.platform === 'win32' ? path.win32 : path.posix;
+      return sessionLaunch({
+        root,
+        role,
+        cwd,
+        idris2: idris2.location.path,
+        env: snapshot.settings.env,
+        settings,
+        platform: deps.platform,
+        shadow: {
+          checkTtc: pathApi.join(effectiveCheckBuildDir(root), 'ttc'),
+          inheritedPath: snapshot.settings.env.IDRIS2_PATH ?? deps.processEnv.IDRIS2_PATH,
+        },
+      });
+    }
     const launch = sessionLaunch({
       root,
       role,
@@ -399,11 +444,41 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
       buildBase: realCwd,
       idris2: idris2.location.path,
       env: snapshot.settings.env,
-      settings: deps.config.ideMode(),
+      settings,
       platform: deps.platform,
     });
     return realCwd === undefined ? launch : { ...launch, realCwd };
   }
+
+  /** Why `root` has no `shadow` session: no storage directory, or its package (`shadowPackage`); `undefined` when it may have one. */
+  function shadowProblem(root: Classification): string | undefined {
+    if (deps.shadowBase === undefined) {
+      return 'Unsaved text cannot be checked: the extension has no storage directory to copy it to.';
+    }
+    const shadow = shadowPackage(root, deps.config.ideMode().extraArgs);
+    return 'problem' in shadow ? `Unsaved text of this project is not checked: ${shadow.problem}.` : undefined;
+  }
+
+  /** `SessionPool.shadowDirectory`. */
+  function shadowDirectory(root: Classification): string | undefined {
+    return deps.shadowBase === undefined ? undefined : shadowDirectoryOf(deps.shadowBase, root, deps.platform);
+  }
+
+  /** `SessionPool.effectiveCheckBuildDir`. */
+  function effectiveCheckBuildDir(root: Classification): string {
+    // Resolved against the real path the running `check` session was started in (where the
+    // compiler resolves a relative builddir, and where the isolated one is placed), else the spelled one.
+    const running = sessions.get(keyOf(root, 'check'))?.launch?.realCwd;
+    return checkBuildDir(root, running ?? deps.projects.sessionCwd(root), deps.config.ideMode(), deps.platform).dir;
+  }
+
+  /** The directory the consent gate judges for `session`: its root's for a `shadow` session (`SessionRole`), else its own. */
+  function gatedDirectory(session: IdeSession): string {
+    return session.role === 'shadow' ? deps.projects.sessionCwd(session.root) : session.cwd;
+  }
+
+  /** The roles that never start a process by themselves and are stopped instead of restarted (`SessionRole`). */
+  const lesser = (role: SessionRole): boolean => role === 'eval' || role === 'shadow';
 
   /** The current snapshot once no scan is running; `undefined` if the pool is disposed first. */
   function settledSnapshot(): Promise<ToolchainSnapshot | undefined> {
@@ -460,9 +535,14 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
       return { refused: problem };
     }
     const root = session.root;
-    const verdict = await deps.gate.permit(session.cwd, { ipkg: root.kind === 'project' ? root.ipkgPath : undefined });
+    const shadowRefusal = session.role === 'shadow' ? shadowProblem(root) : undefined;
+    if (shadowRefusal !== undefined) {
+      return { refused: unsupported(shadowRefusal) };
+    }
+    const gated = gatedDirectory(session);
+    const verdict = await deps.gate.permit(gated, { ipkg: root.kind === 'project' ? root.ipkgPath : undefined });
     if (!verdict.allowed) {
-      return { refused: unsupported(refusalText(verdict, session.cwd)), ...(verdict.reason === 'unresolved' ? { unresolved: true } : {}) };
+      return { refused: unsupported(refusalText(verdict, gated)), ...(verdict.reason === 'unresolved' ? { unresolved: true } : {}) };
     }
     const snapshot = await settledSnapshot();
     if (snapshot === undefined) {
@@ -471,20 +551,20 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
     // The wait above can take seconds (a scan); the gate's `onDidChange` does not stop a session
     // that is still `stopped` while it prepares, so the directory is judged again, as it is now,
     // with no further wait for anything but that between this verdict and the spawn.
-    const now = await deps.gate.recheck(session.cwd);
+    const now = await deps.gate.recheck(gated);
     if (disposed) {
       return { refused: new IdrisException({ kind: 'BackendCrashed', message: 'The session pool has been shut down.' }) };
     }
     if (now === undefined || !now.allowed) {
-      return { refused: unsupported(refusedText(now, session.cwd)), ...(now?.allowed === false && now.reason === 'unresolved' ? { unresolved: true } : {}) };
+      return { refused: unsupported(refusedText(now, gated)), ...(now?.allowed === false && now.reason === 'unresolved' ? { unresolved: true } : {}) };
     }
     const badArgsNow = extraArgsProblem(deps.config.ideMode().extraArgs);
     if (badArgsNow !== undefined) {
       return { refused: new IdrisException({ kind: 'BackendCrashed', message: badArgsNow }) };
     }
     // Started in the real path just judged, not through the links of the spelled one, with the
-    // isolated build directory in it too (module comment).
-    const launch = launchFor(session.root, session.role, snapshot, deps.platform === 'win32' ? undefined : now.realDir);
+    // isolated build directory in it too (module comment); a `shadow` session in its own directory.
+    const launch = launchFor(session.root, session.role, snapshot, deps.platform === 'win32' || session.role === 'shadow' ? undefined : now.realDir);
     if (launch === undefined) {
       return { refused: new IdrisException({ kind: 'ToolchainMissing', message: toolchainProblem(snapshot) ?? '' }) };
     }
@@ -507,13 +587,16 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
     }
     // Built on the real path the process was started in, as its own command line was.
     const next = launchFor(session.root, session.role, snapshot, running.realCwd);
-    const differences = next === undefined ? [toolchainProblem(snapshot) ?? ''] : launchDifferences(running, next);
+    const differences =
+      next === undefined ? [(session.role === 'shadow' ? shadowProblem(session.root) : undefined) ?? toolchainProblem(snapshot) ?? ''] : launchDifferences(running, next);
     if (differences.length === 0) {
       return;
     }
     const detail = `${reason}: ${differences.join(', ')}`;
     if (session.role === 'eval') {
       session.stop('reconfigure', `${detail}; the evaluation session starts again at the next evaluation`);
+    } else if (session.role === 'shadow') {
+      session.stop('reconfigure', `${detail}; the session for unsaved text starts again at the next check of unsaved text`);
     } else {
       session.restart(detail, 'reconfigure');
     }
@@ -555,9 +638,10 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
         if (session.state === 'stopped' || session.state === 'failed') {
           continue;
         }
-        const verdict = deps.gate.current(session.cwd);
+        const gated = gatedDirectory(session);
+        const verdict = deps.gate.current(gated);
         if (verdict === undefined || !verdict.allowed) {
-          session.stop('consentRevoked', refusedText(verdict, session.cwd));
+          session.stop('consentRevoked', refusedText(verdict, gated));
         }
       }
     }),
@@ -600,7 +684,7 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
     const byUse = (a: ManagedSession, b: ManagedSession): number => (lastUse.get(a) ?? 0) - (lastUse.get(b) ?? 0);
     const idle = counted.filter((session) => session.idle);
     const candidates = [
-      ...idle.filter((session) => session.role === 'eval').sort(byUse),
+      ...idle.filter((session) => lesser(session.role)).sort(byUse),
       ...idle.filter((session) => session.role === 'check' && rootKey(session.root) !== activeKey).sort(byUse),
     ];
     for (const session of candidates) {
@@ -613,7 +697,9 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
         `idris2.ideMode.maxSessions is ${max} and ${counted.length} IDE-mode sessions were running; ` +
           (session.role === 'eval'
             ? 'this was an idle evaluation session, which starts again at the next evaluation'
-            : 'this was the least recently used idle one, and it starts again at its next check'),
+            : session.role === 'shadow'
+              ? 'this was an idle session for unsaved text, which starts again at the next check of unsaved text'
+              : 'this was the least recently used idle one, and it starts again at its next check'),
       );
     }
   }
@@ -622,7 +708,7 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
     const session = createSession({
       role,
       root,
-      cwd: deps.projects.sessionCwd(root),
+      cwd: role === 'shadow' ? (shadowDirectory(root) ?? deps.projects.sessionCwd(root)) : deps.projects.sessionCwd(root),
       prepare,
       createTransport: (launch) => tuning.createTransport(launch),
       codec: deps.codec,
@@ -635,9 +721,11 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
         return {
           requestTimeoutMs: settings.requestTimeoutMs,
           longActionTimeoutMs: settings.longActionTimeoutMs,
-          idleTimeoutMs: role === 'eval' && settings.idleTimeoutMs > 0 ? Math.min(settings.idleTimeoutMs, EVAL_IDLE_TIMEOUT_MS) : settings.idleTimeoutMs,
+          idleTimeoutMs: lesser(role) && settings.idleTimeoutMs > 0 ? Math.min(settings.idleTimeoutMs, EVAL_IDLE_TIMEOUT_MS) : settings.idleTimeoutMs,
         };
       },
+      // F14: a `shadow` session's loads send no highlighting (`session.ts`, *First request*).
+      firstRequest: role === 'shadow' ? enableSyntax(false) : undefined,
       onNewerProtocol: (warning) => {
         if (!warnedProtocols.has(warning)) {
           warnedProtocols.add(warning);
@@ -679,11 +767,16 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
       return [...sessions.values()];
     },
 
-    effectiveCheckBuildDir(root: Classification): string {
-      // Resolved against the real path the running `check` session was started in (where the
-      // compiler resolves a relative builddir, and where the isolated one is placed), else the spelled one.
-      const running = sessions.get(keyOf(root, 'check'))?.launch?.realCwd;
-      return checkBuildDir(root, running ?? deps.projects.sessionCwd(root), deps.config.ideMode(), deps.platform).dir;
+    effectiveCheckBuildDir,
+
+    shadowDirectory,
+
+    stopShadows(root: Classification | undefined, detail: string): void {
+      for (const session of sessionsOf(root)) {
+        if (session.role === 'shadow') {
+          session.stop('stop', detail);
+        }
+      }
     },
 
     stop(root?: Classification): void {
@@ -710,8 +803,10 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
       if (disposed) {
         return;
       }
-      // The `eval` session starts again at the next evaluation (it has nothing loaded that a check needs).
+      // The `eval` session starts again at the next evaluation (it has nothing loaded that a check needs),
+      // the `shadow` session at the next check of unsaved text.
       sessions.get(keyOf(root, 'eval'))?.stop('stop', 'Restart Backend: the evaluation session starts again at the next evaluation');
+      sessions.get(keyOf(root, 'shadow'))?.stop('stop', 'Restart Backend: the session for unsaved text starts again at the next check of unsaved text');
       const session = sessions.get(keyOf(root, 'check')) ?? create(root, 'check');
       session.setRoot(root);
       session.restart('Restart Backend');
@@ -724,9 +819,18 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
         }
         if (session.role === 'eval') {
           session.stop('stop', 'Restart Backend, all roots: the evaluation session starts again at the next evaluation');
+        } else if (session.role === 'shadow') {
+          session.stop('stop', 'Restart Backend, all roots: the session for unsaved text starts again at the next check of unsaved text');
         } else {
           session.restart('Restart Backend, all roots');
         }
+      }
+    },
+
+    restartShadow(root: Classification, detail: string): void {
+      const session = sessions.get(keyOf(root, 'shadow'));
+      if (session?.state === 'busy') {
+        session.restart(detail);
       }
     },
 

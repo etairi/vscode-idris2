@@ -132,6 +132,8 @@ export function isFileDocument(doc: { readonly uri: { readonly scheme: string } 
  * makes the answers about every file of its root stale — a dependency edited and saved is loaded
  * by itself, and the files that import it are not checked again. A load that built nothing keeps
  * them all, the loaded file's included: the compiler answers from the same build files as before.
+ * A check of a document's unsaved text (M6, `LoadedFileEvent.unsaved`) makes the answers about its
+ * file stale, and no other's: it builds nothing the other files' answers come from.
  * The root of each file is learnt from the loads (every file with answers was loaded: a query is
  * answered only while its file is the one loaded) and kept when its document closes, one string per
  * file: a document opened again can be answered without a load of its own — under the `manual`
@@ -148,6 +150,10 @@ export class StaleAnswers {
   after(loaded: LoadedFileEvent): readonly string[] {
     const key = rootKey(loaded.root);
     this.roots.set(loaded.file, key);
+    if (loaded.unsaved !== undefined) {
+      // M6: a check of the file's unsaved text changes what is answered about that file only.
+      return [loaded.file];
+    }
     return loaded.rebuilt ? [...this.roots].filter(([, root]) => root === key).map(([file]) => file) : [];
   }
 }

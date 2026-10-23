@@ -6,7 +6,8 @@ M2, ARCHITECTURE §12). They are the ground truth for the fake compiler's replay
 that each scenario names. `0.8.0/` holds the recordings of the Homebrew `idris2` 0.8.0
 (`/opt/homebrew/bin/idris2`, macOS arm64), made on 2026-09-27; the eight M3 scenarios (from
 `shapes-lookups` to `eval-socket` in the table below) on 2026-09-29; the M4 scenarios (from
-`clean-split-columns` on, 23 recordings) on 2026-09-30.
+`clean-split-columns` on, 23 recordings) on 2026-09-30; the two M6 scenarios (`shadow-type-error`,
+`shadow-hole`) on 2026-10-24.
 
 ## Recording
 
@@ -68,6 +69,7 @@ within one stream the order is exact.
 | `processCwd` | the spelling of that directory the process was started in: `${ROOT}`, or `${LINK}` for `load-symlink` |
 | `placeholders` | each placeholder that stands for a path, with the length of the path it replaced (see *Prefixes*) |
 | `fixtures` | `{ <path relative to cwd>: <sha256 hex> }` of the files the session reads |
+| `shadow` | (M6) a `shadow` session: `package`, the workspace whose copy was built first with `idris2 --build-dir <copy>/build/.vscode-idris2 <build…>` (one process, before the session's), and `build`; the session ran with `IDRIS2_PATH` naming that build's `ttc` directory (`env` says so) and `--build-dir ${ROOT}/build`. Its `cwd` is the shadow directory: a `test/fixtures/workspaces/shadow-*` workspace holding the package file the extension writes and the copy |
 
 ### Events
 
@@ -162,6 +164,8 @@ socket on 2026-09-27 and were identical (the recordings kept are the stdio ones)
 | `eval-values` | `broken`, the `eval` session's build directory | `Clean.idr`; `:interpret` of `the (Vect 2 Nat) [1, 2]` (and `[1,2]`), `"hi" ++ "!"`, `vlen`, `the (Nat -> Nat) (\x => x + 1)`, `putStrLn "hi"`, `the (IO ()) (putStrLn "hi")`, `vlen [1, 2]`, `the Nat "x"`, `nope`, `:t id` | ROADMAP §9 (2026-09-28): an IO action is normalised, not run (`MkIO (prim__putStr "hi\n")`; nothing unframed in the stream); `putStrLn "hi"` alone is an error (no `HasIO` implementation chosen); `:interpret` runs REPL commands |
 | `eval-command-forms` | `broken`, the `eval` session's build directory | `Clean.idr`; `:interpret` of `:t id` behind each of space, tab, CR, LF, VT, FF, U+00A0, U+3000, U+200B, U+FEFF, behind `{- c -}`, `-- c` and a line break, `\|\|\| d` and a line break; as `: t id`, with U+FF1A for the colon, as `:T id`; of `""`, three spaces and `-- c` | which texts the REPL parser reads as a command (the refusal of the `eval` session, `backend/ide/replCommand.ts`) |
 | `eval-socket` | `broken`, the `eval` session's build directory, socket | `Clean.idr`, `:interpret` of `the (IO ()) (putStrLn "hi")` | F5: nothing is printed on the process stdout either |
+| `shadow-type-error` | `shadow-simple-error`, a `shadow` session (`shadow` above: the TTCs of a check build of `simple-ipkg`) | `(:enable-syntax :False)`; the copy `src/Foo/B.idr` with `greeting = shout 5`; `:metavariables` | E9, F8, F14, F32: `Foo.A` from the TTCs on `IDRIS2_PATH`; one `:warning` naming `src/Foo/B.idr`, no `:highlight-source`; nothing written |
+| `shadow-hole` | `shadow-simple-hole`, likewise | `(:enable-syntax :False)`; the copy with `greeting = shout ?arg`; `:metavariables`; `:name-at "arg"` | the load answers `(:ok ())`; the hole located in the copy; only the session's own `build/` written |
 | `clean-split-columns` | `broken` | `Clean.idr`, `:case-split 8 C "xs"` for C = 2–7 | F2: with `clean-editing`'s columns, every column from 0 to 8 (the end of `vlen xs`) splits, 9 does not |
 | `plain-split-columns` | `broken` | `Plain.idr`, `(:metavariables 80)`, `:case-split 5 C "n"` for C = 1–5 | F15: `No clause to split here` at every column (the compiler keeps a clause's left-hand side for splitting only when its right-hand side is a hole, `TTImp/ProcessDef.idr` 516–521 on v0.8.0 [src]); `:metavariables` of a file without holes is `()` |
 | `ambig-holes` | `broken` | `Ambig.idr`, `(:metavariables 80)`, `:name-at "g_rhs"`, `:refine 14 "g_rhs"` with `A.foo`, then with `Ambig.B.foo` | a qualified name refines, and the answer drops the qualification: `foo ?g_rhs_0`, then `foo ?g_rhs_1` |

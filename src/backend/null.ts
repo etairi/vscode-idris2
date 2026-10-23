@@ -20,6 +20,7 @@ import type {
   RichText,
   TokenIndex,
   TypeInfo,
+  UnsavedCheckResult,
 } from './types';
 
 export const NO_CAPABILITIES: Readonly<Capabilities> = Object.freeze({
@@ -54,6 +55,16 @@ export class NullBackend implements IdrisBackend {
 
   load(): Promise<LoadResult> {
     return noBackend('Checking the file');
+  }
+
+  checkUnsaved(): Promise<UnsavedCheckResult> {
+    return noBackend('Checking unsaved text');
+  }
+
+  unsavedTextChanged(): void {}
+
+  showsUnsavedCheck(): boolean {
+    return false;
   }
 
   typeAt(): Promise<TypeInfo | undefined> {

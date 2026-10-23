@@ -11,13 +11,14 @@
  * | `protocol.ts` | `ideCodec: IdeCodec`; `loadFile(absolutePath): Sexp` and the other request builders and reply decoders (`:type-of`, `:docs-for`, `:name-at`, `:metavariables`, the editing commands; pinned by the F2, F29, F30 transcripts, first used in M3/M4; M3 adds `replCompletions`, `browseNamespace`, `decodeCompletions`, `asDecor` and `toRichText`, which converts the reply's code-point highlighting offsets to string offsets, E14); the F4/F5 predicates `answersWithPreviousId`, `isEndOfInputLine`; `decodeBuildingLine` | `types.ts`, `sexp.ts`, `wire.ts`, `../../core/positions` |
  * | `transport.ts` | `Transport` implementations (socket, stdio) | `types.ts` |
  * | `session.ts` | the `IdeSession` state machine | `types.ts`, `transport.ts`, `protocol.ts` (the two F4/F5 predicates only) |
- * | `pool.ts` | `createSessionPool(deps: SessionPoolDeps): SessionPool` | `types.ts`, `session.ts`, `transport.ts` |
+ * | `pool.ts` | `createSessionPool(deps: SessionPoolDeps): SessionPool` | `types.ts`, `session.ts`, `transport.ts`, `protocol.ts` (`enableSyntax`), `shadow.ts` |
+ * | `shadow.ts` | (M6) the shadow directory's package file (`shadowPackage`), the copy's path (`shadowCopyPath`), the directory's name (`shadowDirectoryOf`) | `../../project/ipkg` (`packageOptionWords`), `../registry` (`rootKey`) |
  * | `diagnostics.ts` | `Reply` of a `:load-file` → diagnostics (ARCHITECTURE §8) | `types.ts`, `protocol.ts` (`decodeBuildingLine`) |
  * | `highlight.ts` (M3) | the `:highlight-source` frames of a load's `Reply` → `TokenIndex` (`backend/types.ts`), positions through `core/positions.ts` | `types.ts`, `protocol.ts` (`asDecor`, `decodeSourceHighlights`, `SourceHighlight`), `../types`, `../../core/errors`, `../../core/positions` |
  * | `replCommand.ts` (M3) | whether the compiler's REPL parser would read a text as a command rather than an expression — the refusal of `IdrisBackend.evaluate` (ROADMAP §9, 2026-09-28) | none |
  * | `holes.ts` (M4) | the `:metavariables` reply → `Hole`s (`backend/types.ts`: the quoted qualified name, the multiplicity prefix of each premise, ARCHITECTURE §9), and the choice of a hole's `:name-at` entry by its qualified name (E16) | `protocol.ts`, `../types` and `../../core/positions` (types only) |
  * | `edits.ts` (M4) | for each `EditKind` the request, the refusals made before sending (names that are not Idris names; lines the compiler numbers otherwise; the F16 rule), and where the reply goes (E15), with the ambiguity alternatives of `:refine` (F29) and the literate repairs | `types.ts`, `protocol.ts`, `../types`, `../../core/errors`, `../../core/positions`, `../../project/literate` |
- * | `backend.ts` | `IdeBackend implements IdrisBackend` over a `SessionPool`, and `IdeMode`, the registry's provider | `types.ts`, `protocol.ts`, `diagnostics.ts`, `highlight.ts`, `replCommand.ts`, `holes.ts`, `edits.ts` (and `../registry` for `rootKey`, `BackendProvider`) |
+ * | `backend.ts` | `IdeBackend implements IdrisBackend` over a `SessionPool`, and `IdeMode`, the registry's provider | `types.ts`, `protocol.ts`, `diagnostics.ts`, `highlight.ts`, `replCommand.ts`, `holes.ts`, `edits.ts`, `shadow.ts` (and `../registry` for `rootKey`, `BackendProvider`) |
  *
  * The session layer (`transport.ts`, `session.ts`, `pool.ts`) never imports `sexp.ts` or
  * `wire.ts`: it gets the codec as `SessionPoolDeps.codec`, and the composition root passes
@@ -356,7 +357,7 @@ export interface Transport extends IDisposable {
 // -------------------------------------------------------------------------------------------
 
 /**
- * The roles of ARCHITECTURE §4 (`shadow`, M6, is added by the milestone that needs it):
+ * The roles of ARCHITECTURE §4:
  *
  * - `check` (M2) loads saved files for the checks and answers the queries of M3 in the context of
  *   the file it loaded last (`backend/types.ts` `IdrisBackend`, *Queries*). The only role the
@@ -403,8 +404,26 @@ export interface Transport extends IDisposable {
  *   instead of being restarted — by **Restart Backend** and when its command line changes; its
  *   `:interpret` has the time limit `idris2.eval.timeout`. **It never starts a process by itself**: after an unexpected end it is
  *   `stopped`, not `restarting`, and the next evaluation starts it (`session.ts`, *Unexpected ends*).
+ * - `shadow` (M6) checks the active Idris document's **unsaved** text (ROADMAP M6; ARCHITECTURE §5.2,
+ *   §6.3; F8, F32): the backend writes the text to a copy under the extension's storage, beside a
+ *   package file that gives it the root's `depends` and `opts` (`shadow.ts`; E9), and loads that copy,
+ *   so the user's files are never written. Its working directory is that root's shadow directory
+ *   (`SessionPool.shadowDirectory`); the consent gate judges the root's own directory
+ *   (`ProjectIndex.sessionCwd`), as for the `check` session, since what it compiles is the project's
+ *   code. Its command line: the transport flag and `--no-color`; `-p` for each of
+ *   `idris2.ideMode.loosePackages` for a loose file (F25); `idris2.ideMode.extraArgs`; and last
+ *   `--build-dir <shadow directory>/build`, so it never writes the `check` session's build directory.
+ *   `IDRIS2_PATH` names the `check` session's TTC directory (`SessionPool.effectiveCheckBuildDir` +
+ *   `/ttc`, F32), before any `IDRIS2_PATH` of the environment, so that the copy imports the root's
+ *   other modules as the `check` session last built them. Its first request to every process is
+ *   `(:enable-syntax :False)` (F14; `session.ts`, *First request*): its loads send no highlighting.
+ *   Like the `eval` session it **never starts a process by itself** (an unexpected end
+ *   leaves it `stopped`), is stopped instead of restarted (Restart Backend, a changed command line),
+ *   stops after `EVAL_IDLE_TIMEOUT_MS` without a request, counts towards
+ *   `idris2.ideMode.maxSessions` while idle and is evicted before the `check` sessions; Stop Backend
+ *   and the root's other stops stop it too, and so does turning `idris2.checkOnType.enabled` off.
  */
-export type SessionRole = 'check' | 'eval';
+export type SessionRole = 'check' | 'eval' | 'shadow';
 
 /**
  * ARCHITECTURE §5.1:
@@ -649,7 +668,7 @@ export interface SessionPoolChange {
  * docs/as-built/M2.md, *Configuration changes*, and `pool.ts`). Sessions stop themselves after `idris2.ideMode.idleTimeout`; the pool stops those
  * whose directory `SessionGate.current` no longer allows, and, while more run than
  * `idris2.ideMode.maxSessions` (when it is not 0) allows, idle ones (cause `evicted`; ROADMAP §9
- * Q21): since M3 first the `eval` sessions, least recently used first, the active root's included
+ * Q21): since M3 first the `eval` sessions (since M6 the `shadow` sessions with them), least recently used first, the active root's included
  * (an `eval` session is the lesser role, and the active root's `check` and `eval` sessions
  * together would otherwise exceed a limit of 1 for good), then the `check` sessions that are not
  * the active root's, least recently used first. Every role counts towards the limit. `dispose`
@@ -719,6 +738,23 @@ export interface SessionPool extends IDisposable {
    */
   releaseEvaluation(root: Classification, detail: string): void;
   /**
+   * The directory of `root`'s `shadow` session (`SessionRole`): `<shadowBase>/<hash of the root>`,
+   * where the copies of its unsaved documents are written; `undefined` without a `shadowBase`.
+   */
+  shadowDirectory(root: Classification): string | undefined;
+  /**
+   * (M6) Restarts the `shadow` session of `root` when it is `busy` — a check of unsaved text that a
+   * newer text replaced has run long (`backend.ts`, *Unsaved text*), or an edit the user cancelled
+   * was running in it: the protocol has no cancel. Cause `restart`, `detail` says why. Does nothing
+   * otherwise, so that no process is started for it.
+   */
+  restartShadow(root: Classification, detail: string): void;
+  /**
+   * Stops the `shadow` sessions of `root`, or of every root (`idris2.checkOnType.enabled` changed);
+   * each starts again at its next check of unsaved text. Cause `stop`, `detail` says why.
+   */
+  stopShadows(root: Classification | undefined, detail: string): void;
+  /**
    * The root of the active document (`features/diagnostics/checks.ts` decides which that is), or
    * `undefined` for none: its sessions are never stopped to keep within
    * `idris2.ideMode.maxSessions`. `pending` while the active document's root is still being found:
@@ -754,4 +790,10 @@ export interface SessionPoolDeps {
   readonly platform: NodeJS.Platform;
   /** `process.env` of the Extension Host; the launch's `env` is overlaid on it. */
   readonly processEnv: Environment;
+  /**
+   * The directory the `shadow` sessions' directories are made in (M6): the window's own,
+   * `<globalStorage>/shadow/<extension host's process id>` (`features/shadow/register.ts`); without it
+   * no `shadow` session starts.
+   */
+  readonly shadowBase?: string;
 }

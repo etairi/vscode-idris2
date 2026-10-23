@@ -45,7 +45,8 @@ export type ConfigurationGroup =
   | 'eval'
   | 'keybindings'
   | 'backend'
-  | 'lsp';
+  | 'lsp'
+  | 'checkOnType';
 
 /** `idris2.toolchain.*` (ARCHITECTURE §11, M1). */
 export interface ToolchainSettings {
@@ -371,6 +372,17 @@ export interface EvaluationSettings {
 
 /** The smallest `idris2.checking.delay` (ms); also the schema's `minimum` in package.json. */
 export const MIN_CHECKING_DELAY_MS = 100;
+
+/**
+ * `idris2.checkOnType.*` (resource scope, like `idris2.checking.*`; ROADMAP M6, ARCHITECTURE §6.3, §11):
+ * the check of the active Idris document's unsaved text in a `shadow` session, without saving it.
+ */
+export interface CheckOnTypeSettings {
+  /** `idris2.checkOnType.enabled` (default on; ARCHITECTURE §11, ROADMAP §9 Q6 left the default to M6). */
+  readonly enabled: boolean;
+  /** `idris2.checkOnType.delay`: ms without an edit before the unsaved text is checked; from `MIN_CHECKING_DELAY_MS` to `MAX_DELAY_MS`. */
+  readonly delayMs: number;
+}
 /** The smallest request time limit (ms), for `requestTimeout`, `longActionTimeout` and `eval.timeout`. */
 export const MIN_REQUEST_TIMEOUT_MS = 1000;
 /**
@@ -431,6 +443,14 @@ export function readCheckingSettings(section: ConfigurationReader): CheckingSett
   return {
     trigger: enumSetting(section.get('checking.trigger'), CHECKING_TRIGGERS, 'onSave'),
     delayMs: delaySetting(section.get('checking.delay'), MIN_CHECKING_DELAY_MS, 700),
+  };
+}
+
+/** Reads and validates `idris2.checkOnType.*` from the `idris2` section. */
+export function readCheckOnTypeSettings(section: ConfigurationReader): CheckOnTypeSettings {
+  return {
+    enabled: section.get('checkOnType.enabled') !== false,
+    delayMs: delaySetting(section.get('checkOnType.delay'), MIN_CHECKING_DELAY_MS, 500),
   };
 }
 
@@ -665,6 +685,11 @@ export class Config {
   }
 
   /** `idris2.checking.saveBeforeAction` for `scope` (the document's URI), as `checking` reads its section. */
+  /** `idris2.checkOnType.*` for `scope` (a document's URI): `resource`-scoped, as `idris2.checking.*`. */
+  checkOnType(scope?: ConfigurationScope): CheckOnTypeSettings {
+    return readCheckOnTypeSettings(this.host.getConfiguration(CONFIGURATION_SECTION, scope));
+  }
+
   saveBeforeAction(scope?: ConfigurationScope): SaveBeforeAction {
     return readSaveBeforeAction(this.host.getConfiguration(CONFIGURATION_SECTION, scope));
   }

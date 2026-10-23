@@ -5,7 +5,8 @@
  * saved (`always`, the default), saved once the user agrees — one question per run of a command
  * (`prompt`) —, or not saved, the command asking for the save (`never`). A save that does not
  * happen (VS Code's `save()` resolves false) ends the command with a message. A document without
- * unsaved changes is left alone under every setting.
+ * unsaved changes is left alone under every setting, and so is one whose unsaved text the compiler
+ * has checked as it is shown (M6: `commands.ts` does not apply the policy then).
  *
  * Only type imports from `vscode`.
  */

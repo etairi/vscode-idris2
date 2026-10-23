@@ -80,7 +80,11 @@ export type IsIdrisWorkspaceContextKey = 'idris2.isIdrisWorkspace';
  * file and for every file it locates a hole in, and drops those of a file (or module) whose holes
  * this loaded file reported last and this answer does not list (they went away, or the file no
  * longer imports it); a file whose holes another loaded file reported last keeps them until that
- * file, or itself, is loaded again. After a load that returned an error (`LoadedFileEvent.failed`)
+ * file, or itself, is loaded again. After a check of a document's unsaved text (M6,
+ * `LoadedFileEvent.unsaved`: IDE mode's `shadow` session) the answer replaces the loaded file's holes
+ * only, their ranges read from the text that check read; the holes of the files and modules it
+ * imports stay as their own loads left them (the check read their build files). After a load that
+ * returned an error (`LoadedFileEvent.failed`)
  * it replaces only the files and modules it lists holes in, and, when it lists none of the loaded
  * file's, drops those whose `?name` the file's text no longer has: after a parse error the compiler
  * lists none of the file's holes, after an error in an import only the import's (`model.ts`). The entries of
@@ -89,8 +93,9 @@ export type IsIdrisWorkspaceContextKey = 'idris2.isIdrisWorkspace';
  * the entries a root's loads gave when the root is released (`RootReleases`: its last checked
  * document was closed).
  *
- * **What it describes.** Each file's holes as that file was when the compiler last read it; a
- * document with unsaved changes may have moved them (revealing looks for them, module comment).
+ * **What it describes.** Each file's holes as that file was when the compiler last read it — its
+ * unsaved text, after a check of it (M6); a document changed since may have moved them (revealing
+ * looks for them, module comment).
  */
 export interface HoleModel {
   /** The files with holes, in a stable order (by path). `fileName` is a document's `fileName`. */

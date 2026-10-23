@@ -225,6 +225,13 @@ export interface LoadedFileEvent {
    * (`inlayHints.ts`, *Answers a load made stale*).
    */
   readonly failed?: boolean;
+  /**
+   * (M6) A check of the document's unsaved text (`backend/ide/backend.ts` `LoadedDocument.unsaved`),
+   * which read `text`: it changes the answers about this file only (`rebuilt` is false), while the
+   * document shows that text (`queries.ts` `StaleAnswers`; the holes model replaces this file's holes
+   * only, `holes/model.ts`).
+   */
+  readonly unsaved?: { readonly text: string };
 }
 
 /** What `registerIntelligence`, `registerCompletion` and `registerInlayHints` need. */

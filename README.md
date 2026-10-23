@@ -7,13 +7,15 @@
 Language support for [Idris 2](https://www.idris-lang.org/), a purely functional programming
 language with first-class dependent types.
 
-> **Preview.** Early development, published as a pre-release. A goal panel and checking while
-> you type come next — see the [roadmap](docs/ROADMAP.md).
+> **Preview.** Early development, published as a pre-release. A goal panel comes next — see the
+> [roadmap](docs/ROADMAP.md).
 
 ## Features
 
 **Compiler feedback**
 - Errors and warnings in the editor and the Problems panel, when you open or save a file
+- **Check while typing**: the unsaved text is checked half a second after you stop typing, without
+  saving it (source `idris2 (unsaved)`); hovers, holes and the editing commands follow it
 - Packages (`.ipkg`, found as the compiler finds them) and single files, literate ones included
 - Result in the language status: `checking…`, `✓`, `2 errors`, `stale`, `stopped`
 
@@ -143,6 +145,7 @@ The ones you are most likely to change; all of them are in the Settings UI (sear
 | `idris2.backend.mode` | `"auto"` | `auto` (IDE mode when `idris2` is found), `lsp` (idris2-lsp for packages), `ideMode` |
 | `idris2.checking.trigger` | `"onSave"` | `onSave`, `afterDelay` (also saves your files after a pause in typing), `manual` |
 | `idris2.checking.saveBeforeAction` | `"always"` | An editing command saves the file first; `prompt` asks, `never` asks you to save |
+| `idris2.checkOnType.enabled` | `true` | Check the unsaved text while you type (IDE mode) |
 | `idris2.ideMode.loosePackages` | `[]` | Packages for files without an `.ipkg`, e.g. `["contrib"]` |
 | `idris2.ideMode.maxSessions` | `0` | Most compiler processes per window (`0`: no limit); try `3` on a small machine |
 | `idris2.ideMode.maxBackgroundChecks` | `0` | Most files besides the active one checked at once (`0`: no limit); try `1` |
@@ -158,6 +161,8 @@ The ones you are most likely to change; all of them are in the Settings UI (sear
   Next / Previous Hole work; interactive editing and the Holes view need a trusted workspace.
 - It starts the compiler in the project's folder, and asks first when that folder is outside
   your trusted workspace folders (**Allow**, **Always Allow for This Folder**, **Don't Allow**).
+- To check unsaved text it writes a copy of it into the extension's own storage and checks it there,
+  with the same permission; your files are never written.
 - It talks to the compiler over standard input and output: no network port. The opt-in `socket`
   transport opens a local port another program could use first — not for shared computers.
 - **Evaluate Selection** evaluates expressions only, in a second compiler process with the same
@@ -175,9 +180,9 @@ What runs where, and how compiler text is shown: [guide](docs/guide.md#privacy-a
 
 ## Known limitations
 
-- Answers refer to the **saved** file: hover, completion and the Holes view come from its last
-  check; evaluation checks it again first, and most editing commands save it first.
-  Checking while you type comes later.
+- Answers refer to the **saved** file, except for hovers, holes and editing once the unsaved text
+  has been checked: completion and Go to Definition come from the saved file's last check;
+  evaluation checks the file again first. Check while typing reads imported modules as last built.
 - After a check with errors, Case Split, Add Clause and Generate Definition are refused until the
   file loads cleanly, and an answer in place of a hole is refused where it would shift a block that
   the lines below belong to, but for a few shapes (two of them silent): see the [guide](docs/guide.md#known-limitations).
@@ -197,7 +202,7 @@ The full list is in the [guide](docs/guide.md#known-limitations).
 
 ## Roadmap
 
-A goal panel, check-as-you-type, REPL and build integration, literate Markdown and LaTeX, Unicode
+A goal panel, REPL and build integration, literate Markdown and LaTeX, Unicode
 input: see [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Contributing

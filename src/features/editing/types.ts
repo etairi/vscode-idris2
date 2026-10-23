@@ -41,7 +41,9 @@
  * 2. **Save before** (`Config.saveBeforeAction(doc.uri)`, `core/config.ts` `SaveBeforeAction`): a
  *    document with unsaved changes is saved (`always`), saved after the user agreed (`prompt`), or
  *    not saved, the command saying that the file must be saved first (`never`). A save that fails is
- *    reported and ends the command.
+ *    reported and ends the command. (M6) Not when the backend's last check of the document's unsaved
+ *    text read exactly the text it shows (`IdrisBackend.showsUnsavedCheck`, check while typing): the
+ *    compiler edits that text, so the command runs on it unsaved.
  * 3. **Ask**: `version` is `doc.version` right before the request, which goes through M3's
  *    `DocumentQueries.run(doc, 'command', backend => backend.edit(req))`
  *    (`features/intelligence/types.ts`): when the backend answers `NotLoaded`, the document is loaded

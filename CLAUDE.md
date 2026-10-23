@@ -14,10 +14,12 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   and `263f38f`, `docs/as-built/M3.md`, likewise); M4 is implemented for IDE mode (2026-10-01,
   commit `982d2fc`, `docs/as-built/M4.md`, likewise; its LSP half — `LspBackend.edit()`,
   `holes()` and the contract suite — was M5's, which shipped second); M5 is implemented (2026-10-02,
-  `docs/as-built/M5.md`, likewise; not committed yet). The one planned stub is M0's
+  commit `e4eedaa`, `docs/as-built/M5.md`, likewise); M6 is implemented (2026-10-24,
+  `docs/as-built/M6.md`, likewise: its shadow directory holds a package file, against an acceptance
+  item, for the user to confirm). The one planned stub is M0's
   `src/webview/goalPanel.ts` (an empty second esbuild entry, ROADMAP M0 "Out"), which M7
   replaces.
-- `docs/as-built/` — what was built: one file per finished milestone (`M0.md` … `M5.md`) with
+- `docs/as-built/` — what was built: one file per finished milestone (`M0.md` … `M6.md`) with
   its deviations from ROADMAP §5 and ARCHITECTURE, measurements, experiments,
   review rounds and gate runs; `README.md` there explains the files and how to read their
   references. Moved out of ROADMAP and ARCHITECTURE on 2026-09-28 so that those two stay
@@ -539,6 +541,36 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
   `<client id>.trace.server` itself (`LSP_CLIENT_ID = 'idris2.lsp'`).
 - The bundle contains vscode-languageclient and its dependencies: a new bundled runtime dependency
   needs its licence in `THIRD_PARTY_NOTICES.md` (the packages are in `dist/extension.js.map`).
+
+## Rules established by M6
+
+- **Checking unsaved text never writes the user's files.** The `shadow` session checks a copy in the
+  window's own storage (`<globalStorage>/shadow/<extension host's pid>/<root hash>/`, `SessionPool
+  .shadowDirectory`), beside `shadow.ipkg`, which `backend/ide/shadow.ts` writes from the root's
+  model: its `depends` with their bounds and its `opts` without the options that name the compiler's
+  directories or written files. The copy is written right before its `:load-file` is written
+  (`beforeSend`). Never give a shadow session `-p` for the `depends` (it adds no dependencies of
+  theirs) or the `opts` on its command line (some act otherwise there).
+- **Only the copy of the document checked last** lies in the shadow directory's `src/`: another
+  document's copy empties `src/` and `build/` first (the compiler's own build directory is searched
+  before `IDRIS2_PATH`).
+- **`--build-dir <shadow directory>/build` last, `IDRIS2_PATH` the check session's
+  `effectiveCheckBuildDir/ttc` first, the consent gate on the root's own directory**; a shadow session
+  never writes the check session's build directory (the e2e suite compares its files' mtimes).
+- **A dirty document's queries and edits** (`typeAt`, `docsFor`, `holes`, `edit`, a search's `-Next`)
+  go to the shadow session only while its last answered load read exactly the lines the document shows
+  (`IdrisBackend.showsUnsavedCheck`); otherwise M3's and M4's rules of the `check` session hold. The
+  editing commands skip the save before an action only then.
+- **No check while typing after Stop Backend, a give-up or a refusal of the folder** (the passive
+  rule of M3) until a check starts the compiler. The shadow session's first request to every process is
+  `(:enable-syntax :False)`; like the `eval` session it never starts a process by itself.
+- **Tests**: every test profile turns `idris2.checkOnType.enabled` off (`.vscode-test.mjs`); a suite
+  that tests M6 turns it on and restores it. The `shadow-*` fixture workspaces are the session
+  directories of the recorded shadow sessions (scenarios with `shadow` in
+  `scripts/record-transcripts.mjs`, which build a copy of the package first); their `shadow.ipkg` must
+  equal what the extension writes for `simple-ipkg` (`test/unit/shadow.test.ts`), and
+  `check:fixtures` skips them. In the e2e suite a shadow phase follows a release of the root (not Stop
+  Backend), with VS Code's inlay hints off, so that one compiler runs at a time.
 
 ## Platforms
 

@@ -2,12 +2,12 @@
 
 This is the `src/` part of the repository tree in `docs/ARCHITECTURE.md` §2, annotated with the
 milestone (`docs/ROADMAP.md` §5) that creates each part. Only the files marked **skeleton**,
-**M0**, **M1**, **M2**, **M3**, **M4** or **M5** exist today. Nothing else is stubbed: a folder appears when its milestone
+**M0**, **M1**, **M2**, **M3**, **M4**, **M5** or **M6** exist today. Nothing else is stubbed: a folder appears when its milestone
 lands, never as an empty module.
 
 ```
 src/
-├─ extension.ts               M0–M5     activate(): log channel, Help commands, the
+├─ extension.ts               M0–M6     activate(): log channel, Help commands, the
 │                                       idris2.isIdrisDocument context key, selection ranges
 │                                       (M0); then Config → workspace trust → process runner →
 │                                       toolchain service → project index → backend registry
@@ -21,6 +21,8 @@ src/
 │                                       LspAdmission, the language client, LspBackend (the
 │                                       registry's lsp provider), the language server's
 │                                       commands, the holes model following the server's loads;
+│                                       M6: the pool's shadow storage (the window's folder of the
+│                                       global storage), features/shadow after the checks;
 │                                       then the status item, Setup Information, install
 │                                       commands, notifications, and features/backend.
 │                                       Waits for no process; returns a test API only in
@@ -147,7 +149,7 @@ src/
 │  │                                    (decideRoute, BackendRouting, the Switch Backend choices
 │  │                                    BackendChoices; no fallback per feature) and LspAdmission,
 │  │                                    which documents may reach the server
-│  ├─ ide/                    M2–M4     (M3 adds highlight, replCommand; M4 edits, holes)
+│  ├─ ide/                    M2–M6     (M3 adds highlight, replCommand; M4 edits, holes; M6 shadow)
 │  │  ├─ types.ts                       the contracts of the layer (types only): s-expressions,
 │  │  │                                 frames, messages, IdeCodec, Transport, IdeSession,
 │  │  │                                 SessionPool, and who may import whom
@@ -171,7 +173,8 @@ src/
 │  │  │                                 flight, FIFO (urgent loads first), merged loads,
 │  │  │                                 time limits, F4 attribution, unframed output over
 │  │  │                                 stdio, a socket taken by another program, backoff
-│  │  │                                 and give-up, idle, stop, restart
+│  │  │                                 and give-up, idle, stop, restart; M6: a first request
+│  │  │                                 to every process (the shadow session's enable-syntax)
 │  │  ├─ pool.ts                        one session per root and role (check; M3: eval, with
 │  │  │                                 its own build/.vscode-idris2-eval): command line, build
 │  │  │                                 directory (effectiveCheckBuildDir), trust → toolchain →
@@ -179,7 +182,12 @@ src/
 │  │  │                                 idris2.ideMode.maxSessions (evicts idle sessions: eval
 │  │  │                                 sessions first, then check sessions of other roots,
 │  │  │                                 least recently used first); M4: restartCheck (a
-│  │  │                                 cancelled edit request)
+│  │  │                                 cancelled edit request); M6: the shadow role (its
+│  │  │                                 directory, IDRIS2_PATH, stopShadows, restartShadow)
+│  │  ├─ shadow.ts          M6          the shadow directory's package file (depends, opts
+│  │  │                                 without the options naming directories, read with a
+│  │  │                                 model of the option parser), the copy's path, the
+│  │  │                                 directory's name; pure
 │  │  ├─ diagnostics.ts                 a load's reply → diagnostic records: files, ranges,
 │  │  │                                 messages, severity (known-warning table), .ipkg error
 │  │  ├─ highlight.ts       M3          a load's :highlight-source frames → the token index
@@ -198,7 +206,9 @@ src/
 │  │                                    again right before every load is sent; M3: the queries,
 │  │                                    the token index, evaluation in the eval session; M4:
 │  │                                    holes, edit with the version check and the searches'
-│  │                                    state, cancel after the write → restartCheck) and IdeMode, the
+│  │                                    state, cancel after the write → restartCheck; M6:
+│  │                                    checkUnsaved, the routing of a dirty document to the
+│  │                                    shadow session) and IdeMode, the
 │  │                                    registry's provider and the commands' control surface
 │  │                                    (M3: onDidLoad, warmUpCompletions)
 │  ├─ lsp/                    M5        idris2-lsp (vscode-languageclient 10.x)
@@ -327,7 +337,13 @@ src/
 │  │  └─ register.ts                    registerHoles: the view, List Holes, Next / Previous
 │  │                                    Hole, the internal idris2.revealHole
 │  ├─ goalPanel/              M7
-│  ├─ shadow/                 M6
+│  ├─ shadow/                 M6        check while typing
+│  │  ├─ unsavedChecks.ts               the controller: the active document's unsaved text
+│  │  │                                 after the delay, idris2 (unsaved), the saved
+│  │  │                                 diagnostics hidden meanwhile, cancellation, modules
+│  │  │                                 not built yet, the setting
+│  │  └─ register.ts                    the storage (a folder per window; ended windows'
+│  │                                    deleted at activation) and the registration
 │  ├─ repl/                   M8
 │  ├─ tasks/                  M9
 │  ├─ tests/                  M10

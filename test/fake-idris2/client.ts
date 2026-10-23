@@ -154,6 +154,12 @@ export interface TranscriptMeta {
   readonly processCwd: string;
   readonly placeholders: Readonly<Record<string, number>>;
   readonly fixtures: Readonly<Record<string, string>>;
+  /**
+   * (M6) A `shadow` session: the workspace is a shadow directory, and the session read the TTCs of a
+   * copy of the workspace `package`, built with `idris2 --build-dir <copy>/build/.vscode-idris2
+   * <build…>`, from `IDRIS2_PATH` (scripts/record-transcripts.mjs).
+   */
+  readonly shadow?: { readonly package: string; readonly build: readonly string[] };
 }
 
 export type TranscriptEvent =

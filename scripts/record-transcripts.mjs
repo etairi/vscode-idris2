@@ -56,7 +56,11 @@ const PORT = '${PORT}';
 // path); with `link: true` the process is started in `${LINK}`, a symbolic link to it.
 // `buildDir` is the last component of the `--build-dir` (default `.vscode-idris2`, the `check`
 // session's; `.vscode-idris2-eval` for the `eval` session of M3, `backend/ide/types.ts`
-// `SessionRole`).
+// `SessionRole`). `shadow` (M6): the workspace is a shadow directory — the package file the
+// extension writes and the copy of a document (`src/backend/ide/shadow.ts`) — and the session is
+// a `shadow` one: `--build-dir ${ROOT}/build`, and `IDRIS2_PATH` the TTC directory of a copy of
+// the workspace `shadow.package`, built first with `idris2 --build-dir
+// <copy>/build/.vscode-idris2 <shadow.build…>` (one process, before the session's).
 // ---------------------------------------------------------------------------------------------
 
 const load = (file) => `(:load-file "${ROOT}/${file}")`;
@@ -735,6 +739,31 @@ const SCENARIOS = [
     transport: 'socket',
     fixtures: ['Clean.idr'],
     requests: [load('Clean.idr'), interpret('the (IO ()) (putStrLn "hi")')],
+  },
+  // M6 (ROADMAP §5 M6): the `shadow` session that checks unsaved text, in a shadow directory
+  // (test/fixtures/workspaces/shadow-*: the package file the extension writes for simple-ipkg and
+  // the copy of src/Foo/B.idr), with the TTCs of a check build of simple-ipkg on IDRIS2_PATH.
+  {
+    name: 'shadow-type-error',
+    description: 'The shadow session of a copy of simple-ipkg\'s src/Foo/B.idr whose greeting = shout 5 does not type-check: (:enable-syntax :False), then the load of the copy (Foo.A from the check build\'s TTCs on IDRIS2_PATH): one :warning on the copy, no highlighting, (:return (:error …)); :metavariables',
+    facts: ['E9', 'F8', 'F14', 'F32'],
+    workspace: 'shadow-simple-error',
+    cwd: '.',
+    shadow: { package: 'simple-ipkg', build: ['--typecheck', 'simple.ipkg'] },
+    transport: 'stdio',
+    fixtures: ['shadow.ipkg', 'src/Foo/B.idr'],
+    requests: ['(:enable-syntax :False)', load('src/Foo/B.idr'), metavariables],
+  },
+  {
+    name: 'shadow-hole',
+    description: 'The shadow session of a copy of simple-ipkg\'s src/Foo/B.idr whose greeting = shout ?arg: (:enable-syntax :False), the load of the copy answers (:ok ()); :metavariables lists Foo.B.arg, and :name-at "arg" locates it in the copy',
+    facts: ['E9', 'F8', 'F14', 'F32'],
+    workspace: 'shadow-simple-hole',
+    cwd: '.',
+    shadow: { package: 'simple-ipkg', build: ['--typecheck', 'simple.ipkg'] },
+    transport: 'stdio',
+    fixtures: ['shadow.ipkg', 'src/Foo/B.idr'],
+    requests: ['(:enable-syntax :False)', load('src/Foo/B.idr'), metavariables, nameAt('arg')],
   },
   // M4 (ROADMAP §5 M4): the editing commands and the holes, each after a load of the file as the
   // `check` session makes it. Lines are 1-based compiler lines; the comments quote the file line.
@@ -1486,9 +1515,25 @@ async function record(scenario, compiler, tmpBase) {
   }
   const modeFlag = scenario.transport === 'socket' ? '--ide-mode-socket' : '--ide-mode';
   // The working directory as the extension passes it (ProjectIndex.sessionCwd), and its
-  // --build-dir <sessionCwd>/build/.vscode-idris2 (D5, F12), or the eval session's.
+  // --build-dir <sessionCwd>/build/.vscode-idris2 (D5, F12), or the eval session's; a shadow
+  // session's own <shadow directory>/build (M6).
   const processCwd = scenario.link ? LINK : ROOT;
-  const args = [modeFlag, '--no-color', '--build-dir', `${processCwd}/build/${scenario.buildDir ?? '.vscode-idris2'}`];
+  const args =
+    scenario.shadow === undefined
+      ? [modeFlag, '--no-color', '--build-dir', `${processCwd}/build/${scenario.buildDir ?? '.vscode-idris2'}`]
+      : [modeFlag, '--no-color', '--build-dir', `${processCwd}/build`];
+  // M6: the package the shadow session reads the TTCs of, built first (one process, before the session's).
+  let env = process.env;
+  if (scenario.shadow !== undefined) {
+    const pkg = path.join(holder, 'package', scenario.shadow.package);
+    fs.cpSync(path.join(WORKSPACES, scenario.shadow.package), pkg, { recursive: true, filter: (src) => path.basename(src) !== 'build' });
+    const checkBuild = path.join(pkg, 'build', '.vscode-idris2');
+    const built = spawnSync(compiler, ['--build-dir', checkBuild, ...scenario.shadow.build], { cwd: pkg, encoding: 'utf8', timeout: PROCESS_LIMIT_MS });
+    if (built.status !== 0) {
+      throw new Error(`${scenario.name}: building ${scenario.shadow.package} failed (${built.status}): ${built.stdout}${built.stderr}`);
+    }
+    env = { ...process.env, IDRIS2_PATH: path.join(checkBuild, 'ttc') };
+  }
 
   const events = [];
   const waiters = [];
@@ -1521,7 +1566,7 @@ async function record(scenario, compiler, tmpBase) {
   const before = snapshot(copy);
   const child = spawn(compiler, args.map((a) => substitute(a)), {
     cwd: substitute(processCwd),
-    env: process.env,
+    env,
     stdio: ['pipe', 'pipe', 'pipe'],
     detached: true,
   });
@@ -1628,6 +1673,9 @@ async function record(scenario, compiler, tmpBase) {
     args,
     cwd: toPosix(path.relative(repo, path.join(workspace, scenario.cwd))) || '.',
     processCwd,
+    ...(scenario.shadow === undefined
+      ? {}
+      : { shadow: { package: scenario.shadow.package, build: scenario.shadow.build, env: { IDRIS2_PATH: `<copy of ${scenario.shadow.package}>/build/.vscode-idris2/ttc` } } }),
     placeholders: Object.fromEntries([...placeholders].map(([name, p]) => [name, p.length])),
     fixtures,
   };

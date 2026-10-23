@@ -51,7 +51,7 @@ import { holeTokenNames } from '../../core/idrisSyntax';
 import { editorLines, fromIdeReplySpan, type IdeReplySpan, type PositionDocument } from '../../core/positions';
 import { editText, nameProblem, type EditText } from '../ide/edits';
 import { NO_CAPABILITIES } from '../null';
-import type { BackendKind, Capabilities, EditRequest, EditResult, Evaluation, Hole, HolesOptions, IdrisBackend, LoadResult, NamespaceEntry, NextRequest, RichText, TokenIndex, TypeInfo } from '../types';
+import type { BackendKind, Capabilities, EditRequest, EditResult, Evaluation, Hole, HolesOptions, IdrisBackend, LoadResult, NamespaceEntry, NextRequest, RichText, TokenIndex, TypeInfo, UnsavedCheckResult } from '../types';
 import { nextResult, planLspEdit, type LspEditRequest } from './edits';
 import { decodeMetavars, holeFiles, holesOf, holeSymbolCount } from './holes';
 import type { LspClientHandle } from './types';
@@ -128,6 +128,16 @@ export class LspBackend implements IdrisBackend {
 
   load(): Promise<LoadResult> {
     return unsupportedPromise('Checking the file is idris2-lsp\'s own here: it checks a file when it is opened or saved and shows its problems itself. Save the file to check it again.');
+  }
+
+  checkUnsaved(): Promise<UnsavedCheckResult> {
+    return unsupportedPromise('idris2-lsp checks a file when it is opened or saved, not its unsaved text (ROADMAP M6 is IDE mode\'s). Save the file to check it.');
+  }
+
+  unsavedTextChanged(): void {}
+
+  showsUnsavedCheck(): boolean {
+    return false;
   }
 
   typeAt(): Promise<TypeInfo | undefined> {

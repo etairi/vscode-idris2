@@ -309,9 +309,10 @@ export class HoleStore implements HoleModel, IDisposable {
     const sequence = ++this.sequence;
     const root = rootKey(loaded.root);
     this.latest.set(loaded.file, { sequence, root });
-    // The text the load read, as near as the model can see it: the document's, if it has no unsaved changes.
-    const text = doc.getText();
-    const loadedText = doc.isDirty ? undefined : text;
+    // The text the load read, as near as the model can see it: the document's, if it has no unsaved
+    // changes, or the one a check of its unsaved text read (M6).
+    const text = loaded.unsaved?.text ?? doc.getText();
+    const loadedText = loaded.unsaved !== undefined || !doc.isDirty ? text : undefined;
     const inLoaded = holeTokenNames(text);
     const module = declaredModule(text, compilerLiterateStyleOf(doc));
     let holes: readonly Hole[];
@@ -345,7 +346,7 @@ export class HoleStore implements HoleModel, IDisposable {
     if (this.disposed || this.latest.get(loaded.file)?.sequence !== sequence) {
       return;
     }
-    this.apply(loaded.file, root, holes, { inLoaded, module, text: loadedText }, loaded.failed === true);
+    this.apply(loaded.file, root, holes, { inLoaded, module, text: loadedText }, loaded.failed === true, loaded.unsaved !== undefined);
   }
 
   private apply(
@@ -354,6 +355,7 @@ export class HoleStore implements HoleModel, IDisposable {
     holes: readonly Hole[],
     read: { readonly inLoaded: ReadonlySet<string>; readonly module: string; readonly text: string | undefined },
     failed: boolean,
+    unsaved = false,
   ): void {
     const { inLoaded } = read;
     const groups = new Map<string, Hole[]>(failed ? [] : [[loaded, []]]);
@@ -365,6 +367,10 @@ export class HoleStore implements HoleModel, IDisposable {
       }
       seen.add(hole.qualifiedName);
       const group = holeGroup(hole, loaded, inLoaded, read.module);
+      if (unsaved && (group.kind !== 'file' || group.file !== loaded)) {
+        // A check of unsaved text (M6) answers for the loaded file: its imports came from build files.
+        continue;
+      }
       const [into, key] = group.kind === 'file' ? [groups, group.file] : [modules, group.module];
       const listed = into.get(key);
       if (listed === undefined) {
@@ -382,8 +388,9 @@ export class HoleStore implements HoleModel, IDisposable {
       groups.set(loaded, before.filter((hole) => inLoaded.has(hole.name)));
     }
     // The groups this loaded file's earlier answer reported last that this one does not list: their
-    // holes went away. Not after a failed load, whose answer lists only some.
-    for (const [key, by] of failed ? [] : this.reporter) {
+    // holes went away. Not after a failed load, whose answer lists only some, nor after a check of
+    // unsaved text, which lists the loaded file's only.
+    for (const [key, by] of failed || unsaved ? [] : this.reporter) {
       const group = parseGroupKey(key);
       if (by === loaded && !(group.kind === 'file' ? groups.get(group.file)?.length : modules.has(group.module))) {
         if (group.kind === 'file') {

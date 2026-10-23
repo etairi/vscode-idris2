@@ -177,7 +177,10 @@ rules above stay the fake's own; everything else is replayed:
   recording) ending in `.vscode-idris2` is a `check` session, one ending in `.vscode-idris2-eval`
   an `eval` session (`src/backend/ide/types.ts` `SessionRole`; the recorder passes the same). A
   session or recording without such a build directory (the `.ipkg` chose it, or
-  `idris2.ideMode.extraArgs` did) is eligible for, and answered from, either role. So an
+  `idris2.ideMode.extraArgs` did) is eligible for, and answered from, either role. (M6) So is a
+  `shadow` session, whose `--build-dir` is `<shadow directory>/build`: the `shadow-*` recordings, made
+  in a shadow directory (the package file the extension writes and the copy, their hashes in
+  `meta.fixtures`), are the ones whose files its directory holds. So an
   `:interpret` of **Evaluate Selection** that reached the `check` session instead of the `eval`
   one gets the "no recorded reply" error below (the `:interpret` requests recorded in the
   `check` role are other texts: `"→"`, `:printdef f`, `:missing g` and the `:exec` of the `exec-*`

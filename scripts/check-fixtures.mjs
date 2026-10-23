@@ -7,7 +7,9 @@
 //                     … fixture is its host language's and is not checked
 //   *.ipkg         →  idris2 --dump-ipkg-json   (from the file's directory)
 // Files named *.invalid.idr / *.invalid.lidr / *.invalid.ipkg are skipped: they are fixtures
-// that are deliberately not valid Idris. The fixtures of the `broken` workspace (M2: the
+// that are deliberately not valid Idris. So are the workspaces/shadow-* directories (M6): each is
+// the session directory of a recorded `shadow` session — the package file the extension writes
+// and the copy of an unsaved document —, whose copy compiles only with its package's build files. The fixtures of the `broken` workspace (M2: the
 // IDE-mode transcripts and the diagnostics tests load them) keep their names, which their module
 // names and the recorded transcripts depend on; instead EXPECTED_PROBLEMS below lists what each
 // must report, and such a file passes only when the compiler exits 1 with exactly those
@@ -50,7 +52,9 @@ function* walk(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
     const p = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      if (entry.name !== 'build') { yield* walk(p); }
+      // M6: a shadow directory's copy compiles only with its package's build files (IDRIS2_PATH);
+      // scripts/record-transcripts.mjs checks it when it records the shadow-* scenarios.
+      if (entry.name !== 'build' && !(path.basename(dir) === 'workspaces' && entry.name.startsWith('shadow-'))) { yield* walk(p); }
     } else if (entry.isFile()) {
       yield p;
     }

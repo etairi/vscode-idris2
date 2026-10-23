@@ -289,7 +289,11 @@ export class EditingCommands {
       }
     }
     const root = await this.deps.projects.classify(doc.fileName);
-    const saved = await saveBeforeAction(this.api, doc, this.deps.config.saveBeforeAction(doc.uri), name);
+    // M6: the compiler has checked the text the document shows, unsaved changes included, and edits
+    // that text: nothing is saved (`IdrisBackend.showsUnsavedCheck`).
+    const saved = this.deps.registry.backendFor(root).showsUnsavedCheck(doc)
+      ? ({ kind: 'ready' } as const)
+      : await saveBeforeAction(this.api, doc, this.deps.config.saveBeforeAction(doc.uri), name);
     if (saved.kind !== 'ready') {
       if (saved.kind === 'cancelled') {
         this.record({ command, kind: 'cancelled' });

@@ -203,6 +203,22 @@
           "order": 11,
           "markdownDescription": "Milliseconds without an edit after which an Idris file with unsaved changes is saved when `#idris2.checking.trigger#` is `afterDelay`. From 100 to 2147483647 (about 24.8 days)."
         },
+        "idris2.checkOnType.enabled": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "order": 13,
+          "markdownDescription": "Check the active Idris file's unsaved text while you type, without saving it: after `#idris2.checkOnType.delay#` ms without an edit, a copy of the text is checked by a separate compiler process of its project, and its errors and warnings replace the saved file's (source `idris2 (unsaved)`) until you save. The copy is written to this extension's storage on this machine and deleted when it is no longer needed. Files of a project served by idris2-lsp are not checked this way."
+        },
+        "idris2.checkOnType.delay": {
+          "type": "integer",
+          "default": 500,
+          "minimum": 100,
+          "maximum": 2147483647,
+          "scope": "resource",
+          "order": 14,
+          "markdownDescription": "Milliseconds without an edit after which the unsaved text is checked (`#idris2.checkOnType.enabled#`). From 100 to 2147483647 (about 24.8 days)."
+        },
         "idris2.checking.saveBeforeAction": {
           "type": "string",
           "enum": [

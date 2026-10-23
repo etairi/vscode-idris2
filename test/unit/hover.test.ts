@@ -372,6 +372,19 @@ suite('features/intelligence/hover', () => {
     assert.strictEqual((await hoverAt(t.deps, asDoc(t.doc), at(23, 3), 'passive')).kind, 'noType');
   });
 
+  test('M6: an answer from a check of the unsaved text the document shows (TypeInfo.unsaved) is not stale: no note, and kept as for a current document', async () => {
+    const t = hoverSetup();
+    t.status.current = { kind: 'checked', errors: 0, warnings: 0, stale: true, known: true };
+    t.backend.typeAnswer = () => Promise.resolve({ text: 'r : Double', spans: [], lookup: 'position', unsaved: true });
+    const result = await hoverAt(t.deps, asDoc(t.doc), at(12, 13), 'passive');
+    assert.strictEqual(result.kind, 'model');
+    assert.strictEqual(result.kind === 'model' && result.model.stale, false);
+    // A positional answer about another name is dropped while stale, but not when it describes the shown text.
+    t.loads.fire({ root: t.root, file: t.doc.fileName, rebuilt: true });
+    t.backend.typeAnswer = () => Promise.resolve({ text: 'Foo.Shapes.area : Shape -> Double', spans: [], lookup: 'position', unsaved: true });
+    assert.strictEqual((await hoverAt(t.deps, asDoc(t.doc), at(23, 3), 'passive')).kind, 'model');
+  });
+
   test('the occurrence\'s decoration goes to typeAt: a variable\'s `bound`, so that the backend does not ask for it by name', async () => {
     const t = hoverSetup();
     t.backend.typeAnswer = answering({ r: { text: 'r : Double', spans: [], lookup: 'position' }, area: { text: 'Foo.Shapes.area : Shape -> Double', spans: [], lookup: 'position' } });

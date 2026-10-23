@@ -154,7 +154,9 @@ export async function hoverAt(deps: HoverDeps, doc: vscode.TextDocument, pos: Ed
   if (typeOutcome.kind === 'unavailable') {
     return { kind: 'unavailable', reason: typeOutcome.reason, occurrence };
   }
-  const type = acceptedType(typeOutcome.value, occurrence, stale);
+  // M6: an answer from a check of the unsaved text `doc` shows is about that text, not stale.
+  const current = typeOutcome.value?.unsaved === true;
+  const type = acceptedType(typeOutcome.value, occurrence, stale && !current);
   if (type === undefined) {
     return stale ? { kind: 'noType', occurrence, stale, staleness: stalenessOf(deps, doc, status) } : { kind: 'noType', occurrence, stale };
   }
@@ -169,7 +171,7 @@ export async function hoverAt(deps: HoverDeps, doc: vscode.TextDocument, pos: Ed
           fresh,
         );
   const docOverview = docs.kind === 'answer' && docs.value !== undefined ? overviewFor(docs.value.text, type) : undefined;
-  return { kind: 'model', occurrence, model: { range: occurrence.range, type, docOverview, stale } };
+  return { kind: 'model', occurrence, model: { range: occurrence.range, type, docOverview, stale: stale && !current } };
 }
 
 /** `answer` unless the rules of the module comment (*Answers that are dropped*) drop it. */

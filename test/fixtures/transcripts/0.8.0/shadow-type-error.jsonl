@@ -1,0 +1,14 @@
+{"kind":"meta","format":1,"scenario":"shadow-type-error","description":"The shadow session of a copy of simple-ipkg's src/Foo/B.idr whose greeting = shout 5 does not type-check: (:enable-syntax :False), then the load of the copy (Foo.A from the check build's TTCs on IDRIS2_PATH): one :warning on the copy, no highlighting, (:return (:error …)); :metavariables","facts":["E9","F8","F14","F32"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-10-24","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build"],"cwd":"test/fixtures/workspaces/shadow-simple-error","processCwd":"${ROOT}","shadow":{"package":"simple-ipkg","build":["--typecheck","simple.ipkg"],"env":{"IDRIS2_PATH":"<copy of simple-ipkg>/build/.vscode-idris2/ttc"}},"placeholders":{"${ROOT}":128},"fixtures":{"shadow.ipkg":"cda23556e0f9331f3392a298a55e3718b908a217ca053fa1373219eb90c20ea4","src/Foo/B.idr":"86e79870af3da5244db43b42cd125ade905233fd0490f0e531bc9001c2b62780"}}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"00001c","text":"((:enable-syntax :False) 1)\n"}
+{"kind":"recv","prefix":"00003d","text":"(:return (:ok \"Syntax highlight option changed to False\") 1)\n"}
+{"kind":"send","prefix":"0000a2","text":"((:load-file \"${ROOT}/src/Foo/B.idr\") 2)\n"}
+{"kind":"recv","prefix":"0000b9","text":"(:write-string \"1/1: Building Foo.B (${ROOT}/src/Foo/B.idr)\" 2)\n"}
+{"kind":"recv","prefix":"00023a","text":"(:warning (\"src/Foo/B.idr\" (6 17) (6 18) \"While processing right hand side of greeting. Can't find an implementation for Num String.\n\nFoo.B:7:18--7:19\n 3 | import Foo.A\n 4 | \n 5 | export\n 6 | greeting : String\n 7 | greeting = shout 5\n                      ^\n\" ((36 8 ((:decor :bound))) (79 3 ((:decor :type))) (83 6 ((:decor :type))) (79 10 ((:decor :bound))) (92 16 ((:decor :type))) (110 3 ((:decor :type))) (128 3 ((:decor :type))) (134 3 ((:decor :type))) (146 3 ((:decor :type))) (169 3 ((:decor :type))) (214 1 ((:text-formatting :bold) (:decor :postulate))))) 2)\n"}
+{"kind":"recv","prefix":"0000bd","text":"(:return (:error \"Error(s) building file ${ROOT}/src/Foo/B.idr\") 2)\n"}
+{"kind":"send","prefix":"000018","text":"((:metavariables 80) 3)\n"}
+{"kind":"recv","prefix":"00003c","text":"(:return (:ok ((\"\\\"Foo.B.greeting\\\"\" () (\"String\" ())))) 3)\n"}
+{"kind":"close"}
+{"kind":"unframed","text":"Alas the file is done, aborting\n"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":[]}

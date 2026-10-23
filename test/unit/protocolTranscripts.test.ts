@@ -26,6 +26,7 @@ import {
   decodeText,
   decodeVersion,
   docsFor,
+  enableSyntax,
   generateDef,
   generateDefNext,
   ideCodec,
@@ -335,6 +336,9 @@ const REQUESTS: Readonly<Record<string, readonly Request[]>> = {
     { command: nameAt('append'), decode: decodeNameAt },
   ],
   'enable-syntax': [text(list(sym('enable-syntax'), { kind: 'bool', value: false })), load1('Clean.idr')],
+  // M6: the shadow session's first request (`enableSyntax`, `session.ts` *First request*), then the copy's load.
+  'shadow-hole': [text(enableSyntax(false)), load1('src/Foo/B.idr'), meta(), where('arg')],
+  'shadow-type-error': [text(enableSyntax(false)), load1('src/Foo/B.idr'), meta()],
   'eval-command-forms': [
     load1('Clean.idr'),
     ...[' ', '\t', '\r', '\n', '\v', '\f', '\u00a0', '\u3000', '\u200b', '\ufeff'].map((space) => evaluate(`${space}:t id`)),
@@ -527,8 +531,8 @@ function prng(seed: number): () => number {
 // -------------------------------------------------------------------------------------------
 
 suite('backend/ide protocol against the 0.8.0 transcripts', () => {
-  test('the recordings are the 65 scenarios of format 1 from idris2 0.8.0, and each has a request table', () => {
-    assert.strictEqual(SCENARIOS.length, 65);
+  test('the recordings are the 67 scenarios of format 1 from idris2 0.8.0, and each has a request table', () => {
+    assert.strictEqual(SCENARIOS.length, 67);
     for (const [scenario, t] of TRANSCRIPTS) {
       assert.strictEqual(t.meta.format, 1, scenario);
       assert.strictEqual(t.meta.idris2.version, '0.8.0', scenario);

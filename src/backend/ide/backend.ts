@@ -7,7 +7,7 @@
  * root, which `idris2.ideMode.maxSessions` never stops).
  *
  * M2 implements `load` (`caps.diagnostics`); M3 the queries, the token index and evaluation;
- * M4 `holes` and `edit` (below).
+ * M4 `holes` and `edit`; M6 `checkUnsaved` (below).
  *
  * **Queries** (M3; `IdrisBackend`, *Queries*, in `backend/types.ts`). `typeAt`, `docsFor`,
  * `definition`, `completions` and `browseNamespace` ask the root's `check` session, in the context
@@ -165,6 +165,25 @@
  * `Unsupported`, sending nothing, so that no next result of a stale search is applied. Queries and
  * the other edits in between do not touch the search [src] and are allowed.
  *
+ * **Unsaved text** (M6, ROADMAP M6; ARCHITECTURE §6.3; `types.ts` `SessionRole`, `shadow.ts`).
+ * `checkUnsaved` checks the text a document shows without writing its file: right before the load
+ * is written (`RequestOptions.beforeSend`, nothing in flight) it writes the root's shadow directory —
+ * `shadow.ipkg` (`shadowPackage`: the root's `depends` and `opts`, which the compiler applies at every
+ * load) and the copy at `src/<path below the source directory>` (`shadowCopyPath`) —, emptying `src/`
+ * and `build/` first when the copy written there last was another document's (the compiler searches
+ * its own build directory before `IDRIS2_PATH`, so that one's build would answer this one's imports);
+ * then it loads the copy, by the real path of the shadow directory, in the root's `shadow` session.
+ * The load's diagnostics are the document's, source `idris2 (unsaved)` (`UNSAVED_SOURCE`); its holes
+ * are asked for as for a `check` load and located in the copy only; it is announced as
+ * `LoadedDocument.unsaved`. While that session's last answered load read exactly the lines the
+ * document shows (`unsavedLoadOf`, `showsUnsavedCheck`), `typeAt` (its answers `TypeInfo.unsaved`),
+ * `docsFor`, `holes` and `edit` ask it (`loadedSession`), and a search started there continues there;
+ * `:case-split` then reads the copy. `definition`, `completions` and `browseNamespace` stay with the
+ * `check` session. A newer text tells the backend (`unsavedTextChanged`), which restarts the shadow
+ * session when its check has answered for more than `SHADOW_RESTART_AFTER_MS`, since the protocol has
+ * no cancel. A module the copy imports that the compiler did not find is returned as the saved file
+ * that holds it (`UnsavedCheckResult.missing`), for the caller to check (`features/shadow`).
+ *
  * Only type imports from `vscode`: the diagnostic objects are built with the `api` passed in, so
  * the module is unit-tested on Node.
  */
@@ -191,6 +210,7 @@ import {
 import type { SessionGate } from '../../core/trust';
 import { editorLabel } from '../../core/untrustedText';
 import { compilerReading, compilerReadsPathAsGiven, packageOptionWords } from '../../project/ipkg';
+import { MODULE_SOURCE_EXTENSIONS } from '../../project/literate';
 import type { Classification, ProjectIndex } from '../../project/types';
 import { NO_CAPABILITIES } from '../null';
 import { rootKey, type BackendProvider, type BackendState } from '../registry';
@@ -211,6 +231,8 @@ import type {
   RichText,
   TokenIndex,
   TypeInfo,
+  UnsavedCheckOptions,
+  UnsavedCheckResult,
 } from '../types';
 import { loadDiagnostics, type DiagnosticRecord, type LoadDiagnostics } from './diagnostics';
 import { editText, holeRefusal, nameProblem, planEdit, planNext, type EditPlan } from './edits';
@@ -235,10 +257,11 @@ import {
   type NameLocation,
 } from './protocol';
 import { replCommandRefusal } from './replCommand';
+import { SHADOW_BUILD_DIR, SHADOW_PACKAGE_FILE, SHADOW_SOURCE_DIR, shadowCopyPath, shadowPackage } from './shadow';
 import { duration, type Clock } from './session';
 import type { IdeCommand, IdeSession, LoadedFile, LookupRequestOptions, Reply, SessionLaunch, SessionPool, SessionStateChange } from './types';
 
-/** IDE mode since M4: diagnostics (M2), the read-only intelligence of ROADMAP M3, the holes and edits of M4. */
+/** IDE mode since M6: diagnostics (M2), the read-only intelligence of ROADMAP M3, the holes and edits of M4, checks of unsaved text (M6). */
 export const IDE_MODE_CAPABILITIES: Readonly<Capabilities> = Object.freeze({
   ...NO_CAPABILITIES,
   diagnostics: true,
@@ -258,6 +281,7 @@ export const IDE_MODE_CAPABILITIES: Readonly<Capabilities> = Object.freeze({
   docs: true,
   evaluate: true,
   browseNamespace: true,
+  checksUnsaved: true,
 });
 
 /** The `vscode` constructors the backend needs to build diagnostics. */
@@ -307,12 +331,41 @@ export interface IdeModeDeps {
    */
   isOpen(fileName: string): boolean;
   /**
+   * (M6) The file operations of the copies of unsaved documents (module comment, *Unsaved text*).
+   */
+  readonly shadowFiles: ShadowFiles;
+  /**
    * The text of the document of the file `fileName` open in this window (`file` scheme), or
    * `undefined` when none is: Go to Definition moves a target range read from the file on disk to
    * the text its editor shows (`IdeBackend.definition`), since VS Code applies a location to the open
    * document.
    */
   openText(fileName: string): string | undefined;
+}
+
+/** What the copies of unsaved documents are written with (`extension.ts`: `fs.promises`). */
+export interface ShadowFiles {
+  /** `fs.promises.mkdir(p, { recursive: true })`. */
+  mkdir(p: string): Promise<void>;
+  /** `fs.promises.writeFile(p, text)`, as UTF-8. */
+  writeFile(p: string, text: string): Promise<void>;
+  /** `fs.promises.rm(p, { recursive: true, force: true })`. */
+  remove(p: string): Promise<void>;
+}
+
+/**
+ * How long a check of unsaved text may have been answering when a newer text arrives before the
+ * `shadow` session is restarted instead of waited for (ROADMAP M6, *Cancellation*;
+ * `IdrisBackend.unsavedTextChanged`).
+ */
+export const SHADOW_RESTART_AFTER_MS = 2_000;
+
+/** The source of the diagnostics of a check of unsaved text (ROADMAP M6), the name of their collection too (`features/shadow`). */
+export const UNSAVED_SOURCE = 'idris2 (unsaved)';
+
+/** The first line of a compiler message. */
+function firstLineOf(message: string): string {
+  return message.split('\n', 1)[0];
 }
 
 /**
@@ -437,6 +490,12 @@ export interface LoadedDocument {
    * also `rebuilt`.
    */
   readonly failed: boolean;
+  /**
+   * (M6) A check of the document's unsaved text, in the root's `shadow` session (module comment,
+   * *Unsaved text*), which read `text`: it changes what the compiler answers about this file only,
+   * and only while the document shows that text; `rebuilt` is false.
+   */
+  readonly unsaved?: { readonly text: string };
 }
 
 /**
@@ -739,6 +798,12 @@ interface LoadRecord {
   readonly docs: Map<string, Promise<RichText | undefined>>;
   /** A `:repl-completions` has been sent after this load (`warmUpCompletions`). */
   warm: boolean;
+  /**
+   * (M6) A check of the document's unsaved text (module comment, *Unsaved text*): the version whose
+   * text it loaded (`textBefore` and `loadedText` are that text, written to the copy right before the
+   * load), and the copy's path as sent.
+   */
+  readonly unsaved?: { readonly version: number; readonly copy: string };
 }
 
 /** A load sent by `queueLoad`: its reply, the path sent, the session directory and the record of the load the session answered. */
@@ -1007,6 +1072,13 @@ export class IdeBackend implements IdrisBackend {
    * restart.
    */
   private readonly slowHoles = new Map<string, Map<string, string>>();
+  /**
+   * Per shadow directory, the path below its `src/` of the copy written there last (module comment,
+   * *Unsaved text*): a copy of another document empties `src/` and `build/` first.
+   */
+  private readonly shadowCopies = new Map<string, string>();
+  /** Per `shadow` session, when the check of unsaved text it is answering was written (`unsavedTextChanged`). */
+  private readonly shadowSent = new Map<IdeSession, number>();
 
   constructor(
     private readonly deps: IdeModeDeps,
@@ -1431,6 +1503,241 @@ export class IdeBackend implements IdrisBackend {
   }
 
   // -----------------------------------------------------------------------------------------
+  // Unsaved text (module comment, *Unsaved text*; M6)
+  // -----------------------------------------------------------------------------------------
+
+  /**
+   * `IdrisBackend.checkUnsaved`: writes `doc`'s text to its copy in the root's shadow directory,
+   * beside the package file (`shadow.ts`), right before the load is written (`beforeSend`, when the
+   * session has nothing in flight), and loads it in the root's `shadow` session; the holes of that
+   * load are asked for as for a `check` load, and the load is announced (`onDidLoad`,
+   * `LoadedDocument.unsaved`).
+   */
+  async checkUnsaved(doc: vscode.TextDocument, options: UnsavedCheckOptions = {}): Promise<UnsavedCheckResult> {
+    this.requireFile(doc, 'Only the text of a file on disk can be checked: the compiler checks a copy of it as a module of its package.');
+    const name = path.basename(doc.fileName);
+    const root = await this.deps.projects.classify(doc.fileName);
+    const dir = this.deps.pool.shadowDirectory(root);
+    if (dir === undefined) {
+      throw unsupported('Unsaved text cannot be checked: the extension has no storage directory to copy it to.');
+    }
+    const shadow = shadowPackage(root, this.deps.config.ideMode().extraArgs);
+    if ('problem' in shadow) {
+      throw unsupported(`Unsaved text of this project is not checked: ${shadow.problem}.`);
+    }
+    const cwd = this.deps.projects.sessionCwd(root);
+    const copy = shadowCopyPath(cwd, shadow.sourceDir, doc.fileName, this.deps.platform);
+    if ('problem' in copy) {
+      throw unsupported(`The unsaved text of ${name} is not checked: ${copy.problem}, where the compiler finds the package's modules.`);
+    }
+    const token = options.token;
+    const isCancelled = (): boolean => token?.isCancellationRequested === true;
+    if (isCancelled()) {
+      throw cancelled('Cancelled before the unsaved text was checked.');
+    }
+    const text = doc.getText();
+    const version = doc.version;
+    const files = this.deps.shadowFiles;
+    const pathApi = this.deps.platform === 'win32' ? path.win32 : path.posix;
+    await files.mkdir(dir);
+    // The compiler takes a path below its working directory's real path (module comment, *The path in `:load-file`*).
+    const realDir = this.deps.platform === 'win32' ? dir : await this.deps.realpath(dir);
+    const sent = pathApi.join(realDir, SHADOW_SOURCE_DIR, copy.relative);
+    if (!compilerReadsPathAsGiven(sent, this.deps.platform)) {
+      throw unsupported(
+        `The unsaved text of ${name} is not checked: the compiler reads the path of its copy, ${sent}, as ${compilerReading(sent)} ` +
+          '(it takes \\ for a folder separator and stops reading a path at : or ?).',
+      );
+    }
+    const session = this.deps.pool.sessionFor(root, 'shadow');
+    const file: LoadedFile = { path: sent, version };
+    const own: LoadRecord = {
+      fileName: doc.fileName,
+      root: rootKey(root),
+      ok: undefined,
+      textBefore: text,
+      loadedText: text,
+      holes: undefined,
+      types: new Map(),
+      names: new Map(),
+      sources: new Map(),
+      docs: new Map(),
+      warm: false,
+      unsaved: { version, copy: sent },
+    };
+    this.records.set(file, own);
+    const beforeSend = async (): Promise<void> => {
+      // Deleted meanwhile, maybe (`idris2.checkOnType.enabled` turned off and on).
+      await files.mkdir(dir);
+      if (this.shadowCopies.get(dir) !== copy.relative) {
+        // Another document's copy, and what the compiler built from it, must not answer this one's imports.
+        this.shadowCopies.delete(dir);
+        await Promise.all([files.remove(pathApi.join(dir, SHADOW_SOURCE_DIR)), files.remove(pathApi.join(dir, SHADOW_BUILD_DIR))]);
+      }
+      const target = pathApi.join(dir, SHADOW_SOURCE_DIR, copy.relative);
+      await files.writeFile(pathApi.join(dir, SHADOW_PACKAGE_FILE), shadow.text);
+      await files.mkdir(pathApi.dirname(target));
+      await files.writeFile(target, text);
+      this.shadowCopies.set(dir, copy.relative);
+      this.shadowSent.set(session, this.deps.clock.now());
+    };
+    // The record the session answered: merged checks of one document send the newest caller's.
+    const answeredRecord = (): LoadRecord => {
+      const recorded = session.loadedFile;
+      return (recorded?.path === sent ? this.records.get(recorded) : undefined) ?? own;
+    };
+    const onReply = (): void => {
+      this.shadowSent.delete(session);
+      const record = answeredRecord();
+      if (isCancelled() || record.holes !== undefined || this.holesTooSlow(record)) {
+        return;
+      }
+      this.keepHoles(record, this.noteSlowHoles(record, this.listHoles(session, doc, record, true)));
+    };
+    let reply: Reply;
+    try {
+      reply = await session.request(loadFile(sent), { kind: 'load', file, beforeSend, onReply, ...(token === undefined ? {} : { token }) });
+    } finally {
+      if (session.state !== 'busy') {
+        this.shadowSent.delete(session);
+      }
+    }
+    const record = answeredRecord();
+    record.ok = reply.payload.kind !== 'error';
+    const checked = record.textBefore ?? text;
+    if (!this.answered.has(reply)) {
+      this.answered.add(reply);
+      this.announce({ root, file: doc.fileName, rebuilt: false, failed: record.ok !== true, unsaved: { text: checked } });
+    }
+    const result = loadDiagnostics(reply, {
+      loadedPath: sent,
+      sentPath: sent,
+      cwd: realDir,
+      ipkgPath: pathApi.join(realDir, SHADOW_PACKAGE_FILE),
+      includeSourceExcerpt: this.deps.config.diagnostics().includeSourceExcerpt,
+      warningsAsErrors:
+        session.launch?.args.includes('-Werror') === true ||
+        (root.kind === 'project' && root.model.status === 'ok' && packageOptionWords(root.model.model.opts).includes('-Werror')),
+      documentFor: (p) => textDocument(p, p === sent ? checked : undefined),
+    });
+    const checkedVersion = record.unsaved?.version ?? version;
+    if (result.packageError !== undefined) {
+      return {
+        ok: false,
+        version: checkedVersion,
+        diagnostics: [],
+        missing: [],
+        problem: `the compiler refused the package file written to check it: ${firstLineOf(result.packageError.message)}`,
+      };
+    }
+    const records = result.files.get(sent) ?? [];
+    const diagnostics = records.map((r) => this.unsavedDiagnostic(r, sent, doc.fileName));
+    return { ok: result.ok, version: checkedVersion, diagnostics, missing: await this.missingModules(records, cwd, shadow.sourceDir) };
+  }
+
+  /** `diagnostic` of a record of the copy `sent`, for `fileName`: source `idris2 (unsaved)`; related places in the copy moved to `fileName`, others in it dropped. */
+  private unsavedDiagnostic(record: DiagnosticRecord, sent: string, fileName: string): vscode.Diagnostic {
+    const related = record.related.filter((r) => r.path === sent).map((r) => ({ ...r, path: fileName }));
+    const diagnostic = this.diagnostic({ ...record, related });
+    diagnostic.source = UNSAVED_SOURCE;
+    return diagnostic;
+  }
+
+  /**
+   * The saved files of the root's source directory (`sourceDir` against `cwd`) holding the modules
+   * that `records` say the compiler did not find (`Module A.B not found`, `perror (ModuleNotFound …)`,
+   * `src/Idris/Error.idr` on v0.8.0 [src]), each the first of the module's candidate files that
+   * exists, in the order the compiler looks for them (`MODULE_SOURCE_EXTENSIONS`).
+   */
+  private async missingModules(records: readonly DiagnosticRecord[], cwd: string, sourceDir: string): Promise<vscode.Uri[]> {
+    const pathApi = this.deps.platform === 'win32' ? path.win32 : path.posix;
+    const modules = new Set<string>();
+    for (const record of records) {
+      const found = /^Module ([A-Za-z0-9_'.]+) not found/.exec(record.message);
+      if (found !== null) {
+        modules.add(found[1]);
+      }
+    }
+    const base = pathApi.resolve(cwd, sourceDir);
+    const files: vscode.Uri[] = [];
+    for (const module of modules) {
+      for (const extension of MODULE_SOURCE_EXTENSIONS) {
+        const candidate = pathApi.join(base, ...module.split('.')) + extension;
+        if (await this.deps.realpath(candidate).then(() => true, () => false)) {
+          files.push(this.deps.api.Uri.file(candidate));
+          break;
+        }
+      }
+    }
+    return files;
+  }
+
+  /** `IdrisBackend.unsavedTextChanged`: restarts the `shadow` session of `doc`'s root when its check has answered for longer than `SHADOW_RESTART_AFTER_MS`. */
+  unsavedTextChanged(doc: vscode.TextDocument): void {
+    void this.deps.projects.classify(doc.fileName).then(
+      (root) => {
+        const key = rootKey(root);
+        for (const [session, sentAt] of this.shadowSent) {
+          if (rootKey(session.root) === key && session.state === 'busy' && this.deps.clock.now() - sentAt > SHADOW_RESTART_AFTER_MS) {
+            this.shadowSent.delete(session);
+            this.deps.pool.restartShadow(
+              session.root,
+              `the unsaved text changed while its check had run for more than ${duration(SHADOW_RESTART_AFTER_MS)}`,
+            );
+          }
+        }
+      },
+      () => undefined,
+    );
+  }
+
+  /** `IdrisBackend.showsUnsavedCheck`. */
+  showsUnsavedCheck(doc: vscode.TextDocument): boolean {
+    return this.unsavedLoadOf(doc) !== undefined;
+  }
+
+  /**
+   * The `shadow` session whose last answered load is a check of `doc`'s unsaved text that read exactly
+   * the lines `doc` shows now, and its record; `undefined` when there is none, or `doc` has no unsaved
+   * changes (module comment, *Unsaved text*).
+   */
+  private unsavedLoadOf(doc: vscode.TextDocument): { readonly session: IdeSession; readonly record: LoadRecord } | undefined {
+    if (!doc.isDirty) {
+      return undefined;
+    }
+    for (const session of this.deps.pool.sessions()) {
+      if (session.role !== 'shadow') {
+        continue;
+      }
+      const record = this.recordOf(session, doc);
+      if (record?.unsaved !== undefined && record.loadedText !== undefined && showsLines(doc, record.loadedText)) {
+        return { session, record };
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * The session that answers about `doc` and the record of its last load of `doc`'s file: the
+   * `shadow` session's check of the text `doc` shows now (`unsavedLoadOf`), else the `check`
+   * session's (`loadedCheckSession`, which `afterReload` waits for).
+   */
+  private loadedSession(doc: vscode.TextDocument, afterReload: boolean): Promise<{ readonly session: IdeSession; readonly record: LoadRecord }> {
+    // No await of its own: a query is sent in the same turn as through `loadedCheckSession`.
+    const unsaved = this.unsavedLoadOf(doc);
+    return unsaved === undefined ? this.loadedCheckSession(doc, afterReload) : Promise.resolve(unsaved);
+  }
+
+  /** Restarts `session`, which is answering a request the user cancelled (`restartCheck`, `restartShadow`). */
+  private restartBusy(session: IdeSession, detail: string): void {
+    if (session.role === 'shadow') {
+      this.deps.pool.restartShadow(session.root, detail);
+    } else {
+      this.deps.pool.restartCheck(session.root, detail);
+    }
+  }
+
+  // -----------------------------------------------------------------------------------------
   // Queries (module comment, *Queries*)
   // -----------------------------------------------------------------------------------------
 
@@ -1554,12 +1861,14 @@ export class IdeBackend implements IdrisBackend {
     if (toIdeTypeOfRequest(doc, pos) === undefined) {
       return undefined;
     }
-    const { session, record } = await this.loadedCheckSession(doc, true);
+    const { session, record } = await this.loadedSession(doc, true);
     const place = this.loadedPlace(doc, record, pos);
+    // A check of the text `doc` shows now (`loadedSession`): the answer is about that text.
+    const unsaved = record.unsaved === undefined ? {} : ({ unsaved: true } as const);
     const ask = (point: IdeRequestPoint | undefined): Promise<TypeInfo | undefined> =>
       this.cached(record.types, point === undefined ? `name ${name}` : `at ${point.line} ${point.column} ${name}`, async () => {
         const answer = decodeText((await this.ask(session, doc, typeOf(name, point), record)).payload);
-        return answer.kind === 'ok' ? { ...toRichText(answer.value), lookup: point === undefined ? 'name' : 'position' } : undefined;
+        return answer.kind === 'ok' ? { ...toRichText(answer.value), lookup: point === undefined ? 'name' : 'position', ...unsaved } : undefined;
       });
     const at = place === undefined ? undefined : toIdeTypeOfRequest(place.document, place.pos);
     const first = at === undefined ? undefined : await ask(at);
@@ -1618,7 +1927,7 @@ export class IdeBackend implements IdrisBackend {
    * an error (`Undefined name` [live]). Waits for a reload of the file being made (`loadedCheckSession`).
    */
   async docsFor(doc: vscode.TextDocument, name: string): Promise<RichText | undefined> {
-    const { session, record } = await this.loadedCheckSession(doc, true);
+    const { session, record } = await this.loadedSession(doc, true);
     return this.cached(record.docs, name, async () => {
       const answer = decodeText((await this.ask(session, doc, docsFor(name), record)).payload);
       return answer.kind === 'ok' ? toRichText(answer.value) : undefined;
@@ -1763,7 +2072,7 @@ export class IdeBackend implements IdrisBackend {
   async holes(doc: vscode.TextDocument, options: HolesOptions = {}): Promise<Hole[]> {
     let found: { readonly session: IdeSession; readonly record: LoadRecord };
     try {
-      found = await this.loadedCheckSession(doc, true);
+      found = await this.loadedSession(doc, true);
     } catch (error) {
       const kept = options.kept === true ? this.keptHoles.get(rootKey(await this.deps.projects.classify(doc.fileName)))?.get(doc.fileName) : undefined;
       if (kept === undefined || !(error instanceof IdrisException) || error.error.kind !== 'NotLoaded') {
@@ -1783,20 +2092,21 @@ export class IdeBackend implements IdrisBackend {
       throw cancelled('Cancelled before the holes were asked for.');
     }
     const listing = record.holes ?? this.keepHoles(record, this.listHoles(session, doc, record, false));
-    return token === undefined ? listing : this.untilCancelled(listing, token, session.root);
+    return token === undefined ? listing : this.untilCancelled(listing, token, session);
   }
 
   /**
    * `listing` until `token` is cancelled (`HolesOptions.token`): a cancellation before `listing`
-   * settles rejects with `Cancelled` at once and restarts the `check` session of `root`
-   * (`restartCheck`), which ends the request in flight — the listing's, or the one it waits behind;
-   * the listing's other waiters then get its error, and the next load asks again.
+   * settles rejects with `Cancelled` at once and restarts `session` (`restartCheck`, or
+   * `restartShadow` for a check of unsaved text), which ends the request in flight — the listing's,
+   * or the one it waits behind; the listing's other waiters then get its error, and the next load
+   * asks again.
    */
-  private untilCancelled(listing: Promise<Hole[]>, token: vscode.CancellationToken, root: Classification): Promise<Hole[]> {
+  private untilCancelled(listing: Promise<Hole[]>, token: vscode.CancellationToken, session: IdeSession): Promise<Hole[]> {
     return new Promise((resolve, reject) => {
       const subscription = token.onCancellationRequested(() => {
         subscription.dispose();
-        this.deps.pool.restartCheck(root, 'a listing of holes the user cancelled was running');
+        this.restartBusy(session, 'a listing of holes the user cancelled was running');
         reject(cancelled('Cancelled: the compiler was restarted, since it cannot stop a request it is answering.'));
       });
       listing.then(
@@ -1910,8 +2220,11 @@ export class IdeBackend implements IdrisBackend {
     const entries = new Map(await (locating ?? locate(answer.value)));
     // One document per file, not per hole: its lines (and a literate file's line map) are made once.
     const documents = new Map<string, PositionDocument>();
-    for (const file of new Set(holeEntries(answer.value, entries).map((e) => e.file).filter((f) => path.isAbsolute(f)))) {
-      const spelled = this.spelledPath(session, file);
+    // A check of unsaved text locates holes in its copy only, given as the document's (module comment, *Unsaved text*).
+    const spelledOf = (file: string): string | undefined =>
+      record.unsaved === undefined ? this.spelledPath(session, file) : file === record.unsaved.copy ? record.fileName : undefined;
+    for (const file of new Set(holeEntries(answer.value, entries).map((e) => e.file).filter((f) => path.isAbsolute(f) && spelledOf(f) !== undefined))) {
+      const spelled = spelledOf(file);
       const text =
         spelled === doc.fileName && record.textBefore !== undefined
           ? record.textBefore
@@ -1924,7 +2237,8 @@ export class IdeBackend implements IdrisBackend {
     return holesOf(answer.value, entries, own, (entry) => {
       // Not absolute (`(Interactive)`), or not readable: no location.
       const document = documents.get(entry.file);
-      return document === undefined ? undefined : new api.Location(api.Uri.file(this.spelledPath(session, entry.file)), this.range(fromIdeReplySpan(document, entry.span)));
+      const spelled = spelledOf(entry.file);
+      return document === undefined || spelled === undefined ? undefined : new api.Location(api.Uri.file(spelled), this.range(fromIdeReplySpan(document, entry.span)));
     });
   }
 
@@ -1945,7 +2259,7 @@ export class IdeBackend implements IdrisBackend {
     if (problem !== undefined) {
       throw unsupported(problem);
     }
-    const { session, record } = await this.loadedCheckSession(doc, true);
+    const { session, record } = await this.loadedSession(doc, true);
     const loaded = record.loadedText;
     if (doc.version !== req.version || loaded === undefined || !showsLines(doc, loaded)) {
       throw notAsLoaded(doc);
@@ -1968,7 +2282,8 @@ export class IdeBackend implements IdrisBackend {
         throw reloaded(doc);
       }
       if (plan.readsDisk) {
-        const disk = await this.deps.readFile(doc.fileName).catch(() => undefined);
+        // A check of unsaved text: the compiler reads its copy.
+        const disk = await this.deps.readFile(record.unsaved?.copy ?? doc.fileName).catch(() => undefined);
         if (disk === undefined || disk.replace(/^\uFEFF/, '') !== loaded.replace(/^\uFEFF/, '')) {
           throw notAsLoaded(doc);
         }
@@ -1992,7 +2307,12 @@ export class IdeBackend implements IdrisBackend {
     const doc = req.doc;
     const next = NEXT[req.kind];
     const root = await this.deps.projects.classify(doc.fileName);
-    const session = this.deps.pool.sessionFor(root, 'check');
+    const key = rootKey(root);
+    // The session the search was started in: the `check` session, or the `shadow` one for a search
+    // in a check of unsaved text (module comment, *Unsaved text*).
+    const shadow = this.deps.pool.sessions().find((s) => s.role === 'shadow' && rootKey(s.root) === key);
+    const check = this.deps.pool.sessionFor(root, 'check');
+    const session = shadow !== undefined && this.isCurrentSearch(shadow, next.kind, doc) ? shadow : check;
     const ended = (): IdrisException =>
       unsupported(
         `${next.title}: the ${next.search} it would continue has ended — the file was loaded again, another ${next.search} was ` +
@@ -2067,7 +2387,7 @@ export class IdeBackend implements IdrisBackend {
     let written = false;
     const subscription = token?.onCancellationRequested(() => {
       if (written) {
-        this.deps.pool.restartCheck(session.root, 'a request the user cancelled was running');
+        this.restartBusy(session, 'a request the user cancelled was running');
       }
     });
     try {

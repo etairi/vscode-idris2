@@ -1,0 +1,15 @@
+{"kind":"meta","format":1,"scenario":"shadow-hole","description":"The shadow session of a copy of simple-ipkg's src/Foo/B.idr whose greeting = shout ?arg: (:enable-syntax :False), the load of the copy answers (:ok ()); :metavariables lists Foo.B.arg, and :name-at \"arg\" locates it in the copy","facts":["E9","F8","F14","F32"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-10-24","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build"],"cwd":"test/fixtures/workspaces/shadow-simple-hole","processCwd":"${ROOT}","shadow":{"package":"simple-ipkg","build":["--typecheck","simple.ipkg"],"env":{"IDRIS2_PATH":"<copy of simple-ipkg>/build/.vscode-idris2/ttc"}},"placeholders":{"${ROOT}":128},"fixtures":{"shadow.ipkg":"cda23556e0f9331f3392a298a55e3718b908a217ca053fa1373219eb90c20ea4","src/Foo/B.idr":"1c639da1e5f234f9821cb2f6e547bb7efc640c399de978dfe8d06d463c32437f"}}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"00001c","text":"((:enable-syntax :False) 1)\n"}
+{"kind":"recv","prefix":"00003d","text":"(:return (:ok \"Syntax highlight option changed to False\") 1)\n"}
+{"kind":"send","prefix":"0000a2","text":"((:load-file \"${ROOT}/src/Foo/B.idr\") 2)\n"}
+{"kind":"recv","prefix":"0000b9","text":"(:write-string \"1/1: Building Foo.B (${ROOT}/src/Foo/B.idr)\" 2)\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok ()) 2)\n"}
+{"kind":"send","prefix":"000018","text":"((:metavariables 80) 3)\n"}
+{"kind":"recv","prefix":"000037","text":"(:return (:ok ((\"\\\"Foo.B.arg\\\"\" () (\"String\" ())))) 3)\n"}
+{"kind":"send","prefix":"000015","text":"((:name-at \"arg\") 4)\n"}
+{"kind":"recv","prefix":"0000d9","text":"(:return (:ok ((\"Foo.B.arg\" (:filename \"${ROOT}/src/Foo/B.idr\") (:start 6 17) (:end 6 21)))) 4)\n"}
+{"kind":"close"}
+{"kind":"unframed","text":"Alas the file is done, aborting\n"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":["build/ttc/2025081600/Foo/B.ttc","build/ttc/2025081600/Foo/B.ttm"]}

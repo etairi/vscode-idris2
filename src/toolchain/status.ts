@@ -178,7 +178,10 @@ function checkView(check: CheckStatus | undefined): CheckView {
         return { suffix: 'stale', detail: `${what}; ${then}`, severity: 'information' };
       }
       const suffix = check.errors > 0 ? count(check.errors, 'error') : check.warnings > 0 ? count(check.warnings, 'warning') : '✓';
-      return { suffix, detail: `checked: ${found}`, severity: 'information' };
+      // M6: the check of the unsaved text, shown instead of the saved file's.
+      return check.unsaved === true
+        ? { suffix, detail: `checked the unsaved text: ${found}; a save checks the file`, severity: 'information' }
+        : { suffix, detail: `checked: ${found}`, severity: 'information' };
     }
     case 'packageError':
       return {

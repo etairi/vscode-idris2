@@ -249,7 +249,7 @@ export interface FakeRequest {
 }
 
 /** The session role a fake's command line names by its build directory (test/fake-idris2/README.md). */
-export type FakeRole = 'check' | 'eval';
+export type FakeRole = 'check' | 'eval' | 'shadow';
 
 function readJsonLines<T>(file: string): T[] {
   return fs.existsSync(file)
@@ -290,7 +290,8 @@ export class FakeLogs {
     const args = this.invocations().find((i) => i.pid === pid)?.args ?? [];
     const i = args.lastIndexOf('--build-dir');
     const base = i < 0 ? undefined : path.basename(args[i + 1] ?? '');
-    return base === '.vscode-idris2' ? 'check' : base === '.vscode-idris2-eval' ? 'eval' : undefined;
+    // M6: a `shadow` session's is `<its shadow directory>/build`.
+    return base === '.vscode-idris2' ? 'check' : base === '.vscode-idris2-eval' ? 'eval' : base === 'build' ? 'shadow' : undefined;
   }
 
   /** The IDE-mode processes started in `role`. */

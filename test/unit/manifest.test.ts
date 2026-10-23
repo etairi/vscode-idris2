@@ -13,6 +13,7 @@ import {
   MIN_REQUEST_TIMEOUT_MS,
   readBackendMode,
   readCheckingSettings,
+  readCheckOnTypeSettings,
   readDiagnosticsSettings,
   readEvaluationSettings,
   readIdeModeSettings,
@@ -236,6 +237,7 @@ function readAllSettings(value: (key: string) => unknown): { keys: string[]; set
     readSaveBeforeAction(reader),
     readBackendMode(reader),
     readLspSettings(reader, '/home/u'),
+    readCheckOnTypeSettings(reader),
     readKeybindingScheme(reader),
   ];
   return { keys, settings };
@@ -307,6 +309,7 @@ suite('package.json (M1–M5 contributions)', () => {
           fullNamespace: false,
           briefCompletions: false,
         },
+        { enabled: true, delayMs: 500 },
         'auto',
       ]);
       // Every value absent (a setting VS Code does not know) reads as the same defaults — but the
@@ -439,6 +442,7 @@ suite('package.json (M1–M5 contributions)', () => {
         }
       }
       assert.strictEqual(properties['idris2.checking.delay'].minimum, MIN_CHECKING_DELAY_MS);
+      assert.strictEqual(properties['idris2.checkOnType.delay'].minimum, MIN_CHECKING_DELAY_MS);
       assert.strictEqual(properties['idris2.ideMode.requestTimeout'].minimum, MIN_REQUEST_TIMEOUT_MS);
       assert.strictEqual(properties['idris2.ideMode.longActionTimeout'].minimum, MIN_REQUEST_TIMEOUT_MS);
       assert.strictEqual(properties['idris2.eval.timeout'].minimum, MIN_REQUEST_TIMEOUT_MS);
@@ -452,7 +456,7 @@ suite('package.json (M1–M5 contributions)', () => {
       assert.match(properties['idris2.ideMode.maxSessions'].markdownDescription ?? '', /at once in this VS Code window; .* Each window counts its own/);
       assert.match(properties['idris2.ideMode.maxBackgroundChecks'].markdownDescription ?? '', /at once in this VS Code window \(each window counts its own\)/);
       // Every delay is bounded by what Node's setTimeout can wait (core/config.ts MAX_DELAY_MS).
-      const delays = ['idris2.checking.delay', 'idris2.ideMode.requestTimeout', 'idris2.ideMode.longActionTimeout', 'idris2.ideMode.idleTimeout', 'idris2.eval.timeout'];
+      const delays = ['idris2.checking.delay', 'idris2.checkOnType.delay', 'idris2.ideMode.requestTimeout', 'idris2.ideMode.longActionTimeout', 'idris2.ideMode.idleTimeout', 'idris2.eval.timeout'];
       for (const key of delays) {
         assert.strictEqual(properties[key].maximum, MAX_DELAY_MS, key);
         assert.ok((properties[key].default as number) <= MAX_DELAY_MS, key);
@@ -482,6 +486,9 @@ suite('package.json (M1–M5 contributions)', () => {
           assert.strictEqual(schema.scope, 'application', key);
         } else if (key === 'idris2.backend.mode') {
           // Per resource, like checking.*: a workspace folder may choose the backend of its projects (M5).
+          assert.strictEqual(schema.scope, 'resource', key);
+        } else if (key.startsWith('idris2.checkOnType.')) {
+          // Per resource, like checking.*: a workspace folder may turn the check of unsaved text off (M6).
           assert.strictEqual(schema.scope, 'resource', key);
         } else if (key === 'idris2.lsp.logFile') {
           // A path on the machine the server runs on (the paths test above).

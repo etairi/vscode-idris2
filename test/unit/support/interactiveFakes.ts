@@ -165,6 +165,8 @@ export class FakeBackend {
         return self.answerEvaluation(expr, token);
       },
       tokens: () => self.index,
+      showsUnsavedCheck: () => false,
+      unsavedTextChanged: () => undefined,
       load: () => {
         self.calls.push('load');
         return Promise.reject(new Error('the features under test must not load'));

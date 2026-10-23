@@ -71,7 +71,7 @@ export interface Capabilities {
   evaluate: boolean;
   docs: boolean;
   browseNamespace: boolean;
-  /** true only for the shadow backend (M6) */
+  /** (M6) `checkUnsaved`: the text a document shows, unsaved changes included (IDE mode). */
   checksUnsaved: boolean;
 }
 
@@ -146,6 +146,49 @@ export interface TypeInfo extends RichText {
    * another name than a local one that shadows it. The UI says which (ARCHITECTURE §1 goal 4).
    */
   readonly lookup: 'position' | 'name';
+  /**
+   * (M6) The answer is about exactly the text the document shows now, unsaved changes included: it
+   * came from a check of that text (`IdrisBackend.checkUnsaved`; IDE mode: the `shadow` session).
+   * Absent: about the file as its last check read it.
+   */
+  readonly unsaved?: true;
+}
+
+/** How `IdrisBackend.checkUnsaved` checks (M6). */
+export interface UnsavedCheckOptions {
+  /**
+   * A newer text replaced the one being checked: a cancellation before the check is sent drops it,
+   * one after leaves it to finish (IDE mode cannot stop a load: `unsavedTextChanged` restarts one
+   * that runs long); either rejects with the `Cancelled` error.
+   */
+  readonly token?: vscode.CancellationToken;
+}
+
+/** What a check of a document's unsaved text found (`IdrisBackend.checkUnsaved`, M6). */
+export interface UnsavedCheckResult {
+  /** The compiler accepted the text. */
+  readonly ok: boolean;
+  /** The document's version whose text was checked (a newer caller's, when the backend merged two checks). */
+  readonly version: number;
+  /**
+   * The document's diagnostics, all of them — the copy is built again at every check, so nothing of
+   * an earlier one still applies —, with source `idris2 (unsaved)`; `[]` when it is clean. None of
+   * other files: they were not checked (their build files, as the last check of each left them,
+   * were read).
+   */
+  readonly diagnostics: readonly vscode.Diagnostic[];
+  /**
+   * The saved files of the document's root that hold modules the text imports and the compiler did
+   * not find (`Module … not found`): no check has built them yet. The caller may check them (which
+   * builds them) and check the text again (ROADMAP M6).
+   */
+  readonly missing: readonly vscode.Uri[];
+  /**
+   * Set when the compiler could not check the text at all (the package file written for the check
+   * was refused): why. `diagnostics` is then empty, and what the saved file's check shows still
+   * holds.
+   */
+  readonly problem?: string;
 }
 
 /** 0 or 1, or unrestricted (no annotation). */
@@ -509,6 +552,31 @@ export interface IdrisBackend {
   readonly caps: Readonly<Capabilities>;
   /** diagnostics */
   load(doc: vscode.TextDocument, options?: LoadOptions): Promise<LoadResult>;
+  /**
+   * (M6, `caps.checksUnsaved`) Checks the text `doc` shows now, unsaved changes included, without
+   * writing `doc`'s file: IDE mode loads a copy of it in the root's `shadow` session
+   * (`backend/ide/backend.ts`, *Unsaved text*), and from then on `typeAt`, `docsFor`, `holes` and
+   * `edit` answer about that text while `doc` shows it (`showsUnsavedCheck`). The answer's
+   * diagnostics are `doc`'s only (`UnsavedCheckResult`). Rejects with `Unsupported` where the text
+   * cannot be checked so — no such capability, a root whose package the copy cannot be given, a file
+   * outside its package's source directory, no storage for the copy — and as a load does otherwise
+   * (`RequestTimeout`, `BackendCrashed`, a refusal of the consent gate, which judges the root's
+   * folder); `Cancelled` (`UnsavedCheckOptions.token`).
+   */
+  checkUnsaved(doc: vscode.TextDocument, options?: UnsavedCheckOptions): Promise<UnsavedCheckResult>;
+  /**
+   * (M6) `doc`'s text changed while a check of its unsaved text may run: IDE mode restarts the
+   * root's `shadow` session when its load has been answering for more than 2 s (ROADMAP M6,
+   * *Cancellation*; the protocol has no cancel, and the answer would describe text that is gone).
+   * Otherwise nothing; never starts a process.
+   */
+  unsavedTextChanged(doc: vscode.TextDocument): void;
+  /**
+   * (M6) Whether the compiler's last check of `doc`'s unsaved text read exactly the lines `doc` shows
+   * now (`checkUnsaved`): `edit` then works on that text without a save. False without such a
+   * check, and for a document without unsaved changes.
+   */
+  showsUnsavedCheck(doc: vscode.TextDocument): boolean;
   /**
    * The type of `name` at `pos` (the editor position of the occurrence in the text `doc` shows: its
    * token's start, or the cursor on it): the positional `:type-of` first (in IDE mode once more one

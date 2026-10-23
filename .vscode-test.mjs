@@ -117,7 +117,13 @@ function userDataDir(name) {
 // text or widget focus [src: its workbench bundle]. Observed: no Enter test could insert a
 // line while `vscode.window.state.focused` was false; with this setting all of them could.
 // `chat.disableAIFeatures` is window-scoped (scope 4), so the profile's settings.json holds it.
-const BASE_SETTINGS = { 'chat.disableAIFeatures': true };
+//
+// M6: check while typing is off in every profile (its default is on): a test that edits a document
+// without saving would otherwise start a `shadow` session — with the fake, requests no transcript
+// recorded; in the e2e suite a second real compiler beside the check session's (CLAUDE.md: one at
+// a time). The M6 tests turn it on for their own suites (test/integration/intelligence/unsaved,
+// test/e2e/unsaved) and restore it.
+const BASE_SETTINGS = { 'chat.disableAIFeatures': true, 'idris2.checkOnType.enabled': false };
 
 const fakeBin = resolve(root, 'test/fake-tools/bin');
 const fakeTool = (name) => resolve(fakeBin, process.platform === 'win32' ? `${name}.cmd` : name);

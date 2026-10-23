@@ -354,7 +354,7 @@ export interface Capabilities {
   editing: boolean; editingNext: boolean;          // -next cycling: IDE native; LSP partial
   intro: boolean; refine: boolean; missingCases: boolean;
   evaluate: boolean; docs: boolean; browseNamespace: boolean;
-  checksUnsaved: boolean;                          // true only for the shadow backend (M6)
+  checksUnsaved: boolean;                          // IDE mode since M6 (checkUnsaved, §6.3)
 }
 
 export interface IdrisBackend {
@@ -598,7 +598,7 @@ contract suite asserts the same text from both backends and pins each difference
   `eval` (`:interpret` of expressions only — no `:exec`, ROADMAP §9, decided 2026-09-28 before
   M3; started lazily; kept apart from the checking state — `:set showimplicits` persists across
   a later `:load-file` and changes `:type-of` output in that session [live, F27]), `shadow` (M6,
-  cwd outside the project).
+  cwd outside the project: the extension's storage, §5.2).
   Spawn arguments: see §5.2.
 - **CLI runner**: stateless `execFile`/`spawn` with explicit `cwd`, `--no-color`, `NO_COLOR=1`,
   a timeout and a `CancellationToken`. Output is always parsed; exit codes are never trusted
@@ -737,6 +737,18 @@ M3); **Stop Backend** and the other ways a root's sessions stop stop it too. Eva
 starts or sends anything (`backend/ide/replCommand.ts`, at least as strict as the parser). Record:
 `docs/as-built/M3.md`, *Evaluation*.
 
+
+**As built (M6).** The `shadow` row differs from the table (E9, `docs/as-built/M6.md`, *Decisions* 1–3):
+its directory is `<globalStorage>/shadow/<extension host's process id>/<16 hex digits of a hash of
+the root>/` (a window's own), holding `shadow.ipkg` — a package file with the root's `depends`
+(their bounds as written) and `opts` (without the options that name the compiler's directories or
+files), `sourcedir = "src"` — the copy at `src/<path below the source directory>` and `build/`. The
+compiler applies that package at every load as it applies the project's to the `check` session, and
+its walk for an `.ipkg` ends there; no `-p` for the `depends` (`-p` adds no package's dependencies
+[src, live]). Command line: the transport flag, `--no-color`, `-p` for `loosePackages` (loose
+roots), `extraArgs`, `--build-dir <shadow directory>/build` last; `IDRIS2_PATH` as in the table,
+before the environment's. The consent gate judges the root's own directory; the session's first
+request to every process is `(:enable-syntax :False)` (F14).
 ### 5.3 LanguageClient lifecycle
 
 Started lazily on the first LSP-owned document; `ErrorHandler` with the same backoff policy;
@@ -866,6 +878,19 @@ identical, so positions map 1:1). Cancellation = kill and respawn the shadow ses
 modules that are themselves unsaved are a documented limitation (the shadow sees their last
 TTC). Shadow sessions send `(:enable-syntax :False)` first, which suppresses `:highlight-source`
 frames [live, F14], since tokens still come from the saved load.
+
+**As built (M6).** The shadow directory holds a package file beside the copy (§5.2, *As built
+(M6)*), and the copy of the document checked last only: a copy of another document empties the
+directory's `src/` and `build/` first, since the compiler looks for an import in its own build
+directory before `IDRIS2_PATH` [src]. The copy is written right before its `:load-file` is written,
+so the load reads exactly the text checked. Queries (`:type-of`, `:docs-for`), holes, edits and a
+search's `-Next` go to the shadow session while its last load read exactly the lines the document
+shows; Go to Definition, completion and the namespace browser stay on the `check` session. A sibling
+`not found` is checked as saved through the checks (which show its diagnostics), once per document
+while it is dirty, and the text checked again; the answer is shown whatever it says. Cancellation: a
+newer text cancels a check that waits; one that has answered for more than 2 s restarts the shadow
+session. Nothing is checked while typing after Stop Backend, a give-up or a refusal of the folder,
+until a check starts the compiler. `docs/as-built/M6.md`.
 
 ---
 

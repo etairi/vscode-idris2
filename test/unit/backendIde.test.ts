@@ -8,6 +8,7 @@ import type * as vscode from 'vscode';
 import {
   IdeMode,
   IDE_MODE_CAPABILITIES,
+  SHADOW_RESTART_AFTER_MS,
   WARM_UP_MAX_WAIT_MS,
   WARM_UP_QUIET_MS,
   type DiagnosticsApi,
@@ -179,11 +180,22 @@ class FakePool implements SessionPool {
   restartCheck(root: Classification, detail: string): void {
     this.calls.push(`restartCheck ${root.dir}: ${detail}`);
   }
+  restartShadow(root: Classification, detail: string): void {
+    this.calls.push(`restartShadow ${root.dir}: ${detail}`);
+  }
   cancelEvaluation(root: Classification): void {
     this.calls.push(`cancelEvaluation ${root.dir}`);
   }
   releaseEvaluation(root: Classification, detail: string): void {
     this.calls.push(`releaseEvaluation ${root.dir}: ${detail}`);
+  }
+  /** The `shadow` sessions' directory base (M6); `undefined`: none, as without storage. */
+  shadowBase: string | undefined = undefined;
+  shadowDirectory(root: Classification): string | undefined {
+    return this.shadowBase === undefined ? undefined : `${this.shadowBase}/${root.dir.replace(/\//g, '_')}`;
+  }
+  stopShadows(root: Classification | undefined, detail: string): void {
+    this.calls.push(`stopShadows ${root?.dir ?? 'all'}: ${detail}`);
   }
   setActiveRoot(root: Classification | 'pending' | undefined): void {
     this.calls.push(`setActiveRoot ${root === 'pending' ? root : (root?.dir ?? 'none')}`);
@@ -264,6 +276,35 @@ class ManualClock {
   }
 }
 
+/** The file operations of the copies of unsaved documents (M6), recorded; `files` holds what was written. */
+class FakeShadowFiles {
+  readonly operations: string[] = [];
+  readonly files = new Map<string, string>();
+  /** Makes the next write of a path ending so reject (a full disk). */
+  failWrite: string | undefined;
+  mkdir(p: string): Promise<void> {
+    this.operations.push(`mkdir ${p}`);
+    return Promise.resolve();
+  }
+  writeFile(p: string, text: string): Promise<void> {
+    if (this.failWrite !== undefined && p.endsWith(this.failWrite)) {
+      return Promise.reject(new Error(`ENOSPC: no space left on device, open '${p}'`));
+    }
+    this.operations.push(`write ${p}`);
+    this.files.set(p, text);
+    return Promise.resolve();
+  }
+  remove(p: string): Promise<void> {
+    this.operations.push(`remove ${p}`);
+    for (const file of [...this.files.keys()]) {
+      if (file === p || file.startsWith(`${p}/`)) {
+        this.files.delete(file);
+      }
+    }
+    return Promise.resolve();
+  }
+}
+
 /** The real path of a directory in these tests: `/w/broken` is reached through a link. */
 const realpathOf = (p: string): string => (p === '/w/broken' ? '/private/w/broken' : p);
 
@@ -303,6 +344,7 @@ function setup(overrides: Partial<IdeModeDeps> & { roots?: Record<string, Classi
     platform: 'darwin',
     isOpen: () => false,
     openText: () => undefined,
+    shadowFiles: new FakeShadowFiles(),
     ...overrides,
   };
   const ide = new IdeMode(deps);
@@ -319,14 +361,14 @@ const settle = async (): Promise<void> => {
 };
 
 suite('backend/ide/backend (IdeMode, IdeBackend)', () => {
-  test('capabilities: diagnostics (M2), the read-only intelligence (M3), holes and editing (M4); signature help and the unsaved checks are not IDE mode\'s', () => {
+  test('capabilities: diagnostics (M2), the read-only intelligence (M3), holes and editing (M4), checks of unsaved text (M6); signature help is not IDE mode\'s', () => {
     const { backend } = setup();
     assert.strictEqual(backend.kind, 'ideMode');
     assert.deepStrictEqual(
       Object.entries(backend.caps).filter(([, on]) => on).map(([cap]) => cap).sort(),
       [
-        'browseNamespace', 'completion', 'definition', 'diagnostics', 'docs', 'documentHighlights', 'documentSymbols', 'editing', 'editingNext',
-        'evaluate', 'holeLocations', 'holes', 'hover', 'intro', 'missingCases', 'refine', 'semanticTokens',
+        'browseNamespace', 'checksUnsaved', 'completion', 'definition', 'diagnostics', 'docs', 'documentHighlights', 'documentSymbols', 'editing',
+        'editingNext', 'evaluate', 'holeLocations', 'holes', 'hover', 'intro', 'missingCases', 'refine', 'semanticTokens',
       ],
     );
     assert.strictEqual(backend.caps, IDE_MODE_CAPABILITIES);
@@ -2180,6 +2222,7 @@ suite('backend/ide/backend M3: evaluation with the real session pool', () => {
       platform: 'darwin',
       isOpen: () => true,
       openText: () => undefined,
+      shadowFiles: new FakeShadowFiles(),
     });
     const evalProcesses = () => transports.filter((t) => t.launch.args.some((arg) => arg.endsWith('.vscode-idris2-eval')));
     return { ide, pool, transports, evalProcesses };
@@ -2649,5 +2692,301 @@ suite('backend/ide/backend M4 (holes, edits)', () => {
     } finally {
       pool.dispose();
     }
+  });
+});
+
+// -------------------------------------------------------------------------------------------
+// M6: checks of unsaved text, in the root's `shadow` session
+// -------------------------------------------------------------------------------------------
+
+suite('backend/ide/backend M6 (checks of unsaved text)', () => {
+  const SHADOW_BASE = '/g/shadow';
+  /** The shadow directory FakePool gives the root of `dir` (spelled), and its real path. */
+  const shadowOf = (dir: string): string => `${SHADOW_BASE}/${dir.replace(/\//g, '_')}`;
+  const realOf = (p: string): string => (p.startsWith('/g/') ? `/private${p}` : realpathOf(p));
+
+  /** An IdeMode with storage for copies; `exists`: the files `realpath` finds besides the directories. */
+  function unsaved(options: { roots?: Record<string, Classification>; exists?: readonly string[]; platform?: NodeJS.Platform } = {}) {
+    const files = new FakeShadowFiles();
+    const exists = new Set(options.exists ?? []);
+    const t = setup({
+      shadowFiles: files,
+      config: {
+        diagnostics: () => ({ includeSourceExcerpt: false }),
+        ideMode: () => ({ longActionTimeoutMs: 60_000, extraArgs: [] as readonly string[] }) as IdeModeSettings,
+        evaluation: () => ({ inlineResults: true, timeoutMs: 10_000 }),
+      },
+      ...(options.roots === undefined ? {} : { roots: options.roots }),
+      ...(options.platform === undefined ? {} : { platform: options.platform }),
+      // Copies are read where they were written; fixture files where they are.
+      readFile: (p: string) => {
+        const copy = files.files.get(p.replace(/^\/private\/g\//, '/g/'));
+        return copy !== undefined ? Promise.resolve(copy) : fixtureFile(p);
+      },
+      realpath: (p: string) =>
+        p.startsWith('/g/') || exists.has(p) || !/\.[a-z]+$/.test(p) ? Promise.resolve(realOf(p)) : Promise.reject(new Error(`ENOENT: ${p}`)),
+    });
+    t.pool.shadowBase = SHADOW_BASE;
+    const loaded: LoadedDocument[] = [];
+    t.ide.onDidLoad((l) => loaded.push(l));
+    return { ...t, files, loaded };
+  }
+
+  const B_ROOT = projectRoot();
+  const B_FILE = '/w/simple-ipkg/src/Foo/B.idr';
+  const B_TEXT = 'module Foo.B\n\nimport Foo.A\n\nexport\ngreeting : String\ngreeting = shout 5\n';
+  const bDoc = (overrides: Partial<Doc> = {}) => doc(B_FILE, { text: B_TEXT, isDirty: true, version: 12, ...overrides });
+  const warning = (file: string, line: number, from: number, to: number, message: string): IdeMessage => ({
+    kind: 'warning',
+    id: 1n,
+    warning: { file, span: { start: { line, column: from }, end: { line, column: to } }, message, highlighting: [] },
+  });
+  const failed = (...messages: IdeMessage[]): Reply => ({ id: 1n, payload: { kind: 'error', message: 'Error(s) building file src/Foo/B.idr', highlighting: [] }, messages });
+
+  test('the package file and the copy are written right before the load, which sends the copy by its real path; the diagnostics are the document\'s, source idris2 (unsaved)', async () => {
+    const t = unsaved({ roots: { [B_FILE]: B_ROOT } });
+    const shadow = t.pool.sessionFor(B_ROOT, 'shadow');
+    const dir = shadowOf(B_ROOT.dir);
+    const sent = `/private${dir}/src/Foo/B.idr`;
+    let writtenWhenSent: string | undefined;
+    shadow.next = () => {
+      writtenWhenSent = t.files.files.get(`${dir}/src/Foo/B.idr`);
+      return Promise.resolve(failed(warning('src/Foo/B.idr', 6, 17, 18, 'Mismatch between: Integer and String.\n\nFoo.B:7:18--7:19\n')));
+    };
+    const result = await t.backend.checkUnsaved(bDoc());
+    assert.strictEqual(writtenWhenSent, B_TEXT, 'the copy holds the text when the load is sent');
+    assert.deepStrictEqual(commands(shadow), [`(:load-file "${sent}")`]);
+    assert.deepStrictEqual(shadow.requests[0].options, { kind: 'load', file: { path: sent, version: 12 } });
+    assert.deepStrictEqual(t.files.operations, [
+      `mkdir ${dir}`,
+      `mkdir ${dir}`,
+      `remove ${dir}/src`,
+      `remove ${dir}/build`,
+      `write ${dir}/shadow.ipkg`,
+      `mkdir ${dir}/src/Foo`,
+      `write ${dir}/src/Foo/B.idr`,
+    ]);
+    assert.match(t.files.files.get(`${dir}/shadow.ipkg`) ?? '', /\npackage simple-ipkg\nsourcedir = "src"\ndepends = contrib\n$/);
+    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.version, 12);
+    assert.deepStrictEqual(result.missing, []);
+    assert.strictEqual(result.problem, undefined);
+    const [d, ...more] = result.diagnostics as unknown as Diagnostic[];
+    assert.strictEqual(more.length, 0);
+    assert.deepStrictEqual([plainRange(d.range), d.source, d.severity, d.message], [[6, 17, 6, 18], 'idris2 (unsaved)', 0, 'Mismatch between: Integer and String.']);
+    // Announced as a check of unsaved text: it changes this file's answers only.
+    assert.deepStrictEqual(
+      t.loaded.map((l) => [l.file, l.rebuilt, l.failed, l.unsaved?.text]),
+      [[B_FILE, false, true, B_TEXT]],
+    );
+  });
+
+  test('another document of the root empties src/ and build/ first (its build files would answer the imports); the same one again does not', async () => {
+    const root: Classification = { kind: 'loose', dir: '/w/broken' };
+    const t = unsaved();
+    const shadow = t.pool.sessionFor(root, 'shadow');
+    shadow.next = () => Promise.resolve(answer('(:ok ())'));
+    const dir = shadowOf('/w/broken');
+    const clean = doc('/w/broken/Clean.idr', { text: fixtureText('broken/Clean.idr'), isDirty: true });
+    await t.backend.checkUnsaved(clean);
+    t.files.operations.length = 0;
+    await t.backend.checkUnsaved(doc('/w/broken/Clean.idr', { text: `${fixtureText('broken/Clean.idr')}-- more\n`, isDirty: true, version: 8 }));
+    assert.deepStrictEqual(t.files.operations, [`mkdir ${dir}`, `mkdir ${dir}`, `write ${dir}/shadow.ipkg`, `mkdir ${dir}/src`, `write ${dir}/src/Clean.idr`]);
+    t.files.operations.length = 0;
+    await t.backend.checkUnsaved(doc('/w/broken/Warn.idr', { text: 'module Warn\n', isDirty: true }));
+    assert.deepStrictEqual(t.files.operations.slice(0, 4), [`mkdir ${dir}`, `mkdir ${dir}`, `remove ${dir}/src`, `remove ${dir}/build`]);
+    assert.deepStrictEqual([...t.files.files.keys()].sort(), [`${dir}/shadow.ipkg`, `${dir}/src/Warn.idr`]);
+    assert.match(t.files.files.get(`${dir}/shadow.ipkg`) ?? '', /\npackage shadow\nsourcedir = "src"\n$/);
+  });
+
+  test('refused unsent and unwritten: no storage, a package whose opts cannot be given, a file outside the source directory, a path the compiler misreads, a document not on disk', async () => {
+    const reasonOf = async (t: ReturnType<typeof unsaved>, d: vscode.TextDocument): Promise<string> => {
+      try {
+        await t.backend.checkUnsaved(d);
+        return 'checked';
+      } catch (e) {
+        return e instanceof IdrisException ? `${e.error.kind}: ${e.message}` : String(e);
+      }
+    };
+    const none = unsaved({ roots: { [B_FILE]: B_ROOT } });
+    none.pool.shadowBase = undefined;
+    assert.strictEqual(await reasonOf(none, bDoc()), 'Unsupported: Unsaved text cannot be checked: the extension has no storage directory to copy it to.');
+    const badOpts = projectRoot({ model: { status: 'ok', source: 'dump-json', model: { name: 'p', depends: [], modules: [], sourcedir: 'src', opts: '--build-dir' } } });
+    const opts = unsaved({ roots: { [B_FILE]: badOpts } });
+    assert.strictEqual(await reasonOf(opts, bDoc()), "Unsupported: Unsaved text of this project is not checked: the package's opts end with --build-dir without its value.");
+    const outside = unsaved({ roots: { '/w/simple-ipkg/tests/T.idr': B_ROOT } });
+    assert.strictEqual(
+      await reasonOf(outside, doc('/w/simple-ipkg/tests/T.idr', { text: 'module T\n', isDirty: true })),
+      "Unsupported: The unsaved text of T.idr is not checked: T.idr is not inside the source directory /w/simple-ipkg/src, where the compiler finds the package's modules.",
+    );
+    const colon = unsaved({ roots: { '/w/simple-ipkg/src/Foo/A:B.idr': B_ROOT } });
+    assert.match(await reasonOf(colon, doc('/w/simple-ipkg/src/Foo/A:B.idr', { text: 'module X\n', isDirty: true })), /^Unsupported: The unsaved text of A:B\.idr is not checked: the compiler reads the path of its copy/);
+    const untitled = unsaved();
+    assert.match(
+      await reasonOf(untitled, doc('/w/broken/U.idr', { isUntitled: true, isDirty: true, uri: { scheme: 'untitled', fsPath: '/w/broken/U.idr', toString: () => 'untitled:U' } })),
+      /^Unsupported: Only the text of a file on disk can be checked/,
+    );
+    for (const t of [none, opts, outside, colon, untitled]) {
+      assert.deepStrictEqual(t.pool.list.flatMap((s) => commands(s)), []);
+      assert.deepStrictEqual([...t.files.files.keys()], []);
+    }
+  });
+
+  test('the modules not found: the saved files of the root that hold them, the first that exists in the compiler\'s order of extensions; none for a module of no file', async () => {
+    const t = unsaved({ roots: { [B_FILE]: B_ROOT }, exists: ['/w/simple-ipkg/src/Foo/C.lidr', '/w/simple-ipkg/src/Foo/C.idr', '/w/simple-ipkg/src/Foo/D.idr'] });
+    t.pool.sessionFor(B_ROOT, 'shadow').next = () =>
+      Promise.resolve(
+        failed(
+          warning('src/Foo/B.idr', 2, 0, 12, 'Module Foo.C not found\n\nFoo.B:3:1--3:13\n'),
+          warning('src/Foo/B.idr', 3, 0, 12, "Module Foo.D not found\n\nFoo.B:4:1--4:13\n"),
+          warning('src/Foo/B.idr', 4, 0, 18, 'Module Data.Missing not found\n\nFoo.B:5:1--5:19\n'),
+        ),
+      );
+    const result = await t.backend.checkUnsaved(bDoc());
+    // `.lidr` comes before `.idr` (`MODULE_SOURCE_EXTENSIONS`).
+    assert.deepStrictEqual(result.missing.map((u) => u.fsPath), ['/w/simple-ipkg/src/Foo/C.lidr', '/w/simple-ipkg/src/Foo/D.idr']);
+    assert.strictEqual(result.diagnostics.length, 3);
+  });
+
+  test('the package file refused by the compiler: a problem, no diagnostics', async () => {
+    const t = unsaved({ roots: { [B_FILE]: B_ROOT } });
+    t.pool.sessionFor(B_ROOT, 'shadow').next = () =>
+      Promise.resolve({ id: 1n, payload: { kind: 'error', message: 'Unrecognised property "pkgs".\n\n"shadow.ipkg":3:1--3:5\n', highlighting: [] }, messages: [] });
+    const result = await t.backend.checkUnsaved(bDoc());
+    assert.deepStrictEqual([result.ok, result.diagnostics, result.problem], [false, [], 'the compiler refused the package file written to check it: Unrecognised property "pkgs".']);
+  });
+
+  test('queries of a dirty document go to the shadow session while its last check read exactly the shown text (TypeInfo.unsaved), else to the check session', async () => {
+    const root: Classification = { kind: 'loose', dir: '/w/broken' };
+    const t = unsaved();
+    const shadow = t.pool.sessionFor(root, 'shadow');
+    shadow.next = replaying('clean-queries', `/private${shadowOf('/w/broken')}/src`);
+    const text = fixtureText('broken/Clean.idr');
+    const d = doc('/w/broken/Clean.idr', { text, isDirty: true });
+    assert.strictEqual(t.backend.showsUnsavedCheck(d), false, 'no check yet');
+    await t.backend.checkUnsaved(d);
+    assert.strictEqual(t.backend.showsUnsavedCheck(d), true);
+    const type = await t.backend.typeAt(d, pos(7, 5), 'xs');
+    assert.deepStrictEqual([type?.text, type?.unsaved], ['xs : Vect ?_ ?_', true]);
+    assert.ok(commands(shadow).includes('(:type-of "xs" 8 5)'));
+    assert.ok((await t.backend.docsFor(d, 'vlen', 'full')) !== undefined);
+    assert.strictEqual(commands(shadow).at(-1), '(:docs-for "vlen")');
+    // The shown text moved on: the check session answers (it has loaded nothing here: NotLoaded).
+    const edited = doc('/w/broken/Clean.idr', { text: `${text}-- typed\n`, isDirty: true, version: 9 });
+    assert.strictEqual(t.backend.showsUnsavedCheck(edited), false);
+    await assert.rejects(t.backend.typeAt(edited, pos(7, 5), 'xs'), (e: unknown) => e instanceof IdrisException && e.error.kind === 'NotLoaded');
+    // A document without unsaved changes is the check session's, whatever the shadow session read.
+    assert.strictEqual(t.backend.showsUnsavedCheck(doc('/w/broken/Clean.idr', { text })), false);
+    assert.strictEqual(t.pool.sessionFor(root, 'check').requests.length, 0);
+  });
+
+  test('holes of a check of unsaved text: asked after its reply, located in the copy only, given as the document\'s', async () => {
+    const root: Classification = { kind: 'loose', dir: '/w/holes' };
+    const t = unsaved();
+    const shadow = t.pool.sessionFor(root, 'shadow');
+    shadow.next = replaying('holes-loose-main', `/private${shadowOf('/w/holes')}/src`);
+    shadow.replyHooks = true;
+    const d = doc('/w/holes/Main.idr', { text: fixtureText('holes/Main.idr'), isDirty: true });
+    await t.backend.checkUnsaved(d);
+    await settle();
+    assert.deepStrictEqual(commands(shadow).slice(1), ['(:metavariables 80)', '(:name-at "size_rhs")', '(:name-at "todo")']);
+    const holes = await t.backend.holes(d, { kept: true });
+    assert.deepStrictEqual(
+      holes.map((h) => [h.qualifiedName, h.location?.uri.fsPath]),
+      [
+        ['Main.size_rhs', '/w/holes/Main.idr'],
+        ['Base.todo', undefined],
+        ['Main.todo', '/w/holes/Main.idr'],
+      ],
+    );
+  });
+
+  test('edits of a dirty document go to the shadow session while its check read the shown text; :case-split reads the copy', async () => {
+    const root: Classification = { kind: 'loose', dir: '/w/broken' };
+    const t = unsaved();
+    const shadow = t.pool.sessionFor(root, 'shadow');
+    shadow.next = replaying('clean-editing', `/private${shadowOf('/w/broken')}/src`);
+    const d = doc('/w/broken/Clean.idr', { text: fixtureText('broken/Clean.idr'), isDirty: true });
+    await t.backend.checkUnsaved(d);
+    const split = await t.backend.edit({ kind: 'caseSplit', doc: d, version: 7, pos: pos(7, 0), name: 'xs' });
+    assert.strictEqual(split.type, 'edit');
+    assert.strictEqual(commands(shadow).at(-1), '(:case-split 8 1 "xs")');
+    assert.strictEqual(t.pool.sessionFor(root, 'check').requests.length, 0, 'nothing to the check session');
+    // A change of the copy on disk since the load: refused unsent (the compiler would read another line).
+    t.files.files.set(`${shadowOf('/w/broken')}/src/Clean.idr`, '-- another text\n');
+    await assert.rejects(
+      t.backend.edit({ kind: 'caseSplit', doc: d, version: 7, pos: pos(7, 0), name: 'xs' }),
+      (e: unknown) => e instanceof IdrisException && e.error.kind === 'NotLoaded',
+    );
+  });
+
+  test('a search started in the shadow session continues there (-Next) while it is that session\'s; the check session is asked nothing', async () => {
+    const root: Classification = { kind: 'loose', dir: '/w/broken' };
+    const t = unsaved();
+    const shadow = t.pool.sessionFor(root, 'shadow');
+    const base = `/private${shadowOf('/w/broken')}/src`;
+    const recorded = [...recordedExchanges('clean-editing', base), ...recordedExchanges('clean-lookups', base)];
+    shadow.next = (command) => {
+      const text = command.kind === 'raw' ? command.text : serializeSexp(command);
+      const found = recorded.find((x) => x.request.replace(/ \d+\)\n$/, '').slice(1) === text);
+      return found === undefined ? Promise.reject(new Error(`not recorded: ${text}`)) : Promise.resolve(found.reply);
+    };
+    const text = fixtureText('broken/Clean.idr');
+    const d = doc('/w/broken/Clean.idr', { text, isDirty: true });
+    await t.backend.checkUnsaved(d);
+    const first = await t.backend.edit({ kind: 'exprSearch', doc: d, version: 7, pos: pos(7, 12), name: 'vlen_rhs', hints: [] });
+    assert.deepStrictEqual(first.type === 'edit' && first.replacements, [{ range: { start: { line: 7, character: 10 }, end: { line: 7, character: 19 } }, text: '0' }]);
+    const after = doc('/w/broken/Clean.idr', { text: text.replace('?vlen_rhs', '0'), version: 8, isDirty: true });
+    const previous = { start: { line: 7, character: 10 }, end: { line: 7, character: 11 } };
+    const next = await t.backend.edit({ kind: 'exprSearchNext', doc: after, version: 8, previous });
+    assert.deepStrictEqual(next.type === 'edit' && next.replacements, [{ range: previous, text: '1' }]);
+    assert.deepStrictEqual(commands(shadow).filter((c) => /proof-search/.test(c)), ['(:proof-search 8 "vlen_rhs" ())', ':proof-search-next']);
+    assert.strictEqual(t.pool.sessionFor(root, 'check').requests.length, 0);
+    // A new check of the unsaved text resets the compiler's search: the next is refused unsent.
+    await t.backend.checkUnsaved(after);
+    await assert.rejects(
+      t.backend.edit({ kind: 'exprSearchNext', doc: after, version: 8, previous }),
+      (e: unknown) => e instanceof IdrisException && e.error.kind === 'Unsupported' && /has ended/.test(e.message),
+    );
+  });
+
+  test('unsavedTextChanged restarts the shadow session of the document\'s root once its check has answered for more than 2 s; not before, not when it is not busy', async () => {
+    const t = unsaved({ roots: { [B_FILE]: B_ROOT } });
+    const shadow = t.pool.sessionFor(B_ROOT, 'shadow');
+    let answerNow: (reply: Reply) => void = () => undefined;
+    shadow.next = () => new Promise<Reply>((resolve) => (answerNow = resolve));
+    const check = t.backend.checkUnsaved(bDoc());
+    await settle();
+    shadow.state = 'busy';
+    t.clock.time = SHADOW_RESTART_AFTER_MS;
+    t.backend.unsavedTextChanged(bDoc());
+    await settle();
+    assert.deepStrictEqual(t.pool.calls.filter((c) => c.startsWith('restartShadow')), [], 'not after 2 s exactly');
+    t.clock.time = SHADOW_RESTART_AFTER_MS + 1;
+    t.backend.unsavedTextChanged(bDoc());
+    await settle();
+    assert.deepStrictEqual(t.pool.calls.filter((c) => c.startsWith('restartShadow')), [
+      'restartShadow /w/simple-ipkg: the unsaved text changed while its check had run for more than 2 s',
+    ]);
+    answerNow(answer('(:ok ())'));
+    await check;
+    shadow.state = 'ready';
+    t.clock.time = 10 * SHADOW_RESTART_AFTER_MS;
+    t.backend.unsavedTextChanged(bDoc());
+    await settle();
+    assert.strictEqual(t.pool.calls.filter((c) => c.startsWith('restartShadow')).length, 1, 'nothing runs: nothing restarted');
+  });
+
+  test('a cancelled check: before it is sent, nothing is sent; the token goes to the session', async () => {
+    const t = unsaved({ roots: { [B_FILE]: B_ROOT } });
+    const shadow = t.pool.sessionFor(B_ROOT, 'shadow');
+    shadow.next = () => Promise.resolve(answer('(:ok ())'));
+    const early = new CancellationSource();
+    early.cancel();
+    await assert.rejects(t.backend.checkUnsaved(bDoc(), { token: early.token }), (e: unknown) => isCancelled(e));
+    assert.deepStrictEqual(commands(shadow), []);
+    const later = new CancellationSource();
+    await t.backend.checkUnsaved(bDoc(), { token: later.token });
+    assert.strictEqual(shadow.requests[0].options.token, later.token);
   });
 });

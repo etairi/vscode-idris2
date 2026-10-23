@@ -1,0 +1,4 @@
+-- Written by the Idris 2 extension for VS Code to check unsaved text; rewritten before every check of it.
+package simple
+sourcedir = "src"
+depends = contrib

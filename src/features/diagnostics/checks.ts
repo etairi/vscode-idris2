@@ -2,7 +2,9 @@
  * Checking documents and showing the result (`features/diagnostics`, docs/ARCHITECTURE.md §6, §8;
  * ROADMAP M2): the triggers of `idris2.checking.trigger`, the per-document state of §6.1 and the
  * one `DiagnosticCollection` "idris2" (the saved files; `idris2 (unsaved)` is M6's, `idris2
- * build` M9's).
+ * build` M9's). Since M6 a document whose unsaved text's check is shown (`features/shadow`) has
+ * its saved diagnostics hidden from the collection meanwhile (`showSaved`); the checks keep them
+ * and read them as before (`ShownDiagnostics`).
  *
  * - **Which documents.** Idris documents (`isIdrisDocument`, the M1 selector rule: the `idris2`
  *   and `lidr` modes and the double extensions `.idr.<ext>`, `.lidr.<ext>`) that are files: the
@@ -267,6 +269,11 @@ export type CheckStatus =
       readonly known: boolean;
       /** Set when `stale`: why, for the status's detail. */
       readonly staleness?: Staleness;
+      /**
+       * (M6) The counts are those of the check of the document's unsaved text, which is shown
+       * instead of the saved file's (`showSaved`; `features/shadow`); not stale.
+       */
+      readonly unsaved?: true;
     }
   /** `staleness`: set when `stale`, as for `checked` (seventh review of M3: Type at Cursor took the trigger as not `manual`). */
   | { readonly kind: 'packageError'; readonly ipkg: string; readonly message: string; readonly stale: boolean; readonly staleness?: Staleness }
@@ -561,6 +568,58 @@ function samePath(a: string, b: string): boolean {
   return path.relative(a, b) === '';
 }
 
+/**
+ * The collection "idris2" as the checks use it (M6): what they set is kept whole and read back
+ * (`get`, `forEach`), and shown in VS Code's collection except for the files whose saved diagnostics
+ * are hidden (`hide`) while the check of their unsaved text is shown (`features/shadow`), so that
+ * hiding them changes no state or count the checks read.
+ */
+export class ShownDiagnostics {
+  private readonly entries = new Map<string, { readonly uri: vscode.Uri; readonly diagnostics: readonly vscode.Diagnostic[] }>();
+  private readonly hidden = new Set<string>();
+
+  constructor(private readonly shown: vscode.DiagnosticCollection) {}
+
+  get(uri: vscode.Uri): readonly vscode.Diagnostic[] | undefined {
+    return this.entries.get(uri.toString())?.diagnostics;
+  }
+
+  set(uri: vscode.Uri, diagnostics: readonly vscode.Diagnostic[]): void {
+    const key = uri.toString();
+    this.entries.set(key, { uri, diagnostics });
+    if (!this.hidden.has(key)) {
+      this.shown.set(uri, diagnostics);
+    }
+  }
+
+  delete(uri: vscode.Uri): void {
+    this.entries.delete(uri.toString());
+    this.shown.delete(uri);
+  }
+
+  forEach(callback: (uri: vscode.Uri, diagnostics: readonly vscode.Diagnostic[]) => void): void {
+    for (const { uri, diagnostics } of [...this.entries.values()]) {
+      callback(uri, diagnostics);
+    }
+  }
+
+  /** Hides the diagnostics of `uri` from VS Code's collection (`shown` false), or shows them again. */
+  show(uri: vscode.Uri, shown: boolean): void {
+    const key = uri.toString();
+    if (shown) {
+      if (this.hidden.delete(key)) {
+        const entry = this.entries.get(key);
+        if (entry !== undefined) {
+          this.shown.set(entry.uri, entry.diagnostics);
+        }
+      }
+    } else if (!this.hidden.has(key)) {
+      this.hidden.add(key);
+      this.shown.delete(uri);
+    }
+  }
+}
+
 /** Whether `doc` is checked at all: an Idris document that is a file on disk. */
 export function isCheckable(doc: vscode.TextDocument): boolean {
   return doc.uri.scheme === 'file' && isIdrisDocument(doc);
@@ -572,6 +631,8 @@ export class DocumentChecks implements CheckStatusSource, SaveCheckHolds, IDispo
   private readonly tracked = new Map<string, Tracked>();
   /** The documents (`uri.toString()`) whose save checks are held (`holdSaveChecks`), and whether one was saved meanwhile. */
   private readonly holds = new Map<string, { saved: boolean; generation: number }>();
+  /** (M6) The counts of the check of each document's unsaved text that is shown instead of its saved file's (`showSaved`). */
+  private readonly unsavedCounts = new Map<string, { readonly errors: number; readonly warnings: number }>();
   /** The reason of the save each document (`uri.toString()`) is about to have (`onWillSaveTextDocument`), until its save event. */
   private readonly saveReasons = new Map<string, vscode.TextDocumentSaveReason>();
   /** The documents (`uri.toString()`) the `afterDelay` timer is saving, until their save event. */
@@ -611,14 +672,14 @@ export class DocumentChecks implements CheckStatusSource, SaveCheckHolds, IDispo
   private readonly waiting: WaitingCheck[] = [];
   /** Background checks waiting for the answer about their folder before they take a slot. */
   private readonly askingFirst = new Set<AskingCheck>();
-  readonly collection: vscode.DiagnosticCollection;
+  readonly collection: ShownDiagnostics;
   readonly onDidChange: Event<void> = this.changed.event;
 
   constructor(
     private readonly api: ChecksApi,
     private readonly deps: ChecksDeps,
   ) {
-    this.collection = this.store.add(api.languages.createDiagnosticCollection(DIAGNOSTIC_COLLECTION_NAME));
+    this.collection = new ShownDiagnostics(this.store.add(api.languages.createDiagnosticCollection(DIAGNOSTIC_COLLECTION_NAME)));
     this.store.add({ dispose: () => this.tracked.forEach((t) => this.stopTimer(t)) });
     this.store.add({ dispose: () => this.waiting.splice(0).forEach((w) => w.start(DROPPED)) });
     this.store.add(api.window.onDidChangeActiveTextEditor(() => this.activeChanged()));
@@ -729,6 +790,28 @@ export class DocumentChecks implements CheckStatusSource, SaveCheckHolds, IDispo
   /** Whether the gate now allows the directory of the root a refused check was for. */
   private allowedNow(t: Tracked): boolean {
     return t.root !== undefined && this.deps.consent.current(this.deps.projects.sessionCwd(t.root))?.allowed === true;
+  }
+
+  /**
+   * (M6) Shows the saved file's diagnostics of `uri` again (`shown`), or hides them while the check
+   * of its unsaved text is shown instead (`features/shadow`, the collection `idris2 (unsaved)`):
+   * they stay what the checks know and count (`ShownDiagnostics`). `unsaved`: the counts of that
+   * check, which the status gives while the document has unsaved changes (`CheckStatus`).
+   */
+  showSaved(uri: vscode.Uri, shown: boolean, unsaved?: { readonly errors: number; readonly warnings: number }): void {
+    this.collection.show(uri, shown);
+    const key = uri.toString();
+    if (shown) {
+      this.unsavedCounts.delete(key);
+    } else if (unsaved !== undefined) {
+      this.unsavedCounts.set(key, unsaved);
+    }
+    this.changed.fire();
+  }
+
+  /** (M6) Whether the save checks of the document `uri` (`uri.toString()`) are held (`holdSaveChecks`): M4's cycling runs in it. */
+  saveChecksHeld(uri: string): boolean {
+    return this.holds.has(uri);
   }
 
   holdSaveChecks(uri: string): IDisposable {
@@ -1668,6 +1751,11 @@ export class DocumentChecks implements CheckStatusSource, SaveCheckHolds, IDispo
     }
     if (backend?.kind === 'stopped') {
       return backend.revokedDir === undefined ? { kind: 'stopped' } : { kind: 'stopped', revokedDir: backend.revokedDir };
+    }
+    // M6: the check of the unsaved text is shown instead of the saved file's (`showSaved`).
+    const unsaved = doc.isDirty ? this.unsavedCounts.get(doc.uri.toString()) : undefined;
+    if (unsaved !== undefined) {
+      return { kind: 'checked', ...unsaved, stale: false, known: true, unsaved: true };
     }
     if (t === undefined || t.loadState === 'idle') {
       return { kind: 'notChecked' };

@@ -245,6 +245,19 @@ export class FakeBackend implements IdrisBackend {
     return Promise.reject(new Error('not used'));
   }
 
+  checkUnsaved(): Promise<never> {
+    return Promise.reject(new Error('not used'));
+  }
+
+  unsavedTextChanged(): void {}
+
+  /** `showsUnsavedCheck`'s answer (M6). */
+  unsavedShown = false;
+
+  showsUnsavedCheck(): boolean {
+    return this.unsavedShown;
+  }
+
   async typeAt(doc: vscode.TextDocument, pos: vscode.Position, name: string, decor?: Decor): Promise<TypeInfo | undefined> {
     this.decors.push(decor);
     this.query(doc, `typeAt ${name} ${pos.line}:${pos.character}`);

@@ -93,7 +93,10 @@ function storeWith(open: FakeDocument[]) {
   let changes = 0;
   store.onDidChange(() => changes++);
   const load = (file: string, root = ROOT, failed = false): void => loads.fire({ root, file, rebuilt: true, ...(failed ? { failed } : {}) });
-  return { store, backend, load, release: (root: Classification) => releases.fire(root), logged, warned, changes: () => changes };
+  /** (M6) A check of `file`'s unsaved text, which read `text`. */
+  const unsavedLoad = (file: string, text: string, failed = false): void =>
+    loads.fire({ root: ROOT, file, rebuilt: false, unsaved: { text }, ...(failed ? { failed } : {}) });
+  return { store, backend, load, unsavedLoad, release: (root: Classification) => releases.fire(root), logged, warned, changes: () => changes };
 }
 
 const names = (holes: readonly Hole[]): string[] => holes.map((h) => h.qualifiedName);
@@ -128,6 +131,31 @@ suite('holes: the model, refreshed after each load', () => {
     assert.deepStrictEqual(t.store.files(), [MAIN, other]);
     assert.deepStrictEqual(names(t.store.holesIn(MAIN)), ['Main.size_rhs']);
     assert.deepStrictEqual(names(t.store.holesIn(BASE)), []);
+  });
+
+  test('M6: a check of unsaved text replaces the loaded file\'s holes only, with the ranges of the text it read; the imports\' holes stay', async () => {
+    const t = storeWith([new FakeDocument(MAIN, 'saved text'), new FakeDocument(BASE, '')]);
+    t.backend.answers.push(() => Promise.resolve([mainSize, baseTodo, mainTodo]));
+    t.load(MAIN);
+    await settle();
+    const packaged = hole('Pkg.Lib.h', 'Nat', []);
+    const unsavedTodo = hole('Main.todo', 'Nat', [], MAIN, r(6, 11, 6, 16));
+    const located = hole('Main.arg', 'String', [], MAIN, r(9, 18, 9, 22));
+    // The shadow session's answer: Main's holes (one moved, one new, size_rhs gone), Base's without a
+    // location (its source is not beside the copy), and a package's.
+    t.backend.answers.push(() => Promise.resolve([located, hole('Base.todo', 'Vect (S n) a', []), unsavedTodo, packaged]));
+    const typed = 'module Main\n-- the text the check read\n';
+    t.unsavedLoad(MAIN, typed);
+    await settle();
+    assert.deepStrictEqual(names(t.store.holesIn(MAIN)), ['Main.todo', 'Main.arg']);
+    assert.strictEqual(t.store.rangesText(MAIN), typed, 'the ranges are those of the text the check read');
+    assert.deepStrictEqual(names(t.store.holesIn(BASE)), ['Base.todo'], 'Base keeps what its own load gave it');
+    assert.deepStrictEqual(t.store.modules(), [], 'no module group from it');
+    // A check of unsaved text without holes in the file: the file has none.
+    t.backend.answers.push(() => Promise.resolve([hole('Base.todo', 'Vect (S n) a', [])]));
+    t.unsavedLoad(MAIN, 'module Main\n');
+    await settle();
+    assert.deepStrictEqual(t.store.files(), [BASE]);
   });
 
   test('a file or module that only other loaded files\' answers listed keeps its holes; one listed by the loaded file before goes, also when another file listed it too', async () => {

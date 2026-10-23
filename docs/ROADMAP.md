@@ -837,7 +837,8 @@ M0 → M1 → M2 → M3 → M14).
 - **Upstream.** U1.1 (0.8.0 branch), U1.2 (real version), U1.3 (capability advertisement and
   README kind table), U1.5 (dirty files).
 - **Status: implemented** (2026-10-02, with the user's decisions of 2026-10-01, §9, and M4's LSP half:
-  `LspBackend.edit()`/`holes()`, the LSP acceptance and the contract suite); not committed yet. pack and
+  `LspBackend.edit()`/`holes()`, the LSP acceptance and the contract suite); committed as `e4eedaa`
+  (2026-10-24), CI run 39986288643 green on ubuntu and macOS. pack and
   idris2-lsp were installed for it (§9 Q2). Deviations from the text above (among them: F35's code-3
   safety net cannot occur, the live form is code 4; `browseNamespace` answers symbols; no IDE-mode
   fallback per feature; Evaluate is not offered over LSP; `lsp.trace.server` prompts no restart), the
@@ -888,6 +889,13 @@ M0 → M1 → M2 → M3 → M14).
 - **Open questions.** E9 (`-p`/opts in the shadow with `depends = contrib`), E22 (measured
   latency: warm shadow session vs cold spawn vs sibling retry), Q6 (on by default?).
 - **Upstream.** U3 removes the need for shadow copies; U1.5 for LSP users.
+- **Status: implemented** (2026-10-24), `idris2.checkOnType.enabled` on by default (ARCHITECTURE
+  §11). E9 settled from the 0.8.0 source and a live run: `-p` adds no package's dependencies, so the
+  shadow directory holds a package file the extension writes (`shadow.ipkg`: the root's `depends`
+  and `opts`), which departs from the acceptance item "no `.ipkg`" — whose intent, never the
+  project's `.ipkg`, holds — and is the user's to confirm. E22 measured (a warm check 0.1 s beyond
+  the 500 ms delay on `simple-ipkg`, 1.0–1.1 s on a 2,000-line module). Decisions, deviations, the
+  facts, the tests and the open issues: `docs/as-built/M6.md`.
 
 ### M7 — Goal panel (webview) (L)
 
@@ -1675,7 +1683,8 @@ How these were built: `docs/as-built/M5.md`, *Decisions*.
 - **Q6** Defaults for checking: `checking.trigger = onSave` and `checkOnType.enabled = true`
   (shadow) as proposed, or the debounced auto-save?
   **Resolved on 2026-09-27** (decision above, before M2): `onSave`; `afterDelay` is opt-in; the
-  `checkOnType` default is M6's.
+  `checkOnType` default is M6's. **M6 (2026-10-24)**: `checkOnType.enabled = true`, as ARCHITECTURE §11
+  proposed (the user may still decide otherwise).
 - **Q7** Backend policy when both are usable: LSP for ipkg projects (completion, signature help,
   compiler-backed outline) with IDE-mode fallback per feature, as proposed — or IDE mode always?
   **Decided on 2026-10-01** (above, M5): IDE mode stays the default; idris2-lsp by choice, or under
@@ -1829,6 +1838,12 @@ How these were built: `docs/as-built/M5.md`, *Decisions*.
   0.8.0) to design the parser; idris2-lsp's own suite as a second sample once pack exists
   (it needs a built `idris2-lsp` binary as the executable under test, F21, F24).
 - **E9** (M6) `-p <dep>` and ipkg `opts` in shadow sessions with `depends = contrib`.
+  **Settled in M6 (2026-10-24)**: without `-p contrib`, `Module Data.String.Extra not found`; without
+  the `opts` (`--total`), no `loop is not total`, which the check session reports [live]. But `-p` adds one package without its
+  dependencies (`addPkgDir p anyBounds` [src]; `-p test` alone: `Module System.Path not found` [live]),
+  and on a command line some options act otherwise than in `opts`; the compiler applies an `.ipkg`'s
+  `depends` (transitively, with bounds) and `opts` at every `:load-file` [src]. So the shadow directory
+  holds a package file with the root's `depends` and `opts` (`docs/as-built/M6.md`, *Decisions* 1, 2).
 - **E9'** (M11) Does VS Code 1.139 ship a TOML grammar? If not, bundle a minimal one.
 - **E10** (M4/M5) Does the server's `repl` executeCommand accept colon commands such as
   `:missing f`? **Settled in M5 (2026-10-01): yes** [live, recording `repl`]: `:t id` and `:version`
@@ -1899,6 +1914,10 @@ How these were built: `docs/as-built/M5.md`, *Decisions*.
   shadow session (debounce + load), cold spawn (first edit after idle reaping), and the
   sibling-retry path (check-session load + shadow reload). The M6 acceptance budget is set
   from these numbers; nothing below 1 s is asserted (testing rule in §7.1).
+  **Measured in M6 (2026-10-24)** [live], from the edit, the 500 ms delay included: `simple-ipkg`'s
+  `B.idr` 817–922 ms cold, 605–615 ms warm; a 2,000-line module 1,936–2,076 ms cold, 1,528–1,632 ms
+  warm. The sibling-retry path was not run with the real compiler (it needs two compiler processes at
+  once); it is tested with the fake (`docs/as-built/M6.md`, *Measurements*).
 - **E23** (M4) Export VS Code 1.139's default keymap ("Open Default Keyboard Shortcuts (JSON)")
   into `test/fixtures/default-keybindings.json`, confirm `ctrl+shift+enter` is
   `editor.action.insertLineBefore` there (recalled, not machine-checked yet), and list every

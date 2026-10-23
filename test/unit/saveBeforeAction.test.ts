@@ -103,6 +103,34 @@ suite('features/editing: save before an action', () => {
     assert.strictEqual(doc.saves, 1);
   });
 
+  test('in the command (M6): nothing is saved while the backend\'s check of the unsaved text read the text shown; the request goes with it unsaved', async () => {
+    const api = new FakeEditingApi();
+    const backend = new FakeEditBackend();
+    const env = editingDeps(backend);
+    const registration = registerEditing(api.asApi(), env.deps, { keepOutcomes: true });
+    const doc = api.workspace.open(new FakeTextDoc({ fileName: '/w/broken/Clean.idr', text: 'module Clean\n\nf : Nat\nf = ?h\n', isDirty: true }));
+    api.window.showAt(doc, 3, 5);
+    backend.unsavedShown = true;
+    let dirtyWhenAsked: boolean | undefined;
+    backend.answer = () => {
+      dirtyWhenAsked = doc.isDirty;
+      return Promise.resolve({ type: 'failed', message: 'No search results' });
+    };
+    for (const setting of ['always', 'prompt', 'never'] as const) {
+      env.settings.saveBeforeAction = setting;
+      await api.run('idris2.proofSearch');
+    }
+    assert.strictEqual(dirtyWhenAsked, true);
+    assert.strictEqual(doc.saves, 0);
+    assert.strictEqual(backend.requests.length, 3, 'asked each time, whatever the setting');
+    assert.ok(registration.outcomes.every((o) => o.kind === 'message' && /found no expression for this hole/.test(o.message)), JSON.stringify(registration.outcomes));
+    // The check read another text: saved as before.
+    backend.unsavedShown = false;
+    env.settings.saveBeforeAction = 'always';
+    await api.run('idris2.proofSearch');
+    assert.strictEqual(doc.saves, 1);
+  });
+
   test('in the command: a save that changes the text at the target (a formatter) stops the command; a change elsewhere does not', async () => {
     const api = new FakeEditingApi();
     const backend = new FakeEditBackend();

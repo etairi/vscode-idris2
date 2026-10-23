@@ -14,7 +14,7 @@ import {
   type SessionTiming,
   type SpawnPlan,
 } from '../../src/backend/ide/session';
-import type { Reply, SessionLaunch, SessionStateChange } from '../../src/backend/ide/types';
+import type { IdeCommand, Reply, SessionLaunch, SessionStateChange } from '../../src/backend/ide/types';
 import { LOOSE } from './support/toolchainFixtures';
 import {
   error,
@@ -103,7 +103,8 @@ function setup(
     limits?: Partial<SessionLimits>;
     behaviour?: FakeTransportBehaviour;
     launch?: SessionLaunch;
-    role?: 'check' | 'eval';
+    role?: 'check' | 'eval' | 'shadow';
+    firstRequest?: IdeCommand;
   } = {},
 ) {
   const clock = new FakeClock();
@@ -131,6 +132,7 @@ function setup(
     timing: { ...DEFAULT_SESSION_TIMING, ...options.timing },
     limits: () => control.limits,
     onNewerProtocol: (warning) => warnings.push(warning),
+    ...(options.firstRequest === undefined ? {} : { firstRequest: options.firstRequest }),
   });
   const changes: SessionStateChange[] = [];
   session.onDidChangeState((change) => changes.push(change));
@@ -185,8 +187,8 @@ suite('backend/ide/session', () => {
       assert.ok(h.log.lines.some((l) => l.startsWith('info: ') && l.includes('starting /opt/homebrew/bin/idris2 --ide-mode-socket')));
     });
 
-    test('an eval session drops the :highlight-source outputs of the request in flight unread; a check session keeps them (third review of M3)', async () => {
-      for (const role of ['eval', 'check'] as const) {
+    test('an eval or shadow session drops the :highlight-source outputs of the request in flight unread; a check session keeps them (third review of M3; M6)', async () => {
+      for (const role of ['eval', 'shadow', 'check'] as const) {
         const h = setup({ role });
         const request = h.lookup('xs');
         await flush();
@@ -197,9 +199,66 @@ suite('backend/ide/session', () => {
         t.message(highlight);
         t.message(ret(1n, ok()));
         await flush();
-        assert.deepStrictEqual(request.value?.messages, role === 'eval' ? [building] : [building, highlight], role);
+        assert.deepStrictEqual(request.value?.messages, role === 'check' ? [building, highlight] : [building], role);
         assert.strictEqual(h.session.state, 'ready', role);
       }
+    });
+
+    test('shadow (M6): the first request goes to every process right after its handshake, before an urgent request; not idle until answered', async () => {
+      const ENABLE_SYNTAX = list(sym('enable-syntax'), { kind: 'bool', value: false });
+      const h = setup({ role: 'shadow', firstRequest: ENABLE_SYNTAX, limits: { idleTimeoutMs: 1_000 } });
+      const plain = h.lookup('a');
+      const urgent = track(h.session.request(typeOf('u'), { kind: 'lookup', urgent: () => true }));
+      await flush();
+      const t = h.transports.last();
+      assert.deepStrictEqual(t.sent, [{ command: ENABLE_SYNTAX, id: 1n }], 'only the first request is in flight');
+      assert.strictEqual(h.session.idle, false);
+      t.message(ret(1n, ok(str('Syntax highlight option changed to False'))));
+      await flush();
+      assert.deepStrictEqual(t.lastSent(), { command: typeOf('u'), id: 2n }, 'then the urgent one');
+      t.message(ret(2n));
+      await flush();
+      assert.deepStrictEqual(t.lastSent(), { command: typeOf('a'), id: 3n });
+      t.message(ret(3n));
+      await flush();
+      assert.deepStrictEqual([plain.state, urgent.state], ['resolved', 'resolved']);
+      assert.strictEqual(h.session.idle, true);
+      // Every new process gets it again; an :error answer is logged and changes nothing else.
+      h.session.restart('test');
+      await flush();
+      const t2 = h.transports.last();
+      assert.notStrictEqual(t2, t);
+      assert.deepStrictEqual(t2.sent, [{ command: ENABLE_SYNTAX, id: 4n }], 'ids go on across processes');
+      assert.strictEqual(h.session.idle, false, 'its own request is in flight');
+      t2.message(ret(4n, error('Unrecognised command')));
+      await flush();
+      assert.strictEqual(h.session.state, 'ready');
+      assert.strictEqual(h.session.idle, true);
+      assert.ok(h.log.lines.some((line) => /first request :enable-syntax was refused: Unrecognised command/.test(line)), h.log.lines.join('\n'));
+      // Idle from its answer on: the idle limit counts from there.
+      h.clock.advance(1_000);
+      await flush();
+      assert.strictEqual(h.session.state, 'stopped');
+      // A check session has none.
+      const c = setup();
+      const lookup = c.lookup('a');
+      await flush();
+      assert.deepStrictEqual(c.transports.last().sent, [{ command: typeOf('a'), id: 1n }]);
+      c.transports.last().message(ret(1n));
+      await flush();
+      assert.strictEqual(lookup.state, 'resolved');
+    });
+
+    test('shadow (M6): a stop while its first request is in flight rejects nothing of a caller and starts nothing', async () => {
+      const ENABLE_SYNTAX = list(sym('enable-syntax'), { kind: 'bool', value: false });
+      const h = setup({ role: 'shadow', firstRequest: ENABLE_SYNTAX });
+      const waiting = h.lookup('a');
+      await flush();
+      h.session.stop('stop', 'test');
+      await flush();
+      assert.ok(cancelled(waiting));
+      assert.strictEqual(h.session.state, 'stopped');
+      assert.strictEqual(h.transports.all.length, 1);
     });
 
     test('requests are sent one at a time, in call order, with increasing ids', async () => {
@@ -1370,6 +1429,27 @@ suite('backend/ide/session', () => {
         assert.strictEqual(h.session.state, 'ready', `crash ${i + 1}`);
       }
       assert.strictEqual(h.transports.all.length, 7);
+    });
+
+    test('shadow (M6): an unexpected end stops it, rejects what waits with its own text, and starts nothing', async () => {
+      const h = await readySession({ role: 'shadow', launch: STDIO_LAUNCH });
+      const first = h.lookup('a');
+      const second = h.lookup('b');
+      await flush();
+      h.t.exit({ code: 3, signal: null });
+      await flush();
+      assert.strictEqual(kindOf(first), 'BackendCrashed');
+      assert.match(messageOf(second), /^The Idris 2 process for unsaved text ended \(the Idris 2 process exited with code 3\); it starts again at the next check of unsaved text\.$/);
+      assert.deepStrictEqual(causes(h.changes).slice(-1), ['busy→stopped:exit']);
+      h.clock.advance(60_000);
+      await flush();
+      assert.strictEqual(h.transports.all.length, 1, 'not restarted by itself');
+      const next = h.lookup('c');
+      await flush();
+      assert.strictEqual(h.transports.all.length, 2, 'the next request starts a process');
+      h.transports.last().message(ret(h.transports.last().lastSent().id));
+      await flush();
+      assert.strictEqual(next.state, 'resolved');
     });
 
     test('eval (M3): an unexpected end — exit, request time-out, handshake time-out — stops it, rejects what waits, and starts nothing', async () => {

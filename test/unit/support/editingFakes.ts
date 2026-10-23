@@ -419,6 +419,8 @@ export class FakeEditBackend {
   readonly requests: EditRequest[] = [];
   /** Answers the `n`-th request (0-based). Default: rejects. */
   answer: (req: EditRequest, n: number) => Promise<EditResult> = () => Promise.reject(new Error('no answer scripted'));
+  /** (M6) `showsUnsavedCheck`'s answer: the compiler checked the unsaved text the document shows. */
+  unsavedShown = false;
 
   asBackend(): IdrisBackend {
     return {
@@ -428,6 +430,8 @@ export class FakeEditBackend {
         this.requests.push(req);
         return this.answer(req, this.requests.length - 1);
       },
+      showsUnsavedCheck: () => this.unsavedShown,
+      unsavedTextChanged: () => undefined,
     } as unknown as IdrisBackend;
   }
 }

@@ -21,7 +21,7 @@ import { IdrisException } from '../../core/errors';
 import { isKeyword, OPERATOR_CHARACTERS } from '../../core/idrisSyntax';
 import { utf16Length, type IdeReplyPoint, type IdeReplySpan, type IdeRequestPoint } from '../../core/positions';
 import type { Decor, Multiplicity, RichText, RichTextSpan } from '../types';
-import { int, list, parseSexp, serializeSexp, SexpSyntaxError, str, sym } from './sexp';
+import { bool, int, list, parseSexp, serializeSexp, SexpSyntaxError, str, sym } from './sexp';
 import type {
   DecodedMessage,
   HighlightSpan,
@@ -429,6 +429,15 @@ export function isIdentifierName(text: string): boolean {
 /** Whether `text` is an operator in parentheses, `(<&&>)`: `(`, one or more `OPERATOR_CHARACTERS`, `)`. */
 export function isOperatorInParentheses(text: string): boolean {
   return text.length > 2 && text.startsWith('(') && text.endsWith(')') && [...text.slice(1, -1)].every((c) => OPERATOR_CHARACTERS.includes(c));
+}
+
+/**
+ * `(:enable-syntax :True|:False)`: whether the loads that follow in this process send
+ * `:highlight-source` frames; with `:False` they send none (F14). Answer: `(:ok "Syntax highlight
+ * option changed to False")`. The `shadow` session's first request (`session.ts`, *First request*).
+ */
+export function enableSyntax(on: boolean): Sexp {
+  return list(sym('enable-syntax'), bool(on));
 }
 
 /** The bare symbol `:version` (F4). Answer: `decodeVersion`. */

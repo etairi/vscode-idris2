@@ -9,7 +9,7 @@
  * end before it returns, and kills the process group after `RUN_LIMIT_MS` or when a reply is
  * overdue; callers make sure the extension runs no session meanwhile (`quiesce` in helpers.ts).
  */
-import { execFileSync, spawn } from 'child_process';
+import { execFileSync, spawn, spawnSync } from 'child_process';
 import * as fs from 'fs';
 import * as net from 'net';
 import * as os from 'os';
@@ -290,13 +290,29 @@ export async function runScenario(
       }
       values['${LINK}'] = cwd;
     }
+    // M6: a shadow session reads the TTCs of its package's check build, made first (one process, then the session's).
+    let env = options.env;
+    const shadow = transcript.meta.shadow;
+    if (shadow !== undefined) {
+      const pkg = path.join(dir, 'package', shadow.package);
+      fs.cpSync(path.join(repoRoot(), 'test', 'fixtures', 'workspaces', shadow.package), pkg, {
+        recursive: true,
+        filter: (source) => path.basename(source) !== 'build',
+      });
+      const checkBuild = path.join(pkg, 'build', '.vscode-idris2');
+      const built = spawnSync(executable, ['--build-dir', checkBuild, ...shadow.build], { cwd: pkg, encoding: 'utf8', timeout: 120_000 });
+      if (built.status !== 0) {
+        throw new Error(`${name}: building ${shadow.package} failed (${built.status}): ${built.stdout}${built.stderr}`);
+      }
+      env = { ...options.env, IDRIS2_PATH: path.join(checkBuild, 'ttc') };
+    }
     const run = await runIdeSession({
       executable,
       cwd,
       transport: options.transport ?? transcript.meta.transport,
       args: recordedArgs(transcript, values),
       requests: scenarioRequests(transcript, values),
-      env: options.env,
+      env,
     });
     return { run, root, dir, transcript };
   } finally {

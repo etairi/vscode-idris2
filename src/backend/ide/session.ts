@@ -71,13 +71,21 @@
  *   of an unknown shape (a newer compiler) is logged and ignored, except a `:return` with the
  *   in-flight id whose payload cannot be read (`DecodedMessage.returnId`): it ends that request
  *   at once with a `ProtocolError`, and the process, still in step, is kept.
- * - **Unread highlighting** (`eval` sessions; third review of M3). An `eval` session's load
- *   serves only its evaluation, which reads the load's `:return` and `:warning` frames, never its
- *   highlighting, so a `:highlight-source` frame with the in-flight id (`IdeCodec.highlightSourceId`,
- *   read from the frame's start and end) is dropped without being parsed: parsing the 16,654 frames
- *   of one load of the e2e suite's 2,000-line module took 77 ms of the extension host's thread at
- *   every evaluation [unit-level, the reviewer's offline run on the recorded frames]. Such a frame is
- *   not checked for being an s-expression. `check` sessions parse every frame.
+ * - **Unread highlighting** (`eval` sessions, third review of M3; `shadow` sessions, M6). An `eval`
+ *   session's load serves only its evaluation, which reads the load's `:return` and `:warning`
+ *   frames, never its highlighting, so a `:highlight-source` frame with the in-flight id
+ *   (`IdeCodec.highlightSourceId`, read from the frame's start and end) is dropped without being
+ *   parsed: parsing the 16,654 frames of one load of the e2e suite's 2,000-line module took 77 ms
+ *   of the extension host's thread at every evaluation [unit-level, the reviewer's offline run on
+ *   the recorded frames]. A `shadow` session's loads serve diagnostics and holes, whose tokens come
+ *   from the saved load (ARCHITECTURE §6.3), so the same holds for it; it sends no highlighting
+ *   anyway after its first request (below). Such a frame is not checked for being an s-expression.
+ *   `check` sessions parse every frame.
+ * - **First request** (`SessionDeps.firstRequest`; the `shadow` role's `(:enable-syntax :False)`,
+ *   F14). Sent to every process right after its handshake, before any request that waits, also
+ *   an `urgent` one; it is the session's own request (no caller waits for it, and nothing cancels
+ *   it), so the session is not `idle` until it has been answered. An `:error` answer is logged
+ *   as a warning and changes nothing else; its time limit is `requestTimeoutMs`.
  * - **Program output.** Over stdio every unframed item — a complete line, or the text before a
  *   reply glued to it (`wire.ts`) — is the process's own output in the protocol stream (F5): the
  *   compiler's log lines (`LOG <topic>:<level>: …`, which `logString` writes with `putStrLn` to
@@ -93,7 +101,7 @@
  *   `stopped` with the cause of the end, every waiting request rejects (`BackendCrashed`), and the
  *   next evaluation starts a process — so that no evaluation process runs, for up to its idle limit,
  *   that no evaluation asked for, and a runaway evaluation's time-out does not start one at once
- *   (*review of M3*). A process that cannot be started at all (`spawnError`) makes the session
+ *   (*review of M3*). A `shadow` session (M6) likewise: its next check of unsaved text starts one. A process that cannot be started at all (`spawnError`) makes the session
  *   `failed` at once.
  * - **A socket taken by another program** (ROADMAP §9 Q20; the socket is an opt-in in user settings
  *   since 2026-09-28, stdio the default). `--ide-mode-socket` serves the first
@@ -249,6 +257,8 @@ export interface SessionDeps {
   limits(): SessionLimits;
   /** Called when a process reports a protocol version above 2.1, with the warning text. */
   onNewerProtocol(warning: string): void;
+  /** Sent to every process right after its handshake, before any waiting request (module comment, *First request*). */
+  readonly firstRequest?: IdeCommand;
 }
 
 /** An `IdeSession` with the controls the pool uses. */
@@ -300,6 +310,8 @@ interface Entry {
   urgent: (() => boolean) | undefined;
   /** `RequestOptions.onReply` of every caller. */
   readonly onReply: ((reply: Reply) => void)[];
+  /** The session's own first request to the process (module comment, *First request*). */
+  readonly first?: true;
   /** The process `beforeSend` has passed for. */
   passedFor: Proc | undefined;
   /**
@@ -599,6 +611,7 @@ class Session implements ManagedSession {
    */
   private next(proc: Proc): Entry | undefined {
     return (
+      this.queue.find((entry) => entry.first === true) ??
       this.queue.find((entry) => entry.passedFor === proc || entry.running?.proc === proc) ??
       this.queue.find((entry) => isUrgent(entry)) ??
       this.queue[0]
@@ -916,9 +929,16 @@ class Session implements ManagedSession {
             : idrisError('BackendCrashed', `The Idris 2 process ended while answering ${name}: ${detail}.`)),
       );
     }
-    if (this.role === 'eval') {
-      // Not restarted (module comment, *Unexpected ends*): the next evaluation starts a process.
-      this.rejectQueue(idrisError('BackendCrashed', `The Idris 2 evaluation process ended (${detail}); it starts again at the next evaluation.`));
+    if (this.role === 'eval' || this.role === 'shadow') {
+      // Not restarted (module comment, *Unexpected ends*): the next evaluation, or check of unsaved text, starts a process.
+      this.rejectQueue(
+        idrisError(
+          'BackendCrashed',
+          this.role === 'eval'
+            ? `The Idris 2 evaluation process ended (${detail}); it starts again at the next evaluation.`
+            : `The Idris 2 process for unsaved text ended (${detail}); it starts again at the next check of unsaved text.`,
+        ),
+      );
       this.setState('stopped', cause, detail);
       return;
     }
@@ -1022,7 +1042,7 @@ class Session implements ManagedSession {
         break;
     }
     this.trace('receive', item.text);
-    if (this.role === 'eval' && proc.protocolVersion !== undefined && proc.inFlight?.id !== undefined) {
+    if ((this.role === 'eval' || this.role === 'shadow') && proc.protocolVersion !== undefined && proc.inFlight?.id !== undefined) {
       // Module comment, *Unread highlighting*.
       const id = this.deps.codec.highlightSourceId(item.text);
       if (id === proc.inFlight.id) {
@@ -1113,8 +1133,39 @@ class Session implements ManagedSession {
         `${PROTOCOL.major}.${PROTOCOL.minor}, which this extension was written for; some answers may be misread`;
       this.deps.onNewerProtocol(warning);
     }
+    if (this.deps.firstRequest !== undefined) {
+      // Queued before the change to `ready`, so that a request a listener makes then comes after it.
+      this.queue.unshift(this.firstEntry(this.deps.firstRequest));
+    }
     this.setState('ready', 'handshake', warning);
     this.pump();
+  }
+
+  /** The entry of `SessionDeps.firstRequest` (module comment, *First request*). */
+  private firstEntry(command: IdeCommand): Entry {
+    const name = commandName(command);
+    const waiter: Waiter = {
+      resolve: (reply) => {
+        if (reply.payload.kind === 'error') {
+          this.deps.log.warn(`Idris 2 (${this.cwd}): the session's first request ${name} was refused: ${reply.payload.message}`);
+        }
+      },
+      reject: () => undefined,
+    };
+    return {
+      command,
+      kind: 'lookup',
+      timeoutMs: undefined,
+      file: undefined,
+      waiters: [waiter],
+      messages: [],
+      beforeSend: undefined,
+      urgent: undefined,
+      onReply: [],
+      passedFor: undefined,
+      running: undefined,
+      first: true,
+    };
   }
 
   private complete(proc: Proc, entry: Entry, payload: ReplyPayload, returnedId: bigint | undefined): void {

@@ -171,6 +171,13 @@ suite('toolchain/status', () => {
         assert.strictEqual(ide({ kind: 'checked', errors: 1, warnings: 0, stale: false, known: true }).text, 'Idris 2 0.8.0 · IDE mode · 1 error');
       });
 
+      test('M6: the check of the unsaved text shown instead of the saved file\'s: its counts, and a detail that says so', () => {
+        const view = ide({ kind: 'checked', errors: 1, warnings: 2, stale: false, known: true, unsaved: true });
+        assert.strictEqual(view.text, 'Idris 2 0.8.0 · IDE mode · 1 error');
+        assert.match(view.detail, /checked the unsaved text: 1 error, 2 warnings; a save checks the file$/);
+        assert.strictEqual(ide({ kind: 'checked', errors: 0, warnings: 0, stale: false, known: true, unsaved: true }).text, 'Idris 2 0.8.0 · IDE mode · ✓');
+      });
+
       test('a file the compiler found already built, whose warnings are unknown: up to date, not ✓', () => {
         const view = ide({ kind: 'checked', errors: 0, warnings: 0, stale: false, known: false });
         assert.strictEqual(view.text, 'Idris 2 0.8.0 · IDE mode · up to date');

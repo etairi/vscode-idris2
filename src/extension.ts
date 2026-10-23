@@ -29,6 +29,7 @@
  */
 import * as fs from 'fs';
 import * as os from 'os';
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { IdeMode } from './backend/ide/backend';
 import { createSessionPool } from './backend/ide/pool';
@@ -66,6 +67,8 @@ import { registerInlayHints } from './features/intelligence/inlayHints';
 import { createDocumentQueries } from './features/intelligence/queries';
 import { registerIntelligence } from './features/intelligence/register';
 import type { IntelligenceDeps, LoadedFileEvent, LoadNotifications } from './features/intelligence/types';
+import { registerUnsavedChecks, SHADOW_STORAGE_DIR, shadowBaseOf } from './features/shadow/register';
+import type { UnsavedChecks } from './features/shadow/unsavedChecks';
 import { registerSelectionRanges } from './features/syntax/selectionRanges';
 import { createProjectIndex } from './project/index';
 import { findIpkg } from './project/ipkg';
@@ -125,6 +128,9 @@ export interface TestApi {
   readonly backendChoices: BackendChoices;
   /** M5: the notifications of the routing's user interface, in order (`features/backend`). */
   readonly routingNotices: readonly RoutingNotice[];
+  /** M6: check while typing (the entries of `idris2 (unsaved)`), and this window's shadow directories. */
+  readonly unsavedChecks: UnsavedChecks;
+  readonly shadowBase: string;
 }
 
 let store: DisposableStore | undefined;
@@ -235,6 +241,9 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
     }),
   );
   const trace = store.add(new ProtocolTraceChannel(vscode, config));
+  // M6: the copies of unsaved documents, per window (`features/shadow/register.ts`).
+  const globalStorage = context.globalStorageUri.fsPath;
+  const shadowBase = shadowBaseOf(globalStorage, process.pid);
   const pool = store.add(
     createSessionPool({
       toolchain,
@@ -247,6 +256,7 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
       log,
       platform: process.platform,
       processEnv: process.env,
+      shadowBase,
     }),
   );
   const ideMode = store.add(
@@ -265,6 +275,13 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
         return `${stat.dev}:${stat.ino}`;
       },
       platform: process.platform,
+      shadowFiles: {
+        mkdir: async (p) => {
+          await fs.promises.mkdir(p, { recursive: true });
+        },
+        writeFile: (p, text) => fs.promises.writeFile(p, text, 'utf8'),
+        remove: (p) => fs.promises.rm(p, { recursive: true, force: true }),
+      },
       isOpen: (fileName) => vscode.workspace.textDocuments.some((d) => d.uri.scheme === 'file' && d.fileName === fileName),
       openText: (fileName) => vscode.workspace.textDocuments.find((d) => d.uri.scheme === 'file' && d.fileName === fileName)?.getText(),
     }),
@@ -282,6 +299,27 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
       config,
       trust,
       consent: consent.gate,
+      log,
+      timers: { set: (callback, ms) => setTimeout(callback, ms), clear: (handle) => clearTimeout(handle as NodeJS.Timeout) },
+    }),
+  );
+  // M6: check while typing, in IDE mode's `shadow` sessions.
+  const unsaved = store.add(
+    registerUnsavedChecks(vscode, {
+      registry,
+      projects,
+      config,
+      trust,
+      checks,
+      stopShadows: (detail) => pool.stopShadows(undefined, detail),
+      storageDir: path.join(globalStorage, SHADOW_STORAGE_DIR),
+      shadowBase,
+      pid: process.pid,
+      fs: {
+        readdir: (p) => fs.promises.readdir(p),
+        remove: (p) => fs.promises.rm(p, { recursive: true, force: true }),
+        removeNow: (p) => fs.rmSync(p, { recursive: true, force: true }),
+      },
       log,
       timers: { set: (callback, ms) => setTimeout(callback, ms), clear: (handle) => clearTimeout(handle as NodeJS.Timeout) },
     }),
@@ -494,6 +532,8 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
     lspClient,
     backendChoices: choices,
     routingNotices: backendFeatures.notices,
+    unsavedChecks: unsaved.checks,
+    shadowBase,
   };
 }
 

@@ -623,6 +623,70 @@ suite('features/diagnostics/checks', () => {
       assert.deepStrictEqual(t.status(a), { kind: 'checked', errors: 0, warnings: 0, stale: false, known: true });
     });
 
+    test('M6: showSaved hides a file\'s diagnostics from VS Code\'s collection while the checks keep them and count them; a load meanwhile is shown when they are shown again', async () => {
+      const a = new FakeDocument('/w/a/Bad.idr');
+      const t = setup();
+      let check = t.checks.check(t.asDoc(a));
+      await settle();
+      t.backend.loads[0].resolve(result([[a.uri, [{ message: 'e1', severity: ERROR }]]]));
+      await check;
+      t.checks.showSaved(a.uri as unknown as vscode.Uri, false);
+      assert.strictEqual(t.collection.get(a.uri), undefined, 'hidden from VS Code');
+      assert.deepStrictEqual(t.checks.collection.get(a.uri as unknown as vscode.Uri)?.map((d) => d.message), ['e1'], 'kept');
+      assert.deepStrictEqual(t.status(a), { kind: 'checked', errors: 1, warnings: 0, stale: false, known: true }, 'counted');
+      // A load meanwhile (a save while the unsaved text's check is shown): kept, still hidden.
+      check = t.checks.check(t.asDoc(a));
+      await settle();
+      t.backend.loads[1].resolve(result([[a.uri, [{ message: 'e2', severity: ERROR }]]]));
+      await check;
+      assert.strictEqual(t.collection.get(a.uri), undefined);
+      t.checks.showSaved(a.uri as unknown as vscode.Uri, true);
+      assert.deepStrictEqual(t.collection.messages(a.uri), ['e2'], 'shown again: the newest');
+      // Showing what is not hidden, hiding twice: nothing more.
+      t.checks.showSaved(a.uri as unknown as vscode.Uri, true);
+      t.checks.showSaved(a.uri as unknown as vscode.Uri, false);
+      t.checks.showSaved(a.uri as unknown as vscode.Uri, false);
+      t.checks.showSaved(a.uri as unknown as vscode.Uri, true);
+      assert.deepStrictEqual(t.collection.messages(a.uri), ['e2']);
+      // A hidden file deleted (forgotten): nothing to show again.
+      t.checks.showSaved(a.uri as unknown as vscode.Uri, false);
+      t.deleted.fire(a.uri);
+      t.checks.showSaved(a.uri as unknown as vscode.Uri, true);
+      assert.strictEqual(t.collection.get(a.uri), undefined);
+    });
+
+    test('M6: while the unsaved text\'s check is shown (showSaved with its counts), the status of the document with unsaved changes is those counts, not stale; a change of it fires onDidChange', async () => {
+      const a = new FakeDocument('/w/a/Bad.idr');
+      const t = setup();
+      const check = t.checks.check(t.asDoc(a));
+      await settle();
+      t.backend.loads[0].resolve(result([[a.uri, [{ message: 'e1', severity: ERROR }]]]));
+      await check;
+      a.isDirty = true;
+      assert.deepStrictEqual(t.status(a), { kind: 'checked', errors: 1, warnings: 0, stale: true, known: true, staleness: { unsaved: true, manual: false } });
+      const before = t.changes();
+      t.checks.showSaved(a.uri as unknown as vscode.Uri, false, { errors: 0, warnings: 2 });
+      assert.ok(t.changes() > before);
+      assert.deepStrictEqual(t.status(a), { kind: 'checked', errors: 0, warnings: 2, stale: false, known: true, unsaved: true });
+      // Saved meanwhile (the controller shows the saved diagnostics again at the save; here not yet): the saved file's state.
+      a.isDirty = false;
+      assert.deepStrictEqual(t.status(a), { kind: 'checked', errors: 1, warnings: 0, stale: false, known: true });
+      a.isDirty = true;
+      t.checks.showSaved(a.uri as unknown as vscode.Uri, true);
+      const after = t.status(a);
+      assert.ok(after?.kind === 'checked' && after.unsaved === undefined && after.stale, JSON.stringify(after));
+    });
+
+    test('M6: saveChecksHeld says whether a document\'s save checks are held (cycling)', () => {
+      const t = setup();
+      const key = 'file:///w/a/A.idr';
+      assert.strictEqual(t.checks.saveChecksHeld(key), false);
+      const hold = t.checks.holdSaveChecks(key);
+      assert.strictEqual(t.checks.saveChecksHeld(key), true);
+      hold.dispose();
+      assert.strictEqual(t.checks.saveChecksHeld(key), false);
+    });
+
     test('a first load that determines nothing (a TTC fresh from an earlier session): no errors, warnings unknown, not ✓', async () => {
       const a = new FakeDocument('/w/a/Warn.idr');
       const t = setup();
@@ -1776,7 +1840,7 @@ suite('features/diagnostics/checks', () => {
     test('a deleted file, or a deleted folder, removes the diagnostics at or below it', async () => {
       const t = setup();
       for (const file of ['/w/a/A.idr', '/w/a/sub/B.idr', '/w/ab/C.idr']) {
-        t.collection.set(uri(file), [{ message: file, severity: ERROR }]);
+        t.checks.collection.set(uri(file) as unknown as vscode.Uri, [{ message: file, severity: ERROR }] as unknown as vscode.Diagnostic[]);
       }
       t.deleted.fire(uri('/w/a/sub/B.idr'));
       assert.deepStrictEqual([...t.collection.entries.keys()], ['file:///w/a/A.idr', 'file:///w/ab/C.idr']);

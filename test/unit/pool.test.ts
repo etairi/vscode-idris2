@@ -13,6 +13,7 @@ import { Emitter } from '../../src/core/event';
 import type { GateVerdict, PermitReason, SessionGate } from '../../src/core/trust';
 import { checkBuildDir, createTunedSessionPool, EVAL_IDLE_TIMEOUT_MS, evalBuildDir, extraArgsProblem, launchDifferences, sessionLaunch } from '../../src/backend/ide/pool';
 import { DEFAULT_SESSION_TIMING } from '../../src/backend/ide/session';
+import { shadowDirectoryOf } from '../../src/backend/ide/shadow';
 import type { IdeSession, Reply, SessionLaunch, SessionPool, SessionPoolChange } from '../../src/backend/ide/types';
 import type { Classification, IpkgModel, ProjectRoot } from '../../src/project/types';
 import type { Idris2Info, ToolState } from '../../src/toolchain/types';
@@ -109,7 +110,10 @@ class FakeGate implements SessionGate {
   }
 }
 
-function setup(options: { platform?: NodeJS.Platform; trusted?: boolean; toolchain?: FakeToolchain } = {}) {
+/** The extension's storage for shadow directories in these tests (`SessionPoolDeps.shadowBase`). */
+const SHADOW_BASE = '/g/shadow';
+
+function setup(options: { platform?: NodeJS.Platform; trusted?: boolean; toolchain?: FakeToolchain; shadowBase?: string | null; processEnv?: NodeJS.ProcessEnv } = {}) {
   const toolchain = options.toolchain ?? new FakeToolchain(snapshot());
   const config = new FakeConfig();
   const gate = new FakeGate();
@@ -129,7 +133,8 @@ function setup(options: { platform?: NodeJS.Platform; trusted?: boolean; toolcha
       trace,
       log,
       platform: options.platform ?? 'darwin',
-      processEnv: {},
+      processEnv: options.processEnv ?? {},
+      ...(options.shadowBase === null ? {} : { shadowBase: options.shadowBase ?? SHADOW_BASE }),
     },
     { timing: DEFAULT_SESSION_TIMING, clock, createTransport: transports.create },
   );
@@ -138,12 +143,29 @@ function setup(options: { platform?: NodeJS.Platform; trusted?: boolean; toolcha
   return { pool, toolchain, config, gate, trust, clock, transports, log, changes };
 }
 
-/** Sends a lookup and answers it; resolves with the reply and the transport that carried it. */
+/**
+ * Sends a lookup and answers it, and before it a `shadow` session's first request (`(:enable-syntax
+ * :False)`, which goes to every new process first); resolves with the lookup's reply.
+ */
 async function answered(h: ReturnType<typeof setup>, session: IdeSession): Promise<Reply> {
   const reply = session.request(typeOf('x'), { kind: 'lookup' });
-  await flush();
-  const t = h.transports.last();
-  t.message(ret(t.lastSent().id));
+  let settled = false;
+  reply.then(
+    () => (settled = true),
+    () => (settled = true),
+  );
+  const done = new Set<string>();
+  for (let round = 0; round < 3 && !settled; round++) {
+    await flush();
+    const t = h.transports.last();
+    const id = t.lastSent().id;
+    const key = `${h.transports.all.indexOf(t)} ${id}`;
+    if (!done.has(key)) {
+      done.add(key);
+      t.message(ret(id));
+    }
+    await flush();
+  }
   return reply;
 }
 
@@ -1299,6 +1321,236 @@ suite('backend/ide/pool', () => {
       h2.config.set({ maxSessions: 1 });
       await flush();
       assert.deepStrictEqual([other.state, check2.state], ['stopped', 'ready']);
+    });
+  });
+  suite('the shadow role (M6)', () => {
+    const PROJECT = projectRoot();
+    const projectShadow = shadowDirectoryOf(SHADOW_BASE, PROJECT, 'darwin');
+    const looseShadow = shadowDirectoryOf(SHADOW_BASE, LOOSE, 'darwin');
+
+    test('the command line: the transport, -p for loose files, extraArgs, its own build directory last; IDRIS2_PATH the check session\'s TTCs first', () => {
+      const shadowOf = (root: Classification, settings: IdeModeSettings, extra: { inheritedPath?: string; platform?: NodeJS.Platform; cwd?: string } = {}) =>
+        sessionLaunch({
+          root,
+          role: 'shadow',
+          cwd: extra.cwd ?? '/g/shadow/abc',
+          idris2: IDRIS2_PATH,
+          env: { OTHER: '1' },
+          settings,
+          platform: extra.platform ?? 'darwin',
+          shadow: { checkTtc: '/w/simple-ipkg/build/.vscode-idris2/ttc', ...(extra.inheritedPath === undefined ? {} : { inheritedPath: extra.inheritedPath }) },
+        });
+      // A project: its depends and opts come from the shadow directory's package file, not the command line.
+      const project = shadowOf(withModel({ opts: '--total' }), { ...DEFAULTS, extraArgs: ['--log', '1'] });
+      assert.deepStrictEqual(project.args, ['--ide-mode', '--no-color', '--log', '1', '--build-dir', '/g/shadow/abc/build']);
+      assert.strictEqual(project.cwd, '/g/shadow/abc');
+      assert.deepStrictEqual(project.env, { OTHER: '1', IDRIS2_PATH: '/w/simple-ipkg/build/.vscode-idris2/ttc' });
+      assert.strictEqual(project.realCwd, undefined);
+      // The extension's --build-dir after an extraArgs one, so that it wins; no isolation flag of its own.
+      assert.deepStrictEqual(shadowOf(PROJECT, { ...DEFAULTS, extraArgs: ['--build-dir', 'mine'] }).args.slice(2), ['--build-dir', 'mine', '--build-dir', '/g/shadow/abc/build']);
+      // A loose file: -p for each of loosePackages, as for its check session (F25); the socket when chosen.
+      const loose = shadowOf(LOOSE, { ...DEFAULTS, transport: 'socket', loosePackages: ['contrib'] });
+      assert.deepStrictEqual(loose.args, ['--ide-mode-socket', '--no-color', '-p', 'contrib', '--build-dir', '/g/shadow/abc/build']);
+      assert.strictEqual(loose.transport, 'socket');
+      // An IDRIS2_PATH of the environment comes after the check session's TTCs.
+      assert.strictEqual(shadowOf(PROJECT, DEFAULTS, { inheritedPath: '/opt/ttc' }).env.IDRIS2_PATH, '/w/simple-ipkg/build/.vscode-idris2/ttc:/opt/ttc');
+      const windows = sessionLaunch({
+        root: PROJECT,
+        role: 'shadow',
+        cwd: 'C:\\g\\shadow\\abc',
+        idris2: 'C:\\idris2.exe',
+        env: {},
+        settings: DEFAULTS,
+        platform: 'win32',
+        shadow: { checkTtc: 'C:\\w\\p\\build\\.vscode-idris2\\ttc', inheritedPath: 'C:\\ttc' },
+      });
+      assert.deepStrictEqual(windows.args.slice(-2), ['--build-dir', 'C:\\g\\shadow\\abc\\build']);
+      assert.strictEqual(windows.env.IDRIS2_PATH, 'C:\\w\\p\\build\\.vscode-idris2\\ttc;C:\\ttc');
+    });
+
+    test('a separate session per root, in its shadow directory, started by its first request through the gate, which judges the root\'s own directory', async () => {
+      const h = setup();
+      const check = h.pool.sessionFor(PROJECT, 'check');
+      const shadow = h.pool.sessionFor(PROJECT, 'shadow');
+      assert.notStrictEqual(check, shadow);
+      assert.strictEqual(shadow.role, 'shadow');
+      assert.strictEqual(shadow.cwd, projectShadow);
+      assert.strictEqual(h.pool.shadowDirectory(PROJECT), projectShadow);
+      assert.strictEqual(h.pool.sessionFor(PROJECT, 'shadow'), shadow);
+      assert.strictEqual(h.transports.all.length, 0, 'nothing started by sessionFor');
+      // The gate's real path of the root is not where a shadow session starts.
+      h.gate.rechecked.set(PROJECT.dir, { allowed: true, basis: 'workspaceFolder', realDir: '/private/w/simple-ipkg' });
+      await answered(h, shadow);
+      assert.deepStrictEqual(h.gate.asked, [PROJECT.dir]);
+      assert.deepStrictEqual(h.gate.rechecks, [PROJECT.dir]);
+      assert.deepStrictEqual(h.gate.reasons, [{ ipkg: PROJECT.ipkgPath }]);
+      const launch = h.transports.last().launch;
+      assert.strictEqual(launch.cwd, projectShadow);
+      assert.strictEqual(launch.realCwd, undefined);
+      assert.deepStrictEqual(launch.args.slice(-2), ['--build-dir', `${projectShadow}/build`]);
+      assert.strictEqual(launch.env.IDRIS2_PATH, '/w/simple-ipkg/build/.vscode-idris2/ttc');
+      assert.strictEqual(check.state, 'stopped');
+      // Its first request to the process: (:enable-syntax :False) (F14), then the caller's.
+      assert.deepStrictEqual(h.transports.last().sent.map((sent) => sent.command), [
+        { kind: 'list', items: [{ kind: 'symbol', name: 'enable-syntax' }, { kind: 'bool', value: false }] },
+        typeOf('x'),
+      ]);
+      // A loose root has its own.
+      const l = setup();
+      const looseSession = l.pool.sessionFor(LOOSE, 'shadow');
+      assert.strictEqual(looseSession.cwd, looseShadow);
+      assert.notStrictEqual(looseShadow, projectShadow);
+    });
+
+    test('the check session\'s TTC directory as IDRIS2_PATH: the effective one (isolation, builddir, the real path it runs in), then the environment\'s', async () => {
+      const h = setup({ processEnv: { IDRIS2_PATH: '/opt/ttc' } });
+      const check = h.pool.sessionFor(PROJECT, 'check');
+      h.gate.rechecked.set(PROJECT.dir, { allowed: true, basis: 'workspaceFolder', realDir: '/private/w/simple-ipkg' });
+      await answered(h, check);
+      const shadow = h.pool.sessionFor(PROJECT, 'shadow');
+      await answered(h, shadow);
+      assert.strictEqual(h.transports.last().launch.env.IDRIS2_PATH, '/private/w/simple-ipkg/build/.vscode-idris2/ttc:/opt/ttc');
+      const b = setup();
+      const built = withBuilddir('out');
+      await answered(b, b.pool.sessionFor(built, 'shadow'));
+      assert.strictEqual(b.transports.last().launch.env.IDRIS2_PATH, '/w/simple-ipkg/out/ttc');
+      const i = setup();
+      i.config.set({ isolateBuildDir: false });
+      await answered(i, i.pool.sessionFor(PROJECT, 'shadow'));
+      assert.strictEqual(i.transports.last().launch.env.IDRIS2_PATH, '/w/simple-ipkg/build/ttc');
+    });
+
+    test('refused before the gate is asked: no storage directory, a package whose shadow package file cannot be written; Restricted Mode', async () => {
+      const refusalOf = async (h: ReturnType<typeof setup>, root: Classification): Promise<string> => {
+        try {
+          await h.pool.sessionFor(root, 'shadow').request(typeOf('x'), { kind: 'lookup' });
+          return 'sent';
+        } catch (e) {
+          return e instanceof IdrisException ? `${e.error.kind}: ${e.message}` : String(e);
+        }
+      };
+      const none = setup({ shadowBase: null });
+      assert.strictEqual(none.pool.shadowDirectory(PROJECT), undefined);
+      assert.strictEqual(await refusalOf(none, PROJECT), 'Unsupported: Unsaved text cannot be checked: the extension has no storage directory to copy it to.');
+      const bad = setup();
+      assert.strictEqual(
+        await refusalOf(bad, withModel({ opts: '--total --build-dir' })),
+        "Unsupported: Unsaved text of this project is not checked: the package's opts end with --build-dir without its value.",
+      );
+      assert.strictEqual(await refusalOf(bad, BROKEN_IPKG), 'Unsupported: Unsaved text of this project is not checked: its package file could not be read.');
+      assert.deepStrictEqual([none.gate.asked, bad.gate.asked], [[], []]);
+      assert.strictEqual(none.transports.all.length + bad.transports.all.length, 0);
+      const untrusted = setup({ trusted: false });
+      assert.match(await refusalOf(untrusted, PROJECT), /Restricted Mode/);
+      assert.deepStrictEqual(untrusted.gate.asked, []);
+      // The gate refuses the root's directory: nothing either.
+      const denied = setup();
+      denied.gate.verdicts.set(PROJECT.dir, { allowed: false, reason: 'denied' });
+      assert.match(await refusalOf(denied, PROJECT), /^Unsupported: Idris 2 is not started in “\/w\/simple-ipkg”/);
+      assert.strictEqual(denied.transports.all.length, 0);
+    });
+
+    test('consent withdrawn for the root\'s directory stops it (cause consentRevoked); its own directory is never judged', async () => {
+      const h = setup();
+      const shadow = h.pool.sessionFor(PROJECT, 'shadow');
+      await answered(h, shadow);
+      h.gate.verdicts.set(projectShadow, { allowed: false, reason: 'denied' });
+      h.gate.fire();
+      assert.strictEqual(shadow.state, 'ready', 'the shadow directory is not what the gate judges');
+      h.gate.verdicts.set(PROJECT.dir, undefined);
+      h.gate.fire();
+      assert.strictEqual(shadow.state, 'stopped');
+      assert.strictEqual(h.changes.filter((c) => c.session === shadow).at(-1)?.change.cause, 'consentRevoked');
+    });
+
+    test('a changed command line stops it (it starts at the next check of unsaved text), never restarts it; so does a package that can no longer have one', async () => {
+      const h = setup();
+      const check = h.pool.sessionFor(PROJECT, 'check');
+      await answered(h, check);
+      const shadow = h.pool.sessionFor(PROJECT, 'shadow');
+      await answered(h, shadow);
+      const before = h.transports.all.length;
+      // Isolation off moves the check session's TTCs, so the shadow session's IDRIS2_PATH changes.
+      h.config.set({ isolateBuildDir: false });
+      await flush();
+      const stops = h.changes.filter((c) => c.session === shadow && c.change.cause === 'reconfigure').map((c) => c.change);
+      assert.deepStrictEqual(stops.map((c) => c.state), ['stopped']);
+      assert.match(stops[0].detail ?? '', /environment \(idris2\.toolchain\.env\); the session for unsaved text starts again at the next check of unsaved text$/);
+      assert.strictEqual(h.transports.all.length, before + 1, 'only the check session got a new process');
+      await answered(h, shadow);
+      assert.strictEqual(h.transports.last().launch.env.IDRIS2_PATH, '/w/simple-ipkg/build/ttc');
+      // The package's opts change so that it cannot have one: stopped, with that reason.
+      h.pool.sessionFor(withModel({ opts: '--build-dir' }), 'shadow');
+      assert.strictEqual(shadow.state, 'stopped');
+      assert.match(h.changes.filter((c) => c.session === shadow).at(-1)?.change.detail ?? '', /opts end with --build-dir without its value/);
+      // A change of the package's opts or depends alone changes no command line: the package file carries them.
+      const k = setup();
+      const kept = k.pool.sessionFor(PROJECT, 'shadow');
+      await answered(k, kept);
+      k.pool.sessionFor(withModel({ opts: '--total', depends: [] }), 'shadow');
+      assert.strictEqual(kept.state, 'ready');
+    });
+
+    test('Restart Backend stops it, one root or all; Stop Backend, release and packageChanged stop it; stopShadows stops shadow sessions only', async () => {
+      const h = setup();
+      const check = h.pool.sessionFor(PROJECT, 'check');
+      const shadow = h.pool.sessionFor(PROJECT, 'shadow');
+      const otherShadow = h.pool.sessionFor(LOOSE, 'shadow');
+      await answered(h, check);
+      await answered(h, shadow);
+      await answered(h, otherShadow);
+      h.pool.restart(PROJECT);
+      await flush();
+      assert.deepStrictEqual([check.state, shadow.state, otherShadow.state], ['ready', 'stopped', 'ready']);
+      assert.match(h.changes.filter((c) => c.session === shadow).at(-1)?.change.detail ?? '', /^Restart Backend: the session for unsaved text starts again/);
+      await answered(h, shadow);
+      const before = h.transports.all.length;
+      h.pool.restartAll();
+      await flush();
+      assert.deepStrictEqual([check.state, shadow.state, otherShadow.state], ['ready', 'stopped', 'stopped']);
+      assert.strictEqual(h.transports.all.length, before + 1, 'one new process: the check session\'s');
+      await answered(h, shadow);
+      await answered(h, otherShadow);
+      h.pool.stopShadows(PROJECT, 'idris2.checkOnType.enabled was turned off');
+      assert.deepStrictEqual([check.state, shadow.state, otherShadow.state], ['ready', 'stopped', 'ready']);
+      const last = h.changes.filter((c) => c.session === shadow).at(-1)?.change;
+      assert.deepStrictEqual([last?.cause, last?.detail], ['stop', 'idris2.checkOnType.enabled was turned off']);
+      await answered(h, shadow);
+      h.pool.stopShadows(undefined, 'all');
+      assert.deepStrictEqual([check.state, shadow.state, otherShadow.state], ['ready', 'stopped', 'stopped']);
+      await answered(h, shadow);
+      h.pool.stop(PROJECT);
+      assert.deepStrictEqual([check.state, shadow.state], ['stopped', 'stopped']);
+      await answered(h, shadow);
+      h.pool.release(PROJECT);
+      assert.strictEqual(shadow.state, 'stopped');
+      await answered(h, shadow);
+      h.pool.packageChanged(PROJECT, 'gone');
+      assert.strictEqual(shadow.state, 'stopped');
+    });
+
+    test('its idle limit is at most 2 min (EVAL_IDLE_TIMEOUT_MS), as the eval session\'s; maxSessions evicts it first when idle', async () => {
+      const h = setup();
+      const check = h.pool.sessionFor(PROJECT, 'check');
+      const shadow = h.pool.sessionFor(PROJECT, 'shadow');
+      await answered(h, check);
+      await answered(h, shadow);
+      h.clock.advance(EVAL_IDLE_TIMEOUT_MS);
+      await flush();
+      assert.deepStrictEqual([check.state, shadow.state], ['ready', 'stopped']);
+      assert.strictEqual(h.changes.filter((c) => c.session === shadow).at(-1)?.change.cause, 'idle');
+      const m = setup();
+      m.config.set({ maxSessions: 1 });
+      m.pool.setActiveRoot(PROJECT);
+      const activeCheck = m.pool.sessionFor(PROJECT, 'check');
+      await answered(m, activeCheck);
+      const activeShadow = m.pool.sessionFor(PROJECT, 'shadow');
+      await answered(m, activeShadow);
+      await flush();
+      assert.deepStrictEqual([activeCheck.state, activeShadow.state], ['ready', 'stopped']);
+      const evicted = m.changes.find((c) => c.change.cause === 'evicted');
+      assert.strictEqual(evicted?.session, activeShadow);
+      assert.match(evicted.change.detail ?? '', /this was an idle session for unsaved text, which starts again at the next check of unsaved text$/);
     });
   });
 });

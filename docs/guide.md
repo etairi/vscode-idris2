@@ -28,7 +28,8 @@ The compiler checks Idris files — in a package (`.ipkg`) or on their own, lite
 | `afterDelay` | as `onSave`; also, a file with unsaved changes is **saved automatically** after a pause in typing (`idris2.checking.delay`, 700 ms) — this writes your files |
 | `manual` | only with **Check File** |
 
-- The compiler always checks the file as saved on disk, never the unsaved text in the editor.
+- These checks read the file as saved on disk. While you type, the text in the editor is checked
+  too: see [Check while typing](#check-while-typing).
 - Every file is matched to its `.ipkg` the way the compiler finds it, also a package above the
   folder you opened. Files without one get the packages of `idris2.ideMode.loosePackages`.
 - Errors in an imported module and a malformed `.ipkg` are shown where they are. The files they
@@ -42,7 +43,7 @@ and the result, e.g. `Idris 2 0.8.0 · IDE mode · 1 error`, with the details be
 | Status | Meaning |
 |---|---|
 | `checking…` | a check is running, or waits for your [permission](#folders-outside-the-workspace) |
-| `✓`, `2 errors`, `1 warning` | the result of the last check |
+| `✓`, `2 errors`, `1 warning` | the result of the last check — of the unsaved text while its check is shown |
 | `up to date` | already built in an earlier session, warnings not repeated (see [limitations](#known-limitations)) |
 | `stale` | unsaved changes, or the file changed on disk and was not checked yet (also an auto-save during a [Proof Search cycle](#holes-and-interactive-editing)) |
 | `not allowed here` | you did not allow the compiler in this folder: highlighting only |
@@ -56,6 +57,26 @@ and the result, e.g. `Idris 2 0.8.0 · IDE mode · 1 error`, with the details be
 **Build directory.** With `idris2.ideMode.isolateBuildDir` (on by default) the editor's build
 files go to `build/.vscode-idris2`, apart from your own builds. That is not possible when the
 `.ipkg` sets `builddir` or a `--build-dir` in `opts`, or `idris2.ideMode.extraArgs` has one.
+
+### Check while typing
+
+Half a second after you stop typing (`idris2.checkOnType.delay`, 500 ms), the file in the active
+editor is checked as it is in the editor, without saving it. Its errors and warnings replace those
+of the saved file, with the source `idris2 (unsaved)`; saving, undoing back to the saved text,
+reverting or closing the file brings the saved file's back. On by default
+(`idris2.checkOnType.enabled`).
+
+- The text is copied, with a package file of the project's dependencies and options, into the
+  extension's own storage, and a second compiler process checks the copy there. Your files are never
+  written. The modules the file imports are read as the last check of the saved files built them; a
+  module of the project that the file imports and no check has built yet is checked as saved, and
+  the text checked again.
+- Hovers, holes (the Holes view), and the interactive editing commands work on the unsaved text once
+  its check has answered: they no longer save the file first. Go to Definition, completion and the
+  namespace browser still answer from the saved file.
+- After **Stop Backend**, typing starts no compiler; the next save or **Check File** does.
+- Only projects in IDE mode: idris2-lsp checks a file when it is saved. A file outside its package's
+  `sourcedir` is not checked while typing.
 
 ## Code intelligence
 
@@ -493,6 +514,9 @@ permission takes no turn.
   2,000-line file. An evaluation that computes much leaves it larger (about 700 MiB after one
   that took 4.6–6.3 s), so it is also stopped after any evaluation over a second; the next
   evaluation starts it again, which takes a little longer.
+- While you type with unsaved changes, a second process checks the unsaved text (see
+  [Check while typing](#check-while-typing)); it stops after two idle minutes. On a 2,000-line file
+  each check took about a second.
 - **Nothing limits this by default**, so files open from many folders add up. On a machine with
   little memory, set `idris2.ideMode.maxSessions` to `3` and `idris2.ideMode.maxBackgroundChecks`
   to `1`: fewer compilers run and fewer files are checked at once.
@@ -526,6 +550,10 @@ workspace's values of the `idris2.toolchain.*` paths and environment, `loosePack
   own directories. It never starts `pack` itself.
 - To check files it runs `idris2` in IDE mode **in the project's directory** — the folder of the
   `.ipkg`, or of a file without one — because the compiler reads the package from there.
+- To check unsaved text it writes a copy of it, with a package file of the project's dependencies
+  and options, into the extension's global storage (a folder per VS Code window, deleted when the
+  window closes) and runs `idris2` there. It asks for the project's folder, as for the check of the
+  saved file.
 - idris2-lsp, for the projects it serves, runs in the workspace folder (or a folder you allowed)
   and moves into each file's folder itself. It is sent a file only when the file's folder lies in a
   trusted workspace folder or you allowed it, as for the compiler; requests count too, since the
@@ -643,13 +671,15 @@ It is written to an output channel, which VS Code also keeps as a file in its lo
 
 ## Known limitations
 
-- **The saved file.** The compiler checks the file as saved on disk, and its answers (types,
-  definitions, completions, inlay hints, evaluation) refer to it. Go to Definition into another
-  file that changed on disk since the last check (a `git checkout`, a formatter) may land on
-  another line until the file you are in is checked again. In the Holes view, an imported module's
-  holes are those of the last check that reported them, until the file checked then, or the module
-  itself, is checked again. Most editing commands save the file first. Checking while you type
-  arrives with a later milestone ([roadmap](ROADMAP.md)).
+- **The saved file.** Apart from [Check while typing](#check-while-typing), the compiler checks the
+  file as saved on disk, and its answers (definitions, completions, evaluation) refer to it. Go to
+  Definition into another file that changed on disk since the last check (a `git checkout`, a
+  formatter) may land on another line until the file you are in is checked again. In the Holes view,
+  an imported module's holes are those of the last check that reported them, until the file checked
+  then, or the module itself, is checked again. Most editing commands save the file first, unless
+  its unsaved text was checked.
+- **Check while typing** reads the modules the file imports as last built, also when they have
+  unsaved changes themselves. A name typed and not saved has no hover until the file is saved.
 - **Literate files need LF line ends.** The compiler drops a CRLF line break outside the code:
   a `.lidr` with CRLF does not compile, and a Markdown file with CRLF compiles with its lines
   shifted, which puts its errors, hovers and highlighting on the wrong lines. The status bar shows

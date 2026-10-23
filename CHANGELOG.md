@@ -8,6 +8,14 @@ independent of Idris 2 releases (`docs/ROADMAP.md` §7.4).
 
 ### Added
 
+- **Check while typing** (milestone M6): half a second after you stop typing, the file in the
+  active editor is checked as it is in the editor, without saving it; its errors and warnings
+  (source `idris2 (unsaved)`) replace those of the saved file until you save, undo back or close
+  it. The text is checked as a copy in the extension's own storage, with the project's packages and
+  options. Hovers, the Holes view and the editing commands work on the unsaved text once it has been
+  checked, and the editing commands no longer save the file first then. On by default in IDE mode
+  (`idris2.checkOnType.enabled`, `idris2.checkOnType.delay`); after Stop Backend, typing starts no
+  compiler until the next save or Check File.
 - **idris2-lsp as a backend** (milestone M5): a package can be served by the language server
   idris2-lsp instead of the compiler's IDE mode — `idris2.backend.mode` set to `lsp`, or **Switch
   Backend…** for one project (remembered for the workspace). IDE mode stays the default; `auto`

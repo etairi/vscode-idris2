@@ -48,7 +48,7 @@
  * reply echoes while the reply's prefix counts past it, which desynchronises the stream
  * (`test/fake-idris2/README.md`, *Framing*).
  */
-import type { Sexp, SexpInteger, SexpList, SexpString, SexpSymbol } from './types';
+import type { Sexp, SexpBool, SexpInteger, SexpList, SexpString, SexpSymbol } from './types';
 
 /** A text that is not one s-expression; `offset` is the UTF-16 offset where reading stopped. */
 export class SexpSyntaxError extends Error {
@@ -71,6 +71,10 @@ export function str(value: string): SexpString {
 
 export function sym(name: string): SexpSymbol {
   return { kind: 'symbol', name };
+}
+
+export function bool(value: boolean): SexpBool {
+  return { kind: 'bool', value };
 }
 
 /** `value` must be an integer (`BigInt` throws a `RangeError` otherwise). */

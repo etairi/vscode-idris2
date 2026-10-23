@@ -21,15 +21,15 @@ test/
 │                                       idris2-scopes.md (scope inventory + limits, kept in sync by a test)
 ├─ corpus/                    M0        corpus.json (pinned repositories, fetched into .corpus/),
 │                                       lexer-oracle/LexDump.idr (the 0.8.0 lexer as reference)
-├─ integration/               M0–M5     @vscode/test-cli suites per fixture workspace: the top-level
+├─ integration/               M0–M6     @vscode/test-cli suites per fixture workspace: the top-level
 │                                       *.test.ts (suite integration), simple-ipkg/, path/
 │                                       (suite toolchain-path), diagnostics/, loose-stdio/,
-│                                       consent/ (M2), intelligence/, intelligence-loose/ (M3),
-│                                       editing/, holes/ (M4), lsp/ (M5); support.ts is their
-│                                       shared helper
-├─ e2e/                       M1–M5     real idris2 (IDRIS2_E2E=1); ideDriver.ts drives IDE-mode
+│                                       consent/ (M2), intelligence/, intelligence-loose/ (M3;
+│                                       intelligence/unsaved.test.ts M6), editing/, holes/ (M4),
+│                                       lsp/ (M5); support.ts is their shared helper
+├─ e2e/                       M1–M6     real idris2 (IDRIS2_E2E=1); ideDriver.ts drives IDE-mode
 │                                       sessions of it (M2); lsp.test.ts the real idris2-lsp
-│                                       (M5, suite e2e-lsp)
+│                                       (M5, suite e2e-lsp); unsaved.test.ts check while typing (M6)
 ├─ fake-idris2/               M0 (handshake + :version), M1 (recorded --ttc-version, --paths,
 │                                       --list-packages, --dump-ipkg-json), M2 (transcript replay
 │                                       over stdio + socket, injected faults, a command-line log;
@@ -45,7 +45,7 @@ test/
 │                                       missing-ipkg fault), replay.mjs (which recording answers a
 │                                       message); plain Node, README.md
 └─ fixtures/
-   ├─ transcripts/<idris2-version>/*.jsonl   M2   recorded IDE-mode sessions (65 for 0.8.0), by
+   ├─ transcripts/<idris2-version>/*.jsonl   M2   recorded IDE-mode sessions (67 for 0.8.0), by
    │                                                scripts/record-transcripts.mjs; format and
    │                                                scenarios in transcripts/README.md
    ├─ lsp-transcripts/<server-version>/*.jsonl M5  recorded idris2-lsp sessions (19 for
@@ -78,6 +78,11 @@ test/
       │                                 implementation, an operator, docstrings: hover, tokens,
       │                                 symbols, docs, Browse Namespace…)
       ├─ builddir-ipkg/       M2        an .ipkg with builddir = "out" (F12, E21)
+      ├─ shadow-simple-error/, shadow-simple-hole/   M6   the session directories of the recorded
+      │                                 shadow sessions: shadow.ipkg (what the extension writes for
+      │                                 simple-ipkg, unit-tested) and the copy src/Foo/B.idr with a
+      │                                 type error / a hole; skipped by check:fixtures (the copy
+      │                                 compiles only with simple-ipkg's TTCs)
       ├─ multi-module/        M9        one error in src/Sub.idr (build-task acceptance; no earlier suite needs it)
       ├─ broken/              M2        Bad.idr (type error), Warn.idr (unreachable clause),
       │                                 Mixed.idr (both), Part.idr (coverage), UsesBad.idr (imports
@@ -569,6 +574,46 @@ IDE-mode transcripts are their ground truth.
 - Extended: `config.test.ts` (the M5 settings), `manifest.test.ts` (commands, settings, scopes,
   `restrictedConfigurations`), `diagnosticsChecks.test.ts` (`forgetRoot`), `toolchainService.test.ts`,
   `setupInformation.test.ts`, `statusItem.test.ts`, `backendRegistry.test.ts`.
+
+## Unit tests of the M6 code (`unit/`)
+
+No compiler runs in them; the shadow recordings (`shadow-type-error`, `shadow-hole`) and the
+IDE-mode transcripts are their ground truth.
+
+- `shadow.test.ts` — `backend/ide/shadow.ts`: the options the package file keeps (read with the model
+  of the 0.8.0 option parser only around an option left out), the package file read back with the
+  port of the compiler's ipkg parser (name, `sourcedir`, `depends` and their bounds, `opts` raw), the
+  source directory, a loose file's package, the problems; the copy's path; the directory's name; the
+  `shadow-*` fixtures equal to what the extension writes.
+- `pool.test.ts`, *the shadow role (M6)* — the command line (no `-p` for `depends`, `extraArgs`, the
+  build directory last, `IDRIS2_PATH`), the gate on the root's own directory, the first request,
+  the refusals, consent withdrawn, stopped instead of restarted, `stopShadows`, the idle limit and
+  eviction.
+- `session.test.ts` — the first request (before an urgent one, not idle until answered, every
+  process), no restart after an unexpected end, `:highlight-source` dropped unread.
+- `backendIde.test.ts`, *M6 (checks of unsaved text)* — what is written and when, the path sent, the
+  diagnostics (source, ranges), another document's copy, the refusals, the modules not found, a
+  package-file error, the routing of queries, holes and edits, a search continued there, the restart
+  of a long check, cancellation.
+- `unsavedChecks.test.ts` — `features/shadow/unsavedChecks.ts`: the delay, the active document only,
+  save / undo / revert / close, the conditions (trust, setting, backend, the root's state),
+  cancellation, refusals and failures, the modules not built yet, the cycling holds, the setting, dispose.
+- `shadowStorage.test.ts` — `features/shadow/register.ts`: the ended windows' folders, `isRunning`.
+- Extended: `diagnosticsChecks.test.ts` (`showSaved`, the unsaved counts in the status,
+  `saveChecksHeld`), `statusItem.test.ts`, `holesView.test.ts` (a check of unsaved text replaces the
+  loaded file's holes only), `hover.test.ts`, `hoverQueries.test.ts` (`StaleAnswers`),
+  `saveBeforeAction.test.ts` (no save while the unsaved text is checked), `protocolTranscripts.test.ts`,
+  `manifest.test.ts`.
+
+## Integration and e2e of M6
+
+- `integration/intelligence/unsaved.test.ts` (suite `intelligence`, the fake compiler replaying the
+  shadow recordings): the shadow session's directory, build directory, `IDRIS2_PATH` and first
+  request; the type error as `idris2 (unsaved)` with the saved diagnostics hidden; the hole in the
+  Holes view; a revert. The test profiles turn check while typing off; the suite turns it on.
+- `e2e/unsaved.test.ts` (real compiler, a fresh copy of `simple-ipkg`): ROADMAP M6's acceptance and
+  E22's timings (`docs/as-built/M6.md`, *Acceptance as tested*); one compiler at a time (a release of
+  the root before each shadow phase, VS Code's inlay hints off).
 
 ## Integration suite of M5 (`integration/lsp/`)
 

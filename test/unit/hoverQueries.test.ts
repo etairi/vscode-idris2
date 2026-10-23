@@ -238,6 +238,17 @@ suite('features/intelligence/queries', () => {
       assert.deepStrictEqual(await t.cache.get('/elsewhere/C.idr', 'k', t.answer('c2')), { kind: 'answer', value: 'c' }, 'another root keeps its answers');
     });
 
+    test('M6: a check of a document\'s unsaved text makes that file\'s answers stale, and no other\'s', async () => {
+      const t = cacheSetup();
+      t.loads.fire({ root: t.root, file: '/w/A.idr', rebuilt: true });
+      t.loads.fire({ root: t.root, file: '/w/B.idr', rebuilt: true });
+      await t.cache.get('/w/A.idr', 'k', t.answer('a1'));
+      await t.cache.get('/w/B.idr', 'k', t.answer('b1'));
+      t.loads.fire({ root: t.root, file: '/w/B.idr', rebuilt: false, unsaved: { text: 'module B\n' } });
+      assert.deepStrictEqual(await t.cache.get('/w/B.idr', 'k', t.answer('b2')), { kind: 'answer', value: 'b2' });
+      assert.deepStrictEqual(await t.cache.get('/w/A.idr', 'k', t.answer('a2')), { kind: 'answer', value: 'a1' });
+    });
+
     test('forget (the document closed) drops the file\'s answers', async () => {
       const t = cacheSetup();
       t.loads.fire({ root: t.root, file: '/w/A.idr', rebuilt: true });
