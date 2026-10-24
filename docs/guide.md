@@ -75,6 +75,13 @@ reverting or closing the file brings the saved file's back. On by default
   its check has answered: they no longer save the file first. Go to Definition, completion and the
   namespace browser still answer from the saved file.
 - After **Stop Backend**, typing starts no compiler; the next save or **Check File** does.
+- A file that is saved automatically within a second of an edit is not checked while typing, since
+  the check after the save would compile the same text again: VS Code's auto-save after a short delay
+  (`files.autoSave` `afterDelay` with `files.autoSaveDelay` at most 1000 ms, unless
+  `files.autoSaveWhenNoErrors` is on, or `files.autoSaveWorkspaceFilesOnly` for a file outside the
+  workspace folders), and `idris2.checking.trigger` `afterDelay` with `idris2.checking.delay` at most
+  1000 ms (700 by default). The status shows `stale` until the file is saved. Under the `manual`
+  trigger a save checks nothing, so the file is checked while typing.
 - Only projects in IDE mode: idris2-lsp checks a file when it is saved. A file outside its package's
   `sourcedir` is not checked while typing.
 
@@ -484,11 +491,12 @@ a notification offers to copy them (once per set of values; **Don't Ask Again**)
 | `idris2.holes.showInSideBar` | `true` | Show the [Holes view](#the-holes-view) |
 | `idris2.trace.protocol` | `false` | Record the messages exchanged with the compiler; user settings only |
 
-**`maxSessions`.** Each window counts its own processes. A project's evaluation process counts
-too, once it has answered: starting an evaluation stops no other process. Above the limit, idle
-processes are stopped, never a busy one — first evaluation processes, then the checking processes
-of projects other than the active file's, the one used least recently first. A stopped process
-starts again when it is next needed.
+**`maxSessions`.** Each window counts its own processes. A project's evaluation process and its
+process for [unsaved text](#check-while-typing) count too, once they have answered: starting an
+evaluation or a check of unsaved text stops no other process. Above the limit, idle processes are
+stopped, never a busy one — first evaluation processes and those of unsaved text, then the checking
+processes of projects other than the active file's, the one used least recently first. A stopped
+process starts again when it is next needed.
 
 **`maxBackgroundChecks`.** Each window counts its own checks. The others wait their turn, and
 **Stop Backend** drops those still waiting. The active file never waits for a turn: within one

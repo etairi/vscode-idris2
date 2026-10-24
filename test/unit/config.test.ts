@@ -4,10 +4,12 @@ import type * as vscode from 'vscode';
 import * as path from 'path';
 import {
   Config,
+  DEFAULT_AUTO_SAVE_DELAY_MS,
   expandHome,
   MAX_DELAY_MS,
   MIN_LSP_CODE_ACTION_RESULTS,
   MIN_LSP_LONG_ACTION_TIMEOUT_MS,
+  readAutoSaveSettings,
   readBackendMode,
   readCheckingSettings,
   readDiagnosticsSettings,
@@ -525,6 +527,36 @@ suite('core/config', () => {
       change(['idris2.lsp.trace.server']);
       change(['idris2.toolchain.lspPath']);
       assert.deepStrictEqual(calls, ['backend', 'lsp true false', 'lsp false true']);
+    });
+  });
+
+  suite('VS Code\'s auto-save settings (files.autoSave*, read for check while typing)', () => {
+    test('read as VS Code reads them: an unknown mode is off, a delay that is not a number of at least 0 is 1000 ms, a flag is on only when true', () => {
+      assert.strictEqual(DEFAULT_AUTO_SAVE_DELAY_MS, 1000);
+      assert.deepStrictEqual(readAutoSaveSettings(section({})), { mode: 'off', delayMs: 1000, whenNoErrors: false, workspaceFilesOnly: false });
+      assert.deepStrictEqual(
+        readAutoSaveSettings(section({ autoSave: 'afterDelay', autoSaveDelay: 0, autoSaveWhenNoErrors: true, autoSaveWorkspaceFilesOnly: true })),
+        { mode: 'afterDelay', delayMs: 0, whenNoErrors: true, workspaceFilesOnly: true },
+      );
+      for (const mode of ['onFocusChange', 'onWindowChange'] as const) {
+        assert.strictEqual(readAutoSaveSettings(section({ autoSave: mode })).mode, mode);
+      }
+      assert.strictEqual(readAutoSaveSettings(section({ autoSave: 'always' })).mode, 'off');
+      for (const delay of [-1, Number.NaN, '500', null]) {
+        assert.strictEqual(readAutoSaveSettings(section({ autoSaveDelay: delay })).delayMs, 1000, String(delay));
+      }
+      assert.strictEqual(readAutoSaveSettings(section({ autoSaveDelay: 2500.5 })).delayMs, 2500.5);
+      const strings = readAutoSaveSettings(section({ autoSaveWhenNoErrors: 'true', autoSaveWorkspaceFilesOnly: 1 }));
+      assert.deepStrictEqual([strings.whenNoErrors, strings.workspaceFilesOnly], [false, false]);
+    });
+
+    test('Config.autoSave(scope) reads VS Code\'s files section for the scope (a document: its language\'s settings apply)', () => {
+      const { host, sections, scopes } = fakeHost({ autoSave: 'afterDelay', autoSaveDelay: 800 });
+      const config = new Config(host, HOME);
+      const doc = { uri: { scheme: 'file', path: '/w/A.idr' }, languageId: 'idris2' } as unknown as vscode.TextDocument;
+      assert.deepStrictEqual(config.autoSave(doc), { mode: 'afterDelay', delayMs: 800, whenNoErrors: false, workspaceFilesOnly: false });
+      assert.deepStrictEqual(sections, ['files']);
+      assert.deepStrictEqual(scopes, [doc]);
     });
   });
 

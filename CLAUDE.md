@@ -16,7 +16,7 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   `holes()` and the contract suite — was M5's, which shipped second); M5 is implemented (2026-10-02,
   commit `e4eedaa`, `docs/as-built/M5.md`, likewise); M6 is implemented (2026-10-24, commit
   `ddabd4f`, `docs/as-built/M6.md`, likewise: its shadow directory holds a package file, against an
-  acceptance item, for the user to confirm). The one planned stub is M0's
+  acceptance item, which the user kept for now). The one planned stub is M0's
   `src/webview/goalPanel.ts` (an empty second esbuild entry, ROADMAP M0 "Out"), which M7
   replaces.
 - `docs/as-built/` — what was built: one file per finished milestone (`M0.md` … `M6.md`) with
@@ -90,7 +90,8 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   most three, then one final review fixing only high findings and regressions). Decided on
   2026-10-24 (ROADMAP §9): `idris2.lsp.logSeverity` defaults to `info` (the server's `debug` logs
   the files' text); M5's review was done by one reviewer in the session, after the workflow's
-  reviewers hit the workspace's API usage limit.
+  reviewers hit the workspace's API usage limit; M6's `shadow.ipkg` is kept for now (against M6's
+  acceptance item "no `.ipkg`").
 - Test corpora (`test/corpus/corpus.json`, fetched by `scripts/fetch-corpus.mjs` into the
   git-ignored `.corpus/`): `idris-compiler-tools` (MIT, Jan Serwatka) and the Idris 2 v0.8.0
   libraries (BSD-3, Edwin Brady) may be excerpted into fixtures, each excerpt with an attribution
@@ -564,6 +565,10 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
 - **No check while typing after Stop Backend, a give-up or a refusal of the folder** (the passive
   rule of M3) until a check starts the compiler. The shadow session's first request to every process is
   `(:enable-syntax :False)`; like the `eval` session it never starts a process by itself.
+- **No check while typing of a document an automatic save saves within a second** (user request,
+  2026-10-24): `unsavedChecks.ts` `savedSoon` copies VS Code's own `isShortAutoSaveDelay` (1.143.1
+  [src]) and adds the `afterDelay` trigger; a save under `manual` checks nothing, so it does not count.
+  VS Code's `files.*` settings are read only through `Config.autoSave`, with the document as the scope.
 - **Tests**: every test profile turns `idris2.checkOnType.enabled` off (`.vscode-test.mjs`); a suite
   that tests M6 turns it on and restores it. The `shadow-*` fixture workspaces are the session
   directories of the recorded shadow sessions (scenarios with `shadow` in

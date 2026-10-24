@@ -892,8 +892,10 @@ M0 → M1 → M2 → M3 → M14).
 - **Status: implemented** (2026-10-24), committed as `ddabd4f`, CI run 40004468317 green on ubuntu
   and macOS; `idris2.checkOnType.enabled` on by default (ARCHITECTURE §11). E9 settled from the 0.8.0 source and a live run: `-p` adds no package's dependencies, so the
   shadow directory holds a package file the extension writes (`shadow.ipkg`: the root's `depends`
-  and `opts`), which departs from the acceptance item "no `.ipkg`" — whose intent, never the
-  project's `.ipkg`, holds — and is the user's to confirm. E22 measured (a warm check 0.1 s beyond
+  and `opts`), which departs from the acceptance item "no `.ipkg`" (whose intent, never the
+  project's `.ipkg`, holds) and which the user kept for now (§9, 2026-10-24). After the commit, at
+  the user's request: no check of unsaved text that an automatic save saves within a second (as-built
+  *Decisions* 11). E22 measured (a warm check 0.1 s beyond
   the 500 ms delay on `simple-ipkg`, 1.0–1.1 s on a 2,000-line module). Decisions, deviations, the
   facts, the tests and the open issues: `docs/as-built/M6.md`.
 
@@ -1382,6 +1384,13 @@ retiring every backend risk before UI work is preferred.
 ---
 
 ## 9. Open questions and decisions needed from the user
+
+**Decided by the user on 2026-10-24 (M6)**
+
+- **`shadow.ipkg` kept, for now**: the shadow directory holds the package file the extension writes
+  (the root's `depends` and `opts`; `docs/as-built/M6.md`, *Decisions* 1), against M6's acceptance
+  item "the shadow directory contains no `.ipkg`", whose intent holds: the compiler never finds the
+  project's own `.ipkg`.
 
 **Decided by the user on 2026-10-24 (M5)**
 

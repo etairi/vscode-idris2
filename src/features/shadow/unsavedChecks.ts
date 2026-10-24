@@ -35,11 +35,16 @@
  * - **Turning it off.** When `idris2.checkOnType.enabled` changes, the entries of the documents for
  *   which it is now off are removed, every `shadow` session is stopped (`stopShadows`) and the
  *   copies are deleted (`ShadowStorage.clear`); the active document is checked again if it still may be.
+ * - **Saved soon** (requested by the user on 2026-10-24, after M6). A document that an automatic save
+ *   saves within a second of an edit, a save that is checked, is not checked so (`savedSoon`): the
+ *   check after the save would compile the same text again. That is VS Code's auto-save after a
+ *   short delay, or `idris2.checking.trigger` `afterDelay` with an `idris2.checking.delay` as short.
+ *   The rules are read at each edit and when the delay ends; an entry shown before goes at the save.
  */
 import type * as vscode from 'vscode';
 import type { BackendRegistry } from '../../backend/registry';
 import type { UnsavedCheckResult } from '../../backend/types';
-import type { Config } from '../../core/config';
+import { DEFAULT_AUTO_SAVE_DELAY_MS, type AutoSaveSettings, type CheckingSettings, type Config } from '../../core/config';
 import { DisposableStore, type IDisposable } from '../../core/disposable';
 import { errorText, IdrisException, isCancelled } from '../../core/errors';
 import type { Log } from '../../core/log';
@@ -53,9 +58,28 @@ export type UnsavedChecksApi = Pick<typeof vscode, 'CancellationTokenSource' | '
   readonly window: Pick<typeof vscode.window, 'activeTextEditor' | 'onDidChangeActiveTextEditor'>;
   readonly workspace: Pick<
     typeof vscode.workspace,
-    'onDidChangeTextDocument' | 'onDidSaveTextDocument' | 'onDidCloseTextDocument' | 'openTextDocument'
+    'onDidChangeTextDocument' | 'onDidSaveTextDocument' | 'onDidCloseTextDocument' | 'openTextDocument' | 'getWorkspaceFolder'
   >;
 };
+
+/**
+ * Whether an automatic save saves the document within `DEFAULT_AUTO_SAVE_DELAY_MS` of an edit and the
+ * save is checked, so that its unsaved text is not checked (module comment, *Saved soon*). The save
+ * is checked unless `checking.trigger` is `manual`. VS Code saves it after a short delay exactly when
+ * its `isShortAutoSaveDelay` holds [src: `FilesConfigurationService.computeAutoSaveConfiguration`,
+ * VS Code 1.143.1]: `files.autoSave` is `afterDelay`, `files.autoSaveDelay` at most 1000 ms, and
+ * neither `files.autoSaveWhenNoErrors` nor, for a file outside the workspace folders
+ * (`insideWorkspace` false), `files.autoSaveWorkspaceFilesOnly` is on. Not seen here: the files whose
+ * auto-save VS Code turns off by itself (`autoSaveDisabledOverrides`), which have no API.
+ */
+export function savedSoon(files: AutoSaveSettings, checking: CheckingSettings, insideWorkspace: boolean): boolean {
+  if (checking.trigger === 'manual') {
+    return false;
+  }
+  const savedByVsCode =
+    files.mode === 'afterDelay' && files.delayMs <= DEFAULT_AUTO_SAVE_DELAY_MS && !files.whenNoErrors && (insideWorkspace || !files.workspaceFilesOnly);
+  return savedByVsCode || (checking.trigger === 'afterDelay' && checking.delayMs <= DEFAULT_AUTO_SAVE_DELAY_MS);
+}
 
 /** The copies of unsaved documents on disk (`register.ts`). */
 export interface ShadowStorage {
@@ -68,7 +92,8 @@ export interface UnsavedChecksDeps {
   /** `backendFor(root)`, and `stateFor(root)`: nothing is checked after Stop Backend, a give-up or a refusal of the folder. */
   readonly registry: Pick<BackendRegistry, 'backendFor' | 'stateFor'>;
   readonly projects: Pick<ProjectIndex, 'classify'>;
-  readonly config: Pick<Config, 'checkOnType' | 'onDidChange'>;
+  /** `checkOnType`, and `checking` and `autoSave` for `savedSoon`. */
+  readonly config: Pick<Config, 'checkOnType' | 'checking' | 'autoSave' | 'onDidChange'>;
   readonly trust: WorkspaceTrust;
   /** The checks of the saved files: their diagnostics hidden meanwhile, a module not built yet checked, the cycling holds. */
   readonly checks: Pick<DocumentChecks, 'showSaved' | 'check' | 'saveChecksHeld'>;
@@ -128,8 +153,22 @@ export class UnsavedChecks implements IDisposable {
     return this.tracked.get(uri.toString())?.shown;
   }
 
+  /** Whether a check of the document `uri` waits for its delay or runs (for the tests and the test API). */
+  pending(uri: vscode.Uri): boolean {
+    const t = this.tracked.get(uri.toString());
+    return t !== undefined && (t.timer !== undefined || t.running !== undefined);
+  }
+
   private enabled(doc: vscode.TextDocument): boolean {
     return this.deps.trust.isTrusted && isCheckable(doc) && this.deps.config.checkOnType(doc.uri).enabled;
+  }
+
+  /** `enabled`, and no automatic save checks `doc` soon (`savedSoon`). */
+  private due(doc: vscode.TextDocument): boolean {
+    return (
+      this.enabled(doc) &&
+      !savedSoon(this.deps.config.autoSave(doc), this.deps.config.checking(doc.uri), this.api.workspace.getWorkspaceFolder(doc.uri) !== undefined)
+    );
   }
 
   private isActive(doc: vscode.TextDocument): boolean {
@@ -162,7 +201,7 @@ export class UnsavedChecks implements IDisposable {
       t.running.source.cancel();
       this.backendNotified(doc);
     }
-    if (this.isActive(doc) && this.enabled(doc)) {
+    if (this.isActive(doc) && this.due(doc)) {
       this.schedule(t);
     }
   }
@@ -176,7 +215,7 @@ export class UnsavedChecks implements IDisposable {
   }
 
   private activated(doc: vscode.TextDocument): void {
-    if (doc.isDirty && this.enabled(doc)) {
+    if (doc.isDirty && this.due(doc)) {
       const t = this.track(doc);
       if (t.shown !== doc.version && t.running === undefined) {
         this.schedule(t);
@@ -204,7 +243,7 @@ export class UnsavedChecks implements IDisposable {
   /** The check of `t`'s document, if it still may be checked now (module comment). */
   private async run(t: Tracked): Promise<void> {
     const doc = t.doc;
-    if (this.disposed || doc.isClosed || !doc.isDirty || !this.isActive(doc) || !this.enabled(doc) || this.tracked.get(doc.uri.toString()) !== t) {
+    if (this.disposed || doc.isClosed || !doc.isDirty || !this.isActive(doc) || !this.due(doc) || this.tracked.get(doc.uri.toString()) !== t) {
       return;
     }
     if (this.deps.checks.saveChecksHeld(doc.uri.toString())) {

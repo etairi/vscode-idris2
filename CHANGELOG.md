@@ -15,7 +15,8 @@ independent of Idris 2 releases (`docs/ROADMAP.md` §7.4).
   options. Hovers, the Holes view and the editing commands work on the unsaved text once it has been
   checked, and the editing commands no longer save the file first then. On by default in IDE mode
   (`idris2.checkOnType.enabled`, `idris2.checkOnType.delay`); after Stop Backend, typing starts no
-  compiler until the next save or Check File.
+  compiler until the next save or Check File. A file that auto-save saves within a second of an edit
+  is checked by its save instead, not twice.
 - **idris2-lsp as a backend** (milestone M5): a package can be served by the language server
   idris2-lsp instead of the compiler's IDE mode — `idris2.backend.mode` set to `lsp`, or **Switch
   Backend…** for one project (remembered for the workspace). IDE mode stays the default; `auto`

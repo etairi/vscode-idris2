@@ -208,7 +208,7 @@
           "default": true,
           "scope": "resource",
           "order": 13,
-          "markdownDescription": "Check the active Idris file's unsaved text while you type, without saving it: after `#idris2.checkOnType.delay#` ms without an edit, a copy of the text is checked by a separate compiler process of its project, and its errors and warnings replace the saved file's (source `idris2 (unsaved)`) until you save. The copy is written to this extension's storage on this machine and deleted when it is no longer needed. Files of a project served by idris2-lsp are not checked this way."
+          "markdownDescription": "Check the active Idris file's unsaved text while you type, without saving it: after `#idris2.checkOnType.delay#` ms without an edit, a copy of the text is checked by a separate compiler process of its project, and its errors and warnings replace the saved file's (source `idris2 (unsaved)`) until you save. The copy is written to this extension's storage on this machine and deleted when it is no longer needed. Files of a project served by idris2-lsp are not checked this way, nor files that are saved automatically within a second of an edit (VS Code's `#files.autoSave#` `afterDelay` with `#files.autoSaveDelay#` at most 1000, or `#idris2.checking.trigger#` `afterDelay` with `#idris2.checking.delay#` at most 1000): the check after the save reports instead."
         },
         "idris2.checkOnType.delay": {
           "type": "integer",
@@ -304,7 +304,7 @@
           "maximum": 2147483647,
           "scope": "window",
           "order": 26,
-          "markdownDescription": "Milliseconds after which an IDE-mode process that has had no request is stopped, to free its memory; it starts again when it is needed. The process of **Idris 2: Evaluate Selection** stops after at most 2 minutes without an evaluation (never when this setting is `0`), and after an evaluation that took more than a second. `0`: never stopped for being idle. At most 2147483647 (about 24.8 days)."
+          "markdownDescription": "Milliseconds after which an IDE-mode process that has had no request is stopped, to free its memory; it starts again when it is needed. The process of **Idris 2: Evaluate Selection** and the one that checks unsaved text (`#idris2.checkOnType.enabled#`) stop after at most 2 minutes without a request (never when this setting is `0`); the evaluation process also after an evaluation that took more than a second. `0`: never stopped for being idle. At most 2147483647 (about 24.8 days)."
         },
         "idris2.ideMode.maxSessions": {
           "type": "integer",
@@ -312,7 +312,7 @@
           "minimum": 0,
           "scope": "window",
           "order": 27,
-          "markdownDescription": "The most IDE-mode compiler processes that keep running at once in this VS Code window; `0` (the default): no limit. Each window counts its own, so with two windows open up to twice as many can run. Each project (each `.ipkg` folder, and each folder of files without one) has its own process, and a second one once you evaluate an expression there (**Idris 2: Evaluate Selection**), which counts once it has answered: starting an evaluation stops no other process. Above the limit, idle processes are stopped — never one that is busy: first the evaluation processes, the one used least recently first, then the checking processes of projects other than the active editor's file's, likewise; a stopped process starts again when it is next needed, and then loads its modules again. On a machine with little memory, try `3`. Changing it restarts nothing."
+          "markdownDescription": "The most IDE-mode compiler processes that keep running at once in this VS Code window; `0` (the default): no limit. Each window counts its own, so with two windows open up to twice as many can run. Each project (each `.ipkg` folder, and each folder of files without one) has its own process, a second one once you evaluate an expression there (**Idris 2: Evaluate Selection**) and another while its unsaved text is checked (`#idris2.checkOnType.enabled#`); these two count once they have answered: starting an evaluation or a check of unsaved text stops no other process. Above the limit, idle processes are stopped — never one that is busy: first the evaluation processes and those of unsaved text, the one used least recently first, then the checking processes of projects other than the active editor's file's, likewise; a stopped process starts again when it is next needed, and then loads its modules again. On a machine with little memory, try `3`. Changing it restarts nothing."
         },
         "idris2.ideMode.maxBackgroundChecks": {
           "type": "integer",

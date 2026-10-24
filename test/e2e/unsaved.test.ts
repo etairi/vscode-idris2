@@ -5,8 +5,9 @@
 // (`Foo.A` from the isolated TTC directory, F32) and its hole is in the Holes view; ten checks of
 // unsaved text leave every file of the check session's build directory as it was; the shadow
 // directory holds no package file but the one the extension wrote (E9: the deviation from the
-// ROADMAP's "no .ipkg", docs/as-built/M6.md); turning idris2.checkOnType.enabled off, and Stop
-// Backend, stop every shadow session. The timings of E22 are printed.
+// ROADMAP's "no .ipkg", docs/as-built/M6.md); with VS Code's auto-save after a short delay no
+// unsaved text is checked and the save's check reports; turning idris2.checkOnType.enabled off, and
+// Stop Backend, stop every shadow session. The timings of E22 are printed.
 //
 // One compiler process at a time (CLAUDE.md): the root's sessions are stopped between the check
 // session's loads and the shadow session's, and each step waits for the processes to end. Before a
@@ -255,6 +256,33 @@ suite('E2E: check while typing (ROADMAP M6) on a fresh copy of simple-ipkg', fun
       allowLoose.stop();
       await release(await api.projects.classify(path.join(loose.root, 'Big.idr')));
       fs.rmSync(loose.dir, { recursive: true, force: true });
+    }
+  });
+
+  test('VS Code saving after a short delay (files.autoSave afterDelay, 1000 ms): typing checks no unsaved text; the save\'s check reports, source idris2', async () => {
+    editor = await vscode.window.showTextDocument(doc);
+    const files = vscode.workspace.getConfiguration('files');
+    const autoSave = files.inspect<string>('autoSave')?.globalValue;
+    await files.update('autoSave', 'afterDelay', vscode.ConfigurationTarget.Global);
+    try {
+      assert.strictEqual(ideProcesses().length, 0);
+      await setLine(6, 'greeting = shout 9');
+      // Decided at the edit. Had a check been scheduled, the revert ends it before it starts a
+      // compiler beside the one of the save's check (one at a time, CLAUDE.md).
+      if (api.unsavedChecks.pending(doc.uri)) {
+        await vscode.commands.executeCommand('workbench.action.files.revert');
+        assert.fail('a check of the unsaved text was scheduled');
+      }
+      await waitFor('VS Code to save the file', () => (!doc.isDirty ? true : undefined), 10000);
+      await waitFor('the check after the save', () =>
+        vscode.languages.getDiagnostics(doc.uri).some((d) => d.source === 'idris2' && d.severity === vscode.DiagnosticSeverity.Error && d.range.start.line === 6) ? true : undefined,
+      90000);
+      assert.strictEqual(shadowSessions().length, 0, 'no shadow session');
+      assert.deepStrictEqual(api.unsavedChecks.shownFor(doc.uri) ?? [], []);
+      assert.ok(ideProcesses().length <= 1, 'the check session alone');
+    } finally {
+      await files.update('autoSave', autoSave, vscode.ConfigurationTarget.Global);
+      await release(root);
     }
   });
 

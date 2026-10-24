@@ -666,8 +666,8 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
 
   /**
    * While more sessions count than the limit, stops idle ones (module comment): first the `eval`
-   * sessions, the active root's included, then the `check` sessions that are not the active root's,
-   * each group least recently used first.
+   * and `shadow` sessions, the active root's included, then the `check` sessions that are not the
+   * active root's, each group least recently used first.
    */
   function limitSessions(): void {
     const max = deps.config.ideMode().maxSessions;

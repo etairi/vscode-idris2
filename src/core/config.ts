@@ -12,7 +12,9 @@
  * and `idris2.holes.showInSideBar`, which only the `when` clause of the Holes view reads, so it has
  * no accessor here; M5 adds `idris2.backend.mode` (`Config.backendMode`) and `idris2.lsp.*`
  * (`Config.lsp`), except `idris2.lsp.trace.server`, which the language client library reads itself
- * (`backend/lsp/types.ts` `LSP_CLIENT_ID`). The module has no runtime dependency on `vscode` (one type import):
+ * (`backend/lsp/types.ts` `LSP_CLIENT_ID`); M6 adds `idris2.checkOnType.*` (`Config.checkOnType`)
+ * and reads VS Code's own `files.autoSave*` settings (`Config.autoSave`), which it does not
+ * contribute. The module has no runtime dependency on `vscode` (one type import):
  * `extension.ts` passes `vscode.workspace` as the `ConfigurationHost`, unit tests pass a fake.
  *
  * Values are validated here, so that callers never see a wrongly typed value from a
@@ -100,8 +102,9 @@ export interface SettingsChange {
 
 /**
  * What `vscode.workspace` offers that this module uses. `scope` is passed for the settings whose
- * scope is `resource` (`idris2.checking.*`, `idris2.backend.mode`), so that a folder's value
- * applies to its documents; the other groups are read without one.
+ * scope is `resource` (`idris2.checking.*`, `idris2.checkOnType.*`, `idris2.backend.mode`), so that a
+ * folder's value applies to its documents, and for VS Code's `files.autoSave*`, which a language can
+ * set too; the other groups are read without one.
  */
 export interface ConfigurationHost {
   getConfiguration(section: string, scope?: ConfigurationScope): ConfigurationReader;
@@ -454,6 +457,53 @@ export function readCheckOnTypeSettings(section: ConfigurationReader): CheckOnTy
   };
 }
 
+/** The section of VS Code's own file settings (`files.autoSave`, …). */
+const FILES_SECTION = 'files';
+
+/** The values of VS Code's `files.autoSave`. */
+export type AutoSaveMode = 'off' | 'afterDelay' | 'onFocusChange' | 'onWindowChange';
+
+const AUTO_SAVE_MODES: readonly AutoSaveMode[] = ['off', 'afterDelay', 'onFocusChange', 'onWindowChange'];
+
+/**
+ * VS Code's default `files.autoSaveDelay` (ms), which is also the longest delay it counts as short:
+ * `DEFAULT_AUTO_SAVE_DELAY` and `isShortAutoSaveDelay` in `FilesConfigurationService` [src: the
+ * workbench bundle of VS Code 1.143.1].
+ */
+export const DEFAULT_AUTO_SAVE_DELAY_MS = 1000;
+
+/**
+ * VS Code's auto-save settings, read for one document (`Config.autoSave`) because check while typing
+ * leaves out a file that VS Code saves after a short delay (`features/shadow/unsavedChecks.ts`
+ * `savedSoon`).
+ */
+export interface AutoSaveSettings {
+  /** `files.autoSave`. */
+  readonly mode: AutoSaveMode;
+  /** `files.autoSaveDelay` (ms). */
+  readonly delayMs: number;
+  /** `files.autoSaveWhenNoErrors`: a file with an error is not saved automatically. */
+  readonly whenNoErrors: boolean;
+  /** `files.autoSaveWorkspaceFilesOnly`: a file outside the workspace folders is not saved automatically. */
+  readonly workspaceFilesOnly: boolean;
+}
+
+/**
+ * Reads VS Code's auto-save settings from the `files` section as VS Code itself reads them
+ * (`computeAutoSaveConfiguration` in `FilesConfigurationService` [src: VS Code 1.143.1]): a mode it
+ * does not know is `off`, a delay that is not a number of at least 0 is `DEFAULT_AUTO_SAVE_DELAY_MS`,
+ * and each flag is on only when `true`.
+ */
+export function readAutoSaveSettings(section: ConfigurationReader): AutoSaveSettings {
+  const delay = section.get('autoSaveDelay');
+  return {
+    mode: enumSetting(section.get('autoSave'), AUTO_SAVE_MODES, 'off'),
+    delayMs: typeof delay === 'number' && delay >= 0 ? delay : DEFAULT_AUTO_SAVE_DELAY_MS,
+    whenNoErrors: section.get('autoSaveWhenNoErrors') === true,
+    workspaceFilesOnly: section.get('autoSaveWorkspaceFilesOnly') === true,
+  };
+}
+
 /** Reads and validates `idris2.ideMode.*` from the `idris2` section. */
 export function readIdeModeSettings(section: ConfigurationReader): IdeModeSettings {
   return {
@@ -684,12 +734,20 @@ export class Config {
     return readCheckingSettings(this.host.getConfiguration(CONFIGURATION_SECTION, scope));
   }
 
-  /** `idris2.checking.saveBeforeAction` for `scope` (the document's URI), as `checking` reads its section. */
   /** `idris2.checkOnType.*` for `scope` (a document's URI): `resource`-scoped, as `idris2.checking.*`. */
   checkOnType(scope?: ConfigurationScope): CheckOnTypeSettings {
     return readCheckOnTypeSettings(this.host.getConfiguration(CONFIGURATION_SECTION, scope));
   }
 
+  /**
+   * VS Code's auto-save settings for `scope`, a document: they can be set per language, and a
+   * document as the scope applies its language's (`readAutoSaveSettings`).
+   */
+  autoSave(scope?: ConfigurationScope): AutoSaveSettings {
+    return readAutoSaveSettings(this.host.getConfiguration(FILES_SECTION, scope));
+  }
+
+  /** `idris2.checking.saveBeforeAction` for `scope` (the document's URI), as `checking` reads its section. */
   saveBeforeAction(scope?: ConfigurationScope): SaveBeforeAction {
     return readSaveBeforeAction(this.host.getConfiguration(CONFIGURATION_SECTION, scope));
   }

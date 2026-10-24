@@ -527,10 +527,13 @@ suite('package.json (M1–M5 contributions)', () => {
       assert.deepStrictEqual([...IDE_MODE_LIMIT_KEYS].sort(), ['ideMode.maxBackgroundChecks', 'ideMode.maxSessions']);
     });
 
-    test('markdown links to settings (`#key#`) name contributed settings', () => {
+    test('markdown links to settings (`#key#`) name contributed settings, or VS Code\'s own listed ones', () => {
+      // VS Code's settings a description links to, each in the configuration schema of the workbench
+      // bundle of VS Code 1.143.1 [src] (`idris2.checkOnType.enabled`: the files auto-saved soon).
+      const vscodeSettings = ['files.autoSave', 'files.autoSaveDelay'];
       for (const [key, schema] of Object.entries(properties)) {
         for (const match of (schema.markdownDescription ?? '').matchAll(/`#([^#`]+)#`/g)) {
-          assert.ok(match[1] in properties, `${key} links to unknown setting ${match[1]}`);
+          assert.ok(match[1] in properties || vscodeSettings.includes(match[1]), `${key} links to unknown setting ${match[1]}`);
         }
       }
     });

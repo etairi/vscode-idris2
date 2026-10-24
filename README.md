@@ -15,7 +15,8 @@ language with first-class dependent types.
 **Compiler feedback**
 - Errors and warnings in the editor and the Problems panel, when you open or save a file
 - **Check while typing**: the unsaved text is checked half a second after you stop typing, without
-  saving it (source `idris2 (unsaved)`); hovers, holes and the editing commands follow it
+  saving it (source `idris2 (unsaved)`); hovers, holes and the editing commands follow it. A file
+  that auto-save saves within a second is checked by its save instead
 - Packages (`.ipkg`, found as the compiler finds them) and single files, literate ones included
 - Result in the language status: `checking…`, `✓`, `2 errors`, `stale`, `stopped`
 

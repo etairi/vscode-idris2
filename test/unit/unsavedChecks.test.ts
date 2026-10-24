@@ -1,15 +1,16 @@
 // features/shadow/unsavedChecks.ts: check while typing (ROADMAP M6) against fakes of the vscode
 // namespace parts it uses, a scripted backend, fake checks and timers fired by hand: which
 // document is checked and when, what is shown and hidden, cancellation, the modules not built
-// yet, the cycling holds, the setting, Restricted Mode, dispose.
+// yet, the cycling holds, the setting, Restricted Mode, the documents an automatic save saves soon,
+// dispose.
 import * as assert from 'assert';
 import type * as vscode from 'vscode';
 import type { UnsavedCheckOptions, UnsavedCheckResult } from '../../src/backend/types';
-import type { CheckOnTypeSettings, SettingsChange } from '../../src/core/config';
+import { DEFAULT_AUTO_SAVE_DELAY_MS, type AutoSaveSettings, type CheckingSettings, type CheckOnTypeSettings, type SettingsChange } from '../../src/core/config';
 import { cancelled, IdrisException, unsupported } from '../../src/core/errors';
 import { Emitter } from '../../src/core/event';
 import type { Timers } from '../../src/features/diagnostics/checks';
-import { UNSAVED_COLLECTION_NAME, UnsavedChecks, type UnsavedChecksApi, type UnsavedChecksDeps } from '../../src/features/shadow/unsavedChecks';
+import { savedSoon, UNSAVED_COLLECTION_NAME, UnsavedChecks, type UnsavedChecksApi, type UnsavedChecksDeps } from '../../src/features/shadow/unsavedChecks';
 import type { Classification } from '../../src/project/types';
 import { recordingLog } from './support/fakeTransport';
 
@@ -119,6 +120,14 @@ function setup(options: { trusted?: boolean; settings?: (scope: FakeUri | undefi
   const collections: FakeCollection[] = [];
   const window = { activeTextEditor: options.active === undefined ? undefined : { document: options.active } } as { activeTextEditor: { document: FakeDocument } | undefined };
   const opened: string[] = [];
+  /** What `savedSoon` reads: VS Code's auto-save settings, `idris2.checking.*`, whether a document is in a workspace folder. */
+  const saving = {
+    files: { mode: 'off', delayMs: 1000, whenNoErrors: false, workspaceFilesOnly: false } as AutoSaveSettings,
+    checking: { trigger: 'onSave', delayMs: 700 } as CheckingSettings,
+    insideWorkspace: true,
+  };
+  /** The scopes VS Code's auto-save settings were read for. */
+  const autoSaveScopes: unknown[] = [];
   const api = {
     CancellationTokenSource: FakeTokenSource,
     DiagnosticSeverity: { Error: 0, Warning: 1, Information: 2, Hint: 3 },
@@ -143,6 +152,7 @@ function setup(options: { trusted?: boolean; settings?: (scope: FakeUri | undefi
         opened.push(u.fsPath);
         return Promise.resolve(new FakeDocument(u.fsPath));
       },
+      getWorkspaceFolder: () => (saving.insideWorkspace ? { uri: uri('/w'), name: 'w', index: 0 } : undefined),
     },
   } as unknown as UnsavedChecksApi;
   const backend = new ScriptedBackend();
@@ -162,6 +172,11 @@ function setup(options: { trusted?: boolean; settings?: (scope: FakeUri | undefi
     projects: { classify: () => Promise.resolve(ROOT) },
     config: {
       checkOnType: (scope?: unknown) => settings(scope as FakeUri | undefined),
+      checking: () => saving.checking,
+      autoSave: (scope?: unknown) => {
+        autoSaveScopes.push(scope);
+        return saving.files;
+      },
       onDidChange: (group: string, listener: (change: SettingsChange) => void) =>
         group === 'checkOnType' ? configChanged.event(listener) : { dispose: () => undefined },
     } as unknown as UnsavedChecksDeps['config'],
@@ -203,6 +218,8 @@ function setup(options: { trusted?: boolean; settings?: (scope: FakeUri | undefi
     opened,
     window,
     state,
+    saving,
+    autoSaveScopes,
     setSettings: (f: (scope: FakeUri | undefined) => CheckOnTypeSettings) => (settings = f),
     /** A keystroke: the content change (VS Code sends it with the dirty state from before), then the dirty state. */
     type: (doc: FakeDocument, text = `${doc.text}x`) => {
@@ -467,6 +484,62 @@ suite('features/shadow (check while typing)', () => {
     t.timers.fireAll();
     await settle();
     assert.strictEqual(t.backend.checks.length, 1);
+  });
+
+  test('savedSoon: VS Code\'s auto-save after a short delay (its isShortAutoSaveDelay) or the afterDelay trigger within as long, a save the trigger checks', () => {
+    const files = (f: Partial<AutoSaveSettings> = {}): AutoSaveSettings => ({ mode: 'afterDelay', delayMs: 1000, whenNoErrors: false, workspaceFilesOnly: false, ...f });
+    const onSave: CheckingSettings = { trigger: 'onSave', delayMs: 700 };
+    assert.strictEqual(DEFAULT_AUTO_SAVE_DELAY_MS, 1000);
+    assert.strictEqual(savedSoon(files(), onSave, true), true, 'VS Code\'s default delay');
+    assert.strictEqual(savedSoon(files({ delayMs: 0 }), onSave, true), true);
+    assert.strictEqual(savedSoon(files({ delayMs: 1001 }), onSave, true), false, 'a longer delay: checked meanwhile');
+    for (const mode of ['off', 'onFocusChange', 'onWindowChange'] as const) {
+      assert.strictEqual(savedSoon(files({ mode }), onSave, true), false, mode);
+    }
+    assert.strictEqual(savedSoon(files({ whenNoErrors: true }), onSave, true), false, 'a file with an error is not saved');
+    assert.strictEqual(savedSoon(files({ workspaceFilesOnly: true }), onSave, true), true);
+    assert.strictEqual(savedSoon(files({ workspaceFilesOnly: true }), onSave, false), false, 'outside the workspace folders: not saved');
+    assert.strictEqual(savedSoon(files(), onSave, false), true);
+    const off = files({ mode: 'off' });
+    assert.strictEqual(savedSoon(off, { trigger: 'afterDelay', delayMs: 700 }, true), true, 'the afterDelay trigger, its default delay');
+    assert.strictEqual(savedSoon(off, { trigger: 'afterDelay', delayMs: 1000 }, false), true);
+    assert.strictEqual(savedSoon(off, { trigger: 'afterDelay', delayMs: 1001 }, true), false);
+    assert.strictEqual(savedSoon(files(), { trigger: 'manual', delayMs: 700 }, true), false, 'under manual a save checks nothing');
+  });
+
+  test('a document an automatic save saves soon is not checked: no delay starts, one that ends checks nothing, nor does becoming active; otherwise it is checked', async () => {
+    const a = new FakeDocument('/w/A.idr');
+    a.isDirty = false;
+    const t = setup({ active: a });
+    const pending = (): boolean => t.unsaved.pending(a.uri as unknown as vscode.Uri);
+    t.saving.files = { mode: 'afterDelay', delayMs: 1000, whenNoErrors: false, workspaceFilesOnly: false };
+    t.type(a);
+    assert.strictEqual(t.timers.pending.size, 0, 'no delay started');
+    assert.strictEqual(pending(), false);
+    assert.ok(t.autoSaveScopes.length > 0 && t.autoSaveScopes.every((s) => s === a), 'read for the document itself (its language\'s settings)');
+    // Auto-save turned on while the delay runs: when it ends, nothing is checked.
+    t.saving.files = { ...t.saving.files, mode: 'off' };
+    t.type(a);
+    assert.strictEqual(pending(), true);
+    t.saving.files = { ...t.saving.files, mode: 'afterDelay' };
+    t.timers.fireAll();
+    await settle();
+    assert.strictEqual(t.backend.checks.length, 0);
+    // The afterDelay trigger with its default delay, likewise; becoming active starts nothing either.
+    t.saving.files = { ...t.saving.files, mode: 'off' };
+    t.saving.checking = { trigger: 'afterDelay', delayMs: 700 };
+    t.type(a);
+    t.activate(undefined);
+    t.activate(a);
+    assert.strictEqual(t.timers.pending.size, 0);
+    // Outside the workspace folders with files.autoSaveWorkspaceFilesOnly, VS Code does not save it: checked.
+    t.saving.checking = { trigger: 'onSave', delayMs: 700 };
+    t.saving.files = { mode: 'afterDelay', delayMs: 1000, whenNoErrors: false, workspaceFilesOnly: true };
+    t.saving.insideWorkspace = false;
+    t.type(a);
+    t.timers.fireAll();
+    await settle();
+    assert.deepStrictEqual(t.backend.checks.map((c) => c.doc), [a]);
   });
 
   test('idris2.checkOnType.enabled changed: the documents it is off for lose their entry, the shadow sessions stop, the copies go; the active document is checked again', async () => {

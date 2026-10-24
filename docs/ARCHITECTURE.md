@@ -890,7 +890,10 @@ shows; Go to Definition, completion and the namespace browser stay on the `check
 while it is dirty, and the text checked again; the answer is shown whatever it says. Cancellation: a
 newer text cancels a check that waits; one that has answered for more than 2 s restarts the shadow
 session. Nothing is checked while typing after Stop Backend, a give-up or a refusal of the folder,
-until a check starts the compiler. `docs/as-built/M6.md`.
+until a check starts the compiler, nor a document that an automatic save saves within a second of an
+edit, when that save is checked (VS Code's short auto-save delay, its `isShortAutoSaveDelay` [src:
+1.143.1], or the `afterDelay` trigger within 1000 ms; asked for by the user after M6,
+`features/shadow/unsavedChecks.ts` `savedSoon`). `docs/as-built/M6.md`.
 
 ---
 
