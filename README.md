@@ -76,7 +76,7 @@ or [Open VSX](https://open-vsx.org/extension/etairi/vscode-idris2), or run
 ```sh
 git clone https://github.com/etairi/vscode-idris2 && cd vscode-idris2
 npm ci && npm run package
-code --install-extension vscode-idris2-0.1.0.vsix
+code --install-extension vscode-idris2-0.1.1.vsix
 ```
 
 Disable other Idris extensions while you use this one: they claim the same file types.

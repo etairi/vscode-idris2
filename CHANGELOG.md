@@ -4,7 +4,7 @@ All notable changes to the "Idris 2" extension (`vscode-idris2`) are documented 
 The format follows [Keep a Changelog](https://keepachangelog.com/); the extension's version is
 independent of Idris 2 releases (`docs/ROADMAP.md` §7.4).
 
-## [Unreleased]
+## [0.1.1] - 2026-10-24
 
 ### Added
 
