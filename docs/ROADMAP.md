@@ -932,7 +932,8 @@ M0 → M1 → M2 → M3 → M14).
   pure view over the model.
 - **Open questions.** Q8 (webview stack), Q9 (auto-open).
 - **Upstream.** U2.4 (structured, highlighted hole types).
-- **Status: implemented** (2026-10-30), not yet committed. Q8 plain TypeScript, Q9 opened by hand (§9).
+- **Status: implemented** (2026-10-30), committed as `026889e`, CI run 41046205065 green on ubuntu and
+  macOS. Q8 plain TypeScript, Q9 opened by hand (§9).
   Hand-written page tested on Node (`src/webview/view.ts`), messages that name only what the state
   shows, and printing options as settings (`idris2.ideMode.showImplicits`, `showMachineNames`,
   `fullNamespace`), sent to the `check` and `shadow` sessions and never to `eval`. Types stay plain text,

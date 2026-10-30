@@ -16,7 +16,7 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   `holes()` and the contract suite — was M5's, which shipped second); M5 is implemented (2026-10-02,
   commit `e4eedaa`, `docs/as-built/M5.md`, likewise); M6 is implemented (2026-10-24, commit
   `ddabd4f`, `docs/as-built/M6.md`, likewise: its shadow directory holds a package file, against an
-  acceptance item, which the user kept for now); M7 is implemented (2026-10-30,
+  acceptance item, which the user kept for now); M7 is implemented (2026-10-30, commit `026889e`,
   `docs/as-built/M7.md`, likewise). The whole-progress review the user runs after M8 starts from
   `docs/review-brief.md`, kept up to date until then.
 - `docs/as-built/` — what was built: one file per finished milestone (`M0.md` … `M7.md`) with

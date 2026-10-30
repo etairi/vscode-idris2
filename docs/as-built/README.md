@@ -16,7 +16,7 @@ entry pointing here.
 | [`M4.md`](M4.md) | Interactive editing and holes (IDE mode) | 2026-10-01 | `982d2fc` | 36953444016 (ubuntu, macOS) |
 | [`M5.md`](M5.md) | idris2-lsp backend and routing (and M4's LSP half) | 2026-10-02 (integrated) | `e4eedaa` | 39986288643 (ubuntu, macOS) |
 | [`M6.md`](M6.md) | Check-while-typing: shadow typecheck of unsaved buffers | 2026-10-24 | `ddabd4f` | 40004468317 (ubuntu, macOS) |
-| [`M7.md`](M7.md) | Goal panel (webview) | 2026-10-30 | pending | pending |
+| [`M7.md`](M7.md) | Goal panel (webview) | 2026-10-30 | `026889e` | 41046205065 (ubuntu, macOS) |
 
 ## How these files were made
 
