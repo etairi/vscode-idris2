@@ -14,9 +14,9 @@ focused work by one developer with an AI assistant. Dependencies are the *minimu
 "M2 or M5" means either backend suffices. **The user chooses the implementation order; any
 order that respects the dependency graph in §4 is valid.**
 
-Milestones that are done (M0–M7) have a short **Status** entry in §5; how
+Milestones that are done (M0–M8) have a short **Status** entry in §5; how
 each was built — where it departs from its text here, its measurements and its review history — is
-recorded in `docs/as-built/` (`M0.md` … `M7.md`; the first ones moved there from this file on 2026-09-28).
+recorded in `docs/as-built/` (`M0.md` … `M8.md`; the first ones moved there from this file on 2026-09-28).
 
 Evidence tags, as in `landscape.md`: **[live]** run on this machine (macOS arm64, Homebrew
 `idris2` 0.8.0, Node 24) during the planning session; **[src]** read in the named checkout
@@ -976,13 +976,22 @@ M0 → M1 → M2 → M3 → M14).
   any of them would break Evaluate's promise never to run IO, which rests on the `eval` session's
   evaluation mode never changing. Proposed: Query and the lenses send only expressions and the
   allow-listed commands `:t` and `:doc`, and refuse any other command before sending; the
-  alternative is a session of their own. [open: decide before M8] **Elaborator scripts** (raised
+  alternative is a session of their own. [decided 2026-10-30, §9: the proposal] **Elaborator scripts** (raised
   2026-09-29 by the fifth review of M3): the Query box's and the lenses' texts would run the
   elaborator scripts they reach, as Evaluate does (§9 Q23, accepted for Evaluate, which runs only
   a selection the user asked to evaluate); a `-- >>>` line is a comment, which checking the file
   never runs, so **Run all** on a cloned repository would run the scripts its comments name.
-  Decide before M8 whether Q23's acceptance covers them, Run all especially. [open]
+  Decide before M8 whether Q23's acceptance covers them, Run all especially. [decided 2026-10-30, §9:
+  yes for the Query box and one Run; Run all asks first]
 - **Upstream.** None.
+- **Status: implemented** (2026-10-30), not yet committed. The REPL, Send to REPL, `:t`/`:doc`, `:r` on
+  save, Query… and the `-- >>>` lenses, with the user's two decisions (§9). Three plans met the compiler
+  [live]: `--repl <ipkg>` leaves `:r` nothing to reload, so a project's REPL is `--find-ipkg <file>`; the
+  REPL has **no history or arrow keys**, which this entry's "for free" wrongly claimed, so the
+  terminal uses `rlwrap` when found; and completion in the Query box uses the `check` session's
+  `completions`, not the `eval` session. The check session answering beside a running REPL needs two
+  compilers at once, so it is in `docs/checklists/M8.md`, not the e2e suite. Decisions, deviations,
+  facts and open issues: `docs/as-built/M8.md`.
 
 ### M9 — Build, run and problem reporting: tasks (M)
 
@@ -1396,6 +1405,15 @@ retiring every backend risk before UI work is preferred.
 ---
 
 ## 9. Open questions and decisions needed from the user
+
+**Decided by the user on 2026-10-30, before M8**
+
+- **Commands on the shared `eval` session:** the Query box and the `-- >>>` lenses send only expressions
+  and the allow-listed commands `:t` and `:doc`, and refuse any other command before sending. No
+  session of their own: that would be one more compiler process.
+- **Elaborator scripts:** Q23's acceptance covers the Query box and a single **Run** lens, whose text
+  the user sees and runs. **Run all** asks first and says how many lines will run, since those comments
+  may be unread in a cloned repository.
 
 **Decided by the user on 2026-10-30**
 

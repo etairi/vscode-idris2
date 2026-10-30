@@ -271,6 +271,28 @@ suite('features/eval', () => {
     });
   });
 
+  suite('run: an evaluation for the Query box and the lenses, which show the outcome themselves', () => {
+    test('its options reach the backend, with the status of Evaluate Selection; nothing is drawn or shown', async () => {
+      const t = setup();
+      t.backend.answerEvaluation = () => Promise.resolve(VECT);
+      const outcome = await t.results.run(CLEAN() as never, ':t x', { queryCommands: true });
+      assert.deepStrictEqual(outcome, { kind: 'answer', evaluation: VECT });
+      assert.deepStrictEqual(t.backend.options, [{ queryCommands: true }]);
+      assert.deepStrictEqual(t.state.progress, [{ location: 10, title: 'Idris 2: evaluating…' }]);
+      assert.deepStrictEqual([t.messages, t.results.drawn('file:///w/Clean.idr')], [[], []]);
+    });
+
+    test('a refusal, a failure and a cancellation are told apart', async () => {
+      const t = setup();
+      t.backend.answerEvaluation = () => Promise.reject(new IdrisException({ kind: 'Unsupported', reason: 'Not run: no' }));
+      assert.deepStrictEqual(await t.results.run(CLEAN() as never, 'x'), { kind: 'refused', reason: 'Not run: no' });
+      t.backend.answerEvaluation = () => Promise.reject(new IdrisException({ kind: 'LoadFailed', message: 'the file does not load' }));
+      assert.deepStrictEqual(await t.results.run(CLEAN() as never, 'x'), { kind: 'failed', reason: 'the file does not load' });
+      t.backend.answerEvaluation = () => Promise.reject(cancelled('stopped'));
+      assert.deepStrictEqual(await t.results.run(CLEAN() as never, 'x'), { kind: 'cancelled', reason: 'stopped' });
+    });
+  });
+
   suite('Evaluate Selection', () => {
     test('hands the selected text to the backend and nothing else, and draws the answer after the last line', async () => {
       const t = setup();

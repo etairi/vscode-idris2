@@ -286,6 +286,8 @@ vscode-idris2/
 │  │  │                          html.ts (the page, its CSP), register.ts
 │  │  ├─ shadow/                 shadow typecheck of dirty buffers (§6.3)             (M6)
 │  │  ├─ repl/                   terminal REPL, send-to-REPL, `-- >>>` code lens      (M8)
+│  │  │                          as built: types.ts, launch.ts (the command line, what is
+│  │  │                          typed), terminals.ts, docEval.ts, query.ts, register.ts
 │  │  ├─ tasks/                  TaskProvider, Pseudoterminal build runner, run lens  (M9)
 │  │  ├─ tests/                  TestController for Test.Golden suites                (M10)
 │  │  ├─ ipkg/                   completion, validation, modules sync, scaffold        (M11)
@@ -718,8 +720,8 @@ build directory the compiler ends up using are recorded in `docs/as-built/M2.md`
 
 **As built (M3).** Elaborator scripts the expression reaches are not refused (ROADMAP §9 Q23,
 accepted 2026-09-29): a `%macro` applied by name runs its script, `%runElab` runs where
-`ElabReflection` is on in the compiler's context; M8's Query box and lenses inherit this unless
-M8 decides otherwise (ROADMAP M8, *Open questions*). The `eval` role differs from the table in one argument: it gets `--build-dir
+`ElabReflection` is on in the compiler's context; M8's Query box and a single lens inherit this, and
+Run all asks first (ROADMAP §9, 2026-10-30). The `eval` role differs from the table in one argument: it gets `--build-dir
 <session directory>/build/.vscode-idris2-eval` whenever the `.ipkg` and `extraArgs` choose no
 build directory, whatever `idris2.ideMode.isolateBuildDir` says, so that it never compiles into the
 `check` session's directory (whose next load would then report no warnings for a file the `eval`

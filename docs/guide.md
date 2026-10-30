@@ -154,6 +154,55 @@ with the same text (the compiler compares modification times); and after a modul
 changed what it exports. A macro's script is code of the project or of an installed package, and
 the process runs only in a folder you trusted or allowed.
 
+## The REPL
+
+**Open REPL** starts the compiler's own REPL in a terminal, on the current file: its module is in
+scope. A file of a package gets the package's dependencies and options, another file
+`idris2.ideMode.loosePackages`, and either `idris2.ideMode.extraArgs`.
+
+- **One per project.** A second **Open REPL** shows it. It stays on the file it started on; `:l "file"`
+  there loads another, or close it and open it from that file. `:q` ends it.
+- **Send Selection or Line to REPL** types the selection, or the cursor's line, opening the REPL if
+  needed, and leaves the cursor in the editor. **Type of Selection in REPL** and **Docs of Selection
+  in REPL** type `:t` and `:doc` of the selection, or of the name at the cursor.
+- **What is typed is one line:** line breaks become spaces, so a selection cannot run a second
+  command, and text with a control character is not typed. The REPL itself takes one line at a time,
+  so a `do` block over several lines does not work as it does in a file.
+- `idris2.repl.reloadOnSave` types `:r` when an Idris file of the project is saved, which rebuilds
+  what changed, imported modules included. If a program is running there, it reads the `:r` instead.
+- **History and arrow keys.** The compiler's REPL has neither: an arrow key arrives as text. When
+  [`rlwrap`](https://github.com/hanslub42/rlwrap) is on `PATH`, the terminal runs the REPL through
+  it, which gives both (`brew install rlwrap`, or your system's package).
+- **It is your terminal.** `:exec`, `:sh` and the rest work there as in any REPL, and programs run
+  in it. Unlike the checking compiler it has no time limit, **Stop Backend** leaves it alone, and it
+  builds into the project's own build directory (`build/ttc`), like `idris2` in a terminal of yours,
+  not the extension's. It starts only in a folder you trusted or allowed, and it is one more compiler
+  process beside the checking one.
+
+## Query and `-- >>>` lines
+
+**Query…** takes an expression, `:t expression` or `:doc name`, in the context of the file as saved,
+and completes the name you are typing: choose **Run** to run the text, or a name to complete it. The
+answer goes to the output channel `Idris 2 Query`, which keeps what you asked.
+
+A comment line `-- >>> expr` gets a **Run** lens, which writes the answer beneath it:
+
+```idris
+-- >>> double 2
+-- double 2 = 4
+```
+
+Running it again replaces that answer. **Run all** (on the first such line, or in the Command Palette)
+runs all of them in one undo step, after asking, since it runs the lines of a file you may not have
+read. Lines whose answer is an error are counted and shown, not written. Unsaved changes are saved first,
+as `idris2.checking.saveBeforeAction` says, since the compiler answers for the file as saved. There are
+no lenses in Markdown, LaTeX, Org or Typst literate files.
+
+Both use the [evaluation process](#evaluation), with its rules and time limit, and run no programs:
+an `IO` action is shown, not run, and of the REPL's commands they send only `:t` and `:doc`, on one
+line. Like Evaluate Selection they can run the [compile-time code](#compile-time-code) their text
+reaches. Neither works over idris2-lsp, and each says so.
+
 ## Holes and interactive editing
 
 The compiler's interactive editing, as in Idris 2's own REPL and editor modes. Each command acts
@@ -527,6 +576,7 @@ a notification offers to copy them (once per set of values; **Don't Ask Again**)
 | `idris2.holes.showInSideBar` | `true` | Show the [Holes view](#the-holes-view) |
 | `idris2.goalPanel.followCursor` | `true` | The [goal panel](#the-goal-panel) follows the cursor and the active Idris editor |
 | `idris2.goalPanel.debounce` | `50` | Milliseconds after a cursor move before the panel updates |
+| `idris2.repl.reloadOnSave` | `false` | Type `:r` into a project's [REPL](#the-repl) when one of its Idris files is saved |
 | `idris2.trace.protocol` | `false` | Record the messages exchanged with the compiler; user settings only |
 
 **`maxSessions`.** Each window counts its own processes. A project's evaluation process and its
@@ -584,8 +634,8 @@ permission takes no turn.
 
 In an untrusted workspace the extension runs no program at all — not even to read versions — and
 reads `.ipkg` files with a limited built-in reader. Highlighting, snippets and the other editing
-aids work, and so do Next / Previous Hole; interactive editing, the Holes view and the goal panel
-need a trusted workspace. The
+aids work, and so do Next / Previous Hole; interactive editing, the Holes view, the goal panel and
+the REPL need a trusted workspace. The
 workspace's values of the `idris2.toolchain.*` paths and environment, `loosePackages`,
 `extraArgs` and `idris2.lsp.logFile` apply only once the workspace is trusted.
 
@@ -600,6 +650,8 @@ workspace's values of the `idris2.toolchain.*` paths and environment, `loosePack
   and options, into the extension's global storage (a folder per VS Code window, deleted when the
   window closes) and runs `idris2` there. It asks for the project's folder, as for the check of the
   saved file.
+- **Open REPL** runs `idris2` in a terminal in the same directory, under the same permission, and
+  through `rlwrap` when that is on `PATH`.
 - idris2-lsp, for the projects it serves, runs in the workspace folder (or a folder you allowed)
   and moves into each file's folder itself. It is sent a file only when the file's folder lies in a
   trusted workspace folder or you allowed it, as for the compiler; requests count too, since the
@@ -782,6 +834,9 @@ It is written to an output channel, which VS Code also keeps as a file in its lo
   - Next Result and Next Definition do not scroll to the result they replace; it may be off-screen.
   - The Holes view groups a file's holes under `Main` when its `module` line starts with a comment
     or has a non-breaking space before the name.
+- **The REPL** shows the compiler's own text, which the extension does not read: `:let` definitions
+  there are unknown to Query and the lenses, which use the evaluation process. In a folder with
+  several `.ipkg` files, the compiler chooses which one a REPL uses.
 - **The goal panel** has Case Split and Jump only for variables a left-hand side around the hole
   binds as a clause of its own: not for the alternative of a `case` written on the clause's line
   (`f n = case n of m => ?h`). The commands that act on a line, Make With and Make Case, are not in

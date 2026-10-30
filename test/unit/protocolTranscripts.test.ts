@@ -269,6 +269,18 @@ const REQUESTS: Readonly<Record<string, readonly Request[]>> = {
   ],
   'holes-ipkg-other': [load1('src/Holes/Other.idr'), meta(), where('todo'), introR(6, 'todo')],
   'holes-ipkg-util': [load1('src/Holes/Util.idr'), meta(), where('todo'), where('util_rhs'), where('secret_rhs')],
+  'eval-query': [
+    load1('DocEval.idr'),
+    evaluate('double 2'),
+    evaluate('the (List Nat) [1, 2]'),
+    evaluate(':t double'),
+    evaluate(':type double'),
+    evaluate(':doc double'),
+    evaluate('doesNotExist'),
+    evaluate(':t doesNotExist'),
+    evaluate(':doc doesNotExist'),
+    evaluate(':t double\n:exec main'),
+  ],
   'display-options': [
     load1('Clean.idr'), meta(),
     text(setDisplayOption('showImplicits', true)), meta(),
@@ -541,8 +553,8 @@ function prng(seed: number): () => number {
 // -------------------------------------------------------------------------------------------
 
 suite('backend/ide protocol against the 0.8.0 transcripts', () => {
-  test('the recordings are the 68 scenarios of format 1 from idris2 0.8.0, and each has a request table', () => {
-    assert.strictEqual(SCENARIOS.length, 68);
+  test('the recordings are the 69 scenarios of format 1 from idris2 0.8.0, and each has a request table', () => {
+    assert.strictEqual(SCENARIOS.length, 69);
     for (const [scenario, t] of TRANSCRIPTS) {
       assert.strictEqual(t.meta.format, 1, scenario);
       assert.strictEqual(t.meta.idris2.version, '0.8.0', scenario);

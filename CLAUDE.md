@@ -17,9 +17,10 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   commit `e4eedaa`, `docs/as-built/M5.md`, likewise); M6 is implemented (2026-10-24, commit
   `ddabd4f`, `docs/as-built/M6.md`, likewise: its shadow directory holds a package file, against an
   acceptance item, which the user kept for now); M7 is implemented (2026-10-30, commit `026889e`,
-  `docs/as-built/M7.md`, likewise). The whole-progress review the user runs after M8 starts from
+  `docs/as-built/M7.md`, likewise); M8 is implemented (2026-10-30, `docs/as-built/M8.md`, likewise).
+  The whole-progress review the user runs after M8 starts from
   `docs/review-brief.md`, kept up to date until then.
-- `docs/as-built/` — what was built: one file per finished milestone (`M0.md` … `M7.md`) with
+- `docs/as-built/` — what was built: one file per finished milestone (`M0.md` … `M8.md`) with
   its deviations from ROADMAP §5 and ARCHITECTURE, measurements, experiments,
   review rounds and gate runs; `README.md` there explains the files and how to read their
   references. Moved out of ROADMAP and ARCHITECTURE on 2026-09-28 so that those two stay
@@ -237,7 +238,8 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
 
 ## Rules established by M1
 
-- **Every process the extension starts goes through the one runner in `src/core/process.ts`**:
+- **Every process the extension starts goes through the one runner in `src/core/process.ts`** (but the
+  REPL terminal, rules of M8):
   it refuses everything while the workspace is untrusted, runs one process at a time in call
   order, never uses a shell (a Windows `.cmd`/`.bat` goes through a quoted `cmd.exe` command
   line or is refused), and stops a timed-out process group (until its result is settled, also
@@ -372,7 +374,8 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
   goes through `editorLabel`, QuickPick item texts through `quickPickText`; documents that show it
   are plain text (the `idris2-doc:` scheme). The M2 `plainText` rule still covers notifications.
   `test/unit/untrustedText.test.ts`, `hover.test.ts` and `eval.test.ts` pin it.
-- **Evaluate evaluates expressions only** (ROADMAP §9, 2026-09-28): `IdrisBackend.evaluate`
+- **Evaluate evaluates expressions only** (ROADMAP §9, 2026-09-28; the Query box and the lenses add
+  `:t` and `:doc`, rules of M8): `IdrisBackend.evaluate`
   refuses with `backend/ide/replCommand.ts` `replCommandRefusal` — at least as strict as the
   compiler's REPL parser; the argument is in its module comment, `test/unit/replCommand.test.ts`
   checks it against the recordings and a lexer oracle — before anything is classified, started
@@ -612,6 +615,33 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
   `receive()` (a webview's message). A window reload is a packaged check (`docs/as-built/M7.md`), not
   a test: `@vscode/test-cli`'s storage is in memory (`.vscode-test.mjs`), so no tab should come back
   [inference, not tried], and production mode has no test API, hence the two lines the host logs.
+
+## Rules established by M8
+
+- **The REPL is the one terminal that runs a program, and the program is the compiler** (the install
+  terminals keep M1's rule). VS Code starts it, not `core/process.ts`, so `features/repl/terminals.ts`
+  holds M2's rules itself: trusted workspace, `SessionPool.startProblem`, `SessionGate.permit`, then
+  `recheck` right before the terminal, in the real path it judged. Never add another way to it. Its
+  arguments are an array, never a shell line. It is not a session: no timeouts, no limit counts it, Stop
+  Backend leaves it alone, it writes the project's own build directory, and a window reload does not
+  bring it back (`isTransient`).
+- **What is typed into a REPL is one line** (`launch.ts` `replLine`): line breaks become spaces, and
+  text with a control character is not typed. That the `:exec` the user selects runs is the point of it.
+- **A project's REPL is `idris2 --find-ipkg <file>`, from the `.ipkg`'s directory**: `--repl <ipkg>`
+  leaves `:r` with nothing to reload [live]. D4's "never `--find-ipkg`" is about sessions, which get
+  absolute paths from any directory (F13); it works here because the path is relative to that directory.
+- **The `eval` session takes only expressions and, from the Query box and the lenses, `:t` and `:doc`**
+  (`replCommand.ts` `queryRefusal`, `EvaluateOptions.queryCommands`; ROADMAP §9, 2026-10-30), as strict
+  as `replCommandRefusal` for everything else. Evaluate Selection stays expressions only. Allow nothing
+  else without the user's decision: `:exec`, `:sh` and `:set eval execute` are why this rule exists.
+- **Run all asks first** and says how many lines it runs: those comments may be unread in a clone. A
+  lens writes only comments: every line of an answer starts with the line's prefix and `--`, control and
+  format characters written out (`docEval.ts`). A lens saves first, under
+  `idris2.checking.saveBeforeAction`: the compiler answers for the file on disk.
+- Tests: a terminal's screen cannot be read. The fake compiler's REPL logs what it reads; the e2e suite
+  has `:exec main` write a file. Integration tests of a lens revert between runs: a run saves the file,
+  and the fixture is the workspace. Count compilers by the Chez process (`e2e/repl.test.ts` `compilers`),
+  since a shell's command line can name `idris2_app/idris2.so` too.
 
 ## Platforms
 

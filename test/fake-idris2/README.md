@@ -19,8 +19,10 @@ node test/fake-idris2/fake-idris2.mjs --ide-mode-socket --no-color -p contrib --
 `--no-color`, `-p`/`--package <pkg>` and `--build-dir <dir>` are accepted next to either IDE
 mode and ignored (the replies come from the transcripts, whatever packages or build directory
 their recording used), except that the build directory names the session's role, which selects
-the recordings (M3, "Which recording" below). Any other command line — including `--find-ipkg`, which the extension
-must never pass (F13), and two IDE modes at once — is rejected with exit code 2 and a message on
+the recordings (M3, "Which recording" below). M8: a command line that ends in an `.idr` or `.lidr` file
+is the REPL (`features/repl/launch.ts`): it prints a prompt and logs each line typed like a request,
+until `:q`. Any other command line — including `--find-ipkg` next to an IDE mode, which a session must
+never get (F13), and two IDE modes at once — is rejected with exit code 2 and a message on
 stderr naming the arguments. The real compiler would accept many of them, so the fake does not
 pretend to be the real compiler's `Error: Unknown flag …` (stderr, exit 1). Tests start it
 through the launchers in `test/fake-tools/bin`, and its fault modes (`FAKE_IDRIS2_MODE`,

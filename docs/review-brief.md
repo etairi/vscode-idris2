@@ -1,8 +1,8 @@
 # Review brief
 
 For the review of the whole progress that the user runs as a separate workflow once M8 is finished
-(ROADMAP §9, decided 2026-10-30). Kept up to date until then; **last updated at the end of M7**, with M8
-not started. Start here, then read `CLAUDE.md`, which holds the rules the code must keep.
+(ROADMAP §9, decided 2026-10-30). **Last updated at the end of M8**, so it is ready. Start here, then read
+`CLAUDE.md`, which holds the rules the code must keep.
 
 ## What is reviewed
 
@@ -27,7 +27,7 @@ Spend the effort where the last column is thin.
 | Auto-save rule of M6 (`adb6d2b`) | 2026-10-24 | **author only** |
 | Rename to Idris 2 Language Tools (`ab1e1ba`) | 2026-10-30 | **author only**; no fresh Marketplace listing yet |
 | M7 goal panel | 2026-10-30 | **author only** (`as-built/M7.md`, *Review*) |
-| M8 | not started | |
+| M8 REPL, Query, `-- >>>` lenses | 2026-10-30 | **author only** (`as-built/M8.md`, *Review*) |
 
 A failed, stalled or rate-limited reviewer never counts as a clean round. Check that each reviewer
 really finished before calling a round clean.
@@ -45,13 +45,15 @@ One reviewer per lane, with the rule sections of `CLAUDE.md` it must hold the co
 | idris2-lsp | `backend/lsp`, `backend/registry.ts`, `features/backend` | M5: `LspAdmission`, the middleware, the contract suite. Least read so far: `client.ts` lifecycle, `backend.ts`, `edits.ts` beyond its bounds |
 | Webview and holes | `features/goalPanel`, `src/webview`, `media/goalPanel.css`, `features/holes` | M7: the webview is untrusted, messages name only the state, no command re-implemented; M3's untrusted text |
 | Intelligence and grammar | `features/intelligence`, `features/syntax`, `syntaxes/`, `language-configuration/` | M3: passive providers never load, positions only through `positions.ts`; every grammar rule traceable |
-| M8 | filled in at the end of M8 | |
+| REPL and doc-eval | `features/repl`, `backend/ide/replCommand.ts` `queryRefusal`, `features/eval/register.ts` `run` | M8: the gate before the terminal, one line typed, the allow-list, answers stay comments, Run all asks |
 | Claims | `README.md`, `docs/guide.md`, `CHANGELOG.md`, the settings' descriptions | CLAUDE.md, *Working rules*: true of the code as built; epistemic tags never upgraded without a run |
 | Tests | `test/`, the fakes, `.vscode-test.mjs` | Does a test fail when the rule it names breaks? A fake that drifted from the real tool hides bugs (`e2e/fakeParity.test.ts`, `e2e/protocolFacts.test.ts` guard it) |
 
 Worth a specific look because no second reader has seen them: `pool.ts` `sendDisplayOptions`, the
 `firstRequests` order, `EditingRunOptions` in `commands.ts`, `HoleStore.relist`, `savedSoon` against VS
-Code's own `isShortAutoSaveDelay`, `backend/ide/shadow.ts`.
+Code's own `isShortAutoSaveDelay`, `backend/ide/shadow.ts`, `terminals.ts` `start` (it repeats by hand
+what `pool.ts` `prepare` does for a session), `queryRefusal` against the compiler's parser, and
+`answerReplacement`, which writes compiler text into the user's file.
 
 ## Hard constraints for every reviewer
 
@@ -72,24 +74,25 @@ These protect the user's machine and accounts. A reviewer that breaks one has fa
 
 ## Gates
 
-Run one at a time, in this order. The expected figures are from the end of M7.
+Run one at a time, in this order. The expected figures are from the end of M8.
 
 ```sh
 npm run check-types && npm run lint
-npm run test:unit                 # 3,023 passing, 1 pending
+npm run test:unit                 # 3,077 passing, 1 pending
 npm run test:grammar              # 195 passing
-npm test                          # eleven suites, 172 tests
-IDRIS2_E2E=1 npm run test:e2e     # 96 passing
+npm test                          # eleven suites, 180 tests
+IDRIS2_E2E=1 npm run test:e2e     # 101 passing
 PACK_BIN_DIR=$HOME/.local/share/pack/bin IDRIS2_LSP=$HOME/.local/share/pack/bin/idris2-lsp \
   npm run test:e2e:lsp            # 18 passing
-npm run check:fixtures            # 119 checks, 0 failed
+npm run check:fixtures            # 120 checks, 0 failed
 npm run docs:graph:check
 npm run package
 ```
 
 An e2e line `the panel's group is active, and VS Code still names …` is no failure (`as-built/M7.md`,
-*Open issues*). A manual step of the milestones is in `docs/checklists/`; `M7.md` there has not yet been
-worked through by a person. Publishing under the new name is on hold, and is the user's decision.
+*Open issues*). A manual step of the milestones is in `docs/checklists/`; `M7.md` and `M8.md` there have
+not yet been worked through by a person, and `M8.md` holds the one acceptance item that needs two
+compilers at once. Publishing under the new name is on hold, and is the user's decision.
 
 ## Not findings
 
@@ -103,6 +106,8 @@ Decided by the user (ROADMAP §9), so report one only with a new argument:
   `idris2.lsp.logSeverity` `info`.
 - The identity `etairi.idris2-language-tools`, no "unofficial" statement, the logo with gears for now.
 - Plain TypeScript in the webview for now; the goal panel opened by hand.
+- Query and the lenses send expressions, `:t` and `:doc`, on the shared `eval` session; Q23 covers Query
+  and a single Run; Run all asks first.
 
 Already recorded, so report one only if it is worse than recorded: the *Limitations* and *Open issues*
 of each `docs/as-built/Mn.md`, and `docs/guide.md`, *Known limitations*.

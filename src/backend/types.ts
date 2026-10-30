@@ -329,6 +329,12 @@ export type Evaluation =
   | { readonly kind: 'value'; readonly value: RichText }
   | { readonly kind: 'error'; readonly message: RichText };
 
+/** (M8) What `IdrisBackend.evaluate` accepts besides expressions. */
+export interface EvaluateOptions {
+  /** The commands `:t` and `:doc` too: the Query box and the `-- >>>` lenses (ROADMAP §9, 2026-10-30). */
+  readonly queryCommands?: boolean;
+}
+
 /**
  * §3.3: what an interactive editing command asks the compiler for (ROADMAP §5 M4). In IDE mode
  * each kind is one request (F2, F29, F30; ARCHITECTURE §7 for the line and column conventions):
@@ -694,9 +700,10 @@ export interface IdrisBackend {
    * runs under `idris2.ideMode.longActionTimeout`, the evaluation under `idris2.eval.timeout`
    * (`RequestTimeout`; the `eval` session's process is stopped). Cancelling `token` stops the
    * evaluation — in IDE mode by stopping the `eval` session's process — and rejects with the
-   * `Cancelled` error (`core/errors.ts`).
+   * `Cancelled` error (`core/errors.ts`). With `options.queryCommands` (M8) the allow-listed `:t` and
+   * `:doc` are sent too, and every other command is refused the same way (`replCommand.ts` `queryRefusal`).
    */
-  evaluate(doc: vscode.TextDocument, expr: string, token?: vscode.CancellationToken): Promise<Evaluation>;
+  evaluate(doc: vscode.TextDocument, expr: string, token?: vscode.CancellationToken, options?: EvaluateOptions): Promise<Evaluation>;
   /**
    * (M3) The names `ns` exports that are visible from `doc`'s file (`:browse-namespace`); `[]`
    * when there are none. A query (above).

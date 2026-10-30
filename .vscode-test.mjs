@@ -29,7 +29,8 @@
 //   intelligence-loose (M3) test/fixtures/workspaces/broken (loose files: Clean.idr, the F30
 //                   fixture); out/test/integration/intelligence-loose/*; fake tools, stdio: types
 //                   of pattern variables, inlay hints, completion, evaluation (the eval session,
-//                   the refusal of REPL commands) and the keybinding schemes
+//                   the refusal of REPL commands), the keybinding schemes, and M8's REPL terminal
+//                   and `-- >>>` lenses
 //   editing         (M4) test/fixtures/workspaces/broken (loose files: Clean.idr, the F30 editing
 //                   fixture; Ambig.idr, F29; Part.idr, F15; Plain.idr, F15; Lit2.lidr, F11);
 //                   out/test/integration/editing/*; fake tools, stdio: the editing commands, their

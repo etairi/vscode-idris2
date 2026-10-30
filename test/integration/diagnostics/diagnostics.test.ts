@@ -319,16 +319,16 @@ suite('M2 diagnostics (fake compiler replaying the 0.8.0 transcripts, socket tra
     for (const { command } of manifest.contributes.commands) {
       assert.ok(registered.has(command), `${command} is contributed but not registered`);
     }
-    // Every registered idris2.* command is contributed, except the status item's Allow… and the
-    // Holes view's reveal (M4): each needs an argument (a directory, a hole), so neither is
-    // offered in the Command Palette. VS Code registers commands of its own for each contributed
+    // Every registered idris2.* command is contributed, except the status item's Allow…, the
+    // Holes view's reveal (M4) and a `-- >>>` lens's Run (M8): each needs an argument (a directory, a
+    // hole, a line), so none is offered in the Command Palette. VS Code registers commands of its own for each contributed
     // view, named after the view's id (`idris2.holes.focus`, … [live, VS Code 1.140.0]); they are
     // left out.
     const views = Object.values(manifest.contributes.views).flat().map((v) => `${v.id}.`);
     const internal = [...registered].filter(
       (c) => c.startsWith('idris2.') && !manifest.contributes.commands.some((m) => m.command === c) && !views.some((v) => c.startsWith(v)),
     );
-    assert.deepStrictEqual(internal.sort(), ['idris2.allowFolder', 'idris2.revealHole']);
+    assert.deepStrictEqual(internal.sort(), ['idris2.allowFolder', 'idris2.revealHole', 'idris2.runDocEval']);
     const menu = api.statusMenuEntries().map((e) => e.command);
     for (const command of ['idris2.checkFile', 'idris2.restartBackend', 'idris2.stopBackend', 'idris2.manageAllowedFolders', 'idris2.showProtocolTrace']) {
       assert.ok(menu.includes(command), `${command} is not in the status QuickPick`);

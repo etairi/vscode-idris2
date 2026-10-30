@@ -15,7 +15,7 @@ import {
   type IdeModeDeps,
   type LoadedDocument,
 } from '../../src/backend/ide/backend';
-import { ideCodec } from '../../src/backend/ide/protocol';
+import { ideCodec, interpret } from '../../src/backend/ide/protocol';
 import { serializeSexp, sym } from '../../src/backend/ide/sexp';
 import type {
   IdeCommand,
@@ -1902,6 +1902,20 @@ suite('backend/ide/backend M3 (queries, token index, evaluation)', () => {
       }
       await assert.rejects(t.backend.evaluate(cleanDoc(), 'f "\u0000"'), /NUL/);
       assert.strictEqual(t.pool.list.length, 0);
+    });
+
+    test('with queryCommands (the Query box, the lenses) :t and :doc are sent; any other command is refused the same way, before anything starts', async () => {
+      const refused = setup({ readFile: fixtureFile, projects: { classify: () => assert.fail('classified'), sessionCwd: (r) => r.dir } });
+      for (const text of [':exec main', '  :set eval execute', ':t id\n:exec main', '{- c -}\n:sh rm -rf x']) {
+        await assert.rejects(refused.backend.evaluate(cleanDoc(), text, undefined, { queryCommands: true }), (e: unknown) => e instanceof IdrisException && e.error.kind === 'Unsupported' && /^Not run: /.test(e.message), text);
+      }
+      assert.strictEqual(refused.pool.list.length, 0);
+      const t = setup({ readFile: fixtureFile });
+      await assert.rejects(t.backend.evaluate(cleanDoc(), ':t id'), /^Error: Not evaluated|Not evaluated/, 'without the option: expressions only');
+      const evalSession = t.pool.sessionFor({ kind: 'loose', dir: '/w/broken' }, 'eval');
+      evalSession.next = replaying('eval-values', '/private/w/broken');
+      assert.strictEqual((await t.backend.evaluate(cleanDoc(), ':t id', undefined, { queryCommands: true })).kind, 'value');
+      assert.deepStrictEqual(evalSession.requests.at(-1)?.command, interpret(':t id'));
     });
 
     test('the eval session loads the file, then interprets; values, errors and the IO action (shown, not run); the check session is untouched', async () => {

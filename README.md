@@ -7,8 +7,8 @@
 Language support for [Idris 2](https://www.idris-lang.org/), a purely functional programming
 language with first-class dependent types.
 
-> **Preview.** Early development, not yet published under this name. A REPL terminal comes next — see
-> the [roadmap](docs/ROADMAP.md).
+> **Preview.** Early development, not yet published under this name. Build and run tasks come next —
+> see the [roadmap](docs/ROADMAP.md).
 
 ## Features
 
@@ -28,6 +28,12 @@ language with first-class dependent types.
 - Inlay hints with the types of pattern variables
 - **Show Documentation…** and **Browse Namespace…**
 - **Evaluate Selection**: the value of the selected expression, after the line and on hover
+
+**REPL and evaluation where you write**
+- **Open REPL**: the compiler's REPL in a terminal, on the current file. **Send Selection or Line to
+  REPL**, `:t` and `:doc` of a selection, and an optional reload on save
+- **Query…**: an expression, `:t` or `:doc`, with completion of names
+- `-- >>> expr` lines get a **Run** lens that writes the answer beneath, and **Run all**
 
 **Holes and interactive editing**
 - Case Split, Add Clause, Make Lemma / With / Case, Proof Search, Generate Definition, Intro,
@@ -206,7 +212,7 @@ The full list is in the [guide](docs/guide.md#known-limitations).
 
 ## Roadmap
 
-REPL and build integration, literate Markdown and LaTeX, Unicode input: see
+Build integration, literate Markdown and LaTeX, Unicode input: see
 [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Contributing

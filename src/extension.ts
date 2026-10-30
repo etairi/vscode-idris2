@@ -69,6 +69,8 @@ import { registerInlayHints } from './features/intelligence/inlayHints';
 import { createDocumentQueries } from './features/intelligence/queries';
 import { registerIntelligence } from './features/intelligence/register';
 import type { IntelligenceDeps, LoadedFileEvent, LoadNotifications } from './features/intelligence/types';
+import { registerRepl } from './features/repl/register';
+import type { ReplView } from './features/repl/types';
 import { registerUnsavedChecks, SHADOW_STORAGE_DIR, shadowBaseOf } from './features/shadow/register';
 import type { UnsavedChecks } from './features/shadow/unsavedChecks';
 import { registerSelectionRanges } from './features/syntax/selectionRanges';
@@ -78,7 +80,7 @@ import { trackIsIdrisDocumentContext } from './project/literate';
 import type { Classification, ProjectIndex, ProjectWorkspace } from './project/types';
 import { registerInstallCommands } from './toolchain/install';
 import { registerToolchainNotifications, type Notice } from './toolchain/notifications';
-import { readRegularTextFile, readSourceFile } from './toolchain/fileSystem';
+import { nodeFileSystem, readRegularTextFile, readSourceFile } from './toolchain/fileSystem';
 import { createToolchainService } from './toolchain/service';
 import { registerSetupInformation } from './toolchain/setupInfo';
 import { registerToolchainStatus, type StatusMenuEntry } from './toolchain/status';
@@ -135,6 +137,8 @@ export interface TestApi {
   readonly shadowBase: string;
   /** M7: the goal panel: its state, what it has drawn, and its messages as the webview's. */
   readonly goalPanel: GoalPanelView;
+  /** M8: the REPL terminals: their command lines, and what was typed into them. */
+  readonly repl: ReplView;
 }
 
 let store: DisposableStore | undefined;
@@ -397,8 +401,9 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
   // M3: read-only intelligence and evaluation. Registering starts nothing: the providers ask the
   // backend when VS Code calls them, through one DocumentQueries (which loads a document the way
   // Check File does when its file is not the one loaded); the loads they follow are IdeMode's.
+  const queries = createDocumentQueries({ registry, projects, checks, config, trust, log });
   const intelligenceDeps: IntelligenceDeps = {
-    queries: createDocumentQueries({ registry, projects, checks, config, trust, log }),
+    queries,
     loads: ideMode,
     registry,
     projects,
@@ -487,6 +492,24 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
       }
     }),
   );
+  // M8: the REPL terminal, Query… and the `-- >>>` lenses. Registering starts nothing.
+  const repl = store.add(
+    registerRepl(vscode, {
+      projects,
+      toolchain,
+      config,
+      trust,
+      gate: consent.gate,
+      startProblem: () => pool.startProblem(),
+      fileSystem: nodeFileSystem,
+      processEnv: process.env,
+      platform: process.platform,
+      evaluation,
+      queries,
+      registry,
+      log,
+    }),
+  );
   store.add(registerShowKeybindings(vscode, { config, manifest: context.extension.packageJSON, platform: process.platform }));
 
   store.add(
@@ -566,6 +589,7 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
     unsavedChecks: unsaved.checks,
     shadowBase,
     goalPanel: goalPanel.panel,
+    repl: repl.view,
   };
 }
 

@@ -6,7 +6,7 @@ import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ideCodec } from '../../src/backend/ide/protocol';
-import { replCommandRefusal } from '../../src/backend/ide/replCommand';
+import { queryRefusal, replCommandRefusal } from '../../src/backend/ide/replCommand';
 import { parseSexp } from '../../src/backend/ide/sexp';
 import { repoRoot } from '../fake-tools/paths';
 
@@ -205,5 +205,70 @@ suite('backend/ide/replCommand (the refusal of Evaluate Selection)', () => {
       }
       assert.strictEqual(compilerReadsCommand(text), ranTheCommand, JSON.stringify(text));
     }
+  });
+});
+
+suite('backend/ide/replCommand (what the Query box and the -- >>> lenses may send, ROADMAP §9, 2026-10-30)', () => {
+  test('eval-query: what the compiler answered: expressions and the allow-listed commands are sent, a second line is refused', () => {
+    const asked = interpreted('eval-query');
+    assert.deepStrictEqual(asked.map((q) => [q.text, queryRefusal(q.text) === undefined]), [
+      ['double 2', true],
+      ['the (List Nat) [1, 2]', true],
+      [':t double', true],
+      [':type double', true],
+      [':doc double', true],
+      ['doesNotExist', true],
+      [':t doesNotExist', true],
+      [':doc doesNotExist', true],
+      [':t double\n:exec main', false],
+    ]);
+    // A second line does not run anyway: the compiler reads one command, then expects the end.
+    assert.match(asked[8].answer, /Expected end of input/);
+    assert.strictEqual(asked[2].answer, 'DocEval.double : Nat -> Nat');
+    assert.strictEqual(asked[3].answer, asked[2].answer);
+  });
+
+  test('every other command is refused, however it is spelled or preceded', () => {
+    for (const command of [':exec putStrLn "hi"', ':set eval execute', ':sh ls', ':cd /', ':q', ':?', ':', ':load Other.idr', ':l Other.idr', ':r', ':let x = 1', ':module Data.Vect', ':e', ':ti id', ':printdef id', ':T id', ':tid', ':docs id', ': t id', ':t', ':t ', ':doc', ':doc\n']) {
+      for (const before of ['', '  ', '\t\n', '\r\n', ' ', ' ', '\u200b﻿', '{- a -}', '{- "-}" -}', '-- c\n', '{- a -} -- b\n']) {
+        assert.ok(queryRefusal(before + command) !== undefined, JSON.stringify(before + command));
+      }
+    }
+  });
+
+  test(':t and :doc are one line: a line break or a control or format character in the argument is refused', () => {
+    for (const text of [':t id\n:exec main', ':t id\r:q', ':t id\u0000', ':doc id\u000b', ':t id\u202e', ':t id\u200b']) {
+      assert.ok(queryRefusal(text) !== undefined, JSON.stringify(text));
+    }
+    for (const text of [':t id', ':t  id', ':t\tid', ':type id', ':doc id', ' :t id', ':t Data.Vect.length', ':t \\x => x', ':doc (::)']) {
+      assert.strictEqual(queryRefusal(text), undefined, JSON.stringify(text));
+    }
+  });
+
+  test('an expression is sent as for Evaluate; what Evaluate refuses after a comment is refused here too; the text says why', () => {
+    for (const expr of ['the (Vect 2 Nat) [1, 2]', 'x :: xs', '\\x : Nat => x', '"a:b"', '-- comment\nvlen [1, 2]']) {
+      assert.strictEqual(queryRefusal(expr), undefined, JSON.stringify(expr));
+    }
+    assert.match(queryRefusal('{- c -} x :: xs') ?? '', /^Not run: the text starts with a comment and contains ":"/);
+    assert.match(queryRefusal(':exec main') ?? '', /^Not run: of the REPL commands only :t and :doc run here/);
+  });
+
+  test('the oracle of the compiler\'s lexer: over generated texts, a command the oracle reads is refused unless it is a plain :t or :doc', () => {
+    const pieces = [' ', '\t', '\n', '\r', '-', '{-', '-}', '--', ':', ':t', ':t ', ':doc ', ':type ', ':exec ', ':sh ', ':set ', ':q', 'x', 'id', '"', '\u00a0', '\u200b'];
+    const next = prng(20261030);
+    let seen = 0;
+    for (let n = 0; n < 20_000; n++) {
+      const length = 1 + Math.floor(next() * 8);
+      let text = '';
+      for (let i = 0; i < length; i++) {
+        text += pieces[Math.floor(next() * pieces.length)];
+      }
+      // Skipped characters before an allowed command, a plain :t or :doc, are all that may pass.
+      if (compilerReadsCommand(text) && !/^[\p{White_Space}\p{Cc}\p{Cf}]*:(?:t|type|doc)[ \t]+\S(?:\t|[^\p{Cc}\p{Cf}])*$/u.test(text)) {
+        seen++;
+        assert.ok(queryRefusal(text) !== undefined, JSON.stringify(text));
+      }
+    }
+    assert.ok(seen > 1_000, `only ${seen} commands generated`);
   });
 });

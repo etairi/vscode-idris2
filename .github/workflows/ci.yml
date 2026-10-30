@@ -134,12 +134,13 @@ jobs:
       - name: Integration tests
         run: npm test
 
-      - name: Install Idris 2 (Homebrew)
+      # rlwrap: the REPL terminal runs through it when it is on PATH (M8), which only this job tests.
+      - name: Install Idris 2 and rlwrap (Homebrew)
         env:
           HOMEBREW_NO_AUTO_UPDATE: '1'
           HOMEBREW_NO_INSTALL_CLEANUP: '1'
         run: |
-          brew install idris2
+          brew install idris2 rlwrap
           idris2 --version
       - name: idris2 --check / --dump-ipkg-json every fixture and snippet expansion
         run: npm run check:fixtures

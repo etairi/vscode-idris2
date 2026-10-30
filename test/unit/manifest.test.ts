@@ -16,6 +16,7 @@ import {
   readCheckingSettings,
   readCheckOnTypeSettings,
   readGoalPanelSettings,
+  readReplSettings,
   readDiagnosticsSettings,
   readEvaluationSettings,
   readIdeModeSettings,
@@ -247,6 +248,7 @@ function readAllSettings(value: (key: string) => unknown): { keys: string[]; set
     readLspSettings(reader, '/home/u'),
     readCheckOnTypeSettings(reader),
     readGoalPanelSettings(reader),
+    readReplSettings(reader),
     readKeybindingScheme(reader),
   ];
   return { keys, settings };
@@ -334,6 +336,7 @@ suite('package.json (M1–M5 contributions)', () => {
         },
         { enabled: true, delayMs: 500 },
         { followCursor: true, debounceMs: 50 },
+        { reloadOnSave: false },
         'auto',
       ]);
       // Every value absent (a setting VS Code does not know) reads as the same defaults — but the
@@ -730,6 +733,16 @@ suite('package.json (M1–M5 contributions)', () => {
       assert.strictEqual(manifest.contributes.menus.commandPalette.find((entry) => entry.command === command)?.when, 'idris2.isIdrisDocument && isWorkspaceTrusted');
       assert.strictEqual(manifest.contributes.menus[SUBMENU].find((entry) => entry.command === command)?.group, '0_interactive_holes@4');
       assert.ok(manifest.activationEvents.includes(`onWebviewPanel:${GOAL_PANEL_VIEW_TYPE}`));
+    });
+
+    test('M8: the REPL\'s commands are in the palette and the submenu for a trusted Idris document; a lens\'s own command is in no menu', () => {
+      const commands = ['idris2.openRepl', 'idris2.sendToRepl', 'idris2.replType', 'idris2.replDocs', 'idris2.query', 'idris2.runAllDocEval'];
+      for (const [index, command] of commands.entries()) {
+        assert.strictEqual(manifest.contributes.commands.find((c) => c.command === command)?.category, 'Idris 2', command);
+        assert.strictEqual(manifest.contributes.menus.commandPalette.find((entry) => entry.command === command)?.when, 'idris2.isIdrisDocument && isWorkspaceTrusted', command);
+        assert.strictEqual(manifest.contributes.menus[SUBMENU].find((entry) => entry.command === command)?.group, `0_repl@${index + 1}`, command);
+      }
+      assert.ok(!commandIds.includes('idris2.runDocEval'));
     });
 
     test('every menu entry names a contributed command or submenu', () => {

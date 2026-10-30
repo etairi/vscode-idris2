@@ -50,7 +50,8 @@ export type ConfigurationGroup =
   | 'backend'
   | 'lsp'
   | 'checkOnType'
-  | 'goalPanel';
+  | 'goalPanel'
+  | 'repl';
 
 /** `idris2.toolchain.*` (ARCHITECTURE §11, M1). */
 export interface ToolchainSettings {
@@ -489,6 +490,17 @@ export interface GoalPanelSettings {
   readonly debounceMs: number;
 }
 
+/** `idris2.repl.*` (ROADMAP M8, ARCHITECTURE §11). */
+export interface ReplSettings {
+  /** `idris2.repl.reloadOnSave` (default off): `:r` in a project's open REPL when one of its Idris files is saved. */
+  readonly reloadOnSave: boolean;
+}
+
+/** Reads `idris2.repl.*` from the `idris2` section. */
+export function readReplSettings(section: ConfigurationReader): ReplSettings {
+  return { reloadOnSave: section.get('repl.reloadOnSave') === true };
+}
+
 /** Reads and validates `idris2.goalPanel.*` from the `idris2` section. */
 export function readGoalPanelSettings(section: ConfigurationReader): GoalPanelSettings {
   return {
@@ -787,6 +799,11 @@ export class Config {
   /** `idris2.goalPanel.*`, window-wide: one panel follows the active editor. */
   goalPanel(): GoalPanelSettings {
     return readGoalPanelSettings(this.host.getConfiguration(CONFIGURATION_SECTION));
+  }
+
+  /** `idris2.repl.*`, window-wide. */
+  repl(): ReplSettings {
+    return readReplSettings(this.host.getConfiguration(CONFIGURATION_SECTION));
   }
 
   /**

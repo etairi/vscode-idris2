@@ -17,6 +17,7 @@ import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
 import process from 'node:process';
+import readline from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { applyFaults, notImplemented } from '../fake-tools/faults.mjs';
 
@@ -935,6 +936,29 @@ function logRequest(input) {
   }
 }
 
+/**
+ * The REPL's command lines (`features/repl/launch.ts`): `--find-ipkg <file>`, or `[-p <package>…]
+ * <file>`, the file last. It prints a prompt per line and logs each line typed as a request
+ * (FAKE_IDRIS2_REQUEST_LOG); `:q` or the end of its input ends it.
+ */
+function isReplCommandLine(argv) {
+  const last = argv[argv.length - 1];
+  return last !== undefined && !last.startsWith('-') && /\.(idr|lidr)$/.test(last);
+}
+
+function serveRepl() {
+  process.stdout.write('Main> ');
+  const lines = readline.createInterface({ input: process.stdin, terminal: false });
+  lines.on('line', (line) => {
+    logRequest(Buffer.from(line, 'utf8').toString('latin1'));
+    if (line.trim() === ':q') {
+      process.exit(0);
+    }
+    process.stdout.write('Main> ');
+  });
+  lines.on('close', () => process.exit(0));
+}
+
 async function main(argv) {
   logInvocation(argv);
   const mode = await applyFaults(TOOL, 'FAKE_IDRIS2');
@@ -968,6 +992,10 @@ async function main(argv) {
     } else {
       serveSocket(ide.socket, replayer, faults, delays);
     }
+    return;
+  }
+  if (isReplCommandLine(argv)) {
+    serveRepl();
     return;
   }
   notImplemented(TOOL, argv);

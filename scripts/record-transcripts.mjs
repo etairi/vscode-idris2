@@ -1193,6 +1193,30 @@ const SCENARIOS = [
       intro(32, 'g'), //          foo x = ?g (S x)
     ],
   },
+  // M8: what the Query box and the `-- >>>` lenses send on the eval session (ROADMAP §9, 2026-10-30):
+  // expressions, and the allow-listed `:t` and `:doc`. What a second line after a command does.
+  {
+    name: 'eval-query',
+    description: 'The eval session after it loaded DocEval.idr: expressions, :t, :type and :doc of a name and of an undefined one, and a :t with :exec main on a second line',
+    facts: ['F27'],
+    workspace: 'broken',
+    cwd: '.',
+    buildDir: '.vscode-idris2-eval',
+    transport: 'stdio',
+    fixtures: ['DocEval.idr'],
+    requests: [
+      load('DocEval.idr'),
+      interpret('double 2'),
+      interpret('the (List Nat) [1, 2]'),
+      interpret(':t double'),
+      interpret(':type double'),
+      interpret(':doc double'),
+      interpret('doesNotExist'),
+      interpret(':t doesNotExist'),
+      interpret(':doc doesNotExist'),
+      interpret(':t double\n:exec main'),
+    ],
+  },
   // M7: the goal panel's toggles (`:set` and `:unset` of the three printing options, F27): what each
   // answers, what `:metavariables` prints under them, and that a load keeps them.
   {

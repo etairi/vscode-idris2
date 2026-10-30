@@ -141,6 +141,8 @@ export class FakeBackend {
   /** `typeAt(doc, pos, name)`; default: undefined. */
   answerType: (line: number, character: number, name: string) => Promise<TypeInfo | undefined> = () => Promise.resolve(undefined);
   /** `evaluate(doc, expr, token)`. */
+  /** What each evaluation was asked with besides the text. */
+  readonly options: unknown[] = [];
   answerEvaluation: (expr: string, token?: vscode.CancellationToken) => Promise<Evaluation> = () =>
     Promise.reject(new IdrisException({ kind: 'Unsupported', reason: 'no evaluation in this test' }));
   index: TokenIndex | undefined;
@@ -160,8 +162,9 @@ export class FakeBackend {
         self.calls.push(`typeAt ${pos.line}:${pos.character} ${name}`);
         return self.answerType(pos.line, pos.character, name);
       },
-      evaluate: (_doc: vscode.TextDocument, expr: string, token?: vscode.CancellationToken) => {
+      evaluate: (_doc: vscode.TextDocument, expr: string, token?: vscode.CancellationToken, options?: unknown) => {
         self.calls.push(`evaluate ${expr}`);
+        self.options.push(options);
         return self.answerEvaluation(expr, token);
       },
       tokens: () => self.index,

@@ -605,6 +605,22 @@ IDE-mode transcripts are their ground truth.
   `saveBeforeAction.test.ts` (no save while the unsaved text is checked), `protocolTranscripts.test.ts`,
   `manifest.test.ts`.
 
+## Tests of M8
+
+- `unit/repl.test.ts` — `features/repl`: the command line, the one line typed, the `-- >>>` lines and
+  their answers; against fakes of the `vscode` parts they use, the checks before a terminal starts, one
+  terminal per root, Send, `:r` on save, the lenses with Run all's question, Query….
+- `unit/replCommand.test.ts` — `queryRefusal`, the allow-list: against the recording `eval-query`, every
+  other command however it is spelled, and the lexer oracle over generated texts.
+- `eval.test.ts` (`run`), `backendIde.test.ts` (`queryCommands`), `protocolTranscripts.test.ts`.
+- `integration/intelligence-loose/repl.test.ts` (the fake compiler, whose REPL mode logs what is typed):
+  a real terminal, the lenses, Run all's question. `workbench.action.files.revert` between lens runs,
+  which save the file first: the fixture is the workspace.
+- `e2e/repl.test.ts` (real compiler, a copy of `simple-ipkg`): a terminal's screen cannot be read, so
+  `:exec main` writes a file, which shows that the REPL started on the file, read what was typed, and
+  reloaded. One compiler at a time: so the check session answering beside a REPL, which ROADMAP asks
+  for, is in `docs/checklists/M8.md`. macOS CI has `rlwrap`, so it tests that path too; here it may not.
+
 ## Tests of M7
 
 - `unit/goalPanelState.test.ts` — `features/goalPanel/state.ts`: the hole shown (cursor, line, pin,

@@ -349,7 +349,12 @@ src/
 │  │  │                                 not built yet, the setting
 │  │  └─ register.ts                    the storage (a folder per window; ended windows'
 │  │                                    deleted at activation) and the registration
-│  ├─ repl/                   M8
+│  ├─ repl/                   M8        (types.ts: the contracts)
+│  │  ├─ launch.ts                      the REPL's command line, the line typed into it
+│  │  ├─ terminals.ts                   one terminal per root, through the consent gate
+│  │  ├─ docEval.ts                     the -- >>> lines and the comment that holds an answer
+│  │  ├─ query.ts                       Query…: a QuickPick with completion of names
+│  │  └─ register.ts                    the commands, the lenses, :r on save
 │  ├─ tasks/                  M9
 │  ├─ tests/                  M10
 │  ├─ ipkg/                   M11

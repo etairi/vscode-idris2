@@ -390,6 +390,13 @@
           "order": 34,
           "markdownDescription": "Milliseconds without a move of the cursor before the goal panel shows the place it stopped at. From 0 to 2147483647 (about 24.8 days)."
         },
+        "idris2.repl.reloadOnSave": {
+          "type": "boolean",
+          "default": false,
+          "scope": "window",
+          "order": 35,
+          "markdownDescription": "Type `:r` into a project's REPL (**Idris 2: Open REPL**) when one of its Idris files is saved. If a program is running there, it reads the `:r` instead."
+        },
         "idris2.keybindings.scheme": {
           "type": "string",
           "enum": [
@@ -734,6 +741,36 @@
         "category": "Idris 2"
       },
       {
+        "command": "idris2.openRepl",
+        "title": "Open REPL",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.sendToRepl",
+        "title": "Send Selection or Line to REPL",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.replType",
+        "title": "Type of Selection in REPL",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.replDocs",
+        "title": "Docs of Selection in REPL",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.query",
+        "title": "Query…",
+        "category": "Idris 2"
+      },
+      {
+        "command": "idris2.runAllDocEval",
+        "title": "Run All -- >>> Lines",
+        "category": "Idris 2"
+      },
+      {
         "command": "idris2.showKeybindings",
         "title": "Show Keybindings",
         "category": "Idris 2"
@@ -887,6 +924,30 @@
           "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
         },
         {
+          "command": "idris2.openRepl",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.sendToRepl",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.replType",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.replDocs",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.query",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
+          "command": "idris2.runAllDocEval",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
           "command": "idris2.switchBackend",
           "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
         },
@@ -1022,6 +1083,30 @@
         {
           "command": "idris2.toggleGoalPanel",
           "group": "0_interactive_holes@4"
+        },
+        {
+          "command": "idris2.openRepl",
+          "group": "0_repl@1"
+        },
+        {
+          "command": "idris2.sendToRepl",
+          "group": "0_repl@2"
+        },
+        {
+          "command": "idris2.replType",
+          "group": "0_repl@3"
+        },
+        {
+          "command": "idris2.replDocs",
+          "group": "0_repl@4"
+        },
+        {
+          "command": "idris2.query",
+          "group": "0_repl@5"
+        },
+        {
+          "command": "idris2.runAllDocEval",
+          "group": "0_repl@6"
         },
         {
           "command": "idris2.showSetupInformation",

@@ -220,6 +220,7 @@ import type {
   Decor,
   EditRequest,
   EditResult,
+  EvaluateOptions,
   Evaluation,
   Hole,
   HolesOptions,
@@ -256,7 +257,7 @@ import {
   type Metavariable,
   type NameLocation,
 } from './protocol';
-import { replCommandRefusal } from './replCommand';
+import { queryRefusal, replCommandRefusal } from './replCommand';
 import { SHADOW_BUILD_DIR, SHADOW_PACKAGE_FILE, SHADOW_SOURCE_DIR, shadowCopyPath, shadowPackage } from './shadow';
 import { duration, type Clock } from './session';
 import type { IdeCommand, IdeSession, LoadedFile, LookupRequestOptions, Reply, SessionLaunch, SessionPool, SessionStateChange } from './types';
@@ -2521,8 +2522,8 @@ export class IdeBackend implements IdrisBackend {
   // Evaluation (module comment, *Evaluation*)
   // -----------------------------------------------------------------------------------------
 
-  async evaluate(doc: vscode.TextDocument, expr: string, token?: vscode.CancellationToken): Promise<Evaluation> {
-    const refusedCommand = replCommandRefusal(expr);
+  async evaluate(doc: vscode.TextDocument, expr: string, token?: vscode.CancellationToken, options: EvaluateOptions = {}): Promise<Evaluation> {
+    const refusedCommand = options.queryCommands === true ? queryRefusal(expr) : replCommandRefusal(expr);
     if (refusedCommand !== undefined) {
       throw unsupported(refusedCommand);
     }

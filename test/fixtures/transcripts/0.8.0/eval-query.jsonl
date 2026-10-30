@@ -1,0 +1,58 @@
+{"kind":"meta","format":1,"scenario":"eval-query","description":"The eval session after it loaded DocEval.idr: expressions, :t, :type and :doc of a name and of an undefined one, and a :t with :exec main on a second line","facts":["F27"],"idris2":{"version":"0.8.0","versionText":"Idris 2, version 0.8.0","executable":"/opt/homebrew/bin/idris2"},"platform":"darwin arm64","recorded":"2026-10-30","transport":"stdio","args":["--ide-mode","--no-color","--build-dir","${ROOT}/build/.vscode-idris2-eval"],"cwd":"test/fixtures/workspaces/broken","processCwd":"${ROOT}","placeholders":{"${ROOT}":128},"fixtures":{"DocEval.idr":"07e6a2315c464c8c06386cde322b9521eb9722a3917824040f09742b07488853"}}
+{"kind":"recv","prefix":"000018","text":"(:protocol-version 2 1)\n"}
+{"kind":"send","prefix":"0000a0","text":"((:load-file \"${ROOT}/DocEval.idr\") 1)\n"}
+{"kind":"recv","prefix":"0000b9","text":"(:write-string \"1/1: Building DocEval (${ROOT}/DocEval.idr)\" 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 0 0) (:end 0 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 0 7) (:end 0 14)) ((:decor :module)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f4","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 2 0) (:end 2 19)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"000150","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 3 0) (:end 3 6)) ((:name \"double\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 3 7) (:end 3 8)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000157","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 3 9) (:end 3 12)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 3 13) (:end 3 15)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"000158","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 3 16) (:end 3 19)) ((:name \"Nat\") (:namespace \"Prelude.Types\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000157","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 4 0) (:end 4 6)) ((:name \"double\") (:namespace \"DocEval\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000148","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 4 7) (:end 4 8)) ((:name \"n\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f4","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 4 9) (:end 4 10)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00014a","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 4 11) (:end 4 12)) ((:name \"n\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000158","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 4 13) (:end 4 14)) ((:name \"+\") (:namespace \"Prelude.Num\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00014a","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 4 15) (:end 4 16)) ((:name \"n\") (:namespace \"\") (:decor :bound) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"00014e","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 6 0) (:end 6 4)) ((:name \"main\") (:namespace \"\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 6 5) (:end 6 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00014e","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 6 7) (:end 6 9)) ((:name \"IO\") (:namespace \"PrimIO\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000153","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 6 10) (:end 6 12)) ((:name \"Unit\") (:namespace \"Builtin\") (:decor :type) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"000155","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 7 0) (:end 7 4)) ((:name \"main\") (:namespace \"DocEval\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f3","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 7 5) (:end 7 6)) ((:decor :keyword)))))) 1)\n"}
+{"kind":"recv","prefix":"00015d","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 7 7) (:end 7 15)) ((:name \"putStrLn\") (:namespace \"Prelude.IO\") (:decor :function) (:implicit :False) (:key \"\") (:doc-overview \"\") (:type \"\")))))) 1)\n"}
+{"kind":"recv","prefix":"0000f2","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 7 16) (:end 7 26)) ((:decor :data)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f4","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 9 0) (:end 9 56)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f6","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 11 0) (:end 11 15)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f6","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 12 0) (:end 12 28)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f6","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 13 0) (:end 13 16)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f6","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 14 0) (:end 14 18)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f6","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 15 0) (:end 15 19)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f6","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 16 0) (:end 16 17)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f6","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 18 0) (:end 18 20)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"0000f5","text":"(:output (:ok (:highlight-source ((((:filename \"${ROOT}/DocEval.idr\") (:start 19 0) (:end 22 0)) ((:decor :comment)))))) 1)\n"}
+{"kind":"recv","prefix":"000015","text":"(:return (:ok ()) 1)\n"}
+{"kind":"send","prefix":"00001c","text":"((:interpret \"double 2\") 2)\n"}
+{"kind":"recv","prefix":"00002f","text":"(:return (:ok \"4\" ((0 1 ((:decor :data))))) 2)\n"}
+{"kind":"send","prefix":"000029","text":"((:interpret \"the (List Nat) [1, 2]\") 3)\n"}
+{"kind":"recv","prefix":"00004b","text":"(:return (:ok \"[1, 2]\" ((1 1 ((:decor :data))) (4 1 ((:decor :data))))) 3)\n"}
+{"kind":"send","prefix":"00001d","text":"((:interpret \":t double\") 4)\n"}
+{"kind":"recv","prefix":"000099","text":"(:return (:ok \"DocEval.double : Nat -> Nat\" ((0 14 ((:decor :function))) (17 3 ((:decor :type))) (21 2 ((:decor :keyword))) (24 3 ((:decor :type))))) 4)\n"}
+{"kind":"send","prefix":"000020","text":"((:interpret \":type double\") 5)\n"}
+{"kind":"recv","prefix":"000099","text":"(:return (:ok \"DocEval.double : Nat -> Nat\" ((0 14 ((:decor :function))) (17 3 ((:decor :type))) (21 2 ((:decor :keyword))) (24 3 ((:decor :type))))) 5)\n"}
+{"kind":"send","prefix":"00001f","text":"((:interpret \":doc double\") 6)\n"}
+{"kind":"recv","prefix":"000104","text":"(:return (:ok \"DocEval.double : Nat -> Nat\n  Twice a number.\n  Visibility: private\" ((0 14 ((:decor :function))) (17 3 ((:decor :type))) (21 2 ((:decor :keyword))) (24 3 ((:decor :type))) (48 10 ((:text-formatting :underline))) (60 7 ((:decor :keyword))))) 6)\n"}
+{"kind":"send","prefix":"000020","text":"((:interpret \"doesNotExist\") 7)\n"}
+{"kind":"recv","prefix":"000133","text":"(:return (:error \"Error: Undefined name doesNotExist. \n\n(Interactive):1:1--1:13\n 1 | doesNotExist\n     ^^^^^^^^^^^^\n\" ((0 6 ((:text-formatting :bold) (:decor :postulate))) (22 12 ((:decor :bound))) (38 23 ((:decor :type))) (63 3 ((:decor :type))) (85 12 ((:text-formatting :bold) (:decor :postulate))))) 7)\n"}
+{"kind":"send","prefix":"000023","text":"((:interpret \":t doesNotExist\") 8)\n"}
+{"kind":"recv","prefix":"000139","text":"(:return (:error \"Error: Undefined name doesNotExist. \n\n(Interactive):1:4--1:16\n 1 | :t doesNotExist\n        ^^^^^^^^^^^^\n\" ((0 6 ((:text-formatting :bold) (:decor :postulate))) (22 12 ((:decor :bound))) (38 23 ((:decor :type))) (63 3 ((:decor :type))) (91 12 ((:text-formatting :bold) (:decor :postulate))))) 8)\n"}
+{"kind":"send","prefix":"000025","text":"((:interpret \":doc doesNotExist\") 9)\n"}
+{"kind":"recv","prefix":"00013d","text":"(:return (:error \"Error: Undefined name doesNotExist. \n\n(Interactive):1:6--1:18\n 1 | :doc doesNotExist\n          ^^^^^^^^^^^^\n\" ((0 6 ((:text-formatting :bold) (:decor :postulate))) (22 12 ((:decor :bound))) (38 23 ((:decor :type))) (63 3 ((:decor :type))) (95 12 ((:text-formatting :bold) (:decor :postulate))))) 9)\n"}
+{"kind":"send","prefix":"00002b","text":"((:interpret \":t double\\10:exec main\") 10)\n"}
+{"kind":"recv","prefix":"000177","text":"(:return (:error \"Couldn't parse any alternatives:\n1: Expected end of input.\n\n(Interactive):2:1--2:2\n 1 | :t double\n 2 | :exec main\n     ^\n... (1 others)\" ((33 25 ((:text-formatting :bold) (:decor :postulate))) (60 22 ((:decor :type))) (84 3 ((:decor :type))) (99 3 ((:decor :type))) (119 1 ((:text-formatting :bold) (:decor :postulate))) (121 14 ((:decor :function))))) 10)\n"}
+{"kind":"close"}
+{"kind":"unframed","text":"Alas the file is done, aborting\n"}
+{"kind":"exit","code":1,"signal":null}
+{"kind":"files","written":["build/.vscode-idris2-eval/ttc/2025081600/DocEval.ttc","build/.vscode-idris2-eval/ttc/2025081600/DocEval.ttm"]}

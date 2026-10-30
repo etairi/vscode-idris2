@@ -12,6 +12,16 @@ on Open VSX as `etairi.vscode-idris2`.
 
 ### Added
 
+- **REPL** (milestone M8): **Open REPL** starts the compiler's REPL in a terminal, on the current
+  file, with its package. **Send Selection or Line to REPL**, **Type of Selection in REPL** and **Docs
+  of Selection in REPL** type into it, and `idris2.repl.reloadOnSave` types `:r` when a file of the
+  project is saved. With `rlwrap` installed the REPL has history and arrow keys; the compiler's own
+  has neither.
+- **Query…**: an expression, `:t` or `:doc` in the context of the file, with completion of names.
+  Answers go to the output channel `Idris 2 Query`.
+- **`-- >>> expr` lines** get a **Run** lens that writes the answer beneath the line as a comment, and
+  **Run all**, which asks first and says how many lines it runs. Query and the lenses run no program:
+  of the REPL's commands they send only `:t` and `:doc`.
 - **Goal panel** (milestone M7): **Toggle Goal Panel** (`Cmd+Shift+Enter`, `Ctrl+Shift+Enter` on
   Linux, or the scheme's `,`) opens a panel beside the editor with the hole at the cursor: its local
   variables, its goal, and buttons for Proof Search, Next, Intro (its choices inside the panel), Make

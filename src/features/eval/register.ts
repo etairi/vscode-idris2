@@ -39,7 +39,7 @@
  */
 import type * as vscode from 'vscode';
 import { rootKey, type BackendRegistry } from '../../backend/registry';
-import type { Evaluation } from '../../backend/types';
+import type { EvaluateOptions, Evaluation } from '../../backend/types';
 import type { Config } from '../../core/config';
 import { DisposableStore, type IDisposable } from '../../core/disposable';
 import { errorText, IdrisException, isCancelled } from '../../core/errors';
@@ -118,9 +118,26 @@ export interface EvaluationOutcome {
   readonly text: string;
 }
 
+/**
+ * How an evaluation ended (`EvaluationResults.run`): the compiler's answer; `refused` when nothing
+ * could be asked (the backend refused the text, or this backend does not evaluate), with why;
+ * `failed` when it did not answer (the file does not load, a time limit, a crash); `cancelled`.
+ */
+export type EvaluationRun =
+  | { readonly kind: 'answer'; readonly evaluation: Evaluation }
+  | { readonly kind: 'refused'; readonly reason: string }
+  | { readonly kind: 'failed'; readonly reason: string }
+  | { readonly kind: 'cancelled'; readonly reason: string };
+
 export interface EvaluationResults extends IDisposable {
   /** The results drawn in the document of `uri` (`Uri.toString()`), in the order they were made. */
   drawn(uri: string): readonly DrawnEvaluation[];
+  /**
+   * Evaluates `text` in the context of `doc`'s saved file as Evaluate Selection does: the status, the
+   * Cancel offer, the order within a root (module comment, *Cancel*). For the Query box and the `-- >>>`
+   * lenses (M8), which show the outcome themselves.
+   */
+  run(doc: vscode.TextDocument, text: string, options?: EvaluateOptions): Promise<EvaluationRun>;
   /** Every run of Evaluate Selection in this window, in order; kept only with `keepOutcomes`. */
   readonly outcomes: readonly EvaluationOutcome[];
 }
@@ -242,46 +259,11 @@ export function registerEvaluation(api: EvaluationApi, deps: EvaluationDeps, opt
     void api.window.showInformationMessage(plainText(shown));
   };
 
-  const evaluate = async (): Promise<void> => {
-    const editor = api.window.activeTextEditor;
-    const doc = editor?.document;
-    if (editor === undefined || doc === undefined || !isIdrisDocument(doc)) {
-      refuse(doc?.fileName ?? '', '', 'Idris 2: select an expression in an Idris file to evaluate it.');
-      return;
-    }
-    if (!deps.trust.isTrusted) {
-      refuse(doc.fileName, '', RESTRICTED);
-      return;
-    }
-    if (doc.uri.scheme !== 'file') {
-      refuse(doc.fileName, '', 'Idris 2: save the file first; the compiler evaluates in the context of the file on disk.');
-      return;
-    }
-    const selection = editor.selection;
-    const selected = selectedExpression(doc, selection);
-    if (selected.kind === 'empty') {
-      refuse(doc.fileName, '', 'Idris 2: select the expression to evaluate.');
-      return;
-    }
-    if (selected.kind === 'prose') {
-      refuse(doc.fileName, '', `Idris 2: line ${displayLine(selected.line)} of the file is prose, not Idris code; select code only.`);
-      return;
-    }
-    if (selected.kind === 'unmarked') {
-      refuse(
-        doc.fileName,
-        '',
-        `Idris 2: line ${displayLine(selected.line)} of the file has no #+IDRIS: marker; in an Org file a selection over several lines is evaluated only on #+IDRIS: lines.`,
-      );
-      return;
-    }
-    const expression = selected.text;
-    const version = doc.version;
-    const stale = doc.isDirty;
+  const run = async (doc: vscode.TextDocument, expression: string, evaluateOptions: EvaluateOptions = {}): Promise<EvaluationRun> => {
     const root = await deps.projects.classify(doc.fileName);
     const backend = deps.registry.backendFor(root);
     const cancel = new api.CancellationTokenSource();
-    const running = backend.evaluate(doc, expression, cancel.token);
+    const running = backend.evaluate(doc, expression, cancel.token, evaluateOptions);
     const settled = running.then(
       () => undefined,
       () => undefined,
@@ -322,34 +304,79 @@ export function registerEvaluation(api: EvaluationApi, deps: EvaluationDeps, opt
     } else {
       void ahead.then(offerCancel);
     }
-    let evaluation: Evaluation;
     try {
-      evaluation = await api.window.withProgress({ location: api.ProgressLocation.Window, title: 'Idris 2: evaluating…' }, () => running);
+      const evaluation = await api.window.withProgress({ location: api.ProgressLocation.Window, title: 'Idris 2: evaluating…' }, () => running);
+      return { kind: 'answer', evaluation };
     } catch (error) {
       if (isCancelled(error)) {
-        const message = error instanceof Error ? error.message : String(error);
-        deps.log.info(`Evaluate Selection: ${message}`);
-        record({ file: doc.fileName, expression, kind: 'unavailable', text: message });
-        return;
+        return { kind: 'cancelled', reason: error instanceof Error ? error.message : String(error) };
       }
       if (!(error instanceof IdrisException)) {
         throw error;
       }
       const reason = errorText(error.error);
-      deps.log.info(`Evaluate Selection in ${doc.fileName}: ${error.error.kind}: ${reason}`);
-      if (error.error.kind === 'Unsupported') {
-        refuse(doc.fileName, expression, `Idris 2: ${reason}`);
-      } else {
-        const message = editorLabel(`Idris 2: Evaluate Selection failed: ${reason}`);
-        record({ file: doc.fileName, expression, kind: 'unavailable', text: message });
-        void api.window.showWarningMessage(plainText(message));
-      }
-      return;
+      deps.log.info(`Evaluation in ${doc.fileName}: ${error.error.kind}: ${reason}`);
+      return { kind: error.error.kind === 'Unsupported' ? 'refused' : 'failed', reason };
     } finally {
       finished = true;
       clearTimeout(offer);
       cancel.dispose();
     }
+  };
+
+  const evaluate = async (): Promise<void> => {
+    const editor = api.window.activeTextEditor;
+    const doc = editor?.document;
+    if (editor === undefined || doc === undefined || !isIdrisDocument(doc)) {
+      refuse(doc?.fileName ?? '', '', 'Idris 2: select an expression in an Idris file to evaluate it.');
+      return;
+    }
+    if (!deps.trust.isTrusted) {
+      refuse(doc.fileName, '', RESTRICTED);
+      return;
+    }
+    if (doc.uri.scheme !== 'file') {
+      refuse(doc.fileName, '', 'Idris 2: save the file first; the compiler evaluates in the context of the file on disk.');
+      return;
+    }
+    const selection = editor.selection;
+    const selected = selectedExpression(doc, selection);
+    if (selected.kind === 'empty') {
+      refuse(doc.fileName, '', 'Idris 2: select the expression to evaluate.');
+      return;
+    }
+    if (selected.kind === 'prose') {
+      refuse(doc.fileName, '', `Idris 2: line ${displayLine(selected.line)} of the file is prose, not Idris code; select code only.`);
+      return;
+    }
+    if (selected.kind === 'unmarked') {
+      refuse(
+        doc.fileName,
+        '',
+        `Idris 2: line ${displayLine(selected.line)} of the file has no #+IDRIS: marker; in an Org file a selection over several lines is evaluated only on #+IDRIS: lines.`,
+      );
+      return;
+    }
+    const expression = selected.text;
+    const version = doc.version;
+    const stale = doc.isDirty;
+    const outcome = await run(doc, expression);
+    if (outcome.kind === 'cancelled') {
+      deps.log.info(`Evaluate Selection: ${outcome.reason}`);
+      record({ file: doc.fileName, expression, kind: 'unavailable', text: outcome.reason });
+      return;
+    }
+    if (outcome.kind === 'refused') {
+      refuse(doc.fileName, expression, `Idris 2: ${outcome.reason}`);
+      return;
+    }
+    if (outcome.kind === 'failed') {
+      const message = editorLabel(`Idris 2: Evaluate Selection failed: ${outcome.reason}`);
+      record({ file: doc.fileName, expression, kind: 'unavailable', text: message });
+      void api.window.showWarningMessage(plainText(message));
+      return;
+    }
+    const { evaluation } = outcome;
     record({
       file: doc.fileName,
       expression,
@@ -397,6 +424,7 @@ export function registerEvaluation(api: EvaluationApi, deps: EvaluationDeps, opt
 
   return {
     drawn: (uri) => (results.get(uri) ?? []).map(({ range, kind, label, hover }) => ({ range, kind, label, hover })),
+    run,
     outcomes,
     dispose: () => {
       results.clear();

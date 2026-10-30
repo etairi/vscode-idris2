@@ -75,3 +75,25 @@ export function replCommandRefusal(text: string): string | undefined {
   }
   return undefined;
 }
+
+/** `:t`, its long form `:type`, and `:doc`, then their argument (`parserCommandsForHelp`, `src/Idris/Parser.idr` on v0.8.0 [src]). */
+const QUERY_COMMAND = /^:(?:t|type|doc)[ \t]+\S/;
+
+/**
+ * Why `text` is not sent for the Query box or a `-- >>>` lens, as one sentence of plain text;
+ * `undefined` when it may be (ROADMAP §9, decided 2026-10-30): an expression, under the rule above,
+ * or the allow-listed `:t` or `:doc`, which only read. Every other command is refused, however it is
+ * spelled: what is not exactly such a command starts with `:` and fails the pattern. A command is one
+ * line without control or format characters, which is stricter than the compiler: a second line is a
+ * parse error there (`Expected end of input`) [live, transcript `eval-query`].
+ */
+export function queryRefusal(text: string): string | undefined {
+  const rest = text.slice(SKIPPED.exec(text)?.[0].length ?? 0);
+  if (!rest.startsWith(':')) {
+    return replCommandRefusal(text) === undefined ? undefined : 'Not run: the text starts with a comment and contains ":", so the compiler could read it as a REPL command. Write the expression without the comment.';
+  }
+  if (!QUERY_COMMAND.test(rest) || /[\p{Cc}\p{Cf}]/u.test(rest.replace(/\t/g, ' '))) {
+    return 'Not run: of the REPL commands only :t and :doc run here, on one line. Programs are run from the REPL terminal (Idris 2: Open REPL).';
+  }
+  return undefined;
+}
