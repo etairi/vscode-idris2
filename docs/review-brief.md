@@ -90,7 +90,8 @@ npm run package
 ```
 
 An e2e line `the panel's group is active, and VS Code still names …` is no failure (`as-built/M7.md`,
-*Open issues*). A manual step of the milestones is in `docs/checklists/`; `M7.md` and `M8.md` there have
+*Open issues*). A failure `more than 200 ms` in `holesView.test.ts` on a busy machine is a wall-clock guard
+(`as-built/M8.md`, *Open issues*): run it alone before calling it a finding. A manual step of the milestones is in `docs/checklists/`; `M7.md` and `M8.md` there have
 not yet been worked through by a person, and `M8.md` holds the one acceptance item that needs two
 compilers at once. Publishing under the new name is on hold, and is the user's decision.
 

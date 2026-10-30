@@ -17,7 +17,7 @@ entry pointing here.
 | [`M5.md`](M5.md) | idris2-lsp backend and routing (and M4's LSP half) | 2026-10-02 (integrated) | `e4eedaa` | 39986288643 (ubuntu, macOS) |
 | [`M6.md`](M6.md) | Check-while-typing: shadow typecheck of unsaved buffers | 2026-10-24 | `ddabd4f` | 40004468317 (ubuntu, macOS) |
 | [`M7.md`](M7.md) | Goal panel (webview) | 2026-10-30 | `026889e` | 41046205065 (ubuntu, macOS) |
-| [`M8.md`](M8.md) | REPL terminal and doc-eval | 2026-10-30 | pending | pending |
+| [`M8.md`](M8.md) | REPL terminal and doc-eval | 2026-10-30 | `0761f51` | 41096904577 (ubuntu, macOS; second attempt) |
 
 ## How these files were made
 

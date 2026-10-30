@@ -984,7 +984,8 @@ M0 → M1 → M2 → M3 → M14).
   Decide before M8 whether Q23's acceptance covers them, Run all especially. [decided 2026-10-30, §9:
   yes for the Query box and one Run; Run all asks first]
 - **Upstream.** None.
-- **Status: implemented** (2026-10-30), not yet committed. The REPL, Send to REPL, `:t`/`:doc`, `:r` on
+- **Status: implemented** (2026-10-30), committed as `0761f51`, CI run 41096904577 green on ubuntu and
+  macOS. The REPL, Send to REPL, `:t`/`:doc`, `:r` on
   save, Query… and the `-- >>>` lenses, with the user's two decisions (§9). Three plans met the compiler
   [live]: `--repl <ipkg>` leaves `:r` nothing to reload, so a project's REPL is `--find-ipkg <file>`; the
   REPL has **no history or arrow keys**, which this entry's "for free" wrongly claimed, so the
