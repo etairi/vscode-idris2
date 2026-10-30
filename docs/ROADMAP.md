@@ -1,7 +1,8 @@
 # vscode-idris2 — roadmap
 
-Status: final planning document, 2026-09-23. Extension `vscode-idris2` (id
-`etairi.vscode-idris2`), display name "Idris 2", publisher `etairi` (provisional, §9).
+Status: final planning document, 2026-09-23. Extension `idris2-language-tools` (id
+`etairi.idris2-language-tools`, in the repository `vscode-idris2`), display name "Idris 2 Language
+Tools", publisher `etairi` (named so since 2026-10-30, §9).
 Companion documents: `landscape.md` (the verified survey and source of truth for everything it
 covers) and `ARCHITECTURE.md` (the technical design that every milestone below is built to).
 
@@ -1187,7 +1188,7 @@ Ship each item separately; none blocks another.
   scanning the bundle for network APIs (`fetch(`, `http.request`/`https.request`,
   `net.connect` to a non-loopback host) rather than for URL literals — the Help commands
   legitimately contain `https://` strings that are only ever passed to `vscode.env.openExternal`.
-- **Open questions.** Q1 (the Marketplace publisher; licence and icon are decided — MIT, the official Idris logo under BSD-3 — though confirming the logo use with the Idris maintainers before publishing is advisable, §7.6).
+- **Open questions.** Q1 (the Marketplace publisher; licence and icon are decided — MIT, the Idris logo with gears beside it under BSD-3 — though confirming the logo use with the Idris maintainers before publishing is advisable, §7.6).
 
 ### M16 — Idris 1 legacy support (optional; **not recommended**) (L)
 
@@ -1299,9 +1300,11 @@ plan-ecosystem [npm, unverified here]); a `--pre-release` channel carries master
 **As of 2026-10-01** the first pre-release is published by hand (`CONTRIBUTING.md`, *Releasing*);
 no publishing job exists. `@vscode/vsce` needs Node ≥ 22 [doc, its README]. A CI job cannot rest
 on a Marketplace token for long: Azure DevOps retires global personal access tokens on 2026-12-01
-[doc, VS Code's publishing guide], which recommends Microsoft Entra ID (`vsce publish
---azure-credential`); `vsce` 4.0.0 also has `--oidc`, trusted publishing from GitHub Actions [src],
-and `ovsx` has `--trusted-publishing` [src, its CLI at HEAD].
+[doc, VS Code's publishing guide], postponed on 2026-10-23 to "January 27, 2026" in Microsoft's
+announcement, read here as 2027; new ones can be created until then [doc, the Azure DevOps blog].
+The guide recommends federated identity, trusted publishing from GitHub Actions (`vsce publish
+--oidc`, in `vsce` 4.0.0 [src]) or Microsoft Entra ID from Azure Pipelines (`vsce publish
+--azure-credential`) [doc, 2026-10-30], and `ovsx` has `--trusted-publishing` [src, its CLI at HEAD].
 Bundle budget: extension < 1 MB, webview < 300 KB.
 
 ### 7.4 Versioning policy versus Idris 2 releases
@@ -1335,9 +1338,10 @@ reuse; Idris 2 and idris2-lsp are BSD-licensed, compatible) or BSD-3 / Apache-2.
 meraymond's grammar is forked, keep its MIT copyright line; zjhmale's grammar is BSD with an
 "All rights reserved" header — avoid copying from it; if Lean's abbreviation table is ported,
 add the Apache-2.0 notice. Licence facts for the four extensions are as reported by
-plan-proof-ux/plan-ecosystem from their `LICENSE` files (not re-read here). The extension icon is the official
-Idris logo from the Idris 2 repository, redistributed under its BSD-3 licence with the notice in
-`THIRD_PARTY_NOTICES.md` (decided 2026-09-27). The licence's third clause forbids using the
+plan-proof-ux/plan-ecosystem from their `LICENSE` files (not re-read here). The extension icon is a
+the Idris logo from the Idris 2 repository with two gears beside it (§9, 2026-10-30; the logo alone
+before that), redistributed under its BSD-3 licence with the notice in `THIRD_PARTY_NOTICES.md`,
+which also covers the port of the compiler's lexer. The licence's third clause forbids using the
 copyright holders' names to endorse the extension, so the README says it is not affiliated with
 the Idris project; asking the maintainers before publishing to the Marketplace (M15) is still
 advisable.
@@ -1385,12 +1389,56 @@ retiring every backend risk before UI work is preferred.
 
 ## 9. Open questions and decisions needed from the user
 
+**Decided by the user on 2026-10-30**
+
+- **M7**: Q8 plain TypeScript, at least for now; Q9 the goal panel opens manually. **Order and
+  review**: M7, then M8; when M8 is done the user runs a review of the whole progress as a separate
+  workflow, and `docs/review-brief.md` is kept up to date for it until then.
+- **A new identity after the Marketplace removal** (Microsoft had not answered the request of
+  2026-10-24). The extension is `etairi.idris2-language-tools`, display name "Idris 2 Language
+  Tools"; the repository keeps its name, and commands and views keep the language's name. The icon
+  is the Idris logo in its own colours with two gears beside it, on a white tile, which keeps the
+  logo visible on dark themes (`media/icon.svg` over the unmodified `media/idris-logo-256.png`,
+  neither packaged). The user chose this over an original drawing and a recoloured logo with a `?`
+  badge, and chose no "unofficial" statement in the listing; the README's licence section keeps its
+  sentence that the extension is not affiliated with the Idris project (§7.6). The VS Code icon is
+  not used: its guidelines say not to use it to identify a VS Code extension or integrate it into
+  a logo [doc: code.visualstudio.com/brand].
+  `test/unit/manifest.test.ts` pins the names and that the icon is not the logo itself.
+- **Version 0.1.0 again**, to be published afresh when the user decides. 0.1.1 (`adb6d2b`,
+  `7923b4d`) was never published. The tag `v0.1.0` stays on the release under the first name
+  (`4de2082`), so this name's first release needs another tag (`CONTRIBUTING.md`, *Releasing*).
+- What is known about impersonation, 2026-10-30. The reason for the removal is still unknown.
+  Microsoft reviews "extensions that duplicate repository links and logo images for potential
+  impersonation" and advises a unique display name and image [doc: its blog *Security and Trust in
+  Visual Studio Marketplace*], so an icon with the logo in it may still be matched. Support replies quoted by
+  publishers say removed extensions are not reinstated, and name a 30-day cooldown before a review
+  (microsoft/vsmarketplace #1899, #2204 [gh]). `EvgeniiShapovalov.sftp-link`, removed as
+  Impersonation on 2026-06-06, came back under the same publisher as `wireferry` on 2026-07-11 and
+  was still listed on 2026-10-30 [live, the gallery API]. Support also answers at
+  `VSMarketplace@microsoft.com` [gh].
+
 **Decided by the user on 2026-10-24 (M6)**
 
 - **`shadow.ipkg` kept, for now**: the shadow directory holds the package file the extension writes
   (the root's `depends` and `opts`; `docs/as-built/M6.md`, *Decisions* 1), against M6's acceptance
   item "the shadow directory contains no `.ipkg`", whose intent holds: the compiler never finds the
   project's own `.ipkg`.
+- **Removed from the Visual Studio Marketplace; ask Microsoft first.** Found on 2026-10-24, when the
+  user's publish of 0.1.1 failed ("The extension 'vscode-idris2' already exists"): Microsoft removed
+  `etairi.vscode-idris2` on 2026-10-02, the day after it was published, giving the reason as
+  "Impersonation" and no details [doc: `RemovedPackages.md` of github.com/microsoft/vsmarketplace].
+  A removed extension's name stays reserved, also for its own publisher, and display names are
+  unique [doc: VS Code's publishing guide, whose support route is *Contact Microsoft* on the publisher
+  management page]. The identifier is not in VS Code's own block list (`malicious` in
+  `https://main.vscode-cdn.net/extensions/marketplace.json` [live, 2026-10-24]), so the Open VSX
+  listing (0.1.0) and `.vsix` installs keep working. Two Idris extensions still listed show the same
+  logo under descriptive display names ("Idris", "Idris 2 Language Support") [live, the gallery
+  API]. The user decided to ask Microsoft first and then decide (request sent through *Contact
+  Microsoft* on 2026-10-24); if the extension is renamed, its
+  display name becomes "Idris 2 Language Tools" (`idris2-language-tools`), with an icon of its own.
+  0.1.1 (commit `7923b4d`, package SHA-256 `d21ab0b8…`, checked installed in a separate VS Code
+  [live]) was not published.
 
 **Decided by the user on 2026-10-24 (M5)**
 
@@ -1438,7 +1486,8 @@ How these were built: `docs/as-built/M5.md`, *Decisions*.
   and pre-release; the package the Marketplace serves is byte-identical to the one built from
   `4de2082` (SHA-256 `9a4ef841…`), which is tagged `v0.1.0` [live, the gallery API]. On Open VSX
   the same day, published by the user: the same package, listed as pre-release and preview; the
-  namespace `etairi` stays unverified until the user claims it [live, the Open VSX API].
+  namespace `etairi` stays unverified until the user claims it [live, the Open VSX API]. Removed
+  from the Marketplace by Microsoft on 2026-10-02 (*Decided by the user on 2026-10-24 (M6)*, above).
 - **Always bracket.** Every answer the extension puts in place of a hole that is more than one
   token goes in parentheses, wherever the hole is, with no reading of the code around it: Intro
   (also a single candidate applied without asking), Refine Hole… and its ambiguity alternatives,
@@ -1699,7 +1748,9 @@ How these were built: `docs/as-built/M5.md`, *Decisions*.
   **Decided on 2026-10-01** (above, M5): IDE mode stays the default; idris2-lsp by choice, or under
   `auto` when no usable `idris2` is found; no fallback per feature.
 - **Q8** Webview stack: vanilla TS (proposed) vs `@vscode-elements/elements` vs React.
+  **Decided on 2026-10-30**: plain TypeScript, no framework, at least for now.
 - **Q9** Goal panel auto-open on the first Idris file?
+  **Decided on 2026-10-30**: no, it opens manually.
 - **Q10** Which test conventions do the user's projects use (`Test.Golden`, `pack test`, ad hoc)?
 - **Q11** May the extension ever write user files automatically (save-before-action `always`,
   `modules =` sync only via explicit code action — proposed)?

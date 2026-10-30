@@ -42,12 +42,19 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   (`LICENSE`, copyright Erkan Tairi); repository `github.com/etairi/vscode-idris2`; publisher
   `etairi` (created by the user on the Marketplace; the first pre-release, 0.1.0, was published there
   by the user on 2026-10-01, and on Open VSX the same day (namespace `etairi`, unverified until the user
-  claims it), tag `v0.1.0`, `CONTRIBUTING.md`, *Releasing*); language id `idris2` (the clashing
+  claims it), tag `v0.1.0`, `CONTRIBUTING.md`, *Releasing*; Microsoft removed it from the Marketplace
+  on 2026-10-02 as "Impersonation", its name reserved for good, ROADMAP §9); language id `idris2` (the clashing
   `j-nava.idris2-language-support` was uninstalled from the user's VS Code); grammar written
   fresh, using existing grammars only as reference; implementation order M0 → M1 → M2 with one
-  commit per milestone. Icon (decided 2026-09-27): the official Idris logo,
-  `media/idris-logo-256.png` = Idris 2 `icons/idris-256x256.png` at `3a91594` (BSD-3; notice in
-  `THIRD_PARTY_NOTICES.md`, which must ship in the `.vsix`; README states no affiliation).
+  commit per milestone. Identity (decided 2026-10-30, after Microsoft's removal; ROADMAP §9): the
+  extension is `etairi.idris2-language-tools`, display name "Idris 2 Language Tools", at version
+  0.1.0 until it is published afresh; the repository stays `vscode-idris2`. The icon
+  `media/icon.png` is the Idris logo in its own colours with two gears beside it, on a white tile
+  (`media/icon.svg` over the unmodified `media/idris-logo-256.png` = Idris 2 `icons/idris-256x256.png`
+  at `3a91594`; neither is packaged; never the VS Code icon, which its brand guidelines rule out);
+  BSD-3, notice in `THIRD_PARTY_NOTICES.md`, which must ship in the `.vsix` and also covers the port
+  of the compiler's lexer. No "unofficial" statement in the listing (the user's decision); the
+  README's licence section states no affiliation.
   The user-facing README is kept short, in the style of other language extensions;
   development details go to `CONTRIBUTING.md`, design and history to `docs/`. Decided on 2026-09-27
   (ROADMAP §9 Q2): pack, and with it `idris2-lsp`, is installed only in M5. Decided on
@@ -150,6 +157,7 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
 - **Generated files — edit the generator, never the output:** `syntaxes/idris2.tmLanguage.json`
   (from `syntaxes/src/idris2.grammar.mjs`) and `language-configuration/*.json` (from
   `scripts/build-language-configuration.mjs`). Tests run each generator with `--check`.
+  `media/icon.png` is rendered from `media/icon.svg` (the command is in `CONTRIBUTING.md`).
 - **Snapshots** (`test/grammar/snapshots/*.snap`): never regenerate blindly. After a grammar
   change, run `UPDATE_SNAPSHOTS=1 npm run test:grammar`, read the diff line by line, and say in
   the commit what changed and why it is right.

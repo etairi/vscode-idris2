@@ -14,7 +14,7 @@ import * as vscode from 'vscode';
 import type { TestApi } from '../../src/extension';
 import { ideProcesses } from './ideDriver';
 
-const EXTENSION_ID = 'etairi.vscode-idris2';
+const EXTENSION_ID = 'etairi.idris2-language-tools';
 
 /** Activates the extension (a no-op if the workspace's ipkg already did) and returns its test API. */
 export async function extensionApi(): Promise<TestApi> {

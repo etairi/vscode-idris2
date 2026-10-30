@@ -3,7 +3,7 @@ import * as path from 'path';
 import { performance } from 'perf_hooks';
 import * as vscode from 'vscode';
 
-const EXTENSION_ID = 'etairi.vscode-idris2';
+const EXTENSION_ID = 'etairi.idris2-language-tools';
 
 /**
  * Bound on the time from `openTextDocument(Hello.idr)` until the extension reports active (this
@@ -87,7 +87,7 @@ suite('activation', () => {
     );
   });
 
-  test('the extension id is etairi.vscode-idris2 and activate() resolves', async () => {
+  test('the extension id is etairi.idris2-language-tools and activate() resolves', async () => {
     const ext = vscode.extensions.getExtension(EXTENSION_ID);
     assert.ok(ext);
     await ext.activate();

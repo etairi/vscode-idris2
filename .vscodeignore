@@ -23,3 +23,5 @@ esbuild.mjs
 **/.vscode-test.*
 *.vsix
 CONTRIBUTING.md
+media/icon.svg
+media/idris-logo-256.png

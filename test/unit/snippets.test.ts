@@ -7,7 +7,7 @@ import * as path from 'path';
 // .ipkg) is not checked here, because it needs the compiler: `npm run check:fixtures` expands each
 // snippet into a host file and runs idris2 --check / --dump-ipkg-json on it.
 
-const PACKAGE_NAME = 'vscode-idris2';
+const PACKAGE_NAME = 'idris2-language-tools';
 
 function repoRoot(): string {
   for (let dir = __dirname; ; dir = path.dirname(dir)) {

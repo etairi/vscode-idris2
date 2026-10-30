@@ -214,7 +214,7 @@ suite('M4 Show Keybindings', () => {
   });
 
   test('a read-only plain-text document of the active scheme\'s shortcuts, which follows the setting', async () => {
-    const manifest = vscode.extensions.getExtension('etairi.vscode-idris2')?.packageJSON as {
+    const manifest = vscode.extensions.getExtension('etairi.idris2-language-tools')?.packageJSON as {
       contributes: { commands: { command: string; title: string }[]; keybindings: { command: string }[] };
     };
     const titles = [...new Set(manifest.contributes.keybindings.map((k) => k.command))].map(

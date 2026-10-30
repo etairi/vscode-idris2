@@ -1,7 +1,7 @@
 # User guide
 
 How the Idris 2 extension behaves, in more detail than the [README](../README.md). Every setting
-is also described in the Settings UI: search for `@ext:etairi.vscode-idris2`.
+is also described in the Settings UI: search for `@ext:etairi.idris2-language-tools`.
 
 - [Checking files](#checking-files)
 - [Code intelligence](#code-intelligence)

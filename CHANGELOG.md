@@ -1,10 +1,14 @@
 # Changelog
 
-All notable changes to the "Idris 2" extension (`vscode-idris2`) are documented in this file.
-The format follows [Keep a Changelog](https://keepachangelog.com/); the extension's version is
-independent of Idris 2 releases (`docs/ROADMAP.md` §7.4).
+All notable changes to the "Idris 2 Language Tools" extension (`idris2-language-tools`) are
+documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/); the
+extension's version is independent of Idris 2 releases (`docs/ROADMAP.md` §7.4).
 
-## [0.1.1] - 2026-10-24
+## [0.1.0] - Unreleased
+
+The first pre-release under this name. It supports macOS and Linux and was tested with Idris 2
+0.8.0; on Windows, use VS Code with WSL, where the extension runs on Linux. An earlier version is
+on Open VSX as `etairi.vscode-idris2`.
 
 ### Added
 
@@ -32,15 +36,6 @@ independent of Idris 2 releases (`docs/ROADMAP.md` §7.4).
 - The language server is checked against the `idris2` of its own installation (pack's), not the one
   on `PATH`. Its log level defaults to `info`, which does not log your files' text
   (`idris2.lsp.logSeverity`).
-
-## [0.1.0] - 2026-10-01
-
-The first pre-release, on the Visual Studio Marketplace and Open VSX (`etairi.vscode-idris2`). It
-supports macOS and Linux and was tested with Idris 2 0.8.0; on Windows, use VS Code with WSL,
-where the extension runs on Linux.
-
-### Added
-
 - **Interactive editing** (milestone M4): **Case Split**, **Add Clause**, **Make Lemma**, **Make
   With**, **Make Case**, **Proof Search**, **Generate Definition**, **Intro** and **Refine Hole…**,
   from the Command Palette, the light bulb or the keyboard, and **Add Missing Cases**, from the
@@ -104,7 +99,7 @@ where the extension runs on Linux.
   Output**, **Open Settings** and **Open Idris 2 Documentation**; editor defaults for Idris files.
 - **Workspace Trust.** In Restricted Mode the extension runs no program; highlighting and editing
   support keep working.
-- Extension icon: the official Idris logo (BSD-3, see `THIRD_PARTY_NOTICES.md`).
+- Extension icon: the Idris logo with two gears beside it (BSD-3, see `THIRD_PARTY_NOTICES.md`).
 
 What each milestone built in detail, how it differs from the plan and how it was tested is
 recorded in `docs/as-built/`.

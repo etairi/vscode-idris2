@@ -313,7 +313,7 @@ suite('M2 diagnostics (fake compiler replaying the 0.8.0 transcripts, socket tra
 
   test('every contributed command is registered, and the status QuickPick lists the submenu as registered', async () => {
     const registered = new Set(await vscode.commands.getCommands(true));
-    const manifest = vscode.extensions.getExtension('etairi.vscode-idris2')?.packageJSON as {
+    const manifest = vscode.extensions.getExtension('etairi.idris2-language-tools')?.packageJSON as {
       contributes: { commands: { command: string }[]; menus: Record<string, { command?: string }[]>; views: Record<string, { id: string }[]> };
     };
     for (const { command } of manifest.contributes.commands) {

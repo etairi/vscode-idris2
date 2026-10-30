@@ -1,14 +1,14 @@
 <p align="center">
-  <img src="media/idris-logo-256.png" alt="Idris logo" width="112">
+  <img src="media/icon.png" alt="Idris 2 Language Tools icon" width="112">
 </p>
 
-# Idris 2 for Visual Studio Code
+# Idris 2 Language Tools
 
 Language support for [Idris 2](https://www.idris-lang.org/), a purely functional programming
 language with first-class dependent types.
 
-> **Preview.** Early development, published as a pre-release. A goal panel comes next — see the
-> [roadmap](docs/ROADMAP.md).
+> **Preview.** Early development, not yet published under this name. A goal panel comes next — see
+> the [roadmap](docs/ROADMAP.md).
 
 ## Features
 
@@ -68,16 +68,16 @@ The [user guide](docs/guide.md) describes each feature in detail.
 
 ## Installation
 
-Install the pre-release of **Idris 2** (`etairi.vscode-idris2`) from the
-[Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=etairi.vscode-idris2)
-or [Open VSX](https://open-vsx.org/extension/etairi/vscode-idris2), or run
-`code --install-extension etairi.vscode-idris2 --pre-release`. To build it from source (Node.js 24):
+This extension is not yet published under this name, so build it from source (Node.js 24):
 
 ```sh
 git clone https://github.com/etairi/vscode-idris2 && cd vscode-idris2
 npm ci && npm run package
-code --install-extension vscode-idris2-0.1.1.vsix
+code --install-extension idris2-language-tools-0.1.0.vsix
 ```
+
+An earlier version is on [Open VSX](https://open-vsx.org/extension/etairi/vscode-idris2) as
+`etairi.vscode-idris2`.
 
 Disable other Idris extensions while you use this one: they claim the same file types.
 
@@ -137,7 +137,7 @@ title bar of an Idris file.
 ## Settings
 
 The ones you are most likely to change; all of them are in the Settings UI (search for
-`@ext:etairi.vscode-idris2`), and the [guide](docs/guide.md#settings-in-depth) explains the trade-offs.
+`@ext:etairi.idris2-language-tools`), and the [guide](docs/guide.md#settings-in-depth) explains the trade-offs.
 
 | Setting | Default | Description |
 |---|---|---|
@@ -213,6 +213,7 @@ Issues and pull requests are welcome on [GitHub](https://github.com/etairi/vscod
 
 ## License
 
-[MIT](LICENSE). The Idris logo is © Edwin Brady, used under the BSD 3-Clause license of
+[MIT](LICENSE). The icon contains the Idris logo, © Edwin Brady, and the lexer is a port of the
+compiler's, both used under the BSD 3-Clause license of
 [Idris 2](https://github.com/idris-lang/Idris2) ([notices](THIRD_PARTY_NOTICES.md)). This
 extension is not affiliated with or endorsed by the Idris project.

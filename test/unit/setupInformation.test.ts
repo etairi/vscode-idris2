@@ -37,7 +37,7 @@ const HOST = {
 function input(overrides: Partial<SetupInput> = {}): SetupInput {
   return {
     generatedAt: new Date(Date.UTC(2026, 8, 27, 12, 30, 0)),
-    extension: { id: 'etairi.vscode-idris2', version: '0.0.1' },
+    extension: { id: 'etairi.idris2-language-tools', version: '0.0.1' },
     host: HOST,
     trusted: true,
     scanning: false,
@@ -57,7 +57,7 @@ suite('toolchain/setupInfo', () => {
   suite('renderSetupInformation', () => {
     test('environment, trust and the extension version come first', () => {
       const text = renderSetupInformation(input());
-      assert.ok(text.startsWith('# Idris 2: Setup Information\n\nGenerated 2026-09-27T12:30:00.000Z by etairi.vscode-idris2 0.0.1.'));
+      assert.ok(text.startsWith('# Idris 2: Setup Information\n\nGenerated 2026-09-27T12:30:00.000Z by etairi.idris2-language-tools 0.0.1.'));
       assert.ok(text.includes('\n- Visual Studio Code 1.139.1\n'));
       assert.ok(text.includes('\n- OS: darwin 25.0.0 (arm64); Extension Host Node v22.20.0\n'));
       assert.ok(text.includes('\n- Workspace trust: trusted\n'));
@@ -404,7 +404,7 @@ suite('toolchain/setupInfo', () => {
           onDidChange: new Emitter<void>().event,
         },
         trust: { isTrusted: true, onDidGrant: new Emitter<void>().event },
-        extension: { id: 'etairi.vscode-idris2', version: '0.0.1', issuesUrl: 'https://github.com/etairi/vscode-idris2/issues' },
+        extension: { id: 'etairi.idris2-language-tools', version: '0.0.1', issuesUrl: 'https://github.com/etairi/vscode-idris2/issues' },
         os: { platform: 'darwin', release: '25.0.0', arch: 'arm64', nodeVersion: 'v22.20.0' },
         log: { trace: () => undefined, debug: () => undefined, info: () => undefined, warn: () => undefined, error: () => undefined },
       });
@@ -427,7 +427,7 @@ suite('toolchain/setupInfo', () => {
       await t.commands.get('idris2.reportIssue')?.();
       assert.strictEqual(calls.length, 1);
       const { extensionId, issueBody: body } = calls[0] as { extensionId: string; issueBody: string };
-      assert.strictEqual(extensionId, 'etairi.vscode-idris2');
+      assert.strictEqual(extensionId, 'etairi.idris2-language-tools');
       assert.ok(body.includes('<summary>Setup Information</summary>'));
       assert.ok(body.includes('- Version line: `Idris 2, version 0.8.0`'));
       assert.deepStrictEqual(t.clipboard, []);

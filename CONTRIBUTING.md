@@ -41,7 +41,7 @@ fills in the setup information for you.
 npm ci
 npm run compile      # type-check, lint, bundle → dist/
 npm run watch        # the default build task in VS Code
-npm run package      # vsce package → vscode-idris2-<version>.vsix
+npm run package      # vsce package → idris2-language-tools-<version>.vsix
 ```
 
 In VS Code, **Run Extension** (F5) starts an Extension Development Host with the bundle from
@@ -119,6 +119,12 @@ that profile must stay under 103 characters, so keep the checkout at a short pat
   (`npm run build:grammar`); `language-configuration/*.json` from
   `scripts/build-language-configuration.mjs` (`npm run build:language-configuration`). Edit the
   generator, never the output; the tests fail if the output is out of date.
+- `media/icon.png` is rendered from `media/icon.svg`, which puts the unmodified Idris logo
+  `media/idris-logo-256.png` on a tile with two gears:
+  `rsvg-convert -w 256 -h 256 media/icon.svg -o media/icon.png`. Neither source is packaged. Keep
+  the icon visibly different from the logo, and never add the VS Code icon, which Microsoft's
+  [brand guidelines](https://code.visualstudio.com/brand) rule out for an extension
+  (`docs/ROADMAP.md` §9).
 - Every lexical rule should be traceable to the Idris 2 lexer or parser, or to an
   `idris2 --check` experiment recorded in the tests.
 - After a grammar change, run `UPDATE_SNAPSHOTS=1 npm run test:grammar`, read the snapshot diff
@@ -197,35 +203,40 @@ recommends: it accepts `major.minor.patch` only, and a pre-release and a release
 version. `package.json` keeps `"preview": true` (the Marketplace's Preview badge) until a release
 is declared stable.
 
-1. Set the version (`npm version 0.1.1 --no-git-tag-version`), give it a `## [0.1.1] - <date>`
-   section in `CHANGELOG.md`, run the checks (`npm run check-types`, `npm run lint`,
+1. Set the version (`npm version <version> --no-git-tag-version`), give it a
+   `## [<version>] - <date>` section in `CHANGELOG.md`, run the checks (`npm run check-types`, `npm run lint`,
    `npm run test:unit`, `npm test`, `IDRIS2_E2E=1 npm run test:e2e`), commit, push and wait for CI.
 2. Build the package: `npm run package -- --pre-release` for a pre-release (`vsce publish
    --pre-release` refuses a package that was not built with `--pre-release`), `npm run package`
-   for a release. It writes `vscode-idris2-<version>.vsix`; `npx vsce ls` lists what it holds.
+   for a release. It writes `idris2-language-tools-<version>.vsix`; `npx vsce ls` lists what it holds.
 3. Visual Studio Marketplace, publisher `etairi` (created once at
-   <https://marketplace.visualstudio.com/manage> with a Microsoft account; the ID is fixed):
+   <https://marketplace.visualstudio.com/manage> with a Microsoft account; the ID is fixed). The
+   extension's first name, `vscode-idris2`, cannot be published there again: Microsoft removed it
+   on 2026-10-02 (`docs/ROADMAP.md` §9).
 
    ```sh
    npx vsce login etairi        # once; asks for a personal access token
-   npx vsce publish --pre-release --packagePath vscode-idris2-<version>.vsix
+   npx vsce publish --pre-release --packagePath idris2-language-tools-<version>.vsix
    ```
 
    The token comes from Azure DevOps (dev.azure.com): *User settings → Personal access tokens*,
    organization **All accessible organizations**, scope **Marketplace → Manage**. Azure DevOps
-   retires these tokens on 2026-12-01; after that, publish with Microsoft Entra ID
-   (`npx vsce publish --azure-credential`, see the guide) or from GitHub Actions with trusted
-   publishing (`npx vsce publish --oidc`, `@vscode/vsce` 4.0 or later; it needs a trusted-publishing
-   policy for this repository's workflow on the publisher, which the guide does not describe yet).
+   is retiring these tokens: the guide still says 2026-12-01, but Microsoft postponed that on
+   2026-10-23, to "January 27, 2026" in its announcement, which can only mean 2027. After that,
+   publish from GitHub Actions with trusted publishing (`npx vsce publish --oidc`, `@vscode/vsce`
+   4.0 or later, with a trusted-publishing policy for this repository's workflow on the publisher)
+   or with Microsoft Entra ID (`npx vsce publish --azure-credential`); the guide describes both.
 4. Open VSX, namespace `etairi` (once: an Eclipse account carrying your GitHub username, the
    Publisher Agreement signed from your open-vsx.org profile, an access token from its settings,
    and `npx ovsx create-namespace etairi -p <token>`):
 
    ```sh
-   npx ovsx publish vscode-idris2-<version>.vsix --pre-release -p <token>
+   npx ovsx publish idris2-language-tools-<version>.vsix --pre-release -p <token>
    ```
 
-5. Tag the published commit: `git tag v<version> && git push origin v<version>`.
+5. Tag the published commit: `git tag v<version> && git push origin v<version>`. `v0.1.0` is
+   taken by the release under the first name (`4de2082`), so tag this name's 0.1.0
+   `idris2-language-tools-v0.1.0`.
 
 A release is the same without `--pre-release`, on an even minor version.
 

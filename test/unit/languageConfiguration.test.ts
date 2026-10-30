@@ -27,7 +27,7 @@ import * as path from 'path';
 //   Double-click, Ctrl+D and word navigation use `editor.wordSeparators` instead
 //   (cursor/cursorWordOperations.ts), so wordPattern does not decide them.
 
-const PACKAGE_NAME = 'vscode-idris2';
+const PACKAGE_NAME = 'idris2-language-tools';
 
 function repoRoot(): string {
   for (let dir = __dirname; ; dir = path.dirname(dir)) {

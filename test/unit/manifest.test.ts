@@ -30,7 +30,7 @@ import {
 // them), Restricted Mode, commands, menus, views, keybindings and the walkthrough. Whether each
 // command is also *registered* at run time is an integration question (test/integration/).
 
-const PACKAGE_NAME = 'vscode-idris2';
+const PACKAGE_NAME = 'idris2-language-tools';
 
 function repoRoot(): string {
   for (let dir = __dirname; ; dir = path.dirname(dir)) {
@@ -93,6 +93,9 @@ interface ViewWelcome {
 }
 
 interface Manifest {
+  name: string;
+  displayName: string;
+  icon: string;
   capabilities: {
     untrustedWorkspaces: { supported: boolean | 'limited'; description?: string; restrictedConfigurations?: string[] };
   };
@@ -244,6 +247,19 @@ function readAllSettings(value: (key: string) => unknown): { keys: string[]; set
 }
 
 suite('package.json (M1–M5 contributions)', () => {
+  suite('identity (ROADMAP §9, 2026-10-30: after the Marketplace removal)', () => {
+    test('its own names, and an icon that is a modified logo: a PNG of at least 128 px, not the logo itself, whose sources are not packaged', () => {
+      assert.strictEqual(manifest.name, 'idris2-language-tools');
+      assert.strictEqual(manifest.displayName, 'Idris 2 Language Tools');
+      const icon = fs.readFileSync(path.join(root, manifest.icon));
+      assert.ok(!icon.equals(fs.readFileSync(path.join(root, 'media/idris-logo-256.png'))), 'not the logo itself');
+      assert.strictEqual(icon.toString('latin1', 1, 4), 'PNG');
+      assert.ok(icon.readUInt32BE(16) >= 128 && icon.readUInt32BE(20) >= 128, 'width and height of at least 128 px');
+      const ignored = fs.readFileSync(path.join(root, '.vscodeignore'), 'utf8').split('\n');
+      assert.ok(ignored.includes('media/icon.svg') && ignored.includes('media/idris-logo-256.png'), 'the sources stay out of the package');
+    });
+  });
+
   suite('settings', () => {
     test('every idris2.* setting has a type, a default, a scope and a markdownDescription', () => {
       for (const [key, schema] of Object.entries(properties)) {

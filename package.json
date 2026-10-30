@@ -1,8 +1,8 @@
 {
-  "name": "vscode-idris2",
-  "displayName": "Idris 2",
+  "name": "idris2-language-tools",
+  "displayName": "Idris 2 Language Tools",
   "description": "Idris 2 language support: the compiler's errors and warnings, types and documentation on hover, go to definition, completion, semantic highlighting, inlay hints, evaluation of expressions, interactive editing with holes (case split, proof search, generate definition and more) and a list of holes, syntax highlighting, editing support, snippets and toolchain detection; idris2-lsp can serve a project instead of the compiler's IDE mode.",
-  "version": "0.1.1",
+  "version": "0.1.0",
   "publisher": "etairi",
   "license": "MIT",
   "repository": {
@@ -13,7 +13,7 @@
     "url": "https://github.com/etairi/vscode-idris2/issues"
   },
   "homepage": "https://github.com/etairi/vscode-idris2#readme",
-  "icon": "media/idris-logo-256.png",
+  "icon": "media/icon.png",
   "galleryBanner": {
     "color": "#FFFFFF",
     "theme": "light"
