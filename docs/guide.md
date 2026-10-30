@@ -332,6 +332,37 @@ the `?name`s of the text you see, unsaved ones included, and wrap around at the 
 says so); they ask the compiler nothing and work in Restricted Mode, but not in Markdown, LaTeX,
 Org or Typst literate files.
 
+### The goal panel
+
+**Toggle Goal Panel** (`,` below, or `Cmd+Shift+Enter`, `Ctrl+Shift+Enter` on Linux) opens a panel
+beside the editor, without taking the focus, and closes it again; it opens only when you ask, and
+comes back after a window reload. While it is hidden behind another tab, nothing is computed for it.
+
+- **The goal.** The hole at the cursor, or the only hole on the cursor's line: its name, its local
+  variables as in the Holes view, and the type it needs. **Copy** puts it on the clipboard as
+  Markdown. On a type declaration without clauses, it offers **Generate Definition** instead.
+- **Buttons.** **Proof Search**, **Next** (while there are further results), **Intro** (when the
+  compiler offers several answers they are listed in the panel), **Make Lemma**, and **Refine** with
+  an input for the expression. They run the commands of the same name on the hole shown, under the
+  same rules, also when the focus is in the panel. A command the backend lacks is off.
+- **Each variable.** **Case Split** when its clause is one the compiler can split; **Jump** selects
+  it where the left-hand side around the hole binds it. An implicit that the left-hand side does not
+  name has neither.
+- **All holes**: those of the files the compiler checked, up to 200 (the Holes view lists them all).
+  A click selects a hole in the editor. **Messages**: the compiler's for the file, up to 100.
+- **Printing.** *Implicits*, *Machine names* and *Namespaces* change the settings of the backend
+  serving the file (`idris2.ideMode.*` or `idris2.lsp.*`), where your setting is. In IDE mode the
+  open files are then checked again, whatever `idris2.checking.trigger` says, since nothing else
+  would print their holes anew. Evaluations print as before.
+- **Pin** keeps the hole shown while the cursor moves, until **Unpin** or until the hole goes.
+  **Follow cursor** off keeps the panel on its place until you turn it on again.
+- A banner says when the file has changed since it was checked, with a **Save** button; under check
+  while typing it goes when the unsaved text has been checked.
+
+The goal comes from the holes of the latest check, as in the Holes view, so a `?name` you just typed
+has none until the file is checked. The types are plain text: the compiler sends no highlighting
+with them. `idris2.goalPanel.debounce` is the delay after a cursor move, in milliseconds.
+
 ## Keyboard shortcuts
 
 In Idris editors each command below has a key; `idris2.keybindings.scheme` chooses how it is
@@ -347,6 +378,7 @@ docs; Emacs idris-mode's `C-c C-a`, `C-c C-s` and `C-c C-e` run other commands h
 | `c` | Case Split | `i` | Intro |
 | `a` | Add Clause | `r` | Refine Hole… |
 | `l`, `w`, `m` | Make Lemma, Make With, Make Case | `[`, `]` | Previous Hole, Next Hole |
+| `,` | Toggle Goal Panel | | |
 
 | Scheme | Keys | Note |
 |---|---|---|
@@ -355,6 +387,9 @@ docs; Emacs idris-mode's `C-c C-a`, `C-c C-s` and `C-c C-e` run other commands h
 | `prefix` | `Ctrl+Alt+I <key>` | outside macOS, `Ctrl+Alt+I` then no longer opens the Chat view in Idris editors |
 | `none` | | no shortcuts; the commands stay in the Command Palette |
 
+- **Toggle Goal Panel** also has `Cmd+Shift+Enter` (`Ctrl+Shift+Enter` on Linux), as Lean's extension
+  does, under `auto`, `chords` and `prefix`. In Idris editors that key then no longer runs Insert
+  Line Above.
 - A keymap extension that binds `Ctrl+C` itself (VSCodeVim does by default) wins over `chords`:
   choose `prefix` then.
 - The setting is read from your user settings only: a workspace cannot change your keyboard.
@@ -483,12 +518,15 @@ a notification offers to copy them (once per set of values; **Don't Ask Again**)
 | `idris2.ideMode.idleTimeout` | `600000` | Milliseconds an unused compiler keeps running |
 | `idris2.ideMode.maxSessions` | `0` | Most compiler processes per window (`0`: no limit); see below |
 | `idris2.ideMode.maxBackgroundChecks` | `0` | Most files other than the active one checked at once (`0`: no limit); see below |
+| `idris2.ideMode.showImplicits`, `showMachineNames`, `fullNamespace` | `false` | How the compiler prints types in checks and holes (see [The goal panel](#the-goal-panel)); no restart |
 | `idris2.diagnostics.includeSourceExcerpt` | `false` | Keep the compiler's source excerpt in the messages |
 | `idris2.inlayHints.variableTypes` | `true` | Types of pattern variables as inlay hints |
 | `idris2.eval.inlineResults` | `true` | Evaluation results in the editor; off: in a notification |
 | `idris2.eval.timeout` | `10000` | Milliseconds an evaluation may take; a longer one stops its process |
 | `idris2.keybindings.scheme` | `"auto"` | See [Keyboard shortcuts](#keyboard-shortcuts); user settings only |
 | `idris2.holes.showInSideBar` | `true` | Show the [Holes view](#the-holes-view) |
+| `idris2.goalPanel.followCursor` | `true` | The [goal panel](#the-goal-panel) follows the cursor and the active Idris editor |
+| `idris2.goalPanel.debounce` | `50` | Milliseconds after a cursor move before the panel updates |
 | `idris2.trace.protocol` | `false` | Record the messages exchanged with the compiler; user settings only |
 
 **`maxSessions`.** Each window counts its own processes. A project's evaluation process and its
@@ -546,8 +584,8 @@ permission takes no turn.
 
 In an untrusted workspace the extension runs no program at all — not even to read versions — and
 reads `.ipkg` files with a limited built-in reader. Highlighting, snippets and the other editing
-aids work, and so do Next / Previous Hole; interactive editing and the Holes view need a trusted
-workspace. The
+aids work, and so do Next / Previous Hole; interactive editing, the Holes view and the goal panel
+need a trusted workspace. The
 workspace's values of the `idris2.toolchain.*` paths and environment, `loosePackages`,
 `extraArgs` and `idris2.lsp.logFile` apply only once the workspace is trusted.
 
@@ -649,7 +687,7 @@ The extension shows them as text:
   other invisible characters) are written out as `\u{…}` in: hovers, inlay hints, evaluation
   results, the notifications of the type, documentation, evaluation and editing commands and of a
   compiler that stopped, the completion list's labels (the name inserted is the compiler's), lists
-  to pick from, the Holes view, and a documentation tab's title.
+  to pick from, the Holes view, the goal panel, and a documentation tab's title.
 - The errors and warnings of a check (the Problems panel, the editor's hover over a problem) are
   handed to VS Code as the compiler wrote them, without that.
 - The documentation document (**Docs at Cursor**, **Show Documentation…**) shows the compiler's
@@ -744,6 +782,11 @@ It is written to an output channel, which VS Code also keeps as a file in its lo
   - Next Result and Next Definition do not scroll to the result they replace; it may be off-screen.
   - The Holes view groups a file's holes under `Main` when its `module` line starts with a comment
     or has a non-breaking space before the name.
+- **The goal panel** has Case Split and Jump only for variables a left-hand side around the hole
+  binds as a clause of its own: not for the alternative of a `case` written on the clause's line
+  (`f n = case n of m => ?h`). The commands that act on a line, Make With and Make Case, are not in
+  the panel. A printing option changed from the panel while check while typing shows unsaved text
+  takes effect there when you are back in the editor.
 - **The Holes view** asks the compiler after every check, also while the view is hidden (one
   request, plus one per name it lists); on holes of large types that can take seconds, during which
   the compiler answers nothing else. When that takes longer than `idris2.ideMode.longActionTimeout`,

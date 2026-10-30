@@ -121,6 +121,7 @@ const IDE_MODE: IdeModeSettings = {
   idleTimeoutMs: 600_000,
   maxSessions: 0,
   maxBackgroundChecks: 0,
+  display: { showImplicits: false, showMachineNames: false, fullNamespace: false },
 };
 
 function setup(
@@ -1935,6 +1936,14 @@ suite('features/diagnostics/checks', () => {
     void t.checks.recheckVisible();
     await settle();
     assert.deepStrictEqual(t.backend.loads.map((l) => l.doc), [b, a, b]);
+  });
+
+  test('recheckVisible with manualToo (a printing option changed): whatever the trigger is', async () => {
+    const a = new FakeDocument('/w/a/A.idr');
+    const t = setup({ visible: [a], trigger: 'manual' });
+    void t.checks.recheckVisible(undefined, true);
+    await settle();
+    assert.deepStrictEqual(t.backend.loads.map((l) => l.doc), [a]);
   });
 
   test('forgetRoot (M5: the root went to idris2-lsp): its results go from every file, its documents read as not checked, a check running now shows nothing; other roots keep theirs', async () => {

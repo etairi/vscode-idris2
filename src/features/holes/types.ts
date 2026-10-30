@@ -69,7 +69,7 @@ export type IsIdrisWorkspaceContextKey = 'idris2.isIdrisWorkspace';
 
 /**
  * The holes of the files the compiler has checked in this window (ARCHITECTURE §9, the model of
- * the Holes view; M7's goal panel will be its second view).
+ * the Holes view and of M7's goal panel).
  *
  * **Refresh.** After each answered load of a `check` session (`LoadNotifications.onDidLoad`, never
  * `BackendRegistry.onDidChange`, the M3 rule) of a document that is open, the model asks the backend
@@ -120,6 +120,11 @@ export interface HoleModel {
   rangesText(fileName: string): string | undefined;
   /** Fires after the model changed. */
   readonly onDidChange: Event<void>;
+  /**
+   * Asks the backend for the holes of `fileName`, of `root`, again, without a load: idris2-lsp prints
+   * them under its options when asked, so after a change of those the holes' text is out of date (M7).
+   */
+  relist(root: Classification, fileName: string): Promise<void>;
 }
 
 /**

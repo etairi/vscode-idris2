@@ -7,7 +7,7 @@
 Language support for [Idris 2](https://www.idris-lang.org/), a purely functional programming
 language with first-class dependent types.
 
-> **Preview.** Early development, not yet published under this name. A goal panel comes next — see
+> **Preview.** Early development, not yet published under this name. A REPL terminal comes next — see
 > the [roadmap](docs/ROADMAP.md).
 
 ## Features
@@ -36,6 +36,9 @@ language with first-class dependent types.
 - **Next Result** / **Next Definition**: further results (`↻ next (n)` in the status bar)
 - A **Holes** view in the **Idris 2** side bar: each hole's type and local variables, a click away;
   **List Holes**, **Next Hole**, **Previous Hole**
+- A **goal panel** beside the editor (`Cmd+Shift+Enter`, `Ctrl+Shift+Enter` on Linux): the hole at the
+  cursor with its local variables and goal, buttons for the commands above, all holes and messages,
+  and the printing options of implicits and namespaces
 
 **Editing**
 - Syntax highlighting for `.idr`, `.lidr` (bird style) and `.ipkg`, following the compiler's lexer
@@ -203,8 +206,8 @@ The full list is in the [guide](docs/guide.md#known-limitations).
 
 ## Roadmap
 
-A goal panel, REPL and build integration, literate Markdown and LaTeX, Unicode
-input: see [docs/ROADMAP.md](docs/ROADMAP.md).
+REPL and build integration, literate Markdown and LaTeX, Unicode input: see
+[docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Contributing
 

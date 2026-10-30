@@ -40,7 +40,7 @@ import { LspBackend } from './backend/lsp/backend';
 import { LspClient, nodeLanguageClients } from './backend/lsp/client';
 import { registerLanguageServerCommands } from './backend/lsp/commands';
 import { BackendChoices, BackendRegistry, BackendRouting, LspAdmission, LspProvider } from './backend/registry';
-import { Config, usableHomeDirectory, type BackendMode } from './core/config';
+import { Config, IDE_MODE_DISPLAY_KEYS, usableHomeDirectory, type BackendMode } from './core/config';
 import { DisposableStore } from './core/disposable';
 import { Emitter } from './core/event';
 import { createLog } from './core/log';
@@ -58,6 +58,8 @@ import { registerEditing } from './features/editing/register';
 import { registerEvaluation, type EvaluationOutcome, type DrawnEvaluation } from './features/eval/register';
 import { registerHelpCommands } from './features/help/commands';
 import { registerShowKeybindings } from './features/help/keybindings';
+import { registerGoalPanel } from './features/goalPanel/register';
+import type { GoalPanelView } from './features/goalPanel/types';
 import { registerHoles } from './features/holes/register';
 import type { HoleNode } from './features/holes/tree';
 import type { HoleModel } from './features/holes/types';
@@ -131,6 +133,8 @@ export interface TestApi {
   /** M6: check while typing (the entries of `idris2 (unsaved)`), and this window's shadow directories. */
   readonly unsavedChecks: UnsavedChecks;
   readonly shadowBase: string;
+  /** M7: the goal panel: its state, what it has drawn, and its messages as the webview's. */
+  readonly goalPanel: GoalPanelView;
 }
 
 let store: DisposableStore | undefined;
@@ -456,6 +460,33 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
       log,
     }),
   );
+  // M7: the goal panel. Registering starts nothing: no panel until its command runs or a reload
+  // restores one.
+  const goalPanel = store.add(
+    registerGoalPanel(vscode, {
+      extensionUri: context.extensionUri,
+      model: holes.model,
+      holes,
+      editing,
+      checks,
+      projects,
+      registry,
+      config,
+      trust,
+      log,
+      timers: { set: (callback, ms) => setTimeout(callback, ms), clear: (handle) => clearTimeout(handle as NodeJS.Timeout) },
+    }),
+  );
+  // M7: what the compiler printed under the old printing options goes with the next load. The pool's
+  // listener, which came first, has told the sessions by then, so their loads come after that.
+  store.add(
+    config.onDidChange('ideMode', (change) => {
+      if (IDE_MODE_DISPLAY_KEYS.some((key) => change.affects(key))) {
+        void checks.recheckVisible(undefined, true);
+        unsaved.checks.recheck();
+      }
+    }),
+  );
   store.add(registerShowKeybindings(vscode, { config, manifest: context.extension.packageJSON, platform: process.platform }));
 
   store.add(
@@ -505,7 +536,7 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
     }),
   );
 
-  log.info(`vscode-idris2 ${manifest.version ?? '(unknown version)'} activated`);
+  log.info(`${context.extension.id} ${manifest.version ?? '(unknown version)'} activated`);
 
   if (context.extensionMode !== vscode.ExtensionMode.Test) {
     return undefined;
@@ -534,6 +565,7 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
     routingNotices: backendFeatures.notices,
     unsavedChecks: unsaved.checks,
     shadowBase,
+    goalPanel: goalPanel.panel,
   };
 }
 

@@ -61,6 +61,34 @@ suite('features/editing: cycling (CyclingController, Next Result, Next Definitio
     await running;
   });
 
+  test('from the goal panel, with no active editor: Next Result continues the document it is given; not given one, it says what it needs', async () => {
+    const t = setUp();
+    await t.searchVlen((req) => edit({ range: (req as NextRequest).previous, text: '1' }));
+    t.api.window.activeTextEditor = undefined;
+    await t.registration.run('idris2.nextResult', undefined);
+    assert.match(t.lastMessage(), /in the active Idris file/);
+    await t.registration.run('idris2.nextResult', undefined, { doc: t.doc as never });
+    assert.strictEqual(t.doc.lineAt(7).text, 'vlen xs = 1');
+    assert.strictEqual(t.registration.cycleOf(t.uri)?.shown, 2);
+  });
+
+  test('onDidChangeCycle fires when a cycle starts, advances and ends', async () => {
+    const t = setUp();
+    let fired = 0;
+    t.registration.onDidChangeCycle(() => fired++);
+    const answers = ['1'];
+    await t.searchVlen((req) => {
+      const next = answers.shift();
+      return next === undefined ? Promise.resolve({ type: 'exhausted' }) : edit({ range: (req as NextRequest).previous, text: next });
+    });
+    assert.strictEqual(fired, 1, 'started');
+    await t.run('idris2.nextResult');
+    assert.strictEqual(fired, 2, 'advanced');
+    await t.run('idris2.nextResult');
+    assert.strictEqual(t.registration.cycleOf(t.uri), undefined);
+    assert.strictEqual(fired, 3, 'ended');
+  });
+
   test('Proof Search → a cycle (↻ next (1)); Next Result sends the range and version of the last result, replaces it, counts; No more results ends it', async () => {
     const t = setUp();
     const answers = ['1', '2'];

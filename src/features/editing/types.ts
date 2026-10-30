@@ -21,7 +21,8 @@
  * | `idris2.addMissingCases` | Add Missing Cases | `addMissingCases` for the function of a coverage error on the cursor's lines, else of the type declaration at the cursor (a `partial` function has no coverage error) | — (a quick fix) |
  *
  * The hole commands (Next Hole, Previous Hole, List Holes) are `features/holes`, Show Keybindings is
- * `features/help`. No command here asks the compiler whether it applies before it is run: what is at
+ * `features/help`. The goal panel (M7) runs these commands through `EditingRegistration.run` with
+ * explicit arguments, since the active editor is gone while a webview has the focus. No command here asks the compiler whether it applies before it is run: what is at
  * the cursor is read from the text with M0's lexer (`features/syntax/lexer.ts`: a `hole` token, an
  * identifier, a line `name :` that declares a type), and a command with nothing to act on says what
  * it needs ("put the cursor on a hole `?name`") — never a silent no-op (ARCHITECTURE §3.1).
@@ -115,9 +116,12 @@
  * backend, which checks them (`backend/types.ts` `EditAtRequest`); Refine's expression goes only
  * into the request's string slot (`RefineRequest.hint`).
  */
+import type * as vscode from 'vscode';
 import type { BackendRegistry } from '../../backend/registry';
+import type { EditChoice } from '../../backend/types';
 import type { Config } from '../../core/config';
 import type { IDisposable } from '../../core/disposable';
+import type { Event } from '../../core/event';
 import type { Log } from '../../core/log';
 import type { EditorPosition, EditorRange } from '../../core/positions';
 import type { WorkspaceTrust } from '../../core/trust';
@@ -168,16 +172,32 @@ export type EditCodeActionKind =
   | 'quickfix';
 
 /**
- * The argument a code action passes to its command. The keyboard and the Command Palette pass
- * none: the command acts at the active editor's cursor. A command given an argument acts only on
- * an open Idris document of that URI (never opening one), at that position, and treats `name` as
- * it treats a name read at the cursor: untrusted (the backend checks it).
+ * The argument a code action or the goal panel passes to a command. The keyboard and the Command
+ * Palette pass none: the command acts at the active editor's cursor. A command given an argument
+ * acts only on an open Idris document of that URI (never opening one), at that position, and treats
+ * `name` as it treats a name read at the cursor: untrusted (the backend checks it).
  */
 export interface EditingCommandArgs {
   /** `vscode.Uri.toString()` of the document. */
   readonly uri: string;
   readonly position: EditorPosition;
   readonly name: string;
+  /** Refine Hole's expression, which is then not asked for (the goal panel's own input). */
+  readonly hint?: string;
+}
+
+/**
+ * Asks which of `choices` to apply, instead of the command's QuickPick (the goal panel shows them
+ * inline); `undefined` when none was chosen. `reason`: `EditResult` `choices`.
+ */
+export type ChoiceAsker = (reason: 'intro' | 'ambiguous', choices: readonly EditChoice[]) => Promise<EditChoice | undefined>;
+
+/** What `EditingRegistration.run` takes besides the command's argument. */
+export interface EditingRunOptions {
+  /** Instead of the QuickPick. */
+  readonly choose?: ChoiceAsker;
+  /** The document Next Result and Next Definition continue, instead of the active editor's. */
+  readonly doc?: vscode.TextDocument;
 }
 
 /**
@@ -235,4 +255,8 @@ export interface EditingRegistration extends IDisposable {
   cycleOf(uri: string): CycleState | undefined;
   /** The text of the `↻ next (n)` status-bar item while it is shown, else `undefined`; for the tests. */
   statusText(): string | undefined;
+  /** Fires when a document's cycle started, advanced or ended. */
+  readonly onDidChangeCycle: Event<void>;
+  /** Runs `command` as the command does (`commands.ts`, never rejects), with `options`. */
+  run(command: EditingCommandId, args: EditingCommandArgs | undefined, options?: EditingRunOptions): Promise<void>;
 }

@@ -3,8 +3,8 @@
  * target to applying the compiler's answer. `register.ts` registers them.
  *
  * **Every command but the two that continue a cycle** (`at`):
- * 1. The document and the position: the active editor's — or, from a code action, the
- *    `EditingCommandArgs`' open document and position (any other argument, such as a URI a menu
+ * 1. The document and the position: the active editor's — or, from a code action or the goal panel,
+ *    the `EditingCommandArgs`' open document and position (any other argument, such as a URI a menu
  *    passes, is ignored: the active editor's). An Idris file on disk (`file` scheme) in a style
  *    `targets.ts` reads, in a trusted workspace. Case Split and Make With refuse a clause whose
  *    left-hand side starts on an earlier line (`lhsStartsAbove`), Add Clause and Generate Definition a
@@ -13,7 +13,7 @@
  *    changed since. **Add Missing Cases** takes the function of a coverage
  *    error on the cursor's lines, else the type declaration at the cursor (so that a `partial`
  *    function, which has no coverage error, can be completed too). **Refine Hole…** then asks for
- *    the expression in an input box.
+ *    the expression in an input box, unless the argument brings it (`EditingCommandArgs.hint`).
  * 2. Save before (`saveBeforeAction.ts`); when the text changed since the target was read (a
  *    formatter that runs on save, an edit while the input box was open), the target's line must
  *    still have its text (but for white space at its end, which `files.trimTrailingWhitespace`
@@ -29,12 +29,14 @@
  *    request (`EditRequest.token`) and ends the command at once. The others run under the window's
  *    progress only.
  * 4. The answer: an `edit` is applied (`apply.ts`) — a search's first result starts a cycle
- *    (`cycling.ts`); `choices` go to a QuickPick of their labels (`quickPickText`), except a single
- *    Intro candidate, which is applied without asking, and the chosen one is applied as an `edit`;
+ *    (`cycling.ts`); `choices` go to a QuickPick of their labels (`quickPickText`), or to
+ *    `EditingRunOptions.choose`, except a single Intro candidate, which is applied without asking, and
+ *    the chosen one is applied as an `edit`;
  *    `failed` is shown through `messages.ts` `failureText`; `exhausted` says there are no more
  *    results.
  *
- * **Next Result / Next Definition** (`next`) continue the active editor's document's cycle (`continues`):
+ * **Next Result / Next Definition** (`next`) continue the cycle of the active editor's document, or of
+ * `EditingRunOptions.doc` (`continues`):
  * Next Result a cycle of either kind, asking for the `-Next` of the cycle's kind (ROADMAP §9 Q26),
  * Next Definition only a Generate Definition's. They never save and never load (they call the
  * backend directly, not through `DocumentQueries`, whose load would end the compiler's search), send
@@ -76,7 +78,7 @@ import { longRunning } from './longRunning';
 import { commandName, EDITING_COMMAND_KINDS, failureText, MAX_SHOWN, NEEDS, refusalText, TARGET_OF } from './messages';
 import { saveBeforeAction } from './saveBeforeAction';
 import { coverageFunctionOf, declarationAt, holeAt, isReadable, lhsStartsAbove, patternVariableAt } from './targets';
-import type { CycleState, EditingCommandArgs, EditingCommandId, EditingDeps, EditingOutcome } from './types';
+import type { ChoiceAsker, CycleState, EditingCommandArgs, EditingCommandId, EditingDeps, EditingOutcome, EditingRunOptions } from './types';
 
 /** The part of the `vscode` namespace the commands use. */
 export type EditingCommandsApi = Pick<
@@ -149,8 +151,8 @@ function isCommandArgs(value: unknown): value is EditingCommandArgs {
   if (typeof value !== 'object' || value === null) {
     return false;
   }
-  const { uri, position, name } = value as Partial<Record<keyof EditingCommandArgs, unknown>>;
-  if (typeof uri !== 'string' || typeof name !== 'string' || typeof position !== 'object' || position === null) {
+  const { uri, position, name, hint } = value as Partial<Record<keyof EditingCommandArgs, unknown>>;
+  if (typeof uri !== 'string' || typeof name !== 'string' || typeof position !== 'object' || position === null || (hint !== undefined && typeof hint !== 'string')) {
     return false;
   }
   const { line, character } = position as Partial<Record<keyof EditorPosition, unknown>>;
@@ -170,13 +172,13 @@ export class EditingCommands {
   ) {}
 
   /** Runs `command` (with the argument VS Code passed); never rejects (module comment, *Texts*). */
-  async run(command: EditingCommandId, args: unknown): Promise<void> {
+  async run(command: EditingCommandId, args: unknown, options: EditingRunOptions = {}): Promise<void> {
     try {
       const kind = EDITING_COMMAND_KINDS[command];
       if (kind === 'exprSearchNext' || kind === 'generateDefNext') {
-        await this.next(command);
+        await this.next(command, options.doc);
       } else {
-        await this.at(command, kind, isCommandArgs(args) ? args : undefined);
+        await this.at(command, kind, isCommandArgs(args) ? args : undefined, options.choose);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -212,7 +214,7 @@ export class EditingCommands {
 
   // --- the commands at the cursor ------------------------------------------------------------
 
-  private async at(command: EditingCommandId, kind: AtKind, args: EditingCommandArgs | undefined): Promise<void> {
+  private async at(command: EditingCommandId, kind: AtKind, args: EditingCommandArgs | undefined, asker: ChoiceAsker | undefined): Promise<void> {
     const name = commandName(command);
     const needs = NEEDS[TARGET_OF[kind]];
     const place = this.placeOf(args);
@@ -243,7 +245,7 @@ export class EditingCommands {
     }
     const uri = doc.uri.toString();
     if (command === 'idris2.generateDefinition' && args === undefined && this.cycles.continuesDefinition(uri, pos)) {
-      await this.next(command);
+      await this.next(command, doc);
       return;
     }
     const busy = this.running.get(uri);
@@ -253,14 +255,21 @@ export class EditingCommands {
     }
     this.running.set(uri, command);
     try {
-      await this.atTarget(command, kind, args, doc, pos);
+      await this.atTarget(command, kind, args, doc, pos, asker);
     } finally {
       this.running.delete(uri);
     }
   }
 
   /** `at` from the target on, while `command` is the one running for `doc`. */
-  private async atTarget(command: EditingCommandId, kind: AtKind, args: EditingCommandArgs | undefined, doc: vscode.TextDocument, pos: EditorPosition): Promise<void> {
+  private async atTarget(
+    command: EditingCommandId,
+    kind: AtKind,
+    args: EditingCommandArgs | undefined,
+    doc: vscode.TextDocument,
+    pos: EditorPosition,
+    asker: ChoiceAsker | undefined,
+  ): Promise<void> {
     const name = commandName(command);
     const needs = NEEDS[TARGET_OF[kind]];
     const found = this.targetAt(kind, doc, pos);
@@ -272,13 +281,15 @@ export class EditingCommands {
     const foundLine = doc.lineAt(found.pos.line).text;
     let hint: string | undefined;
     if (kind === 'refine') {
-      hint = await this.api.window.showInputBox({
-        prompt: plainText(`Idris 2: refine ?${editorLabel(found.name, MAX_SHOWN)} with an expression. The compiler checks it against the hole's type.`),
-        placeHolder: 'An expression, such as S or plus',
-        // Kept open while the user looks elsewhere (the hole's type in the Holes view): VS Code closes
-        // it on a focus change otherwise, and the typed expression is lost (ninth review of M4).
-        ignoreFocusOut: true,
-      });
+      hint =
+        args?.hint ??
+        (await this.api.window.showInputBox({
+          prompt: plainText(`Idris 2: refine ?${editorLabel(found.name, MAX_SHOWN)} with an expression. The compiler checks it against the hole's type.`),
+          placeHolder: 'An expression, such as S or plus',
+          // Kept open while the user looks elsewhere (the hole's type in the Holes view): VS Code closes
+          // it on a focus change otherwise, and the typed expression is lost (ninth review of M4).
+          ignoreFocusOut: true,
+        }));
       if (hint === undefined) {
         this.record({ command, kind: 'cancelled' });
         return;
@@ -317,7 +328,7 @@ export class EditingCommands {
       return;
     }
     const search: CycleKind | undefined = kind === 'exprSearch' || kind === 'generateDef' ? kind : undefined;
-    await this.ask(command, kind, doc, root, target, hint, search === undefined ? undefined : { kind: search, number: this.cycles.searchStarted(rootKey(root)) });
+    await this.ask(command, kind, doc, root, target, hint, search === undefined ? undefined : { kind: search, number: this.cycles.searchStarted(rootKey(root)) }, asker);
   }
 
   /**
@@ -332,6 +343,7 @@ export class EditingCommands {
     target: Target,
     hint: string | undefined,
     search: { readonly kind: CycleKind; readonly number: number } | undefined,
+    asker: ChoiceAsker | undefined,
   ): Promise<void> {
     const name = commandName(command);
     const key = rootKey(root);
@@ -386,7 +398,7 @@ export class EditingCommands {
         await this.applyEdit(command, doc, version, result.replacements, onApplied);
         return;
       case 'choices':
-        await this.choose(command, doc, version, result.reason, result.choices);
+        await this.choose(command, doc, version, result.reason, result.choices, asker);
         return;
       case 'failed': {
         // The file's last load reported errors, in it or in its package file (messages.ts).
@@ -494,13 +506,16 @@ export class EditingCommands {
     version: number,
     reason: 'intro' | 'ambiguous',
     choices: readonly EditChoice[],
+    asker: ChoiceAsker | undefined,
   ): Promise<void> {
     if (choices.length === 0) {
       this.say(command, `Idris 2: ${commandName(command)}: the compiler offered nothing to choose from.`);
       return;
     }
     let chosen: EditChoice | undefined = reason === 'intro' && choices.length === 1 ? choices[0] : undefined;
-    if (chosen === undefined) {
+    if (chosen === undefined && asker !== undefined) {
+      chosen = await asker(reason, choices);
+    } else if (chosen === undefined) {
       const items = choices.map((choice) => ({ label: quickPickText(editorLabel(choice.label, MAX_SHOWN)), choice }));
       const picked = await this.api.window.showQuickPick(items, {
         placeHolder: reason === 'intro' ? 'Idris 2: what to put into the hole' : 'Idris 2: the name is ambiguous; choose the one to refine the hole with',
@@ -516,13 +531,13 @@ export class EditingCommands {
 
   // --- the two commands that continue a cycle ------------------------------------------------
 
-  private async next(command: EditingCommandId): Promise<void> {
+  private async next(command: EditingCommandId, given: vscode.TextDocument | undefined): Promise<void> {
     const name = commandName(command);
     const searches = (['exprSearch', 'generateDef'] as const)
       .filter((kind) => continues(command, kind))
       .map((kind) => SEARCHES[kind])
       .join(' or ');
-    const doc = this.api.window.activeTextEditor?.document;
+    const doc = given ?? this.api.window.activeTextEditor?.document;
     if (doc === undefined || !isIdrisDocument(doc)) {
       this.say(command, `Idris 2: ${name} continues ${searches} in the active Idris file.`);
       return;

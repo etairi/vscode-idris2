@@ -14,9 +14,9 @@ focused work by one developer with an AI assistant. Dependencies are the *minimu
 "M2 or M5" means either backend suffices. **The user chooses the implementation order; any
 order that respects the dependency graph in §4 is valid.**
 
-Milestones that are done (M0–M3, and M4 for IDE mode) have a short **Status** entry in §5; how
+Milestones that are done (M0–M7) have a short **Status** entry in §5; how
 each was built — where it departs from its text here, its measurements and its review history — is
-recorded in `docs/as-built/` (`M0.md` … `M4.md`; moved there from this file on 2026-09-28).
+recorded in `docs/as-built/` (`M0.md` … `M7.md`; the first ones moved there from this file on 2026-09-28).
 
 Evidence tags, as in `landscape.md`: **[live]** run on this machine (macOS arm64, Homebrew
 `idris2` 0.8.0, Node 24) during the planning session; **[src]** read in the named checkout
@@ -932,6 +932,13 @@ M0 → M1 → M2 → M3 → M14).
   pure view over the model.
 - **Open questions.** Q8 (webview stack), Q9 (auto-open).
 - **Upstream.** U2.4 (structured, highlighted hole types).
+- **Status: implemented** (2026-10-30), not yet committed. Q8 plain TypeScript, Q9 opened by hand (§9).
+  Hand-written page tested on Node (`src/webview/view.ts`), messages that name only what the state
+  shows, and printing options as settings (`idris2.ideMode.showImplicits`, `showMachineNames`,
+  `fullNamespace`), sent to the `check` and `shadow` sessions and never to `eval`. Types stay plain text,
+  and there are no codicons. All acceptance items passed, the reload in a packaged check; the
+  keys are to be pressed by a person (`docs/checklists/M7.md`). Decisions, deviations, facts,
+  measurements and open issues: `docs/as-built/M7.md`.
 
 ### M8 — REPL terminal and doc-eval (S/M)
 

@@ -24,7 +24,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(repoRoot(), 'package.json'
   contributes: { keybindings: Binding[]; commands: { command: string; title: string; category?: string }[] };
 };
 
-/** ARCHITECTURE §10's letter table: the second key of each shortcut and the command it runs (M3's t d e, M4's other letters). */
+/** ARCHITECTURE §10's letter table: the second key of each shortcut and the command it runs (M3's t d e, M4's other letters, M7's `,`). */
 const LETTERS: readonly (readonly [string, string, string])[] = [
   ['t', 'idris2.typeAtCursor', 'Idris 2: Type at Cursor'],
   ['d', 'idris2.docsAtCursor', 'Idris 2: Docs at Cursor'],
@@ -41,6 +41,7 @@ const LETTERS: readonly (readonly [string, string, string])[] = [
   ['r', 'idris2.refineHole', 'Idris 2: Refine Hole…'],
   ['[', 'idris2.previousHole', 'Idris 2: Previous Hole'],
   [']', 'idris2.nextHole', 'Idris 2: Next Hole'],
+  [',', 'idris2.toggleGoalPanel', 'Idris 2: Toggle Goal Panel'],
 ];
 
 /** The rows the document lists (key, title, command), in its order. */
@@ -54,16 +55,19 @@ function rows(text: string): [string, string, string][] {
 /** The keys a scheme binds on a platform, per ARCHITECTURE §10 (`auto`: chords on macOS, prefix elsewhere). */
 function expectedRows(scheme: 'auto' | 'chords' | 'prefix', platform: NodeJS.Platform): [string, string, string][] {
   const resolved = scheme === 'auto' ? (platform === 'darwin' ? 'chords' : 'prefix') : scheme;
-  return LETTERS.map(([letter, command, title]) => {
+  const letters = LETTERS.map(([letter, command, title]): [string, string, string] => {
     const key = letter.toUpperCase();
     return [resolved === 'chords' ? `Ctrl+C Ctrl+${key}` : `Ctrl+Alt+I ${key}`, title, command];
   });
+  // Lean's key for its InfoView, under every scheme but none.
+  return [...letters, [platform === 'darwin' ? 'Cmd+Shift+Enter' : 'Ctrl+Shift+Enter', 'Idris 2: Toggle Goal Panel', 'idris2.toggleGoalPanel']];
 }
 
 suite('Show Keybindings: the document, from package.json', () => {
   test('every contributed binding has the when clause the generator reads: an Idris editor with focus, and one scheme', () => {
     for (const b of manifest.contributes.keybindings) {
-      const terms = (b.when ?? '').split(' && ');
+      // M7's second key is also not in the chat input, a code editor with a binding of that key.
+      const terms = (b.when ?? '').split(' && ').filter((term) => !(b.key === 'ctrl+shift+enter' && term === '!inChatInput'));
       assert.deepStrictEqual(terms.slice(0, 2), ['editorTextFocus', 'idris2.isIdrisDocument'], JSON.stringify(b));
       assert.match(terms[2] ?? '', /^config\.idris2\.keybindings\.scheme == '(auto|chords|prefix)'$/, JSON.stringify(b));
       assert.strictEqual(terms.length, 3, JSON.stringify(b));

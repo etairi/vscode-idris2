@@ -77,6 +77,8 @@ export function registerEditing(api: EditingApi, deps: EditingDeps, options: Edi
     outcomes: commands.outcomes,
     cycleOf: (uri) => cycles.cycleOf(uri),
     statusText: () => cycles.statusText(),
+    onDidChangeCycle: cycles.onDidChange,
+    run: (command, args, options) => commands.run(command, args, options),
     dispose: () => store.dispose(),
   };
 }

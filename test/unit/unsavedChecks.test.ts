@@ -314,6 +314,33 @@ suite('features/shadow (check while typing)', () => {
     assert.strictEqual(t.backend.checks.length, 1);
   });
 
+  test('recheck (a printing option changed): the active document is checked again though its text was shown; another one when it becomes active', async () => {
+    const a = new FakeDocument('/w/A.idr');
+    const b = new FakeDocument('/w/B.idr');
+    const t = setup({ active: b });
+    t.timers.fireAll();
+    await settle();
+    t.backend.checks[0].resolve(answer(b.version));
+    await settle();
+    t.activate(a);
+    t.timers.fireAll();
+    await settle();
+    t.backend.checks[1].resolve(answer(a.version));
+    await settle();
+    assert.strictEqual(t.timers.pending.size, 0);
+    t.unsaved.recheck();
+    assert.strictEqual(t.timers.pending.size, 1);
+    t.timers.fireAll();
+    await settle();
+    assert.deepStrictEqual(t.backend.checks.map((c) => c.doc), [b, a, a]);
+    t.backend.checks[2].resolve(answer(a.version));
+    await settle();
+    t.activate(b);
+    t.timers.fireAll();
+    await settle();
+    assert.deepStrictEqual(t.backend.checks.map((c) => c.doc), [b, a, a, b]);
+  });
+
   test('the active document at activation, with unsaved changes, is checked after the delay', async () => {
     const a = new FakeDocument('/w/A.idr');
     const t = setup({ active: a });

@@ -37,7 +37,8 @@
     "onLanguage:idris2",
     "onLanguage:lidr",
     "onLanguage:ipkg",
-    "workspaceContains:**/*.ipkg"
+    "workspaceContains:**/*.ipkg",
+    "onWebviewPanel:idris2.goalPanel"
   ],
   "main": "./dist/extension.js",
   "extensionKind": [
@@ -322,6 +323,27 @@
           "order": 28,
           "markdownDescription": "The most checks of files other than the active editor's that run at once in this VS Code window (each window counts its own); `0` (the default): no limit. The others wait and run in the order they were asked for; the active editor's file is checked at once and never waits for them, and a waiting file that becomes the active one is checked at once. A file whose folder waits for your permission to start the compiler takes no turn meanwhile, and **Idris 2: Stop Backend** drops the checks still waiting. Within one project the compiler answers one request at a time: the active file's check goes before the project's other checks that wait, after the one it is working on — except when several open files of its project are checked together (for example after **Idris 2: Restart Backend**) and the compiler has one of the others queued or in progress when the active file's check reaches it. Then that check is not moved ahead; it waits for the project's checks queued before it, background checks included, so that the compiler ends on it; those of the others still waiting for a turn or for their folder's first permission check (as at startup) come after it. On a machine with little memory, try `1`. Changing it restarts nothing."
         },
+        "idris2.ideMode.showImplicits": {
+          "type": "boolean",
+          "default": false,
+          "scope": "window",
+          "order": 29,
+          "markdownDescription": "Have the compiler print implicit arguments, in hovers, holes and the goal panel (**Idris 2: Toggle Goal Panel**, which has a checkbox for it). A change is sent to the running compiler processes and the visible files are checked again."
+        },
+        "idris2.ideMode.showMachineNames": {
+          "type": "boolean",
+          "default": false,
+          "scope": "window",
+          "order": 29,
+          "markdownDescription": "Have the compiler print its generated names as they are, in hovers, holes and the goal panel (**Idris 2: Toggle Goal Panel**, which has a checkbox for it). A change is sent to the running compiler processes and the visible files are checked again."
+        },
+        "idris2.ideMode.fullNamespace": {
+          "type": "boolean",
+          "default": false,
+          "scope": "window",
+          "order": 29,
+          "markdownDescription": "Have the compiler print names with their namespaces, in hovers, holes and the goal panel (**Idris 2: Toggle Goal Panel**, which has a checkbox for it). A change is sent to the running compiler processes and the visible files are checked again."
+        },
         "idris2.diagnostics.includeSourceExcerpt": {
           "type": "boolean",
           "default": false,
@@ -351,6 +373,22 @@
           "scope": "window",
           "order": 33,
           "markdownDescription": "Milliseconds the compiler has to evaluate an expression for **Idris 2: Evaluate Selection**. IDE mode cannot cancel an evaluation, so one that takes longer stops the evaluation's compiler process, which starts again at the next evaluation; an evaluation that does not end can take more than a gigabyte of memory within seconds. An evaluation still running after a second can also be cancelled from its notification. From 1000 to 2147483647 (about 24.8 days)."
+        },
+        "idris2.goalPanel.followCursor": {
+          "type": "boolean",
+          "default": true,
+          "scope": "window",
+          "order": 34,
+          "markdownDescription": "Whether the goal panel (**Idris 2: Toggle Goal Panel**) follows the active editor and its cursor; otherwise it stays on the file and the place it shows. The panel has a checkbox for it."
+        },
+        "idris2.goalPanel.debounce": {
+          "type": "integer",
+          "default": 50,
+          "minimum": 0,
+          "maximum": 2147483647,
+          "scope": "window",
+          "order": 34,
+          "markdownDescription": "Milliseconds without a move of the cursor before the goal panel shows the place it stopped at. From 0 to 2147483647 (about 24.8 days)."
         },
         "idris2.keybindings.scheme": {
           "type": "string",
@@ -691,6 +729,11 @@
         "category": "Idris 2"
       },
       {
+        "command": "idris2.toggleGoalPanel",
+        "title": "Toggle Goal Panel",
+        "category": "Idris 2"
+      },
+      {
         "command": "idris2.showKeybindings",
         "title": "Show Keybindings",
         "category": "Idris 2"
@@ -840,6 +883,10 @@
           "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
         },
         {
+          "command": "idris2.toggleGoalPanel",
+          "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
+        },
+        {
           "command": "idris2.switchBackend",
           "when": "idris2.isIdrisDocument && isWorkspaceTrusted"
         },
@@ -971,6 +1018,10 @@
         {
           "command": "idris2.listHoles",
           "group": "0_interactive_holes@3"
+        },
+        {
+          "command": "idris2.toggleGoalPanel",
+          "group": "0_interactive_holes@4"
         },
         {
           "command": "idris2.showSetupInformation",
@@ -1300,6 +1351,40 @@
         "key": "ctrl+alt+i ]",
         "mac": "ctrl+c ctrl+]",
         "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'auto'"
+      },
+      {
+        "command": "idris2.toggleGoalPanel",
+        "key": "ctrl+c ctrl+,",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'chords'"
+      },
+      {
+        "command": "idris2.toggleGoalPanel",
+        "key": "ctrl+alt+i ,",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'prefix'"
+      },
+      {
+        "command": "idris2.toggleGoalPanel",
+        "key": "ctrl+alt+i ,",
+        "mac": "ctrl+c ctrl+,",
+        "when": "editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == 'auto'"
+      },
+      {
+        "command": "idris2.toggleGoalPanel",
+        "key": "ctrl+shift+enter",
+        "mac": "cmd+shift+enter",
+        "when": "editorTextFocus && idris2.isIdrisDocument && !inChatInput && config.idris2.keybindings.scheme == 'chords'"
+      },
+      {
+        "command": "idris2.toggleGoalPanel",
+        "key": "ctrl+shift+enter",
+        "mac": "cmd+shift+enter",
+        "when": "editorTextFocus && idris2.isIdrisDocument && !inChatInput && config.idris2.keybindings.scheme == 'prefix'"
+      },
+      {
+        "command": "idris2.toggleGoalPanel",
+        "key": "ctrl+shift+enter",
+        "mac": "cmd+shift+enter",
+        "when": "editorTextFocus && idris2.isIdrisDocument && !inChatInput && config.idris2.keybindings.scheme == 'auto'"
       }
     ],
     "walkthroughs": [

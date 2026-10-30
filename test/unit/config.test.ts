@@ -14,6 +14,7 @@ import {
   readCheckingSettings,
   readDiagnosticsSettings,
   readEvaluationSettings,
+  readGoalPanelSettings,
   readIdeModeSettings,
   readInlayHintSettings,
   readKeybindingScheme,
@@ -221,6 +222,7 @@ suite('core/config', () => {
           idleTimeoutMs: 0,
           maxSessions: 3,
           maxBackgroundChecks: 1,
+          display: { showImplicits: false, showMachineNames: false, fullNamespace: false },
         },
       );
       assert.deepStrictEqual(readDiagnosticsSettings(section({ 'diagnostics.includeSourceExcerpt': true })), {
@@ -261,6 +263,7 @@ suite('core/config', () => {
         idleTimeoutMs: 600000,
         maxSessions: 0,
         maxBackgroundChecks: 0,
+        display: { showImplicits: false, showMachineNames: false, fullNamespace: false },
       });
       assert.strictEqual(readDiagnosticsSettings(section({ 'diagnostics.includeSourceExcerpt': 'yes' })).includeSourceExcerpt, false);
       assert.strictEqual(readTraceSettings(section({ 'trace.protocol': 1 })).protocol, false);
@@ -527,6 +530,35 @@ suite('core/config', () => {
       change(['idris2.lsp.trace.server']);
       change(['idris2.toolchain.lspPath']);
       assert.deepStrictEqual(calls, ['backend', 'lsp true false', 'lsp false true']);
+    });
+  });
+
+  suite('M7 settings (goalPanel.*, the printing options of ideMode.*)', () => {
+    test('the printing options are off unless true', () => {
+      assert.deepStrictEqual(readIdeModeSettings(section({})).display, { showImplicits: false, showMachineNames: false, fullNamespace: false });
+      const on = { 'ideMode.showImplicits': true, 'ideMode.showMachineNames': true, 'ideMode.fullNamespace': true };
+      assert.deepStrictEqual(readIdeModeSettings(section(on)).display, { showImplicits: true, showMachineNames: true, fullNamespace: true });
+      assert.strictEqual(readIdeModeSettings(section({ 'ideMode.showImplicits': 'true' })).display.showImplicits, false);
+    });
+
+    test('goalPanel.*: following is on unless false; the debounce is 50 ms by default, from 0 to the longest delay', () => {
+      assert.deepStrictEqual(readGoalPanelSettings(section({})), { followCursor: true, debounceMs: 50 });
+      assert.deepStrictEqual(readGoalPanelSettings(section({ 'goalPanel.followCursor': false, 'goalPanel.debounce': 0 })), { followCursor: false, debounceMs: 0 });
+      assert.strictEqual(readGoalPanelSettings(section({ 'goalPanel.debounce': -1 })).debounceMs, 0);
+      assert.strictEqual(readGoalPanelSettings(section({ 'goalPanel.debounce': Number.MAX_SAFE_INTEGER })).debounceMs, MAX_DELAY_MS);
+      assert.strictEqual(readGoalPanelSettings(section({ 'goalPanel.debounce': '10' })).debounceMs, 50);
+    });
+
+    test('Config.goalPanel() reads the window\'s section; a change fires the goalPanel group', () => {
+      const { host, sections, scopes, change } = fakeHost({ 'goalPanel.followCursor': false });
+      const config = new Config(host, HOME);
+      assert.strictEqual(config.goalPanel().followCursor, false);
+      assert.deepStrictEqual([sections, scopes], [['idris2'], [undefined]]);
+      let calls = 0;
+      config.onDidChange('goalPanel', () => calls++);
+      change(['idris2.goalPanel.debounce']);
+      change(['idris2.ideMode.showImplicits']);
+      assert.strictEqual(calls, 1);
     });
   });
 

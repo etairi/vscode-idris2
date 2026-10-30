@@ -1694,10 +1694,11 @@ export class DocumentChecks implements CheckStatusSource, SaveCheckHolds, IDispo
 
   /**
    * Checks the visible documents of `root` (or of every root) again, unless their trigger is
-   * `manual` (after **Restart Backend** and a notice's **Restart**).
+   * `manual` (after **Restart Backend** and a notice's **Restart**), or with `manualToo` whatever it
+   * is (a change of the printing options: the user asked for it, and it shows in no other way).
    */
-  async recheckVisible(root?: Classification): Promise<void> {
-    const docs = this.visibleDocuments().filter((d) => isCheckable(d) && this.trigger(d) !== 'manual');
+  async recheckVisible(root?: Classification, manualToo = false): Promise<void> {
+    const docs = this.visibleDocuments().filter((d) => isCheckable(d) && (manualToo || this.trigger(d) !== 'manual'));
     const batch = newBatch();
     await Promise.all(
       docs.map(async (doc) => {

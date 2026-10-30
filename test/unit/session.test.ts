@@ -104,7 +104,7 @@ function setup(
     behaviour?: FakeTransportBehaviour;
     launch?: SessionLaunch;
     role?: 'check' | 'eval' | 'shadow';
-    firstRequest?: IdeCommand;
+    firstRequests?: readonly IdeCommand[];
   } = {},
 ) {
   const clock = new FakeClock();
@@ -132,7 +132,7 @@ function setup(
     timing: { ...DEFAULT_SESSION_TIMING, ...options.timing },
     limits: () => control.limits,
     onNewerProtocol: (warning) => warnings.push(warning),
-    ...(options.firstRequest === undefined ? {} : { firstRequest: options.firstRequest }),
+    ...(options.firstRequests === undefined ? {} : { firstRequests: () => options.firstRequests ?? [] }),
   });
   const changes: SessionStateChange[] = [];
   session.onDidChangeState((change) => changes.push(change));
@@ -206,7 +206,7 @@ suite('backend/ide/session', () => {
 
     test('shadow (M6): the first request goes to every process right after its handshake, before an urgent request; not idle until answered', async () => {
       const ENABLE_SYNTAX = list(sym('enable-syntax'), { kind: 'bool', value: false });
-      const h = setup({ role: 'shadow', firstRequest: ENABLE_SYNTAX, limits: { idleTimeoutMs: 1_000 } });
+      const h = setup({ role: 'shadow', firstRequests: [ENABLE_SYNTAX], limits: { idleTimeoutMs: 1_000 } });
       const plain = h.lookup('a');
       const urgent = track(h.session.request(typeOf('u'), { kind: 'lookup', urgent: () => true }));
       await flush();
@@ -249,9 +249,26 @@ suite('backend/ide/session', () => {
       assert.strictEqual(lookup.state, 'resolved');
     });
 
+    test('several first requests (M7) go in order, each after the answer to the one before, before anything that waits', async () => {
+      const h = setup({ firstRequests: [typeOf('first'), typeOf('second')] });
+      const plain = h.lookup('a');
+      await flush();
+      const t = h.transports.last();
+      assert.deepStrictEqual(t.sent, [{ command: typeOf('first'), id: 1n }]);
+      t.message(ret(1n));
+      await flush();
+      assert.deepStrictEqual(t.lastSent(), { command: typeOf('second'), id: 2n });
+      t.message(ret(2n));
+      await flush();
+      assert.deepStrictEqual(t.lastSent(), { command: typeOf('a'), id: 3n });
+      t.message(ret(3n));
+      await flush();
+      assert.strictEqual(plain.state, 'resolved');
+    });
+
     test('shadow (M6): a stop while its first request is in flight rejects nothing of a caller and starts nothing', async () => {
       const ENABLE_SYNTAX = list(sym('enable-syntax'), { kind: 'bool', value: false });
-      const h = setup({ role: 'shadow', firstRequest: ENABLE_SYNTAX });
+      const h = setup({ role: 'shadow', firstRequests: [ENABLE_SYNTAX] });
       const waiting = h.lookup('a');
       await flush();
       h.session.stop('stop', 'test');

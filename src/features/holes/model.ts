@@ -300,6 +300,10 @@ export class HoleStore implements HoleModel, IDisposable {
     }
   }
 
+  relist(root: Classification, fileName: string): Promise<void> {
+    return this.refresh({ root, file: fileName, rebuilt: false });
+  }
+
   private async refresh(loaded: LoadedFileEvent): Promise<void> {
     const doc = this.deps.openDocument(loaded.file);
     const backend = this.deps.registry.backendFor(loaded.root);

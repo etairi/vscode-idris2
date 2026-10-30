@@ -336,7 +336,12 @@ src/
 │  │  ├─ workspaceContext.ts            the idris2.isIdrisWorkspace context key
 │  │  └─ register.ts                    registerHoles: the view, List Holes, Next / Previous
 │  │                                    Hole, the internal idris2.revealHole
-│  ├─ goalPanel/              M7
+│  ├─ goalPanel/              M7        (types.ts: the contracts)
+│  │  ├─ state.ts                       what the panel shows at a place: the state and the
+│  │  │                                 targets its messages refer to; pure
+│  │  ├─ host.ts                        the WebviewPanel, what it follows, the webview's messages
+│  │  ├─ html.ts                        the page and its Content-Security-Policy
+│  │  └─ register.ts                    registerGoalPanel: the command, restoring after a reload
 │  ├─ shadow/                 M6        check while typing
 │  │  ├─ unsavedChecks.ts               the controller: the active document's unsaved text
 │  │  │                                 after the delay, idris2 (unsaved), the saved
@@ -351,8 +356,10 @@ src/
 │  ├─ literate/               M12
 │  ├─ unicode/                M13
 │  └─ extras/                 M14
-└─ webview/
-   └─ goalPanel.ts            M0 stub, M7  goal panel front-end (vanilla TS); second esbuild entry
+└─ webview/                   M7
+   ├─ goalPanel.ts                      goal panel front-end (vanilla TS); second esbuild entry
+   ├─ view.ts                           what it draws, from a state, without DOM types
+   └─ protocol.ts                       the messages between host and webview (types only)
 ```
 
 Milestone attributions come from the tags in ARCHITECTURE §2 and the scopes in ROADMAP §5.

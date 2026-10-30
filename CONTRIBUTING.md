@@ -14,6 +14,8 @@ fills in the setup information for you.
   finished milestone.
 - [docs/as-built/](docs/as-built/README.md): an "As built" record per finished milestone — how
   the code departs from the milestone text and the design, measurements, reviews and test runs.
+- [docs/review-brief.md](docs/review-brief.md): what a review of the whole progress starts from:
+  how much review each part has had, lanes, constraints, gates and what is already known.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): source layout, the backend abstraction,
   coordinates, settings, test layers and design decisions.
 - [docs/landscape.md](docs/landscape.md): survey of existing Idris tooling for VS Code.

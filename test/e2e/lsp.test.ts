@@ -191,6 +191,24 @@ suite('E2E: M5 idris2-lsp, the real server', function () {
     });
   }
 
+  test('the goal panel (M7): the goal at the cursor; a printing option reaches the server, and the holes are asked for again under it', async () => {
+    await openClean(VLEN_RHS);
+    await vscode.commands.executeCommand('idris2.toggleGoalPanel');
+    const goal = await waitFor('the goal', () => api.goalPanel.state()?.goal);
+    assert.strictEqual(goal.label, '?vlen_rhs');
+    assert.strictEqual(goal.type, 'Nat');
+    assert.deepStrictEqual(goal.premises.map((p) => [p.name, p.canSplit]), [['a', false], ['n', false], ['xs', true]]);
+    await waitFor('the page to draw it', () => (api.goalPanel.rendered()?.version === api.goalPanel.state()?.version ? true : undefined));
+    await api.goalPanel.receive({ type: 'toggle', option: 'fullNamespace' });
+    assert.strictEqual(vscode.workspace.getConfiguration('idris2').get('lsp.fullNamespace'), true);
+    await waitFor('the namespaces', () => (api.goalPanel.state()?.goal?.type === 'Prelude.Nat' ? true : undefined), 60000);
+    await api.goalPanel.receive({ type: 'toggle', option: 'fullNamespace' });
+    await waitFor('the plain names', () => (api.goalPanel.state()?.goal?.type === 'Nat' ? true : undefined), 60000);
+    await vscode.workspace.getConfiguration('idris2').update('lsp.fullNamespace', undefined, vscode.ConfigurationTarget.Global);
+    await vscode.commands.executeCommand('idris2.toggleGoalPanel');
+    assert.ok(serverProcesses().length <= 1, JSON.stringify(serverProcesses()));
+  });
+
   test('Clean.idr: Make Lemma inserts `vlen_rhs : Vect n a -> Nat` above vlen and replaces the hole with `(vlen_rhs xs)`', async () => {
     const editor = await openClean(VLEN_RHS);
     const saved = editor.document.getText();

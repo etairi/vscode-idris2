@@ -14,7 +14,8 @@
  * (`Config.lsp`), except `idris2.lsp.trace.server`, which the language client library reads itself
  * (`backend/lsp/types.ts` `LSP_CLIENT_ID`); M6 adds `idris2.checkOnType.*` (`Config.checkOnType`)
  * and reads VS Code's own `files.autoSave*` settings (`Config.autoSave`), which it does not
- * contribute. The module has no runtime dependency on `vscode` (one type import):
+ * contribute; M7 adds `idris2.goalPanel.*` (`Config.goalPanel`) and the three printing options of
+ * `idris2.ideMode.*` (`DisplayOptions`). The module has no runtime dependency on `vscode` (one type import):
  * `extension.ts` passes `vscode.workspace` as the `ConfigurationHost`, unit tests pass a fake.
  *
  * Values are validated here, so that callers never see a wrongly typed value from a
@@ -48,7 +49,8 @@ export type ConfigurationGroup =
   | 'keybindings'
   | 'backend'
   | 'lsp'
-  | 'checkOnType';
+  | 'checkOnType'
+  | 'goalPanel';
 
 /** `idris2.toolchain.*` (ARCHITECTURE §11, M1). */
 export interface ToolchainSettings {
@@ -257,7 +259,8 @@ export type TransportKind = 'socket' | 'stdio';
  * (`IDE_MODE_SESSION_KEYS`) restarts the sessions whose command line it changes; the time limits
  * apply from the next request (`backend/ide/pool.ts`; docs/as-built/M2.md, *ARCHITECTURE §5.1*,
  * *Configuration changes*). A change of the two limits (`IDE_MODE_LIMIT_KEYS`) restarts nothing
- * (ROADMAP §9 Q21).
+ * (ROADMAP §9 Q21), nor does a change of the printing options (`IDE_MODE_DISPLAY_KEYS`), which are
+ * sent to the running sessions.
  */
 export interface IdeModeSettings {
   /** `idris2.ideMode.transport` (`TransportKind`); a value this version does not offer reads as `stdio`. */
@@ -295,13 +298,27 @@ export interface IdeModeSettings {
    * (`features/diagnostics/checks.ts`).
    */
   readonly maxBackgroundChecks: number;
+  /** `idris2.ideMode.showImplicits`, `showMachineNames` and `fullNamespace`. */
+  readonly display: DisplayOptions;
+}
+
+/**
+ * How the compiler prints names and types (M7; F27): in IDE mode `:set` and `:unset` of
+ * `showimplicits`, `showmachinenames` and `shownamespace` on the `check` and `shadow` sessions
+ * (`backend/ide/protocol.ts` `setDisplayOption`), in idris2-lsp its options of the same names
+ * (`idris2.lsp.*`).
+ */
+export interface DisplayOptions {
+  readonly showImplicits: boolean;
+  readonly showMachineNames: boolean;
+  readonly fullNamespace: boolean;
 }
 
 /**
  * The `idris2.ideMode.*` keys that shape a session: its command line or its time limits. A change
  * of one of them restarts the running sessions whose command line it changes and returns `failed`
  * ones to `stopped` (`backend/ide/pool.ts`). `test/unit/manifest.test.ts` checks that every
- * `idris2.ideMode.*` key is in this list or in `IDE_MODE_LIMIT_KEYS`.
+ * `idris2.ideMode.*` key is in this list, in `IDE_MODE_LIMIT_KEYS` or in `IDE_MODE_DISPLAY_KEYS`.
  */
 export const IDE_MODE_SESSION_KEYS: readonly string[] = [
   'ideMode.transport',
@@ -319,6 +336,13 @@ export const IDE_MODE_SESSION_KEYS: readonly string[] = [
  * starts waiting checks — and restarts no session, since no command line changes.
  */
 export const IDE_MODE_LIMIT_KEYS: readonly string[] = ['ideMode.maxSessions', 'ideMode.maxBackgroundChecks'];
+
+/**
+ * The `idris2.ideMode.*` keys of the compiler's printing options (`DisplayOptions`): a change is sent
+ * to the running `check` and `shadow` sessions and restarts none (`backend/ide/pool.ts`); what was
+ * printed under the old value goes when the visible documents are checked again (`extension.ts`).
+ */
+export const IDE_MODE_DISPLAY_KEYS: readonly string[] = ['ideMode.showImplicits', 'ideMode.showMachineNames', 'ideMode.fullNamespace'];
 
 /** `idris2.diagnostics.*` (ARCHITECTURE §8). */
 export interface DiagnosticsSettings {
@@ -457,6 +481,22 @@ export function readCheckOnTypeSettings(section: ConfigurationReader): CheckOnTy
   };
 }
 
+/** `idris2.goalPanel.*` (ROADMAP M7, ARCHITECTURE §9, §11). */
+export interface GoalPanelSettings {
+  /** `idris2.goalPanel.followCursor` (default on): the panel follows the active editor and its cursor. */
+  readonly followCursor: boolean;
+  /** `idris2.goalPanel.debounce`: ms without a move of the cursor before the panel shows where it is; from 0 to `MAX_DELAY_MS`. */
+  readonly debounceMs: number;
+}
+
+/** Reads and validates `idris2.goalPanel.*` from the `idris2` section. */
+export function readGoalPanelSettings(section: ConfigurationReader): GoalPanelSettings {
+  return {
+    followCursor: section.get('goalPanel.followCursor') !== false,
+    debounceMs: delaySetting(section.get('goalPanel.debounce'), 0, 50),
+  };
+}
+
 /** The section of VS Code's own file settings (`files.autoSave`, …). */
 const FILES_SECTION = 'files';
 
@@ -516,6 +556,11 @@ export function readIdeModeSettings(section: ConfigurationReader): IdeModeSettin
     idleTimeoutMs: delaySetting(section.get('ideMode.idleTimeout'), 0, 600000),
     maxSessions: limitSetting(section.get('ideMode.maxSessions')),
     maxBackgroundChecks: limitSetting(section.get('ideMode.maxBackgroundChecks')),
+    display: {
+      showImplicits: section.get('ideMode.showImplicits') === true,
+      showMachineNames: section.get('ideMode.showMachineNames') === true,
+      fullNamespace: section.get('ideMode.fullNamespace') === true,
+    },
   };
 }
 
@@ -737,6 +782,11 @@ export class Config {
   /** `idris2.checkOnType.*` for `scope` (a document's URI): `resource`-scoped, as `idris2.checking.*`. */
   checkOnType(scope?: ConfigurationScope): CheckOnTypeSettings {
     return readCheckOnTypeSettings(this.host.getConfiguration(CONFIGURATION_SECTION, scope));
+  }
+
+  /** `idris2.goalPanel.*`, window-wide: one panel follows the active editor. */
+  goalPanel(): GoalPanelSettings {
+    return readGoalPanelSettings(this.host.getConfiguration(CONFIGURATION_SECTION));
   }
 
   /**

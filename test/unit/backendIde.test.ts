@@ -2174,6 +2174,7 @@ suite('backend/ide/backend M3: evaluation with the real session pool', () => {
       idleTimeoutMs: 600_000,
       maxSessions,
       maxBackgroundChecks: 0,
+      display: { showImplicits: false, showMachineNames: false, fullNamespace: false },
     };
     const config = {
       ideMode: () => settings,
@@ -2641,6 +2642,7 @@ suite('backend/ide/backend M4 (holes, edits)', () => {
       idleTimeoutMs: 600_000,
       maxSessions: 0,
       maxBackgroundChecks: 0,
+      display: { showImplicits: false, showMachineNames: false, fullNamespace: false },
     };
     const allowed: GateVerdict = { allowed: true, basis: 'workspaceFolder' };
     const transports: FakeTransport[] = [];

@@ -32,6 +32,7 @@ const SETTINGS_M2: IdeModeSettings = {
   idleTimeoutMs: 0,
   maxSessions: 0,
   maxBackgroundChecks: 0,
+  display: { showImplicits: false, showMachineNames: false, fullNamespace: false },
 };
 
 interface Invocation {

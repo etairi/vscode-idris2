@@ -1193,6 +1193,33 @@ const SCENARIOS = [
       intro(32, 'g'), //          foo x = ?g (S x)
     ],
   },
+  // M7: the goal panel's toggles (`:set` and `:unset` of the three printing options, F27): what each
+  // answers, what `:metavariables` prints under them, and that a load keeps them.
+  {
+    name: 'display-options',
+    description: 'Clean.idr: :metavariables, then :set showimplicits, shownamespace and showmachinenames with :metavariables after each, a load under them, and :unset of each',
+    facts: ['F27'],
+    workspace: 'broken',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['Clean.idr'],
+    requests: [
+      load('Clean.idr'),
+      metavariables,
+      '(:interpret ":set showimplicits")',
+      metavariables,
+      '(:interpret ":set shownamespace")',
+      metavariables,
+      '(:interpret ":set showmachinenames")',
+      metavariables,
+      load('Clean.idr'),
+      metavariables,
+      '(:interpret ":unset showimplicits")',
+      '(:interpret ":unset shownamespace")',
+      '(:interpret ":unset showmachinenames")',
+      metavariables,
+    ],
+  },
   // E16 (ROADMAP §9): holes across modules. holes-ipkg: Holes.Main imports Holes.Util, which
   // imports Holes.Base; `todo` is a hole of Base, Main and Other. holes: the loose files of M4's
   // `holes` integration suite, Main.idr importing Base.idr, `todo` in both.

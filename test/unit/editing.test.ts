@@ -13,7 +13,7 @@ import { editorLabel } from '../../src/core/untrustedText';
 import { applyReplacements, inOrder, misfit, rangesAfter, withLineBreaks } from '../../src/features/editing/apply';
 import { commandName, compilerText, EDITING_COMMAND_KINDS, EDITING_COMMAND_TITLES, failureText, MAX_COMPILER_TEXT, MAX_SHOWN, refusalText } from '../../src/features/editing/messages';
 import { registerEditing } from '../../src/features/editing/register';
-import { coverageFunctionOf, declarationAt, holeAt, isReadable, lhsStartsAbove, patternVariableAt } from '../../src/features/editing/targets';
+import { coverageFunctionOf, declarationAt, holeAt, isReadable, lhsStartsAbove, patternVariableAt, patternVariablesAround } from '../../src/features/editing/targets';
 import type { EditingCommandId } from '../../src/features/editing/types';
 import { repoRoot } from '../fake-tools/paths';
 import {
@@ -133,6 +133,23 @@ suite('features/editing: targets (what a command acts on, from the text)', () =>
     assert.deepStrictEqual([patternVariableAt(ops, at(3, 2))?.name, patternVariableAt(ops, at(3, 2))?.offered], ['Nothing', false], 'a capital: not offered');
     // A function clause still defines its first name.
     assert.strictEqual(patternVariableAt(words, at(28, 1)), undefined);
+  });
+
+  test('patternVariablesAround: the binders of the clauses around a line, the innermost\'s first, each name once; `offered` as patternVariableAt says', () => {
+    const around = (doc: FakeTextDoc, line: number, character: number) =>
+      patternVariablesAround(doc, at(line, character)).map((v) => [v.name, v.offered, v.range.start.line, v.range.start.character]);
+    assert.deepStrictEqual(around(clean, 7, 12), [['xs', true, 7, 5]]);
+    // go acc ys = ?go_rhs, in the where block of a clause that binds xs and whose right-hand side is no hole.
+    assert.deepStrictEqual(around(edits, 26, 16), [['acc', true, 26, 7], ['ys', true, 26, 11], ['xs', false, 23, 7]]);
+    // Just k => ?case_just, in `withCase mn = case mn of`.
+    assert.deepStrictEqual(around(edits, 49, 14), [['k', true, 49, 7], ['mn', false, 47, 9]]);
+    // The inner x hides the outer one.
+    const shadowed = new FakeTextDoc({ fileName: '/w/S.idr', text: 'f : Nat -> Nat -> Nat\nf x y = g y\n  where\n    g : Nat -> Nat\n    g x = ?h\n' });
+    assert.deepStrictEqual(around(shadowed, 4, 10), [['x', true, 4, 6], ['y', false, 1, 4]]);
+    // An alternative inside a clause's line makes no block: its m is not found, a limit the panel shows as a premise without buttons.
+    assert.deepStrictEqual(around(edits, 52, 30), [['n', false, 52, 7]]);
+    assert.deepStrictEqual(around(clean, 4, 2), [], 'a declaration binds none here');
+    assert.deepStrictEqual(around(clean, 0, 3), [], 'the module header');
   });
 
   test('patternVariableAt: nothing on the defined name, a signature, a right-hand side, a let, a qualified name or a keyword', () => {
@@ -649,6 +666,58 @@ suite('features/editing: the commands (commands.ts)', () => {
     const edited = t2.doc.text;
     assert.deepStrictEqual(await t2.run('idris2.intro'), [{ command: 'idris2.intro', kind: 'cancelled' }]);
     assert.strictEqual(t2.doc.text, edited);
+  });
+
+  test('from the goal panel, with no active editor: the argument names the place and Refine Hole\'s expression, which is not asked for and goes into the hint only', async () => {
+    const t = setUp('Clean.idr', 7, 12);
+    t.api.window.activeTextEditor = undefined;
+    t.backend.answer = () => Promise.resolve({ type: 'failed', message: 'x' });
+    const args = { uri: t.doc.uri.toString(), position: at(7, 10), name: 'vlen_rhs' };
+    await t.registration.run('idris2.refineHole', { ...args, hint: 'S n' });
+    assert.deepStrictEqual(t.api.window.inputBoxes, []);
+    assert.deepStrictEqual(t.backend.requests.map((req) => [req.kind, 'hint' in req ? req.hint : undefined]), [['refine', 'S n']]);
+    // Blank text is refused as it is from the input box.
+    await t.registration.run('idris2.refineHole', { ...args, hint: '  ' });
+    assert.strictEqual(t.backend.requests.length, 1);
+    assert.match(t.api.window.messages.at(-1)?.text ?? '', /expression/i);
+  });
+
+  test('an argument whose hint is no string is no argument: the active editor\'s cursor, and the input box asks', async () => {
+    const t = setUp('Clean.idr', 7, 12);
+    t.api.window.inputAnswer = undefined;
+    await t.api.run('idris2.refineHole', { uri: t.doc.uri.toString(), position: at(0, 0), name: 'other', hint: 1 });
+    assert.strictEqual(t.api.window.inputBoxes.length, 1);
+    assert.match(t.api.window.inputBoxes[0].prompt ?? '', /refine \?vlen_rhs with/);
+  });
+
+  test('from the goal panel: choices go to its asker, not to a QuickPick; the answer is applied, none cancels; one Intro candidate is applied without asking', async () => {
+    const choice = (label: string) => ({ label, replacements: [rep(7, 10, 7, 19, label)] });
+    const args = (doc: FakeTextDoc) => ({ uri: doc.uri.toString(), position: at(7, 10), name: 'vlen_rhs' });
+    const t = setUp('Clean.idr', 7, 12);
+    t.api.window.activeTextEditor = undefined;
+    t.backend.answer = () => Promise.resolve({ type: 'choices', reason: 'intro', choices: [choice('0'), choice('1')] });
+    const asked: [string, string[]][] = [];
+    await t.registration.run('idris2.intro', args(t.doc), {
+      choose: (reason, choices) => {
+        asked.push([reason, choices.map((c) => c.label)]);
+        return Promise.resolve(choices[1]);
+      },
+    });
+    assert.deepStrictEqual(asked, [['intro', ['0', '1']]]);
+    assert.deepStrictEqual(t.api.window.quickPicks, []);
+    assert.strictEqual(t.doc.lineAt(7).text, 'vlen xs = 1');
+
+    const none = setUp('Clean.idr', 7, 12);
+    none.backend.answer = () => Promise.resolve({ type: 'choices', reason: 'intro', choices: [choice('0'), choice('1')] });
+    const before = none.doc.text;
+    await none.registration.run('idris2.intro', args(none.doc), { choose: () => Promise.resolve(undefined) });
+    assert.deepStrictEqual(none.registration.outcomes.at(-1), { command: 'idris2.intro', kind: 'cancelled' });
+    assert.strictEqual(none.doc.text, before);
+
+    const one = setUp('Clean.idr', 7, 12);
+    one.backend.answer = () => Promise.resolve({ type: 'choices', reason: 'intro', choices: [choice('(?a, ?b)')] });
+    await one.registration.run('idris2.intro', args(one.doc), { choose: () => assert.fail('not asked') });
+    assert.strictEqual(one.doc.lineAt(7).text, 'vlen xs = (?a, ?b)');
   });
 
   test('Refine Hole…: the expression from the input box goes into the request\'s hint only; Escape cancels; blank text is refused; ambiguity → QuickPick', async () => {

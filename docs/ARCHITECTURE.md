@@ -282,6 +282,8 @@ vscode-idris2/
 │  │  │                          as built: types.ts, model.ts, tree.ts, navigation.ts,
 │  │  │                          workspaceContext.ts (idris2.isIdrisWorkspace), register.ts
 │  │  ├─ goalPanel/              WebviewPanel host + message protocol (§9)            (M7)
+│  │  │                          as built: types.ts, state.ts (what it shows, pure), host.ts,
+│  │  │                          html.ts (the page, its CSP), register.ts
 │  │  ├─ shadow/                 shadow typecheck of dirty buffers (§6.3)             (M6)
 │  │  ├─ repl/                   terminal REPL, send-to-REPL, `-- >>>` code lens      (M8)
 │  │  ├─ tasks/                  TaskProvider, Pseudoterminal build runner, run lens  (M9)
@@ -292,7 +294,9 @@ vscode-idris2/
 │  │  └─ extras/                 namespace browser, workspace symbols, type-definition
 │  │                             heuristic, docs links                                (M14)
 │  └─ webview/
-│     └─ goalPanel.ts            goal panel front-end (vanilla TS, no framework)      (M7)
+│     ├─ goalPanel.ts            goal panel front-end (vanilla TS, no framework)      (M7)
+│     ├─ view.ts                 as built: what it draws, tested on Node without a DOM
+│     └─ protocol.ts             as built: the messages, types only
 └─ test/
    ├─ unit/                      mocha on Node, no vscode: sexp, wire, positions, decoders,
    │                             diagnostics mapping, cli parser, ipkg json, versions, trie,
@@ -1019,30 +1023,41 @@ loaded file's first;
 `:metavariables` also lists declarations without clauses and failed definitions, whose `:name-at`
 span is the declaration, and they are left out [live].
 
-Webview contract (`src/webview/goalPanel.ts` ↔ `features/goalPanel/host.ts`), all over
-`postMessage`, CSP `default-src 'none'; style-src ${cspSource} 'nonce-…'; script-src 'nonce-…'`:
+Webview contract (`src/webview/protocol.ts`, between `src/webview/goalPanel.ts` and
+`features/goalPanel/host.ts`), all over `postMessage`, CSP `default-src 'none'; style-src
+${cspSource}; script-src 'nonce-…'`:
 
 ```ts
-// host → webview
-type ToWebview =
-  | { type: 'state'; version: number; doc: string; stale: boolean;
-      current?: HoleView; holes: HoleView[]; messages: DiagnosticView[];
-      options: { showImplicits: boolean; showMachineNames: boolean; fullNamespace: boolean };
-      caps: Pick<Capabilities, 'editing' | 'editingNext' | 'intro' | 'refine'> }
-  | { type: 'pinned'; pinned: boolean } | { type: 'theme' };
+// host → webview: its one message, everything the panel shows
+type ToWebview = { type: 'state'; state: PanelState };
+//   PanelState: version, file, stale, goal, unknownHole, declaration, choices, holes, moreHoles,
+//   messages, moreMessages, options, pinned, follow, cycle, caps
 // webview → host
 type FromWebview =
   | { type: 'ready' }
-  | { type: 'action'; edit: EditKind; hole: string; premise?: string; hint?: string }
-  | { type: 'jump'; uri: string; line: number; col: number }
+  | { type: 'rendered'; version: number; text: string }  // acknowledges a state, with the page's text
+  | { type: 'action'; action: 'proofSearch' | 'nextResult' | 'intro' | 'makeLemma' | 'generateDefinition' }
+  | { type: 'refine'; expression: string }
+  | { type: 'premise'; action: 'caseSplit' | 'jump'; name: string }
+  | { type: 'hole'; version: number; index: number }     // a row of `holes` of that state
+  | { type: 'message'; version: number; index: number }  // a row of `messages` of that state
+  | { type: 'choose'; index?: number }                   // a label of `choices`; without it, none
   | { type: 'toggle'; option: 'showImplicits' | 'showMachineNames' | 'fullNamespace' | 'pin' | 'follow' }
-  | { type: 'copy'; format: 'markdown' | 'plain' };
+  | { type: 'copy' }
+  | { type: 'save' };
 ```
 
-The webview is a pure renderer with a version counter; every action is dispatched to the M4
-command with explicit arguments, so the panel never re-implements editing. Toggles map to IDE
-`(:interpret ":set showimplicits")`/`(:get-options)` on the check session (session state is
-mutable) or to LSP `didChangeConfiguration`.
+The webview is a pure renderer with a version counter, and everything it sends names something of a
+state it was given, never a URI, a position or a command: the host keeps those (`state.ts`
+`PanelTargets`) and checks every message (`host.ts` `isFromWebview`). Every action is dispatched to
+the M4 command with explicit arguments (`EditingRegistration.run`), so the panel never re-implements
+editing; since a focused webview leaves no active text editor, the host keeps the last Idris editor's
+place, and a jump passes that editor's view column. Toggles write the settings: IDE mode's
+`idris2.ideMode.showImplicits`, `showMachineNames`, `fullNamespace`, which the pool sends to the
+`check` and `shadow` sessions as `(:interpret ":set showimplicits")` (`:unset`), at a change and as
+first requests of each process, never to `eval` (session state is mutable, F27); or `idris2.lsp.*`,
+which the client sends as `workspace/didChangeConfiguration`.
+As built, with its deviations from this section's plan: `docs/as-built/M7.md`.
 
 ---
 
@@ -1094,7 +1109,7 @@ mutable) or to LSP `didChangeConfiguration`.
 | `s` `n` `g` `i` `r` | proof search, next result (of either cycle), generate def (also next), intro, refine | M4 |
 | `[` `]` | previous / next hole | M4 |
 | `t` `d` `e` | type at cursor, docs at cursor, evaluate selection | M3 |
-| `,` | toggle goal panel (also `ctrl+shift+enter` / `cmd+shift+enter`, Lean's binding — deliberately shadows VS Code's "Insert Line Above" inside Idris editors, listed as an accepted collision) | M7 |
+| `,` | toggle goal panel (also `ctrl+shift+enter` / `cmd+shift+enter`, Lean's binding — deliberately shadows VS Code's "Insert Line Above" inside Idris editors, listed as an accepted collision; as built not in the chat input, a code editor too, where the key sends to a new chat) | M7 |
 
   Collisions with VS Code's default keymap are checked by an integration test or a diff
   against a checked-in snapshot of "Open Default Keyboard Shortcuts (JSON)" from VS Code 1.139
@@ -1193,7 +1208,8 @@ Every key has a `markdownDescription` and a scope (`machine-overridable` for pat
 | `lsp.trace.server` | `"off"` (as built: `"messages"`, values `messages` \| `verbose`, no `off`: the library writes a trace only while its channel's level is Trace, and then reads `off` as `messages`) | M5 |
 | `keybindings.scheme` | `"chords"` on macOS, `"prefix"` elsewhere (as built: `"auto"`, which means that, §10) | M3 or M4, whichever ships first (both contribute bindings under it, §10) |
 | `holes.showInSideBar` | `true` | M4 |
-| `goalPanel.autoOpen`, `goalPanel.followCursor`, `goalPanel.debounce` | `false`, `true`, `50` ms | M7 |
+| `goalPanel.followCursor`, `goalPanel.debounce` | `true`, `50` ms (no `goalPanel.autoOpen`: the panel opens manually, ROADMAP §9 Q9) | M7 |
+| `ideMode.showImplicits`, `ideMode.showMachineNames`, `ideMode.fullNamespace` | `false` (as built: the panel's toggles in IDE mode, §9) | M7 |
 | `eval.inlineResults` | `true` | M3 |
 | `eval.timeout` | `10000` ms (as built; the time limit of an evaluation, *review of M3*) | M3 |
 | `inlayHints.variableTypes`, `inlayHints.multiplicities` | `true`, `false` (the latter [open]; not created in M3, which has no multiplicity hints) | M3 |

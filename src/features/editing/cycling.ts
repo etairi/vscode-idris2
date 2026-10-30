@@ -35,6 +35,7 @@
 import type * as vscode from 'vscode';
 import { rootKey } from '../../backend/registry';
 import { DisposableStore, type IDisposable } from '../../core/disposable';
+import { Emitter, type Event } from '../../core/event';
 import type { EditorPosition, EditorRange } from '../../core/positions';
 import type { SaveCheckHolds } from '../diagnostics/checks';
 import type { LoadNotifications } from '../intelligence/types';
@@ -107,6 +108,9 @@ export class CyclingController implements IDisposable {
   private readonly item: vscode.StatusBarItem;
   /** Whether `item` is shown. */
   private shown = false;
+  private readonly changed = this.store.add(new Emitter<void>());
+  /** Fires when a cycle started, advanced or ended. */
+  readonly onDidChange: Event<void> = this.changed.event;
 
   constructor(
     private readonly api: CyclingApi,
@@ -136,7 +140,7 @@ export class CyclingController implements IDisposable {
         this.cycles.get(uri)?.hold.dispose();
         this.cycles.delete(uri);
         this.ended.delete(uri);
-        this.refresh();
+        this.changedCycle();
       }),
     );
     this.store.add(api.window.onDidChangeActiveTextEditor(() => this.refresh()));
@@ -196,7 +200,7 @@ export class CyclingController implements IDisposable {
     this.cycles.get(cycle.uri)?.hold.dispose();
     this.cycles.set(cycle.uri, { ...cycle, declaration: cycle.declaration, shown: 1, hold: this.holds.holdSaveChecks(cycle.uri) });
     this.ended.delete(cycle.uri);
-    this.refresh();
+    this.changedCycle();
     return true;
   }
 
@@ -213,7 +217,7 @@ export class CyclingController implements IDisposable {
     const cycle = this.cycles.get(uri);
     if (cycle !== undefined) {
       this.cycles.set(uri, { ...cycle, range, version, shown: cycle.shown + 1 });
-      this.refresh();
+      this.changedCycle();
     }
   }
 
@@ -224,7 +228,7 @@ export class CyclingController implements IDisposable {
       this.cycles.delete(uri);
       this.ended.set(uri, { kind: cycle.kind, why });
       cycle.hold.dispose();
-      this.refresh();
+      this.changedCycle();
     }
   }
 
@@ -276,6 +280,12 @@ export class CyclingController implements IDisposable {
     this.item.tooltip = cycle.kind === 'exprSearch' ? 'Idris 2: Next Result (Proof Search)' : 'Idris 2: Next Definition (Generate Definition)';
     this.item.command = NEXT_COMMAND[cycle.kind];
     this.item.show();
+  }
+
+  /** `refresh`, and what has to know. */
+  private changedCycle(): void {
+    this.refresh();
+    this.changed.fire();
   }
 
   dispose(): void {

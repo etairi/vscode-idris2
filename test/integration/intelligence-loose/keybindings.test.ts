@@ -1,6 +1,6 @@
 // Suite `intelligence-loose`: the keyboard shortcuts (ROADMAP §9 Q5, decided 2026-09-28;
-// ARCHITECTURE §10's letter table): M3's letters t, d and e and M4's c, a, l, w, m, s, n, g, i, r,
-// [ and ] under `idris2.keybindings.scheme`. What is checked is what VS Code made of package.json's
+// ARCHITECTURE §10's letter table): M3's letters t, d and e, M4's c, a, l, w, m, s, n, g, i, r, [
+// and ], and M7's , with its second key under `idris2.keybindings.scheme`. What is checked is what VS Code made of package.json's
 // contributions in this running instance — its Default Keybindings document
 // (`workbench.action.openDefaultKeybindingsFile`, the core's and every extension's bindings with
 // the key resolved for this OS and the `when` clause as VS Code parsed it:
@@ -38,7 +38,10 @@ const LETTERS = {
   r: 'idris2.refineHole',
   '[': 'idris2.previousHole',
   ']': 'idris2.nextHole',
+  ',': 'idris2.toggleGoalPanel',
 } as const;
+/** M7's second key, Lean's, under every scheme that binds keys, as this OS's Default Keybindings prints it. */
+const GOAL_PANEL_KEY = process.platform === 'darwin' ? 'shift+cmd+enter' : 'ctrl+shift+enter';
 const SCHEMES = ['auto', 'chords', 'prefix', 'none'] as const;
 /**
  * E23 on macOS [live, this suite: VS Code 1.139.1 in M3, 1.140.0 since M4's integration]: the
@@ -71,14 +74,14 @@ async function defaultKeybindings(): Promise<Binding[]> {
 }
 
 /**
- * The scheme a binding's `when` clause requires, if the clause is exactly the fixed parts and one
- * `config.idris2.keybindings.scheme == '<scheme>'` (in any order: VS Code serialises the parsed
- * expression, which may reorder it); otherwise `undefined`.
+ * The scheme a binding's `when` clause requires, if the clause is exactly the fixed parts (M7's
+ * second key also has `!inChatInput`) and one `config.idris2.keybindings.scheme == '<scheme>'` (in any
+ * order: VS Code serialises the parsed expression, which may reorder it); otherwise `undefined`.
  */
 function schemeOf(when: string | undefined): string | undefined {
   const parts = (when ?? '').split(' && ');
   const schemes = parts.flatMap((p) => /^config\.idris2\.keybindings\.scheme == '([a-z]+)'$/.exec(p)?.[1] ?? []);
-  const rest = parts.filter((p) => !p.startsWith('config.idris2.keybindings.scheme'));
+  const rest = parts.filter((p) => !p.startsWith('config.idris2.keybindings.scheme') && p !== '!inChatInput');
   return schemes.length === 1 && rest.length === FIXED_PARTS.length && FIXED_PARTS.every((f) => rest.includes(f))
     ? schemes[0]
     : undefined;
@@ -93,8 +96,8 @@ suite('keybindings: the letters of M3 and M4 under idris2.keybindings.scheme', (
     ours = bindings.filter((b) => b.command.startsWith('idris2.'));
   });
 
-  test('VS Code accepted exactly 45 bindings: one per letter and scheme (auto, chords, prefix), none for `none`', () => {
-    assert.strictEqual(ours.length, 3 * Object.keys(LETTERS).length, JSON.stringify(ours, null, 1));
+  test('VS Code accepted exactly 51 bindings: one per letter and scheme (auto, chords, prefix) and M7\'s second key under each, none for `none`', () => {
+    assert.strictEqual(ours.length, 3 * (Object.keys(LETTERS).length + 1), JSON.stringify(ours, null, 1));
     for (const b of ours) {
       assert.ok(schemeOf(b.when) !== undefined, `unexpected when clause: ${JSON.stringify(b)}`);
     }
@@ -107,7 +110,10 @@ suite('keybindings: the letters of M3 and M4 under idris2.keybindings.scheme', (
         const key = expectedKey(scheme, letter);
         return key === undefined ? [] : [{ key, command }];
       });
-      const sortKey = (b: { command: string }): string => b.command;
+      if (scheme !== 'none') {
+        expected.push({ key: GOAL_PANEL_KEY, command: 'idris2.toggleGoalPanel' });
+      }
+      const sortKey = (b: { command: string; key: string }): string => `${b.command} ${b.key}`;
       assert.deepStrictEqual(
         active.map((b) => ({ key: b.key, command: b.command })).sort((a, b) => sortKey(a).localeCompare(sortKey(b))),
         expected.sort((a, b) => sortKey(a).localeCompare(sortKey(b))),
@@ -115,7 +121,7 @@ suite('keybindings: the letters of M3 and M4 under idris2.keybindings.scheme', (
     });
   }
 
-  test('the fifteen commands are registered, and no other idris2 command is bound', async () => {
+  test('the sixteen commands are registered, and no other idris2 command is bound', async () => {
     const registered = new Set(await vscode.commands.getCommands(true));
     for (const command of Object.values(LETTERS)) {
       assert.ok(registered.has(command), `${command} is not registered`);
@@ -154,7 +160,10 @@ suite('keybindings: the letters of M3 and M4 under idris2.keybindings.scheme', (
         .filter((b) => !b.command.startsWith('idris2.') && (b.key === mine.key || b.key.startsWith(`${mine.key} `)))
         .map((b) => `${mine.key} (${mine.command}) ↔ ${b.command}${b.when === undefined ? '' : ` when ${b.when}`}`),
     );
-    assert.deepStrictEqual(clashes, []);
+    // M7's second key shadows Insert Line Above in Idris editors, on purpose (ROADMAP M7), as in Lean's extension.
+    console.log(`      the goal panel's key: ${JSON.stringify(clashes, null, 2).replace(/\n/g, '\n      ')}`);
+    assert.deepStrictEqual(clashes.filter((clash) => !clash.startsWith(`${GOAL_PANEL_KEY} `)), []);
+    assert.ok(clashes.some((clash) => clash.includes(' ↔ editor.action.insertLineBefore when ')), JSON.stringify(clashes));
   });
 
   test('the setting is read from the user settings only: writing it to the workspace is refused', async () => {

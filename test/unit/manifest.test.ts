@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { LSP_CLIENT_ID } from '../../src/backend/lsp/types';
 import {
+  IDE_MODE_DISPLAY_KEYS,
   IDE_MODE_LIMIT_KEYS,
   IDE_MODE_SESSION_KEYS,
   LSP_SERVER_OPTION_KEYS,
@@ -14,6 +15,7 @@ import {
   readBackendMode,
   readCheckingSettings,
   readCheckOnTypeSettings,
+  readGoalPanelSettings,
   readDiagnosticsSettings,
   readEvaluationSettings,
   readIdeModeSettings,
@@ -25,6 +27,7 @@ import {
   readTraceSettings,
   type ConfigurationReader,
 } from '../../src/core/config';
+import { GOAL_PANEL_VIEW_TYPE } from '../../src/features/goalPanel/host';
 
 // Consistency of package.json's M1–M5 contributions: settings (with core/config.ts, which reads
 // them), Restricted Mode, commands, menus, views, keybindings and the walkthrough. Whether each
@@ -96,6 +99,7 @@ interface Manifest {
   name: string;
   displayName: string;
   icon: string;
+  activationEvents: string[];
   capabilities: {
     untrustedWorkspaces: { supported: boolean | 'limited'; description?: string; restrictedConfigurations?: string[] };
   };
@@ -176,6 +180,7 @@ const LETTERS: Record<string, string> = {
   r: 'idris2.refineHole',
   '[': 'idris2.previousHole',
   ']': 'idris2.nextHole',
+  ',': 'idris2.toggleGoalPanel',
 };
 
 /**
@@ -241,6 +246,7 @@ function readAllSettings(value: (key: string) => unknown): { keys: string[]; set
     readBackendMode(reader),
     readLspSettings(reader, '/home/u'),
     readCheckOnTypeSettings(reader),
+    readGoalPanelSettings(reader),
     readKeybindingScheme(reader),
   ];
   return { keys, settings };
@@ -308,6 +314,7 @@ suite('package.json (M1–M5 contributions)', () => {
           idleTimeoutMs: 600000,
           maxSessions: 0,
           maxBackgroundChecks: 0,
+          display: { showImplicits: false, showMachineNames: false, fullNamespace: false },
         },
         { includeSourceExcerpt: false },
         { protocol: false },
@@ -326,6 +333,7 @@ suite('package.json (M1–M5 contributions)', () => {
           briefCompletions: false,
         },
         { enabled: true, delayMs: 500 },
+        { followCursor: true, debounceMs: 50 },
         'auto',
       ]);
       // Every value absent (a setting VS Code does not know) reads as the same defaults — but the
@@ -337,6 +345,7 @@ suite('package.json (M1–M5 contributions)', () => {
       const defaults = Object.fromEntries(
         Object.entries(properties)
           // checking.saveBeforeAction is M4's (below).
+          .filter(([key]) => !IDE_MODE_DISPLAY_KEYS.includes(key.slice('idris2.'.length)))
           .filter(([key]) => /^idris2\.(checking|ideMode|diagnostics|trace)\./.test(key) && key !== 'idris2.checking.saveBeforeAction')
           .map(([key, schema]) => [key, schema.default]),
       );
@@ -472,7 +481,7 @@ suite('package.json (M1–M5 contributions)', () => {
       assert.match(properties['idris2.ideMode.maxSessions'].markdownDescription ?? '', /at once in this VS Code window; .* Each window counts its own/);
       assert.match(properties['idris2.ideMode.maxBackgroundChecks'].markdownDescription ?? '', /at once in this VS Code window \(each window counts its own\)/);
       // Every delay is bounded by what Node's setTimeout can wait (core/config.ts MAX_DELAY_MS).
-      const delays = ['idris2.checking.delay', 'idris2.checkOnType.delay', 'idris2.ideMode.requestTimeout', 'idris2.ideMode.longActionTimeout', 'idris2.ideMode.idleTimeout', 'idris2.eval.timeout'];
+      const delays = ['idris2.checking.delay', 'idris2.checkOnType.delay', 'idris2.goalPanel.debounce', 'idris2.ideMode.requestTimeout', 'idris2.ideMode.longActionTimeout', 'idris2.ideMode.idleTimeout', 'idris2.eval.timeout'];
       for (const key of delays) {
         assert.strictEqual(properties[key].maximum, MAX_DELAY_MS, key);
         assert.ok((properties[key].default as number) <= MAX_DELAY_MS, key);
@@ -534,12 +543,12 @@ suite('package.json (M1–M5 contributions)', () => {
       assert.match(properties['idris2.ideMode.extraArgs'].markdownDescription ?? '', /must not contain `--ide-mode` or `--ide-mode-socket`/);
     });
 
-    test('every idris2.ideMode.* key either shapes a session (a change may restart it) or only limits what runs (a change restarts nothing)', () => {
+    test('every idris2.ideMode.* key shapes a session (a change may restart it), only limits what runs, or is a printing option (neither restarts anything)', () => {
       const ideModeKeys = Object.keys(properties)
         .filter((key) => key.startsWith('idris2.ideMode.'))
         .map((key) => key.slice('idris2.'.length))
         .sort();
-      assert.deepStrictEqual([...IDE_MODE_SESSION_KEYS, ...IDE_MODE_LIMIT_KEYS].sort(), ideModeKeys);
+      assert.deepStrictEqual([...IDE_MODE_SESSION_KEYS, ...IDE_MODE_LIMIT_KEYS, ...IDE_MODE_DISPLAY_KEYS].sort(), ideModeKeys);
       assert.deepStrictEqual([...IDE_MODE_LIMIT_KEYS].sort(), ['ideMode.maxBackgroundChecks', 'ideMode.maxSessions']);
     });
 
@@ -715,6 +724,14 @@ suite('package.json (M1–M5 contributions)', () => {
       );
     });
 
+    test('M7: Toggle Goal Panel is in the palette and the submenu for a trusted Idris document; a panel of a reload brings the extension back', () => {
+      const command = 'idris2.toggleGoalPanel';
+      assert.strictEqual(manifest.contributes.commands.find((c) => c.command === command)?.title, 'Toggle Goal Panel');
+      assert.strictEqual(manifest.contributes.menus.commandPalette.find((entry) => entry.command === command)?.when, 'idris2.isIdrisDocument && isWorkspaceTrusted');
+      assert.strictEqual(manifest.contributes.menus[SUBMENU].find((entry) => entry.command === command)?.group, '0_interactive_holes@4');
+      assert.ok(manifest.activationEvents.includes(`onWebviewPanel:${GOAL_PANEL_VIEW_TYPE}`));
+    });
+
     test('every menu entry names a contributed command or submenu', () => {
       const submenuIds = manifest.contributes.submenus.map((s) => s.id);
       for (const [menu, entries] of Object.entries(manifest.contributes.menus)) {
@@ -811,6 +828,7 @@ suite('package.json (M1–M5 contributions)', () => {
     const bindings = manifest.contributes.keybindings;
     const whenFor = (scheme: string): string =>
       `editorTextFocus && idris2.isIdrisDocument && config.idris2.keybindings.scheme == '${scheme}'`;
+    const goalKeyWhenFor = (scheme: string): string => whenFor(scheme).replace(' && config.', ' && !inChatInput && config.');
 
     /** The key sequence VS Code uses on `platform` (the `mac`/`linux` field if present, else `key`). */
     const keyOn = (binding: Keybinding, platform: 'mac' | 'linux'): string => binding[platform] ?? binding.key;
@@ -827,9 +845,14 @@ suite('package.json (M1–M5 contributions)', () => {
         // but a keybinding's `mac` key can.
         expected.push({ command, key: `ctrl+alt+i ${letter}`, mac: `ctrl+c ctrl+${letter}`, when: whenFor('auto') });
       }
+      // Lean's key for its InfoView (ROADMAP M7), under the same schemes. Not in the chat input, which
+      // is a code editor too and has this key of its own: only Insert Line Above is shadowed, on purpose.
+      for (const scheme of ['chords', 'prefix', 'auto']) {
+        expected.push({ command: 'idris2.toggleGoalPanel', key: 'ctrl+shift+enter', mac: 'cmd+shift+enter', when: goalKeyWhenFor(scheme) });
+      }
       assert.deepStrictEqual(bindings, expected);
-      // ARCHITECTURE §10's table: 3 letters of M3, 12 of M4 (M7's `,` is not bound before M7).
-      assert.deepStrictEqual(Object.keys(LETTERS).join(''), 'tdecalwmsngir[]');
+      // ARCHITECTURE §10's table: 3 letters of M3, 12 of M4, 1 of M7.
+      assert.deepStrictEqual(Object.keys(LETTERS).join(''), 'tdecalwmsngir[],');
     });
 
     test('with the scheme none nothing is bound: every binding requires one of the other schemes', () => {
@@ -847,20 +870,14 @@ suite('package.json (M1–M5 contributions)', () => {
         bindings.filter((b) => b.when === whenFor(scheme)).map((b) => keyOn(b, platform));
       assert.deepStrictEqual(keys('auto', 'mac'), keys('chords', 'mac'));
       assert.deepStrictEqual(keys('auto', 'linux'), keys('prefix', 'linux'));
-      assert.deepStrictEqual(
-        keys('chords', 'linux'),
-        Object.keys(LETTERS).map((letter) => `ctrl+c ctrl+${letter}`),
-      );
-      assert.deepStrictEqual(
-        keys('prefix', 'mac'),
-        Object.keys(LETTERS).map((letter) => `ctrl+alt+i ${letter}`),
-      );
+      assert.deepStrictEqual(keys('chords', 'linux'), Object.keys(LETTERS).map((letter) => `ctrl+c ctrl+${letter}`));
+      assert.deepStrictEqual(keys('prefix', 'mac'), Object.keys(LETTERS).map((letter) => `ctrl+alt+i ${letter}`));
     });
 
-    test('every bound command is a contributed M3 or M4 command, and each command has at most one letter', () => {
+    test('every bound command is a contributed command of M3, M4 or M7, and each command has at most one letter', () => {
       for (const binding of bindings) {
         assert.ok(commandIds.includes(binding.command), binding.command);
-        assert.ok(M3_COMMANDS.includes(binding.command) || M4_COMMANDS.includes(binding.command), binding.command);
+        assert.ok(M3_COMMANDS.includes(binding.command) || M4_COMMANDS.includes(binding.command) || binding.command === 'idris2.toggleGoalPanel', binding.command);
       }
       const commands = Object.values(LETTERS);
       assert.strictEqual(new Set(commands).size, commands.length);

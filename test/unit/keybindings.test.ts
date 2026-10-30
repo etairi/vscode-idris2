@@ -1,7 +1,7 @@
 // The keybindings of package.json against the code (ARCHITECTURE §10: "each milestone contributes
 // only the bindings of commands it registers" — a binding to an unregistered command shows
 // "command … not found"). test/unit/manifest.test.ts pins the bindings themselves (M3's letters t, d,
-// e and M4's c a l w m s n g i r [ ] under the schemes auto, chords and prefix, none under `none`),
+// e, M4's c a l w m s n g i r [ ] and M7's , under the schemes auto, chords and prefix, none under `none`),
 // test/unit/showKeybindings.test.ts the document that lists them; this test reads the syntax tree of
 // src/ and resolves, with the type checker, the command id of every `registerCommand(…)` call, so
 // that a binding whose command no code registers fails here, before an integration run.
@@ -109,6 +109,7 @@ suite('keybindings against the code (ARCHITECTURE §10)', () => {
       'idris2.previousHole',
       'idris2.proofSearch',
       'idris2.refineHole',
+      'idris2.toggleGoalPanel',
     ].sort());
     assert.deepStrictEqual(
       bound.filter((command) => !registered.ids.has(command)),

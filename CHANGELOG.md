@@ -12,6 +12,17 @@ on Open VSX as `etairi.vscode-idris2`.
 
 ### Added
 
+- **Goal panel** (milestone M7): **Toggle Goal Panel** (`Cmd+Shift+Enter`, `Ctrl+Shift+Enter` on
+  Linux, or the scheme's `,`) opens a panel beside the editor with the hole at the cursor: its local
+  variables, its goal, and buttons for Proof Search, Next, Intro (its choices inside the panel), Make
+  Lemma, Refine (an input in the panel), Generate Definition on a declaration, Copy (as Markdown),
+  and, per variable, Case Split and Jump. Below it, **All holes** and **Messages**. **Pin** keeps a
+  hole shown, **Follow cursor** can be turned off, and a banner offers Save when the file has changed
+  since it was checked. The panel comes back after a window reload. It opens only when you ask
+  (`idris2.goalPanel.followCursor`, `idris2.goalPanel.debounce`).
+- **Printing options**: `idris2.ideMode.showImplicits`, `showMachineNames` and `fullNamespace`, also
+  check boxes in the panel, for how the compiler prints types in the panel, the Holes view and
+  hovers. They apply to checks, not to evaluations.
 - **Check while typing** (milestone M6): half a second after you stop typing, the file in the
   active editor is checked as it is in the editor, without saving it; its errors and warnings
   (source `idris2 (unsaved)`) replace those of the saved file until you save, undo back or close

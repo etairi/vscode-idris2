@@ -102,6 +102,17 @@ function storeWith(open: FakeDocument[]) {
 const names = (holes: readonly Hole[]): string[] => holes.map((h) => h.qualifiedName);
 
 suite('holes: the model, refreshed after each load', () => {
+  test('relist (M7: idris2-lsp printed them under other options): the file\'s holes are asked for again, without a load', async () => {
+    const t = storeWith([new FakeDocument(MAIN, '')]);
+    t.backend.answers.push(() => Promise.resolve([mainSize]), () => Promise.resolve([mainTodo]));
+    t.load(MAIN);
+    await settle();
+    await t.store.relist(ROOT, MAIN);
+    assert.deepStrictEqual(t.backend.asked, [MAIN, MAIN]);
+    assert.deepStrictEqual(names(t.store.holesIn(MAIN)), ['Main.todo']);
+    assert.strictEqual(t.changes(), 2);
+  });
+
   test('a load of an open file asks for its holes and files them by location: the loaded module\'s and its imports\'', async () => {
     const t = storeWith([new FakeDocument(MAIN, ''), new FakeDocument(BASE, '')]);
     t.backend.answers.push(() => Promise.resolve([mainSize, baseTodo, mainTodo]));
@@ -513,7 +524,7 @@ function holesApi(options: { queries?: (doc: vscode.TextDocument) => Promise<Que
   const commands = new Map<string, (...args: unknown[]) => unknown>();
   const messages: string[] = [];
   const quickPicks: { items: { label: string; description?: string; kind?: number; ref?: HoleRef }[]; options: Record<string, unknown> }[] = [];
-  const shown: { doc: FakeDocument; selection: FakeRange }[] = [];
+  const shown: { doc: FakeDocument; selection: FakeRange; viewColumn?: number }[] = [];
   const opened: string[] = [];
   const events = {
     change: new Emitter<{ document: FakeDocument }>(),
@@ -557,8 +568,8 @@ function holesApi(options: { queries?: (doc: vscode.TextDocument) => Promise<Que
         quickPicks.push({ items, options: pickOptions });
         return Promise.resolve(state.pick?.(items));
       },
-      showTextDocument: (doc: FakeDocument, showOptions: { selection: FakeRange }) => {
-        shown.push({ doc, selection: showOptions.selection });
+      showTextDocument: (doc: FakeDocument, showOptions: { selection: FakeRange; viewColumn?: number }) => {
+        shown.push({ doc, selection: showOptions.selection, ...(showOptions.viewColumn === undefined ? {} : { viewColumn: showOptions.viewColumn }) });
         return Promise.resolve();
       },
       createTreeView: (_id: string, viewOptions: unknown) => {
@@ -740,6 +751,10 @@ suite('holes: the Holes view', () => {
     doc.edit(`-- 1\n-- 2\n-- 3\n${text}`);
     await t.run(REVEAL_HOLE_COMMAND, items[1].command?.arguments[0]);
     assert.deepStrictEqual(t.shown.map((x) => x.selection), [new FakeRange(12, 6, 12, 11)]);
+    // From the goal panel (M7): in the editor's group, since the active group is the webview's.
+    t.shown.length = 0;
+    await t.holes.reveal(items[1].command?.arguments[0] as HoleRef, 1);
+    assert.deepStrictEqual(t.shown.map((x) => [x.selection, x.viewColumn]), [[new FakeRange(12, 6, 12, 11), 1]]);
     // An ordinal that is no index of its count names no hole.
     await t.run(REVEAL_HOLE_COMMAND, { file: ns, name: 'todo', range: r(9, 6, 9, 11), ordinal: { index: 2, count: 2 } });
     assert.deepStrictEqual(t.messages, ['Idris 2: Go to Hole needs a hole of an Idris file.']);

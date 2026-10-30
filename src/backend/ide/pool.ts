@@ -99,7 +99,12 @@
  *   (a check of unsaved text that a newer text replaced has run long, `backend.ts`). Its command line:
  *   `sessionLaunch`'s `shadow` branch (no `-p` for the package's `depends`, which the shadow
  *   directory's package file gives, `shadow.ts`), and its first request to every process is
- *   `(:enable-syntax :False)` (`session.ts`, *First request*).
+ *   `(:enable-syntax :False)` (`session.ts`, *First requests*).
+ * - **Printing options** (M7; `core/config.ts` `DisplayOptions`, F27). The `check` and `shadow`
+ *   sessions print as the settings say: each new process is told the options that are on (its first
+ *   requests; the compiler starts with all three off), and a change is sent to the processes that run
+ *   (`sendDisplayOptions`), restarting none. The `eval` session is never told: nothing but
+ *   evaluations goes to it (M3).
  * - **At most `idris2.ideMode.maxSessions`** (ROADMAP §9 Q21; `0`, the default, is no limit and
  *   changes nothing above). A `check` session counts while it has a process or is getting one
  *   (`starting`, `ready`, `busy`, `restarting`); an `eval` or `shadow` session — a process of the same size (it
@@ -133,7 +138,7 @@
  *   stops nothing (`maxBackgroundChecks` is the checks', `features/diagnostics/checks.ts`).
  */
 import * as path from 'path';
-import { IDE_MODE_SESSION_KEYS, type IdeModeSettings } from '../../core/config';
+import { IDE_MODE_DISPLAY_KEYS, IDE_MODE_SESSION_KEYS, type DisplayOptions, type IdeModeSettings } from '../../core/config';
 import { DisposableStore, type IDisposable } from '../../core/disposable';
 import { IdrisException, unsupported } from '../../core/errors';
 import { Emitter } from '../../core/event';
@@ -145,10 +150,11 @@ import type { Classification } from '../../project/types';
 import type { ToolchainSnapshot } from '../../toolchain/types';
 import { rootKey } from '../registry';
 import { createSession, DEFAULT_SESSION_TIMING, systemClock, type Clock, type ManagedSession, type SessionTiming, type SpawnPlan } from './session';
-import { enableSyntax } from './protocol';
+import { enableSyntax, setDisplayOption } from './protocol';
 import { SHADOW_BUILD_DIR, shadowDirectoryOf, shadowPackage } from './shadow';
 import { createTransport } from './transport';
 import type {
+  IdeCommand,
   IdeSession,
   SessionLaunch,
   SessionPool,
@@ -627,6 +633,9 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
       if (IDE_MODE_SESSION_KEYS.some((key) => change.affects(key))) {
         reconcileAll('the idris2.ideMode settings changed');
       }
+      if (IDE_MODE_DISPLAY_KEYS.some((key) => change.affects(key))) {
+        sendDisplayOptions();
+      }
       if (change.affects('ideMode.maxSessions')) {
         scheduleLimit();
       }
@@ -646,6 +655,42 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
       }
     }),
   );
+
+  /** The printing options the running processes were last told (module comment, *Printing options*). */
+  let display = deps.config.ideMode().display;
+
+  /** Tells the `check` and `shadow` sessions that have a process what changed in the printing options. */
+  function sendDisplayOptions(): void {
+    const next = deps.config.ideMode().display;
+    const changed = (Object.keys(next) as (keyof DisplayOptions)[]).filter((option) => next[option] !== display[option]);
+    display = next;
+    for (const session of sessions.values()) {
+      if ((session.role === 'check' || session.role === 'shadow') && (session.state === 'ready' || session.state === 'busy')) {
+        for (const option of changed) {
+          const failed = (why: string): void => deps.log.warn(`Idris 2 (${session.cwd}): the printing option ${option} was not set: ${why}`);
+          session.request(setDisplayOption(option, next[option]), { kind: 'lookup' }).then(
+            ({ payload }) => {
+              if (payload.kind === 'error') {
+                failed(payload.message);
+              }
+            },
+            (error: unknown) => failed(error instanceof Error ? error.message : String(error)),
+          );
+        }
+      }
+    }
+  }
+
+  /** The first requests of a process of `role` (`session.ts`, *First requests*). */
+  function firstRequests(role: SessionRole): IdeCommand[] {
+    if (role === 'eval') {
+      return [];
+    }
+    const { display: options } = deps.config.ideMode();
+    const on = (Object.keys(options) as (keyof DisplayOptions)[]).filter((option) => options[option]).map((option) => setDisplayOption(option, true));
+    // F14: a `shadow` session's loads send no highlighting.
+    return role === 'shadow' ? [enableSyntax(false), ...on] : on;
+  }
 
   /** Whether `session` counts against `idris2.ideMode.maxSessions`: a process runs or is being started. */
   function running(session: ManagedSession): boolean {
@@ -724,8 +769,7 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
           idleTimeoutMs: lesser(role) && settings.idleTimeoutMs > 0 ? Math.min(settings.idleTimeoutMs, EVAL_IDLE_TIMEOUT_MS) : settings.idleTimeoutMs,
         };
       },
-      // F14: a `shadow` session's loads send no highlighting (`session.ts`, *First request*).
-      firstRequest: role === 'shadow' ? enableSyntax(false) : undefined,
+      firstRequests: () => firstRequests(role),
       onNewerProtocol: (warning) => {
         if (!warnedProtocols.has(warning)) {
           warnedProtocols.add(warning);

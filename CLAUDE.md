@@ -16,10 +16,10 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   `holes()` and the contract suite — was M5's, which shipped second); M5 is implemented (2026-10-02,
   commit `e4eedaa`, `docs/as-built/M5.md`, likewise); M6 is implemented (2026-10-24, commit
   `ddabd4f`, `docs/as-built/M6.md`, likewise: its shadow directory holds a package file, against an
-  acceptance item, which the user kept for now). The one planned stub is M0's
-  `src/webview/goalPanel.ts` (an empty second esbuild entry, ROADMAP M0 "Out"), which M7
-  replaces.
-- `docs/as-built/` — what was built: one file per finished milestone (`M0.md` … `M6.md`) with
+  acceptance item, which the user kept for now); M7 is implemented (2026-10-30,
+  `docs/as-built/M7.md`, likewise). The whole-progress review the user runs after M8 starts from
+  `docs/review-brief.md`, kept up to date until then.
+- `docs/as-built/` — what was built: one file per finished milestone (`M0.md` … `M7.md`) with
   its deviations from ROADMAP §5 and ARCHITECTURE, measurements, experiments,
   review rounds and gate runs; `README.md` there explains the files and how to read their
   references. Moved out of ROADMAP and ARCHITECTURE on 2026-09-28 so that those two stay
@@ -152,7 +152,7 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
 - Script names follow ARCHITECTURE §13 since M0: `package` = `vsce package`,
   `vscode:prepublish` = check-types + lint + production bundle. `test:e2e` exists since M1.
 - Every `.ts` file under `src/` must be imported by something or be an esbuild entry point
-  (`src/webview/goalPanel.ts` is M0's stub entry); every file under `test/` must be a test or
+  (`src/webview/goalPanel.ts`); every file under `test/` must be a test or
   something a test uses (harness, fixtures, snapshots, corpus list, fake compiler). No dead code.
 - **Generated files — edit the generator, never the output:** `syntaxes/idris2.tmLanguage.json`
   (from `syntaxes/src/idris2.grammar.mjs`) and `language-configuration/*.json` (from
@@ -584,6 +584,34 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
   equal what the extension writes for `simple-ipkg` (`test/unit/shadow.test.ts`), and
   `check:fixtures` skips them. In the e2e suite a shadow phase follows a release of the root (not Stop
   Backend), with VS Code's inlay hints off, so that one compiler runs at a time.
+
+## Rules established by M7
+
+- **The webview is a view, and an untrusted one.** Everything it sends names something of a state it
+  was given (a button, a premise's name, a row of a `version`), never a URI, a position or a command.
+  The host keeps those (`features/goalPanel/state.ts` `PanelTargets`), checks every message
+  (`host.ts` `isFromWebview`) and drops the rest. The page's Content-Security-Policy is `default-src
+  'none'; style-src <cspSource>; script-src 'nonce-…'`, never `unsafe-inline`, and it reads only
+  `dist/` and `media/`. Text reaches the page through `textContent` and `title` only (`view.ts`);
+  compiler and file text goes through `visible`/`editorLabel` first (`state.ts`).
+- **The panel re-implements no command.** Its buttons run the M4 commands through
+  `EditingRegistration.run` with explicit arguments, under all of M4's rules: while a webview has the
+  focus `window.activeTextEditor` is undefined, so the host keeps the last Idris editor's place,
+  a command takes its document from `EditingCommandArgs` (Next Result from `EditingRunOptions.doc`),
+  and a jump or reveal passes that editor's `viewColumn`, or it opens in the panel's group.
+- **Nothing is computed for a hidden or closed panel**: it subscribes while a panel exists, and sends
+  a state only while it is visible and its script is `ready`, and only when it differs from the last.
+- **Printing options are settings** (`IDE_MODE_DISPLAY_KEYS`: a change restarts nothing). The pool
+  tells the `check` and `shadow` sessions, as first requests of each process and at a change; the
+  `eval` session never (M3's rule). `setDisplayOption` puts only the extension's constants into
+  `:interpret`. A change checks the visible documents again, also under `manual`.
+- **`src/webview/view.ts` runs on Node**: no DOM library and no jsdom, `draw` takes `DocumentLike`;
+  ambient declarations live in the entry `goalPanel.ts` only, and the bundle is an iife.
+- Tests read the panel through `TestApi.goalPanel`: `state()`, `rendered()` (the webview's
+  acknowledgement, which carries the page's text and proves that its script ran under the policy) and
+  `receive()` (a webview's message). A window reload is a packaged check (`docs/as-built/M7.md`), not
+  a test: `@vscode/test-cli`'s storage is in memory (`.vscode-test.mjs`), so no tab should come back
+  [inference, not tried], and production mode has no test API, hence the two lines the host logs.
 
 ## Platforms
 

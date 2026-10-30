@@ -46,6 +46,7 @@ import {
   proofSearchNext,
   refine,
   replCompletions,
+  setDisplayOption,
   toRichText,
   typeOf,
   version,
@@ -268,6 +269,15 @@ const REQUESTS: Readonly<Record<string, readonly Request[]>> = {
   ],
   'holes-ipkg-other': [load1('src/Holes/Other.idr'), meta(), where('todo'), introR(6, 'todo')],
   'holes-ipkg-util': [load1('src/Holes/Util.idr'), meta(), where('todo'), where('util_rhs'), where('secret_rhs')],
+  'display-options': [
+    load1('Clean.idr'), meta(),
+    text(setDisplayOption('showImplicits', true)), meta(),
+    text(setDisplayOption('fullNamespace', true)), meta(),
+    text(setDisplayOption('showMachineNames', true)), meta(),
+    load1('Clean.idr'), meta(),
+    text(setDisplayOption('showImplicits', false)), text(setDisplayOption('fullNamespace', false)), text(setDisplayOption('showMachineNames', false)),
+    meta(),
+  ],
   'holes-loose-base': [load1('Base.idr'), meta(), where('todo')],
   'holes-loose-main': [load1('Main.idr'), meta(), where('todo'), where('size_rhs'), introR(6, 'todo'), introR(9, 'size_rhs'), load1('Base.idr'), meta(), where('todo')],
   'lit-indent-editing': [load1('LitIndent.lidr'), text(addClause(9, 'go')), text(addClause(12, 'isEven')), text(generateDef(12, 'isEven'))],
@@ -531,8 +541,8 @@ function prng(seed: number): () => number {
 // -------------------------------------------------------------------------------------------
 
 suite('backend/ide protocol against the 0.8.0 transcripts', () => {
-  test('the recordings are the 67 scenarios of format 1 from idris2 0.8.0, and each has a request table', () => {
-    assert.strictEqual(SCENARIOS.length, 67);
+  test('the recordings are the 68 scenarios of format 1 from idris2 0.8.0, and each has a request table', () => {
+    assert.strictEqual(SCENARIOS.length, 68);
     for (const [scenario, t] of TRANSCRIPTS) {
       assert.strictEqual(t.meta.format, 1, scenario);
       assert.strictEqual(t.meta.idris2.version, '0.8.0', scenario);

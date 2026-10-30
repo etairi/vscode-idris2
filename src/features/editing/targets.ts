@@ -429,6 +429,34 @@ export function patternVariableAt(doc: TextDoc, pos: EditorPosition): PatternVar
 }
 
 /**
+ * The pattern variables of the clauses around `pos`, the innermost clause's first and each name
+ * once (an inner clause's binder hides an outer one's): the goal panel's Case Split and Jump of a
+ * premise (M7), a premise being a name the compiler reports and these the places the text binds one.
+ * An implicit the left-hand side does not name has none.
+ */
+export function patternVariablesAround(doc: TextDoc, pos: EditorPosition): readonly PatternVariableTarget[] {
+  const found = blockOfLine(doc, pos.line);
+  if (found === undefined) {
+    return [];
+  }
+  const { model } = found;
+  const named = new Map<string, PatternVariableTarget>();
+  for (let block: Block | undefined = found.block; block !== undefined; block = block.parent) {
+    const separator = levelTokens(model, block).find(isSeparator);
+    if (separator === undefined) {
+      continue;
+    }
+    for (const token of tokensOf(model, block, separator.start, false)) {
+      const variable = token.kind === 'ident' ? patternVariableAt(doc, positionOf(model, token.start)) : undefined;
+      if (variable !== undefined && !named.has(variable.name)) {
+        named.set(variable.name, variable);
+      }
+    }
+  }
+  return [...named.values()];
+}
+
+/**
  * Whether the clause at `pos` — the innermost block around `pos`'s line with a `=` or `=>` at its
  * level, as `patternVariableAt` finds it — starts on a line above that `=` or `=>`: its left-hand
  * side goes over several lines. The model makes a deeper-indented line a block of its own, so the

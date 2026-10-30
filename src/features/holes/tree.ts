@@ -32,7 +32,7 @@ const MAX_LABEL = 500;
 const MAX_TOOLTIP = 10_000;
 
 /** `text` cut at `MAX_TOOLTIP` (at a code point's boundary), with `…` when cut. */
-function tooltipText(text: string): string {
+export function tooltipText(text: string): string {
   if (text.length <= MAX_TOOLTIP) {
     return text;
   }
@@ -133,7 +133,7 @@ export function holeDescription(hole: Hole): string {
 }
 
 /** A premise's line in a tooltip: its label's text, the compiler's line breaks kept. */
-function premiseText(premise: Premise): string {
+export function premiseText(premise: Premise): string {
   return visible(`${multiplicityPrefix(premise)}${premise.name} : ${premise.type.text}`);
 }
 

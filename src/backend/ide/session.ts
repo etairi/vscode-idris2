@@ -81,11 +81,12 @@
  *   from the saved load (ARCHITECTURE §6.3), so the same holds for it; it sends no highlighting
  *   anyway after its first request (below). Such a frame is not checked for being an s-expression.
  *   `check` sessions parse every frame.
- * - **First request** (`SessionDeps.firstRequest`; the `shadow` role's `(:enable-syntax :False)`,
- *   F14). Sent to every process right after its handshake, before any request that waits, also
- *   an `urgent` one; it is the session's own request (no caller waits for it, and nothing cancels
- *   it), so the session is not `idle` until it has been answered. An `:error` answer is logged
- *   as a warning and changes nothing else; its time limit is `requestTimeoutMs`.
+ * - **First requests** (`SessionDeps.firstRequests`: the `shadow` role's `(:enable-syntax :False)`,
+ *   F14, and the printing options that are on, M7). Sent to every process right after its handshake,
+ *   in order, before any request that waits, also an `urgent` one; they are the session's own
+ *   requests (no caller waits for them, and nothing cancels them), so the session is not `idle` until
+ *   they have been answered. An `:error` answer is logged as a warning and changes nothing else;
+ *   the time limit of each is `requestTimeoutMs`.
  * - **Program output.** Over stdio every unframed item — a complete line, or the text before a
  *   reply glued to it (`wire.ts`) — is the process's own output in the protocol stream (F5): the
  *   compiler's log lines (`LOG <topic>:<level>: …`, which `logString` writes with `putStrLn` to
@@ -257,8 +258,8 @@ export interface SessionDeps {
   limits(): SessionLimits;
   /** Called when a process reports a protocol version above 2.1, with the warning text. */
   onNewerProtocol(warning: string): void;
-  /** Sent to every process right after its handshake, before any waiting request (module comment, *First request*). */
-  readonly firstRequest?: IdeCommand;
+  /** Sent to every process right after its handshake, before any waiting request (module comment, *First requests*); read for each process. */
+  firstRequests?(): readonly IdeCommand[];
 }
 
 /** An `IdeSession` with the controls the pool uses. */
@@ -1133,15 +1134,13 @@ class Session implements ManagedSession {
         `${PROTOCOL.major}.${PROTOCOL.minor}, which this extension was written for; some answers may be misread`;
       this.deps.onNewerProtocol(warning);
     }
-    if (this.deps.firstRequest !== undefined) {
-      // Queued before the change to `ready`, so that a request a listener makes then comes after it.
-      this.queue.unshift(this.firstEntry(this.deps.firstRequest));
-    }
+    // Queued before the change to `ready`, so that a request a listener makes then comes after them.
+    this.queue.unshift(...(this.deps.firstRequests?.() ?? []).map((command) => this.firstEntry(command)));
     this.setState('ready', 'handshake', warning);
     this.pump();
   }
 
-  /** The entry of `SessionDeps.firstRequest` (module comment, *First request*). */
+  /** An entry of `SessionDeps.firstRequests` (module comment, *First requests*). */
   private firstEntry(command: IdeCommand): Entry {
     const name = commandName(command);
     const waiter: Waiter = {

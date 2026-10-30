@@ -7,7 +7,7 @@ that each scenario names. `0.8.0/` holds the recordings of the Homebrew `idris2`
 (`/opt/homebrew/bin/idris2`, macOS arm64), made on 2026-09-27; the eight M3 scenarios (from
 `shapes-lookups` to `eval-socket` in the table below) on 2026-09-29; the M4 scenarios (from
 `clean-split-columns` on, 23 recordings) on 2026-09-30; the two M6 scenarios (`shadow-type-error`,
-`shadow-hole`) on 2026-10-24.
+`shadow-hole`) on 2026-10-24; M7's `display-options` on 2026-10-30.
 
 ## Recording
 

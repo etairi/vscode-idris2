@@ -12,6 +12,7 @@ import { IdrisException } from '../../src/core/errors';
 import { Emitter } from '../../src/core/event';
 import type { GateVerdict, PermitReason, SessionGate } from '../../src/core/trust';
 import { checkBuildDir, createTunedSessionPool, EVAL_IDLE_TIMEOUT_MS, evalBuildDir, extraArgsProblem, launchDifferences, sessionLaunch } from '../../src/backend/ide/pool';
+import { enableSyntax, setDisplayOption } from '../../src/backend/ide/protocol';
 import { DEFAULT_SESSION_TIMING } from '../../src/backend/ide/session';
 import { shadowDirectoryOf } from '../../src/backend/ide/shadow';
 import type { IdeSession, Reply, SessionLaunch, SessionPool, SessionPoolChange } from '../../src/backend/ide/types';
@@ -30,6 +31,7 @@ const DEFAULTS: IdeModeSettings = {
   idleTimeoutMs: 600_000,
   maxSessions: 0,
   maxBackgroundChecks: 0,
+  display: { showImplicits: false, showMachineNames: false, fullNamespace: false },
 };
 
 /** The setting (relative to `idris2.`) behind each field of `IdeModeSettings`. */
@@ -43,6 +45,7 @@ const SETTING_KEYS: Record<keyof IdeModeSettings, string> = {
   idleTimeoutMs: 'ideMode.idleTimeout',
   maxSessions: 'ideMode.maxSessions',
   maxBackgroundChecks: 'ideMode.maxBackgroundChecks',
+  display: 'ideMode.showImplicits',
 };
 
 class FakeConfig {
@@ -155,7 +158,7 @@ async function answered(h: ReturnType<typeof setup>, session: IdeSession): Promi
     () => (settled = true),
   );
   const done = new Set<string>();
-  for (let round = 0; round < 3 && !settled; round++) {
+  for (let round = 0; round < 6 && !settled; round++) {
     await flush();
     const t = h.transports.last();
     const id = t.lastSent().id;
@@ -1069,6 +1072,108 @@ suite('backend/ide/pool', () => {
   });
 
   // M3: the eval session of a root (types.ts SessionRole; ROADMAP §9, 2026-09-28).
+  suite('printing options (M7)', () => {
+    const OFF = DEFAULTS.display;
+    const IMPLICITS = { ...OFF, showImplicits: true };
+    const BOTH = { ...IMPLICITS, fullNamespace: true };
+    const commands = (transport: { sent: readonly { command: unknown }[] }): unknown[] => transport.sent.map((sent) => sent.command);
+
+    test('a new check process is told the options that are on, in order, before the caller\'s request; none on: nothing', async () => {
+      const h = setup();
+      h.config.settings = { ...DEFAULTS, display: BOTH };
+      await answered(h, h.pool.sessionFor(LOOSE, 'check'));
+      assert.deepStrictEqual(commands(h.transports.last()), [setDisplayOption('showImplicits', true), setDisplayOption('fullNamespace', true), typeOf('x')]);
+      const off = setup();
+      await answered(off, off.pool.sessionFor(LOOSE, 'check'));
+      assert.deepStrictEqual(commands(off.transports.last()), [typeOf('x')]);
+    });
+
+    test('a shadow process after its (:enable-syntax :False); an eval process is never told', async () => {
+      const h = setup();
+      h.config.settings = { ...DEFAULTS, display: IMPLICITS };
+      await answered(h, h.pool.sessionFor(LOOSE, 'shadow'));
+      assert.deepStrictEqual(commands(h.transports.last()), [enableSyntax(false), setDisplayOption('showImplicits', true), typeOf('x')]);
+      await answered(h, h.pool.sessionFor(LOOSE, 'eval'));
+      assert.deepStrictEqual(commands(h.transports.last()), [typeOf('x')]);
+    });
+
+    test('the settings are read for each process: a restart is told what holds then', async () => {
+      const h = setup();
+      const session = h.pool.sessionFor(LOOSE, 'check');
+      await answered(h, session);
+      h.config.settings = { ...DEFAULTS, display: IMPLICITS };
+      h.pool.stop(LOOSE);
+      await flush();
+      await answered(h, session);
+      assert.strictEqual(h.transports.all.length, 2);
+      assert.deepStrictEqual(commands(h.transports.last()), [setDisplayOption('showImplicits', true), typeOf('x')]);
+    });
+
+    test('a change goes to the check and shadow processes that run, restarting none; the eval process and a stopped session get nothing', async () => {
+      const h = setup();
+      await answered(h, h.pool.sessionFor(LOOSE, 'check'));
+      const [check] = h.transports.all;
+      await answered(h, h.pool.sessionFor(LOOSE, 'eval'));
+      const evaluation = h.transports.last();
+      await answered(h, h.pool.sessionFor(LOOSE, 'shadow'));
+      const shadow = h.transports.last();
+      const stopped = h.pool.sessionFor(projectRoot(), 'check');
+      const sentBefore = [check, evaluation, shadow].map((t) => t.sent.length);
+      h.config.set({ display: IMPLICITS });
+      await flush();
+      assert.deepStrictEqual(commands(check).slice(sentBefore[0]), [setDisplayOption('showImplicits', true)]);
+      assert.deepStrictEqual(commands(shadow).slice(sentBefore[2]), [setDisplayOption('showImplicits', true)]);
+      assert.strictEqual(evaluation.sent.length, sentBefore[1]);
+      assert.strictEqual(h.transports.all.length, 3, 'no process started');
+      assert.strictEqual(stopped.state, 'stopped');
+    });
+
+    test('only what changed is sent, on or off; a change of another setting sends nothing', async () => {
+      const h = setup();
+      const session = h.pool.sessionFor(LOOSE, 'check');
+      await answered(h, session);
+      const t = h.transports.last();
+      const answerAll = async (): Promise<void> => {
+        await flush();
+        t.message(ret(t.lastSent().id));
+        await flush();
+      };
+      h.config.set({ display: IMPLICITS });
+      await answerAll();
+      h.config.set({ display: BOTH });
+      await answerAll();
+      h.config.set({ display: { ...BOTH, showImplicits: false } });
+      await answerAll();
+      assert.deepStrictEqual(commands(t).slice(-3), [
+        setDisplayOption('showImplicits', true),
+        setDisplayOption('fullNamespace', true),
+        setDisplayOption('showImplicits', false),
+      ]);
+      const sent = t.sent.length;
+      h.config.set({ requestTimeoutMs: 1_000 });
+      await flush();
+      assert.strictEqual(t.sent.length, sent);
+    });
+
+    test('a compiler\'s error or a lost request is logged; the session goes on', async () => {
+      const h = setup();
+      const session = h.pool.sessionFor(LOOSE, 'check');
+      await answered(h, session);
+      const t = h.transports.last();
+      h.config.set({ display: IMPLICITS });
+      await flush();
+      t.message({ kind: 'return', id: t.lastSent().id, payload: { kind: 'error', message: 'no such option', highlighting: [] } });
+      await flush();
+      assert.ok(h.log.lines.some((line) => /printing option showImplicits was not set: no such option/.test(line)), h.log.lines.join('\n'));
+      assert.strictEqual(session.state, 'ready');
+      h.config.set({ display: OFF });
+      await flush();
+      h.pool.stop(LOOSE);
+      await flush();
+      assert.strictEqual(h.log.lines.filter((line) => /was not set/.test(line)).length, 2, h.log.lines.join('\n'));
+    });
+  });
+
   suite('the eval role (M3)', () => {
     const base = { cwd: '/w/simple-ipkg', idris2: IDRIS2_PATH, env: {}, platform: 'darwin' as const };
     const buildDirArgs = (launch: SessionLaunch) => launch.args.filter((_, i, a) => a[i - 1] === '--build-dir');

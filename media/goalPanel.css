@@ -1,0 +1,173 @@
+/* The goal panel (src/webview/view.ts): the theme's colours and fonts, nothing of its own. */
+body {
+  padding: 8px 12px;
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-background);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+}
+
+code {
+  font-family: var(--vscode-editor-font-family);
+  font-size: var(--vscode-editor-font-size);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+h2 {
+  margin: 0;
+  font-size: 1em;
+  font-weight: 600;
+}
+
+section {
+  margin-top: 12px;
+}
+
+button {
+  padding: 2px 8px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 2px;
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover:enabled {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+input[type='text'] {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 6px;
+  border: 1px solid var(--vscode-input-border, transparent);
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  font-family: var(--vscode-editor-font-family);
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.file,
+.muted {
+  color: var(--vscode-descriptionForeground);
+}
+
+.file {
+  margin: 8px 0 0;
+}
+
+.stale {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 4px 8px;
+  border-left: 3px solid var(--vscode-editorWarning-foreground);
+}
+
+.stale.hidden {
+  visibility: hidden;
+}
+
+.title,
+.premise {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.title h2,
+.premise code {
+  flex: 1;
+  min-width: 0;
+}
+
+.premise {
+  margin-top: 4px;
+}
+
+.rule {
+  margin: 6px 0;
+  border-top: 1px solid var(--vscode-editorWidget-border, var(--vscode-foreground));
+}
+
+.conclusion {
+  display: block;
+}
+
+.actions,
+.refine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.choices .choice {
+  display: block;
+  width: 100%;
+  margin: 4px 0;
+  text-align: left;
+  font-family: var(--vscode-editor-font-family);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  margin-top: 4px;
+  padding: 2px 4px;
+  border: none;
+  color: inherit;
+  background: none;
+  text-align: left;
+}
+
+.row:hover:enabled {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.row.current {
+  background: var(--vscode-list-inactiveSelectionBackground);
+}
+
+.messages .row {
+  flex-direction: column;
+  gap: 0;
+  border-left: 3px solid var(--vscode-editorInfo-foreground);
+}
+
+.messages .row.error {
+  border-left-color: var(--vscode-editorError-foreground);
+}
+
+.messages .row.warning {
+  border-left-color: var(--vscode-editorWarning-foreground);
+}

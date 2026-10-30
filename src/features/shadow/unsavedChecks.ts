@@ -364,6 +364,14 @@ export class UnsavedChecks implements IDisposable {
     this.reset(doc);
   }
 
+  /** The active document is checked again if it may be, whatever was shown (the printing options changed). */
+  recheck(): void {
+    for (const t of this.tracked.values()) {
+      t.shown = undefined;
+    }
+    this.activeChanged();
+  }
+
   private settingChanged(): void {
     for (const t of [...this.tracked.values()]) {
       if (!this.enabled(t.doc)) {

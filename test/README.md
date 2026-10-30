@@ -605,6 +605,31 @@ IDE-mode transcripts are their ground truth.
   `saveBeforeAction.test.ts` (no save while the unsaved text is checked), `protocolTranscripts.test.ts`,
   `manifest.test.ts`.
 
+## Tests of M7
+
+- `unit/goalPanelState.test.ts` — `features/goalPanel/state.ts`: the hole shown (cursor, line, pin,
+  several of one name), premises and what they offer, declarations, the limits of the lists, the
+  Markdown of Copy, untrusted text.
+- `unit/goalPanelView.test.ts` — `webview/view.ts` on a fake document: what is drawn from a state,
+  the messages its controls send, that text stays text, what survives a redraw.
+- `unit/goalPanelHost.test.ts` — `features/goalPanel/host.ts`, `html.ts` against fakes of the `vscode`
+  parts they use: the Content-Security-Policy, `isFromWebview` (and forged messages), opening,
+  closing and restoring, what is sent when, the place while the focus is in the panel, every button,
+  choices, Pin, the options.
+- Beside them: `pool.test.ts` (*printing options*), `session.test.ts` (first requests),
+  `protocolTranscripts.test.ts` (`display-options`), `editing.test.ts` (arguments, `choose`,
+  `patternVariablesAround`), `cycling.test.ts` (`doc`, `onDidChangeCycle`), `holesView.test.ts`
+  (`relist`, `reveal`'s view column), `unsavedChecks.test.ts` (`recheck`), `diagnosticsChecks.test.ts`
+  (`recheckVisible` with `manualToo`), `manifest.test.ts`, `keybindings.test.ts`,
+  `showKeybindings.test.ts`.
+- `integration/holes/panel.test.ts` (suite `holes`, the fake compiler): the script runs under the
+  panel's policy in the VS Code of each CI platform; the holes at the cursor; a row in another file.
+- `integration/intelligence-loose/keybindings.test.ts`: `,`, and the second key's collisions, which
+  it prints and pins (only Insert Line Above is shadowed in an editor, on purpose).
+- `e2e/goalPanel.test.ts` (real compiler, a copy of `broken`): ROADMAP M7's acceptance but the window
+  reload, with the focus really in the panel. `e2e/lsp.test.ts`: the goal and a printing option over
+  the real server. The reload: `docs/as-built/M7.md`, *Packaged-extension check*.
+
 ## Integration and e2e of M6
 
 - `integration/intelligence/unsaved.test.ts` (suite `intelligence`, the fake compiler replaying the

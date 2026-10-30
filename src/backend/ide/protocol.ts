@@ -17,6 +17,7 @@
  * the typed result, or the compiler's error, which is an answer, not a failure. A payload of
  * another shape throws an `IdrisException` of kind `ProtocolError`.
  */
+import type { DisplayOptions } from '../../core/config';
 import { IdrisException } from '../../core/errors';
 import { isKeyword, OPERATOR_CHARACTERS } from '../../core/idrisSyntax';
 import { utf16Length, type IdeReplyPoint, type IdeReplySpan, type IdeRequestPoint } from '../../core/positions';
@@ -438,6 +439,22 @@ export function isOperatorInParentheses(text: string): boolean {
  */
 export function enableSyntax(on: boolean): Sexp {
   return list(sym('enable-syntax'), bool(on));
+}
+
+/** The compiler's name of each printing option (`setOption`, `src/Idris/Parser.idr` 2047–2054 on v0.8.0 [src]). */
+const DISPLAY_OPTIONS: Readonly<Record<keyof DisplayOptions, string>> = {
+  showImplicits: 'showimplicits',
+  showMachineNames: 'showmachinenames',
+  fullNamespace: 'shownamespace',
+};
+
+/**
+ * `(:interpret ":set showimplicits")`, or `:unset`: a printing option of this process (F27). Answer:
+ * `(:ok "")`; it lasts over later loads, and `:metavariables` prints under it at once [live,
+ * transcript `display-options`]. Only the extension's constants reach this `:interpret`.
+ */
+export function setDisplayOption(option: keyof DisplayOptions, on: boolean): Sexp {
+  return interpret(`:${on ? 'set' : 'unset'} ${DISPLAY_OPTIONS[option]}`);
 }
 
 /** The bare symbol `:version` (F4). Answer: `decodeVersion`. */

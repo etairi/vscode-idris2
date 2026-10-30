@@ -47,10 +47,12 @@ export type HolesApi = HolesTreeApi &
     >;
   };
 
-/** What `registerHoles` returns: the model, and for the test API the tree and its view. */
+/** What `registerHoles` returns: the model, for the test API the tree and its view, and for the goal panel `reveal`. */
 export interface Holes extends HolesRegistration {
   readonly tree: HolesTree;
   readonly view: vscode.TreeView<HoleNode>;
+  /** Opens the hole's file, in `viewColumn` if given (not the active group: a webview's), and selects its `?name`. */
+  reveal(ref: HoleRef, viewColumn?: vscode.ViewColumn): Promise<void>;
 }
 
 /** The longest name a notification quotes, in UTF-16 code units. */
@@ -194,7 +196,7 @@ export function registerHoles(api: HolesApi, deps: HolesDeps, options: RegisterH
 
   // --- revealing a hole ------------------------------------------------------------------------
 
-  const reveal = async (ref: HoleRef): Promise<void> => {
+  const reveal = async (ref: HoleRef, viewColumn?: vscode.ViewColumn): Promise<void> => {
     const shown = `?${editorLabel(ref.name, MAX_QUOTED)}`;
     const base = editorLabel(path.basename(ref.file), MAX_QUOTED);
     let doc = openDocument(ref.file);
@@ -224,7 +226,10 @@ export function registerHoles(api: HolesApi, deps: HolesDeps, options: RegisterH
       );
       return;
     }
-    await api.window.showTextDocument(text, { selection: new api.Range(found.start.line, found.start.character, found.end.line, found.end.character) });
+    await api.window.showTextDocument(text, {
+      selection: new api.Range(found.start.line, found.start.character, found.end.line, found.end.character),
+      ...(viewColumn === undefined ? {} : { viewColumn }),
+    });
   };
   store.add(
     api.commands.registerCommand(
@@ -328,5 +333,5 @@ export function registerHoles(api: HolesApi, deps: HolesDeps, options: RegisterH
     ),
   );
 
-  return { model, tree, view, dispose: () => store.dispose() };
+  return { model, tree, view, reveal, dispose: () => store.dispose() };
 }
