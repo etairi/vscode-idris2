@@ -661,7 +661,8 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
   /** Sets `option` in the process of `session`; a failure is logged, and changes nothing else. */
   function tellPrinting(session: IdeSession, option: keyof DisplayOptions, on: boolean): void {
     const failed = (why: string): void => deps.log.warn(`Idris 2 (${session.cwd}): the printing option ${option} was not set: ${why}`);
-    session.request(setDisplayOption(option, on), { kind: 'lookup' }).then(
+    // A barrier: what a load behind this is printed under must be this (review 1, N2).
+    session.request(setDisplayOption(option, on), { kind: 'lookup', barrier: true }).then(
       ({ payload }) => {
         if (payload.kind === 'error') {
           failed(payload.message);

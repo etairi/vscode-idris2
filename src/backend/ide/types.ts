@@ -563,6 +563,11 @@ interface RequestOptionsBase {
    */
   readonly urgent?: () => boolean;
   /**
+   * What the requests behind this one depend on (a printing option): a load queued after it is not
+   * merged with one queued before it, and nothing `urgent` behind it goes before it.
+   */
+  readonly barrier?: boolean;
+  /**
    * Called with the reply when it arrives, before the session chooses the next request to send, so
    * that the requests it makes (`urgent` ones) are sent before those that waited: M4's holes of a
    * load (`IdeBackend.holes`), which a load queued behind would otherwise replace. Not called when

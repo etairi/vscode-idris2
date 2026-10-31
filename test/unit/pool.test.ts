@@ -13,7 +13,7 @@ import { Emitter } from '../../src/core/event';
 import type { GateVerdict, PermitReason, SessionGate } from '../../src/core/trust';
 import type { BuildFiles } from '../../src/backend/ide/buildFiles';
 import { checkBuildDir, createTunedSessionPool, EVAL_IDLE_TIMEOUT_MS, evalBuildDir, extraArgsProblem, launchDifferences, sessionLaunch } from '../../src/backend/ide/pool';
-import { enableSyntax, setDisplayOption } from '../../src/backend/ide/protocol';
+import { enableSyntax, loadFile, setDisplayOption } from '../../src/backend/ide/protocol';
 import { DEFAULT_SESSION_TIMING } from '../../src/backend/ide/session';
 import { shadowDirectoryOf } from '../../src/backend/ide/shadow';
 import type { IdeSession, Reply, SessionLaunch, SessionPool, SessionPoolChange } from '../../src/backend/ide/types';
@@ -1108,6 +1108,27 @@ suite('backend/ide/pool', () => {
   // M3: the eval session of a root (types.ts SessionRole; ROADMAP §9, 2026-09-28).
   suite('printing options (M7)', () => {
     const OFF = DEFAULTS.display;
+
+    test('the load after a change comes after that change, also when a load of the file was waiting: its holes are printed under it', async () => {
+      const h = setup();
+      const session = h.pool.sessionFor(LOOSE, 'check');
+      await answered(h, session);
+      const t = h.transports.last();
+      const path = '/w/loose-file/A.idr';
+      const load = (version: number): Promise<Reply> => session.request(loadFile(path), { kind: 'load', file: { path, version } });
+      const before = commands(t).length;
+      void load(1);
+      void load(2);
+      await flush();
+      h.config.set({ display: { ...OFF, fullNamespace: true } });
+      void load(3);
+      await flush();
+      for (let round = 0; round < 3; round++) {
+        t.message(ret(t.lastSent().id));
+        await flush();
+      }
+      assert.deepStrictEqual(commands(t).slice(before), [loadFile(path), loadFile(path), setDisplayOption('fullNamespace', true), loadFile(path)]);
+    });
     const IMPLICITS = { ...OFF, showImplicits: true };
     const BOTH = { ...IMPLICITS, fullNamespace: true };
     const commands = (transport: { sent: readonly { command: unknown }[] }): unknown[] => transport.sent.map((sent) => sent.command);

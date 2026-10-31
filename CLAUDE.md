@@ -676,6 +676,9 @@ The rules of the fixes to M1–M6 (those to M7 and M8 are in their sections abov
   back on a document ask `showsUnsavedCheck`, and a load that rebuilt another file of the root clears
   `shown` (M19). A saved load does not refresh the holes of a document an unsaved check answers for
   (M18): `holes` would give that check's, and imported holes have no place there.
+- **Slow machines find what fast ones hide** (N2): run `npm run test:e2e` under `taskpolicy -b` before a
+  push that changes timing. A printing option is a `barrier` in the session's queue: no load merges or
+  passes across it, or its holes are printed the old way.
 - **A command needs the compiler anyway** (M20): nothing automatic may start a compiler that an idle stop
   ended, but a command on unsaved text may, through `UnsavedChecks.checkNow`, before it saves anything.
 - **The load after a save builds the text saved** (N1): the compiler compares modification times only, so

@@ -82,7 +82,7 @@ Run one at a time, in this order. The expected figures are from after the fixes 
 
 ```sh
 npm run check-types && npm run lint
-npm run test:unit                 # 3,159 passing, 1 pending
+npm run test:unit                 # 3,161 passing, 1 pending
 npm run test:grammar              # 195 passing
 npm test                          # eleven suites, 180 tests
 IDRIS2_E2E=1 npm run test:e2e     # 105 passing

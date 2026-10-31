@@ -80,10 +80,15 @@ suite('E2E: check while typing (ROADMAP M6) on a fresh copy of simple-ipkg', fun
     await waitFor('no IDE-mode process', () => (ideProcesses().length === 0 ? true : undefined));
   }
 
-  /** Stops the sessions of `of` as the release of a root does (its state reads `none`, not `stopped`), and waits until no compiler process is left. */
+  /**
+   * Stops the sessions of `of` as the release of a root does (its state reads `none`, not `stopped`),
+   * and waits until they have ended. Only those: the document these tests come back to has lost its
+   * check by then, and starts one when it becomes active again (review 1, M20).
+   */
   async function release(of: Classification): Promise<void> {
     api.sessions.release(of);
-    await waitFor('no IDE-mode process', () => (ideProcesses().length === 0 ? true : undefined));
+    const running = (): boolean => api.sessions.sessions().some((s) => s.root.dir === of.dir && s.state !== 'stopped' && s.state !== 'failed');
+    await waitFor('the sessions of the root to end', () => (running() ? undefined : true));
   }
 
   /** Replaces the text of line `line` with `text` (unsaved); the document's version after it. */
@@ -331,7 +336,7 @@ suite('E2E: check while typing (ROADMAP M6) on a fresh copy of simple-ipkg', fun
       // setting the delay that started ends with no check (review 1, M20).
       await waitFor('the delay to end', () => (api.unsavedChecks.pending(doc.uri) ? undefined : true));
       await release(root);
-      assert.strictEqual(ideProcesses().length, 0);
+      await waitFor('no IDE-mode process', () => (ideProcesses().length === 0 ? true : undefined));
       await setLine(6, 'greeting = shout 9');
       // Decided at the edit. Had a check been scheduled, the revert ends it before it starts a
       // compiler beside the one of the save's check (one at a time, CLAUDE.md).

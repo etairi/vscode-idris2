@@ -30,7 +30,8 @@
  *   `typeAt`, `docsFor`, `definition` — when an urgent reload replaced that load; completions and
  *   namespace listings are answered from the newer load), but never before the one in flight, nor
  *   before one whose `beforeSend` check runs or
- *   has passed for the process (that check and the write stay one step, *Consent* in docs/as-built/M2.md).
+ *   has passed for the process (that check and the write stay one step, *Consent* in docs/as-built/M2.md),
+ *   nor before a `barrier` (`RequestOptions.barrier`), which no load is merged across either.
  *   A request's `onReply` hooks run when its reply arrives, before the next request is chosen, so
  *   that the urgent requests they make go first (M4: the holes of a load).
  *   The checks mark the active document's load so while `idris2.ideMode.maxBackgroundChecks` is
@@ -309,6 +310,8 @@ interface Entry {
   beforeSend: (() => Promise<void>) | undefined;
   /** `RequestOptions.urgent` of the newest caller. */
   urgent: (() => boolean) | undefined;
+  /** `RequestOptions.barrier`. */
+  readonly barrier?: boolean;
   /** `RequestOptions.onReply` of every caller. */
   readonly onReply: ((reply: Reply) => void)[];
   /** The session's own first request to the process (module comment, *First request*). */
@@ -496,7 +499,7 @@ class Session implements ManagedSession {
     return new Promise<Reply>((resolve, reject) => {
       const waiter: Waiter = { resolve, reject };
       const file = options.kind === 'load' ? options.file : undefined;
-      let entry = file === undefined ? undefined : this.queue.find((e) => e.file !== undefined && e.file.path === file.path);
+      let entry = file === undefined ? undefined : this.loadToMerge(file.path);
       if (entry !== undefined) {
         entry.command = command;
         entry.file = file;
@@ -519,6 +522,7 @@ class Session implements ManagedSession {
           onReply: [],
           passedFor: undefined,
           running: undefined,
+          barrier: options.barrier === true,
         };
         this.queue.push(entry);
       }
@@ -611,12 +615,27 @@ class Session implements ManagedSession {
    * `urgent`, else the first.
    */
   private next(proc: Proc): Entry | undefined {
+    const barrier = this.queue.findIndex((entry) => entry.barrier);
     return (
       this.queue.find((entry) => entry.first === true) ??
       this.queue.find((entry) => entry.passedFor === proc || entry.running?.proc === proc) ??
-      this.queue.find((entry) => isUrgent(entry)) ??
+      (barrier < 0 ? this.queue : this.queue.slice(0, barrier)).find((entry) => isUrgent(entry)) ??
       this.queue[0]
     );
+  }
+
+  /** The queued load of `path` a new load merges with: the last one, unless a barrier comes after it (`RequestOptions.barrier`). */
+  private loadToMerge(path: string): Entry | undefined {
+    for (let i = this.queue.length - 1; i >= 0; i--) {
+      const entry = this.queue[i];
+      if (entry.file?.path === path) {
+        return entry;
+      }
+      if (entry.barrier) {
+        return undefined;
+      }
+    }
+    return undefined;
   }
 
   private dispatch(proc: Proc): void {

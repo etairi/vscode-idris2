@@ -930,6 +930,29 @@ suite('backend/ide/session', () => {
       assert.strictEqual(between.state, 'pending');
     });
 
+    test('a load stays behind a request it depends on: not merged with a load before it, nor sent before it as urgent', async () => {
+      const h = await readySession();
+      const busy = h.lookup('busy');
+      const path = '/w/A.idr';
+      const load = (version: number, urgent?: () => boolean) =>
+        track(h.session.request(loadFile(path), { kind: 'load', file: { path, version }, ...(urgent === undefined ? {} : { urgent }) }));
+      load(1);
+      track(h.session.request(typeOf('option one'), { kind: 'lookup', barrier: true }));
+      load(2, () => true);
+      load(3);
+      track(h.session.request(typeOf('option two'), { kind: 'lookup', barrier: true }));
+      load(4);
+      await flush();
+      const sent = (): readonly unknown[] => h.t.sent.slice(2).map((s) => s.command);
+      for (let id = 2n; id < 8n; id++) {
+        h.t.message(ret(id, ok()));
+        await flush();
+      }
+      assert.strictEqual(busy.state, 'resolved');
+      assert.deepStrictEqual(sent(), [loadFile(path), typeOf('option one'), loadFile(path), typeOf('option two'), loadFile(path)], 'versions 2 and 3 merged, between the options');
+      assert.deepStrictEqual(h.session.loadedFile, { path, version: 4 });
+    });
+
     test('a load of the file in flight is queued, not merged; cancelling one of two merged callers keeps the other', async () => {
       const h = await readySession();
       const path = '/w/A.idr';

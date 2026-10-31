@@ -56,5 +56,7 @@ they land. H4 is tested with scripted sessions only, as a live run needs two com
 |---|---|---|---|---|
 | N1 | the compiler, VS Code's save | A load that overlaps a save leaves a build file newer than the source, from what it read before: the earlier text, or none at all if it read between VS Code's truncation and its write. The next load then builds nothing, on both backends | [live]: `docs/measurements/save-race.md`. The limitation M2 recorded, whose empty form was found here | Fixed for saves in the editor: once nothing runs, a build file newer than the file saved is set back, so that the load after a save always builds the text saved. Live tests of both backends fail without it. A change by another program, another window or the REPL has no save to act on, and stays in the guide, *Changes during a build* |
 
+| N2 | `backend/ide/session.ts` | A printing option changed while a load of the file waits: the new load merged into that one, ahead of the option, and an `urgent` load could pass it, so the holes were printed the old way and nothing printed them again. Two options ticked quickly in the goal panel could leave one with no effect | [live]: the goal panel's e2e test at low CPU priority, 1 run of 2. Reading the queue explained it, [unit] on the real session and pool | Fixed: a printing option is a barrier, which no load merges or passes across |
+
 The low findings are in the review's report and were not triaged here. Its candidates and probes were kept
 in `/tmp/vi2-review`, which does not survive a reboot.
