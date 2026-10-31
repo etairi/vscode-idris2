@@ -61,6 +61,7 @@ import type { IdeReplySpan } from '../../core/positions';
 import type { SessionGate, WorkspaceTrust } from '../../core/trust';
 import type { Classification, ProjectIndex } from '../../project/types';
 import type { ToolchainService } from '../../toolchain/types';
+import type { BuildFiles } from './buildFiles';
 
 // -------------------------------------------------------------------------------------------
 // S-expressions (`Protocol/SExp.idr`, `Protocol/SExp/Parser.idr` on v0.8.0, identical on master
@@ -674,6 +675,16 @@ export interface SessionPoolChange {
  * the active root's, least recently used first. Every role counts towards the limit. `dispose`
  * stops every process at once (deactivation).
  */
+/**
+ * What goes around an edit's request (`SessionPool.plainPrinting`): `off` and `on` each queue a request
+ * per printing option that is on. Called with the edit's request in one turn, so that nothing comes
+ * between them in the session's queue.
+ */
+export interface PlainPrinting {
+  off(): void;
+  on(): void;
+}
+
 export interface SessionPool extends IDisposable {
   /**
    * The session of `role` for `root`, created (in `stopped`) if there is none. No process starts
@@ -692,6 +703,12 @@ export interface SessionPool extends IDisposable {
    * relative `builddir` is resolved against it. The one place this is computed (M6, M9 read it here).
    */
   effectiveCheckBuildDir(root: Classification): string;
+  /**
+   * Sets back the build files of `files` that a session of `role` wrote after they were saved
+   * (`buildFiles.ts`), so that its next load builds them; never rejects, a failure is logged. Called
+   * right before a load, when the session has nothing in flight.
+   */
+  outdateSaved(root: Classification, role: SessionRole, files: readonly string[]): Promise<void>;
   /** Stops the sessions of `root`, or of every root; each starts again on its next request. */
   stop(root?: Classification): void;
   /**
@@ -769,6 +786,13 @@ export interface SessionPool extends IDisposable {
    * order, open every spawn's preparation (`pool.ts` `prepare`). Starts and asks nothing.
    */
   startProblem(): Promise<IdrisException | undefined>;
+  /**
+   * What goes around an edit's request to `session` (`IdeMode.sendEdit`). The printing options are for
+   * reading: the compiler prints an edit's answer under them too, as text that does not parse or,
+   * worse, means something else (review 1, H1 [live, transcript `display-edits`]). A search survives
+   * them being set and unset between its steps [the same].
+   */
+  plainPrinting(session: IdeSession): PlainPrinting;
   readonly onDidChange: Event<SessionPoolChange>;
 }
 
@@ -796,4 +820,6 @@ export interface SessionPoolDeps {
    * no `shadow` session starts.
    */
   readonly shadowBase?: string;
+  /** The build files of a saved file (`outdateSaved`). */
+  readonly buildFiles: BuildFiles;
 }

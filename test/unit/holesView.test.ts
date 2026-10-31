@@ -67,6 +67,11 @@ class HolesBackend {
   /** Whether each call asked for the kept holes too (`HolesOptions.kept`). */
   readonly kept: boolean[] = [];
   answers: (() => Promise<Hole[]>)[] = [];
+  /** Whether a check of the document's unsaved text answers for it (`IdrisBackend.showsUnsavedCheck`). */
+  showsUnsaved = false;
+  showsUnsavedCheck(): boolean {
+    return this.showsUnsaved;
+  }
   holes(doc: vscode.TextDocument, options?: HolesOptions): Promise<Hole[]> {
     this.asked.push(doc.fileName);
     this.kept.push(options?.kept === true);
@@ -102,6 +107,31 @@ function storeWith(open: FakeDocument[]) {
 const names = (holes: readonly Hole[]): string[] => holes.map((h) => h.qualifiedName);
 
 suite('holes: the model, refreshed after each load', () => {
+  test('a saved load while a check of the unsaved text answers for the document: nothing is asked, which would take the places of imported holes (review 1, M18)', async () => {
+    const doc = new FakeDocument(MAIN, '');
+    const t = storeWith([doc]);
+    const located = hole('Base.todo', 'Nat', [], BASE, r(7, 15, 7, 20));
+    t.backend.answers.push(() => Promise.resolve([located, mainSize]));
+    t.load(MAIN);
+    await settle();
+    doc.edit('-- typed\n');
+    t.backend.showsUnsaved = true;
+    t.load(MAIN);
+    await settle();
+    assert.deepStrictEqual(t.backend.asked, [MAIN]);
+    assert.deepStrictEqual(t.logged, []);
+    // Its own check is the load the model takes; a saved document is asked as ever.
+    t.backend.answers.push(() => Promise.resolve([mainSize]));
+    t.unsavedLoad(MAIN, '-- typed\n');
+    await settle();
+    doc.edit('', true);
+    t.backend.showsUnsaved = false;
+    t.backend.answers.push(() => Promise.resolve([located, mainSize]));
+    t.load(MAIN);
+    await settle();
+    assert.deepStrictEqual(t.backend.asked, [MAIN, MAIN, MAIN]);
+  });
+
   test('relist (M7: idris2-lsp printed them under other options): the file\'s holes are asked for again, without a load', async () => {
     const t = storeWith([new FakeDocument(MAIN, '')]);
     t.backend.answers.push(() => Promise.resolve([mainSize]), () => Promise.resolve([mainTodo]));

@@ -60,7 +60,7 @@ suite('M8 the REPL terminal and the -- >>> lenses (fake compiler)', () => {
     };
     assert.deepStrictEqual(await answerOf('-- >>> double 2', 1), ['-- double 2 = 4']);
     assert.deepStrictEqual(await answerOf('-- >>> :t double', 1), ['-- :t double = DocEval.double : Nat -> Nat']);
-    assert.deepStrictEqual(await answerOf('-- >>> :doc double', 3), ['-- :doc double = DocEval.double : Nat -> Nat', '--     Twice a number.', '--     Visibility: private']);
+    assert.deepStrictEqual(await answerOf('-- >>> :doc double', 3), ['-- :doc double = DocEval.double : Nat -> Nat', '-- >   Twice a number.', '-- >   Visibility: private']);
   });
 
   test('a command not on the list is refused before anything is sent: :exec main', async () => {

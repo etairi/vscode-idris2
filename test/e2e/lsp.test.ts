@@ -9,9 +9,9 @@
 // allowed folder, writes its build/ there, not into the repository. `idris2.backend.mode` is `lsp`
 // (the suite's profile), so no IDE-mode session starts: one compiler process at a time (CLAUDE.md),
 // the server; it is stopped at the end, and before the toolchain is scanned again. Every applied edit
-// is undone with one undo step and the file saved unchanged: idris2-lsp keeps a document dirty after a
-// change until it is told of a save (Server/ProcessMessage.idr 582–604 [src]) — the last editing test
-// checks that the client copes with an undo without that save.
+// is undone with one undo step: idris2-lsp keeps a document dirty after a change until it is told of a
+// save (Server/ProcessMessage.idr 582–604 [src]), and the client tells it (`DocumentSync`, *Clean
+// again*), so nothing is saved after an undo.
 import * as assert from 'assert';
 import { execFileSync } from 'child_process';
 import * as fs from 'fs';
@@ -20,8 +20,8 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import type { TestApi } from '../../src/extension';
 import type { EditingCommandId, EditingOutcome } from '../../src/features/editing/types';
-import { acceptQuickPick, answerInputBox, answerMessages, hovers, runEditing, saveUnchanged } from '../integration/support';
-import { extensionApi, waitFor } from './helpers';
+import { acceptQuickPick, answerInputBox, answerMessages, hovers, runEditing } from '../integration/support';
+import { extensionApi, slowModule, waitFor } from './helpers';
 import { copyWorkspace } from './ideDriver';
 
 const SERVER = process.env.IDRIS2_LSP ?? '';
@@ -110,12 +110,11 @@ suite('E2E: M5 idris2-lsp, the real server', function () {
     assert.deepStrictEqual(outcome, { command, kind: 'applied', uri: doc.uri.toString() });
   }
 
-  /** Undoes once (the edit must take one undo step) and saves the unchanged file, for the server. */
-  async function undoAndSave(editor: vscode.TextEditor, saved: string): Promise<void> {
+  /** Undoes once (the edit must take one undo step). */
+  async function undoEdit(editor: vscode.TextEditor, saved: string): Promise<void> {
     await vscode.window.showTextDocument(editor.document);
     await vscode.commands.executeCommand('undo');
     await waitFor('one undo to restore the file', () => (editor.document.getText() === saved && !editor.document.isDirty ? true : undefined));
-    await saveUnchanged(editor.document);
   }
 
   test('the server IDRIS2_LSP names is probed and paired with the compiler of its own installation (ROADMAP §9, decision 2 of M5)', () => {
@@ -135,8 +134,7 @@ suite('E2E: M5 idris2-lsp, the real server', function () {
       assert.ok(await vscode.workspace.applyEdit(insert));
       assert.deepStrictEqual((await hovers(doc.uri, XS)).filter((h) => h.value.includes('Vect')), [], 'a hover of the unsaved file');
       await vscode.commands.executeCommand('workbench.action.files.revert');
-      await saveUnchanged(doc);
-      await waitFor('the hover after the save', async () => ((await hovers(doc.uri, XS)).some((h) => h.value.includes('xs : Vect ?_ ?_')) ? true : undefined), 60000);
+      await waitFor('the hover after the revert', async () => ((await hovers(doc.uri, XS)).some((h) => h.value.includes('xs : Vect ?_ ?_')) ? true : undefined), 60000);
       assert.deepStrictEqual(shown.asked, [], 'notifications were shown');
     } finally {
       shown.restore();
@@ -187,7 +185,7 @@ suite('E2E: M5 idris2-lsp, the real server', function () {
       const saved = editor.document.getText();
       assertApplied(await runEditing(api, c.command, [], c.picks === true ? acceptQuickPick : undefined), c.command, editor.document);
       assert.strictEqual(editor.document.getText(), c.after(saved));
-      await undoAndSave(editor, saved);
+      await undoEdit(editor, saved);
     });
   }
 
@@ -209,6 +207,54 @@ suite('E2E: M5 idris2-lsp, the real server', function () {
     assert.ok(serverProcesses().length <= 1, JSON.stringify(serverProcesses()));
   });
 
+  test('a document with unsaved changes when the server starts counts as dirty there: no answer for the disk text at the editor\'s positions (review 1, H3)', async () => {
+    const editor = await openClean(XS);
+    await editor.edit((builder) => builder.insert(new vscode.Position(0, 0), '-- one\n-- two\n'));
+    assert.strictEqual(editor.document.isDirty, true);
+    await vscode.commands.executeCommand('idris2.restartLanguageServer');
+    await waitFor('the server to run again', () => (serverProcesses().length === 1 && api.lspClient.state.kind === 'running' ? true : undefined), 60000);
+    await new Promise((resolve) => setTimeout(resolve, 4000));
+    const answered = (await hovers(editor.document.uri, XS)).map((h) => h.value);
+    await vscode.window.showTextDocument(editor.document);
+    await vscode.commands.executeCommand('workbench.action.files.revert');
+    assert.deepStrictEqual(answered.filter((text) => /Vect/.test(text)), [], 'XS is the disk\'s position of xs, and another line here');
+    await waitFor('the hover after the revert', async () => ((await hovers(editor.document.uri, XS)).some((h) => h.value.includes('xs : Vect ?_ ?_')) ? true : undefined), 60000);
+  });
+
+  test('two documents open beside each other do not reload each other for ever (review 1, H5)', async () => {
+    const clean = await openClean(XS);
+    const other = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(file('Plain.idr')), vscode.ViewColumn.Two);
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    let changes = 0;
+    const counting = api.holes.onDidChange(() => changes++);
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    counting.dispose();
+    console.log(`      the holes changed ${changes} times in 5 s, with nothing touched`);
+    await vscode.window.showTextDocument(other.document, other.viewColumn);
+    await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+    assert.ok(changes <= 1, `${changes} refreshes in 5 s`);
+    await vscode.window.showTextDocument(clean.document, vscode.ViewColumn.One);
+  });
+
+  test('edits are not printed under the server\'s printing options: Case Split with fullNamespace and showImplicits on (review 1, H1)', async () => {
+    const editor = await openClean(XS);
+    const saved = editor.document.getText();
+    const settings = vscode.workspace.getConfiguration('idris2');
+    await settings.update('lsp.fullNamespace', true, vscode.ConfigurationTarget.Global);
+    await settings.update('lsp.showImplicits', true, vscode.ConfigurationTarget.Global);
+    try {
+      // The light bulb's request: the server caches what it prints here (its code actions), and a change of the options keeps that.
+      await vscode.commands.executeCommand('vscode.executeCodeActionProvider', editor.document.uri, new vscode.Range(XS, XS));
+      assertApplied(await runEditing(api, 'idris2.caseSplit'), 'idris2.caseSplit', editor.document);
+      console.log(`      Case Split under the options wrote: ${JSON.stringify(editor.document.getText().split('\n').slice(7, 9))}`);
+      assert.strictEqual(editor.document.getText(), spliceLines(saved, 7, 1, 'vlen [] = ?vlen_rhs_0', 'vlen (x :: xs) = ?vlen_rhs_1'));
+      await undoEdit(editor, saved);
+    } finally {
+      await settings.update('lsp.fullNamespace', undefined, vscode.ConfigurationTarget.Global);
+      await settings.update('lsp.showImplicits', undefined, vscode.ConfigurationTarget.Global);
+    }
+  });
+
   test('Clean.idr: Make Lemma inserts `vlen_rhs : Vect n a -> Nat` above vlen and replaces the hole with `(vlen_rhs xs)`', async () => {
     const editor = await openClean(VLEN_RHS);
     const saved = editor.document.getText();
@@ -217,7 +263,7 @@ suite('E2E: M5 idris2-lsp, the real server', function () {
     assert.ok(lines.includes('vlen_rhs : Vect n a -> Nat'), lines.join('\n'));
     assert.ok(lines.indexOf('vlen_rhs : Vect n a -> Nat') < lines.indexOf('vlen : Vect n a -> Nat'), lines.join('\n'));
     assert.ok(lines.includes('vlen xs = (vlen_rhs xs)'), lines.join('\n'));
-    await undoAndSave(editor, saved);
+    await undoEdit(editor, saved);
   });
 
   test('Clean.idr: Refine Hole… with S gives `(S ?vlen_rhs_0)`', async () => {
@@ -230,7 +276,7 @@ suite('E2E: M5 idris2-lsp, the real server', function () {
       input.restore();
     }
     assert.strictEqual(editor.document.getText(), spliceLines(saved, 7, 1, 'vlen xs = (S ?vlen_rhs_0)'));
-    await undoAndSave(editor, saved);
+    await undoEdit(editor, saved);
   });
 
   test('Clean.idr: Proof Search and Next Result go through the server\'s results (0, 1, …), then say it gives no more than maxCodeActionResults', async () => {
@@ -247,7 +293,6 @@ suite('E2E: M5 idris2-lsp, the real server', function () {
     }
     assert.ok(outcome.kind === 'message' && /maxCodeActionResults/.test(outcome.message), JSON.stringify(outcome));
     await vscode.commands.executeCommand('workbench.action.files.revert');
-    await saveUnchanged(doc);
   });
 
   test('Part.idr: Add Missing Cases applies the server\'s quick fix: `g (S _) = ?g_missing_case_1` where IDE mode puts it (F28)', async () => {
@@ -258,7 +303,7 @@ suite('E2E: M5 idris2-lsp, the real server', function () {
     const saved = doc.getText();
     assertApplied(await runEditing(api, 'idris2.addMissingCases'), 'idris2.addMissingCases', doc);
     assert.strictEqual(doc.getText(), spliceLines(saved, 4, 0, 'g (S _) = ?g_missing_case_1'));
-    await undoAndSave(editor, saved);
+    await undoEdit(editor, saved);
   });
 
   test('Ambig.idr: Refine Hole… with an ambiguous name says so, and changes nothing (F34: the server reports no alternatives)', async () => {
@@ -283,7 +328,54 @@ suite('E2E: M5 idris2-lsp, the real server', function () {
     await waitFor('one undo to restore the file', () => (editor.document.getText() === saved && !editor.document.isDirty ? true : undefined));
     assertApplied(await runEditing(api, 'idris2.caseSplit'), 'idris2.caseSplit', editor.document);
     assert.strictEqual(editor.document.getText(), split);
-    await undoAndSave(editor, saved);
+    await undoEdit(editor, saved);
+  });
+
+  test('a clean document reloaded from disk leaves the server answering (review 1, M4)', async () => {
+    const editor = await openClean(XS);
+    const doc = editor.document;
+    const saved = doc.getText();
+    const answers = (what: string): Promise<boolean> =>
+      waitFor(what, async () => ((await hovers(doc.uri, XS)).some((h) => h.value.includes('xs : Vect ?_ ?_')) ? true : undefined), 60000);
+    for (const text of [`${saved}-- written by another program\n`, saved]) {
+      fs.writeFileSync(doc.uri.fsPath, text);
+      await waitFor('VS Code to reload the file', () => (doc.getText() === text && !doc.isDirty ? true : undefined), 30000);
+      await answers('the hover of the reloaded file');
+    }
+  });
+
+  test('a file saved while the server builds it is built again from the text saved (review 1, N1)', async () => {
+    const uri = file('Slow.idr');
+    fs.writeFileSync(uri.fsPath, slowModule('Slow'));
+    const editor = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(uri));
+    const doc = editor.document;
+    const value = new vscode.Position(doc.lineCount - 2, 0);
+    const answers = (what: string): Promise<boolean> =>
+      waitFor(what, async () => ((await hovers(uri, value)).some((h) => h.value.includes('value : Nat')) ? true : undefined), 60000);
+    await answers('the server to load the module');
+    const saveLine = async (text: string): Promise<void> => {
+      assert.ok(await editor.edit((e) => e.replace(doc.lineAt(value.line).range, text)));
+      assert.ok(await doc.save());
+    };
+    await saveLine('value = 2');
+    // Inside the load of that save, which reads the file at its start and writes its TTC at its end.
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    await saveLine('value = "text"');
+    await waitFor('the error of the text saved last', () => vscode.languages.getDiagnostics(uri).find((d) => /FromString Nat/.test(d.message)), 60000);
+    await saveLine('value = 1');
+    await answers('the module without the error');
+    await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+  });
+
+  test('a closed document keeps no problems of the server (review 1, M17)', async () => {
+    // A file of its own, opened as a user does: VS Code holds what `openTextDocument` opened for minutes.
+    const uri = file('Closed.idr');
+    fs.writeFileSync(uri.fsPath, 'module Closed\n\nf : Nat\nf = "text"\n');
+    await vscode.commands.executeCommand('vscode.open', uri);
+    await waitFor('the error of f', () => (vscode.languages.getDiagnostics(uri).length > 0 ? true : undefined), 60000);
+    await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+    await waitFor('the file to close', () => (vscode.workspace.textDocuments.some((d) => d.uri.toString() === uri.toString()) ? undefined : true), 30000);
+    await waitFor('its problems to go', () => (vscode.languages.getDiagnostics(uri).length === 0 ? true : undefined), 30000);
   });
 
   test('a stub server printing a mismatching "Idris2 API" gets the mismatch notification (M1)', async () => {

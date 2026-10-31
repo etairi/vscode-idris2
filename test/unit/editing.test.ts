@@ -209,6 +209,14 @@ suite('features/editing: targets (what a command acts on, from the text)', () =>
     assert.strictEqual(declarationAt(types, at(14, 6))?.name, 'a'); // else the first
   });
 
+  test('coverageFunctionOf: a check of unsaved text reports the same error under its own source, which hides the saved one (review 1, M6)', () => {
+    const part = docOf('Part.idr');
+    const coverage = { source: 'idris2 (unsaved)', message: 'g is not covering.\n\nMissing cases:\n    g (S _)', range: range(2, 0, 2, 14) };
+    assert.strictEqual(coverageFunctionOf(part, coverage)?.name, 'g');
+    assert.strictEqual(coverageFunctionOf(part, { ...coverage, source: 'idris2-lsp' }), undefined);
+    assert.strictEqual(coverageFunctionOf(part, { ...coverage, source: 'another extension' }), undefined);
+  });
+
   test('coverageFunctionOf: the declaration at a coverage error that lists missing cases (the idris2 collection only), not a name from the message', () => {
     const part = docOf('Part.idr');
     const coverage = { range: range(2, 0, 2, 14), message: 'g is not covering.\n\nMissing cases:\n    g (S _)', source: 'idris2' };

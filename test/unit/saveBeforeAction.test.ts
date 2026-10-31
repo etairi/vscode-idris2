@@ -131,6 +131,61 @@ suite('features/editing: save before an action', () => {
     assert.strictEqual(doc.saves, 1);
   });
 
+  suite('in the command: a check its session no longer holds (review 1, M20)', () => {
+    const dirty = () => {
+      const api = new FakeEditingApi();
+      const backend = new FakeEditBackend();
+      backend.checksUnsaved = true;
+      backend.answer = () => Promise.resolve({ type: 'failed', message: 'No search results' });
+      const env = editingDeps(backend);
+      registerEditing(api.asApi(), env.deps, { keepOutcomes: true });
+      const doc = api.workspace.open(new FakeTextDoc({ fileName: '/w/broken/Clean.idr', text: 'module Clean\n\nf : Nat\nf = ?h\n', isDirty: true }));
+      api.window.showAt(doc, 3, 5);
+      return { api, backend, env, doc };
+    };
+
+    test('the unsaved text is checked first, the command waits for that, and nothing is saved', async () => {
+      const t = dirty();
+      let answered = false;
+      t.env.unsaved.run = async () => {
+        await Promise.resolve();
+        assert.strictEqual(t.backend.requests.length, 0, 'the command waits for the check');
+        t.backend.unsavedShown = true;
+        answered = true;
+      };
+      await t.api.run('idris2.proofSearch');
+      assert.ok(answered);
+      assert.deepStrictEqual(t.env.unsaved.asked, [t.doc]);
+      assert.strictEqual(t.doc.saves, 0);
+      assert.strictEqual(t.backend.requests.length, 1);
+    });
+
+    test('a check that did not land on this text leaves the setting to decide, as before', async () => {
+      const t = dirty();
+      await t.api.run('idris2.proofSearch');
+      assert.strictEqual(t.env.unsaved.asked.length, 1);
+      assert.strictEqual(t.doc.saves, 1);
+      assert.strictEqual(t.backend.requests.length, 1);
+    });
+
+    test('no check is asked for what needs none: its check is held, the file is saved, or the backend has no such check', async () => {
+      const shown = dirty();
+      shown.backend.unsavedShown = true;
+      await shown.api.run('idris2.proofSearch');
+      assert.deepStrictEqual([shown.env.unsaved.asked.length, shown.doc.saves], [0, 0]);
+
+      const clean = dirty();
+      clean.doc.isDirty = false;
+      await clean.api.run('idris2.proofSearch');
+      assert.deepStrictEqual([clean.env.unsaved.asked.length, clean.doc.saves], [0, 0]);
+
+      const lsp = dirty();
+      lsp.backend.checksUnsaved = false;
+      await lsp.api.run('idris2.proofSearch');
+      assert.deepStrictEqual([lsp.env.unsaved.asked.length, lsp.doc.saves], [0, 1]);
+    });
+  });
+
   test('in the command: a save that changes the text at the target (a formatter) stops the command; a change elsewhere does not', async () => {
     const api = new FakeEditingApi();
     const backend = new FakeEditBackend();

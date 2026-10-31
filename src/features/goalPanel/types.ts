@@ -46,7 +46,7 @@ export interface GoalPanelDeps {
   readonly extensionUri: import('vscode').Uri;
   readonly model: HoleModel;
   readonly holes: Pick<Holes, 'reveal'>;
-  readonly editing: Pick<EditingRegistration, 'run' | 'cycleOf' | 'onDidChangeCycle'>;
+  readonly editing: Pick<EditingRegistration, 'run' | 'cycleOf' | 'onDidChangeCycle' | 'pickChoice'>;
   /** `statusOf`: whether the text is stale. */
   readonly checks: CheckStatusSource;
   readonly projects: Pick<ProjectIndex, 'classify'>;

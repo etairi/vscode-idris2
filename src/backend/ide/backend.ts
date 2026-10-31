@@ -42,6 +42,13 @@
  * right before the load is written too, and the index keeps its text only when both reads agree
  * (`TokenIndex.text`).
  *
+ * **A save during a load** (review 1, N1; `buildFiles.ts`). A load that overlaps a save leaves a TTC
+ * newer than the source, from the text it read before, and the next load would build nothing. So a
+ * load of a `check` or `eval` session looks, right before it is sent (nothing is in flight then), at
+ * every file saved since that session's last look: a file it imports may be one of them, and is built
+ * by this load. The look is first in `beforeSend`, as only microtasks may separate the walk below from
+ * the write. A `shadow` session reads only the copy the extension wrote.
+ *
  * **Evaluation** (M3, ROADMAP §9 2026-09-28): `evaluate` refuses, before anything else, text the
  * REPL parser could read as a command (`replCommand.ts`); then, one evaluation at a time per
  * `eval` session, it loads the document's file there (the same package walk and checks right
@@ -258,7 +265,7 @@ import {
   type NameLocation,
 } from './protocol';
 import { queryRefusal, replCommandRefusal } from './replCommand';
-import { SHADOW_BUILD_DIR, SHADOW_PACKAGE_FILE, SHADOW_SOURCE_DIR, shadowCopyPath, shadowPackage } from './shadow';
+import { LOCAL_DEPENDS_DIR, SHADOW_BUILD_DIR, SHADOW_PACKAGE_FILE, SHADOW_SOURCE_DIR, shadowCopyPath, shadowPackage } from './shadow';
 import { duration, type Clock } from './session';
 import type { IdeCommand, IdeSession, LoadedFile, LookupRequestOptions, Reply, SessionLaunch, SessionPool, SessionStateChange } from './types';
 
@@ -350,6 +357,8 @@ export interface ShadowFiles {
   mkdir(p: string): Promise<void>;
   /** `fs.promises.writeFile(p, text)`, as UTF-8. */
   writeFile(p: string, text: string): Promise<void>;
+  /** `toolchain/fileSystem.ts` `linkFolder`. */
+  linkFolder(target: string, link: string): Promise<void>;
   /** `fs.promises.rm(p, { recursive: true, force: true })`. */
   remove(p: string): Promise<void>;
 }
@@ -709,6 +718,11 @@ export class IdeMode implements BackendProvider, IDisposable {
     return this.backend.refusalBeforeQuestion(doc, root);
   }
 
+  /** VS Code saved `file` (module comment, *A save during a load*). */
+  fileSaved(file: string): void {
+    this.backend.fileSaved(file);
+  }
+
   /** Starts the sessions of `root` again now, or restarts every running session. */
   restart(root?: Classification): void {
     if (root === undefined) {
@@ -1060,6 +1074,13 @@ export class IdeBackend implements IdrisBackend {
   private readonly comparisons = new WeakMap<LoadRecord, { readonly doc: vscode.TextDocument; readonly version: number; readonly lines: ComparedLines | undefined }>();
   /** Per `check` session, its searches (module comment, *Searches*). */
   private readonly searches = new WeakMap<IdeSession, SessionSearches>();
+  /** Per root and kind of search, the session of the newest one (`editNext`). */
+  private readonly newestSearch = new Map<string, IdeSession>();
+  /** The files saved in this window, each with the number of its last save (`fileSaved`), the oldest first. */
+  private readonly savedFiles = new Map<string, number>();
+  private saves = 0;
+  /** By root and role, the saves a load has looked at; it outlives a session, whose load a save may have overlapped. */
+  private readonly savesSeen = new Map<string, number>();
   /**
    * Per root (`rootKey`) and file (`fileName`), the holes of the file's load answered last (module
    * comment, *Holes*): kept for the files with an open document (`IdeModeDeps.isOpen`) and the file
@@ -1339,6 +1360,8 @@ export class IdeBackend implements IdrisBackend {
     // and the start, and any load for the requests before it.
     let refused: LoadRefusal | undefined;
     const beforeSend = async (): Promise<void> => {
+      // First: only microtasks may separate the walk below from the write.
+      await this.outdateSaved(root, session);
       const text = options.readBefore === true ? await this.deps.readFile(doc.fileName).catch(() => undefined) : undefined;
       const now = await this.loadRefusal(root, session, doc.fileName, realCwd);
       if (typeof now !== 'string') {
@@ -1387,6 +1410,22 @@ export class IdeBackend implements IdrisBackend {
       },
     );
     return { done };
+  }
+
+  /** `file` was saved (`IdeMode.fileSaved`): the next load of each session looks at its build files. */
+  fileSaved(file: string): void {
+    this.savedFiles.delete(file);
+    this.savedFiles.set(file, ++this.saves);
+  }
+
+  /** What `session` of `root` builds next must be the text saved (module comment, *A save during a load*): nothing is in flight now. */
+  private async outdateSaved(root: Classification, session: IdeSession): Promise<void> {
+    const key = `${rootKey(root)} ${session.role}`;
+    const seen = this.savesSeen.get(key) ?? 0;
+    if (seen !== this.saves) {
+      this.savesSeen.set(key, this.saves);
+      await this.deps.pool.outdateSaved(root, session.role, [...this.savedFiles].filter(([, save]) => save > seen).map(([file]) => file));
+    }
   }
 
   /** Notes `loading`, a load of `file` in the `check` session `session`, until it settles (`loadedCheckSession` waits for it). */
@@ -1577,6 +1616,9 @@ export class IdeBackend implements IdrisBackend {
       }
       const target = pathApi.join(dir, SHADOW_SOURCE_DIR, copy.relative);
       await files.writeFile(pathApi.join(dir, SHADOW_PACKAGE_FILE), shadow.text);
+      if (root.kind === 'project') {
+        await files.linkFolder(pathApi.join(cwd, LOCAL_DEPENDS_DIR), pathApi.join(dir, LOCAL_DEPENDS_DIR));
+      }
       await files.mkdir(pathApi.dirname(target));
       await files.writeFile(target, text);
       this.shadowCopies.set(dir, copy.relative);
@@ -1862,7 +1904,29 @@ export class IdeBackend implements IdrisBackend {
     if (toIdeTypeOfRequest(doc, pos) === undefined) {
       return undefined;
     }
-    const { session, record } = await this.loadedSession(doc, true);
+    const found = await this.loadedSession(doc, true);
+    const answer = await this.typeIn(found, doc, pos, name, decor);
+    return answer !== undefined || !this.unsavedFailed(found.record) ? answer : this.typeIn(await this.loadedCheckSession(doc, true), doc, pos, name, decor);
+  }
+
+  /**
+   * Whether `record` is a check of unsaved text that failed: a compiler that stopped at an error has
+   * no type of a local, and after a parse error none of a global, so the saved load answers then,
+   * as about a stale file (review 1, M1). It must not take over from it elsewhere: an edit needs
+   * the check of the text the document shows.
+   */
+  private unsavedFailed(record: LoadRecord): boolean {
+    return record.unsaved !== undefined && record.ok !== true;
+  }
+
+  /** `typeAt` in the load `found` (`loadedSession`). */
+  private async typeIn(
+    { session, record }: { readonly session: IdeSession; readonly record: LoadRecord },
+    doc: vscode.TextDocument,
+    pos: vscode.Position,
+    name: string,
+    decor: Decor | undefined,
+  ): Promise<TypeInfo | undefined> {
     const place = this.loadedPlace(doc, record, pos);
     // A check of the text `doc` shows now (`loadedSession`): the answer is about that text.
     const unsaved = record.unsaved === undefined ? {} : ({ unsaved: true } as const);
@@ -1928,7 +1992,13 @@ export class IdeBackend implements IdrisBackend {
    * an error (`Undefined name` [live]). Waits for a reload of the file being made (`loadedCheckSession`).
    */
   async docsFor(doc: vscode.TextDocument, name: string): Promise<RichText | undefined> {
-    const { session, record } = await this.loadedSession(doc, true);
+    const found = await this.loadedSession(doc, true);
+    const answer = await this.docsIn(found, doc, name);
+    return answer !== undefined || !this.unsavedFailed(found.record) ? answer : this.docsIn(await this.loadedCheckSession(doc, true), doc, name);
+  }
+
+  /** `docsFor` in the load `found` (`loadedSession`). */
+  private docsIn({ session, record }: { readonly session: IdeSession; readonly record: LoadRecord }, doc: vscode.TextDocument, name: string): Promise<RichText | undefined> {
     return this.cached(record.docs, name, async () => {
       const answer = decodeText((await this.ask(session, doc, docsFor(name), record)).payload);
       return answer.kind === 'ok' ? toRichText(answer.value) : undefined;
@@ -2295,6 +2365,7 @@ export class IdeBackend implements IdrisBackend {
     });
     if (starts !== undefined && reply.payload.kind === 'ok') {
       this.searchesOf(session).current[starts] = { record, launch: session.launch, sent };
+      this.newestSearch.set(`${rootKey(session.root)} ${starts}`, session);
     }
     return plan.decode(reply.payload);
   }
@@ -2309,11 +2380,10 @@ export class IdeBackend implements IdrisBackend {
     const next = NEXT[req.kind];
     const root = await this.deps.projects.classify(doc.fileName);
     const key = rootKey(root);
-    // The session the search was started in: the `check` session, or the `shadow` one for a search
-    // in a check of unsaved text (module comment, *Unsaved text*).
-    const shadow = this.deps.pool.sessions().find((s) => s.role === 'shadow' && rootKey(s.root) === key);
-    const check = this.deps.pool.sessionFor(root, 'check');
-    const session = shadow !== undefined && this.isCurrentSearch(shadow, next.kind, doc) ? shadow : check;
+    // The session of the newest search of this kind, which is the one the cycle follows: the `check`
+    // session, or the `shadow` one in a check of unsaved text (module comment, *Unsaved text*). The other
+    // may still have an older search: its next result belongs to another hole (review 1, H4).
+    const session = this.newestSearch.get(`${key} ${next.kind}`) ?? this.deps.pool.sessionFor(root, 'check');
     const ended = (): IdrisException =>
       unsupported(
         `${next.title}: the ${next.search} it would continue has ended — the file was loaded again, another ${next.search} was ` +
@@ -2392,7 +2462,11 @@ export class IdeBackend implements IdrisBackend {
       }
     });
     try {
-      return await session.request(plan.command, {
+      // The answer goes into the file, so it is printed plainly, whatever the panel shows: in this turn,
+      // so that the three sit together in the session's queue (`SessionPool.plainPrinting`).
+      const printing = this.deps.pool.plainPrinting(session);
+      printing.off();
+      const reply = session.request(plan.command, {
         kind: plan.long ? 'longAction' : 'lookup',
         ...(token === undefined ? {} : { token }),
         beforeSend: async () => {
@@ -2400,6 +2474,8 @@ export class IdeBackend implements IdrisBackend {
           written = true;
         },
       });
+      printing.on();
+      return await reply;
     } catch (error) {
       if (isCancelled()) {
         throw cancelled(

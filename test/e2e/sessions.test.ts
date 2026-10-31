@@ -14,7 +14,7 @@ import type { IdeSession, Reply, SessionStateChange } from '../../src/backend/id
 import type { TestApi } from '../../src/extension';
 import type { Classification } from '../../src/project/types';
 import { copyWorkspace, filesBelow, ideProcesses } from './ideDriver';
-import { extensionApi, quiesce, waitFor, workspaceDir } from './helpers';
+import { extensionApi, quiesce, slowModule, waitFor, workspaceDir } from './helpers';
 
 /** A `:load-file` of `file` through `session`, as the extension sends it. */
 const load = (session: IdeSession, file: string): Promise<Reply> =>
@@ -181,6 +181,43 @@ suite('E2E: the extension\'s IDE-mode sessions with the real idris2', function (
     assertClean(await load(session, bFile));
     assert.strictEqual(session.launch?.transport, 'stdio');
     assert.strictEqual(ideProcesses().length, 1);
+  });
+
+  test('a file saved while the compiler builds it is built again from the text saved (review 1, N1)', async () => {
+    // One compiler at a time: the package's session goes first.
+    api.sessions.stop(root);
+    await waitFor('the package session to end', () => (ideProcesses().length === 0 ? true : undefined));
+    const { dir, root: looseDir } = copyWorkspace('loose-file');
+    const file = path.join(looseDir, 'Slow.idr');
+    fs.writeFileSync(file, slowModule('Slow'));
+    const allow = setInterval(() => {
+      if (api.consent.openQuestions().includes(looseDir)) {
+        api.consent.respond(looseDir, 'allow');
+      }
+    }, 50);
+    try {
+      const looseRoot = await api.projects.classify(file);
+      const doc = await vscode.workspace.openTextDocument(file);
+      const editor = await vscode.window.showTextDocument(doc);
+      await vscode.commands.executeCommand('idris2.checkFile');
+      const loose = api.sessions.sessionFor(looseRoot, 'check');
+      await waitFor('the first load', () => (loose.state === 'ready' && loose.loadedFile !== undefined ? true : undefined), 90000);
+      const saveLine = async (text: string): Promise<void> => {
+        assert.ok(await editor.edit((e) => e.replace(doc.lineAt(doc.lineCount - 2).range, text)));
+        assert.ok(await doc.save());
+      };
+      await saveLine('value = 2');
+      await waitFor('the load of that save', () => (loose.state === 'busy' ? true : undefined));
+      await saveLine('value = "text"');
+      assert.strictEqual(loose.state, 'busy', 'the second save came during the load');
+      await waitFor('the error of the text saved last', () => vscode.languages.getDiagnostics(doc.uri).find((d) => /FromString Nat/.test(d.message)), 60000);
+      await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+      api.sessions.stop(looseRoot);
+      await waitFor('no IDE-mode process', () => (ideProcesses().length === 0 ? true : undefined));
+    } finally {
+      clearInterval(allow);
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   test('a loose file outside the workspace loads once its folder is allowed; F4 replies are attributed', async () => {

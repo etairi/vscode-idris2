@@ -45,6 +45,12 @@ export type ReplApi = ReplTerminalsApi &
 
 const answerText = (evaluation: Evaluation): string => (evaluation.kind === 'value' ? evaluation.value.text : evaluation.message.text);
 
+/** Of `lines`, the one with `asked`'s text nearest to where `asked` was. */
+function nearestLine(lines: readonly DocEvalLine[], asked: DocEvalLine): DocEvalLine | undefined {
+  const distance = (line: DocEvalLine): number => Math.abs(line.line - asked.line);
+  return lines.filter((line) => line.text === asked.text).sort((a, b) => distance(a) - distance(b))[0];
+}
+
 export function registerRepl(api: ReplApi, deps: ReplDeps): ReplRegistration {
   const store = new DisposableStore();
   const terminals = store.add(new ReplTerminals(api, deps));
@@ -115,6 +121,10 @@ export function registerRepl(api: ReplApi, deps: ReplDeps): ReplRegistration {
     const line = replLine(selected.text);
     if (line.kind === 'control') {
       warn(`Idris 2: ${what}: the text has a control character, which is not typed into a terminal.`);
+      return undefined;
+    }
+    if (line.kind === 'long') {
+      warn(`Idris 2: ${what}: the text is longer than a terminal takes on one line, so it is not typed.`);
       return undefined;
     }
     return line.kind === 'line' ? line.text : undefined;
@@ -208,8 +218,12 @@ export function registerRepl(api: ReplApi, deps: ReplDeps): ReplRegistration {
   const notWritten = (doc: vscode.TextDocument, text: string, evaluation: Evaluation): void =>
     say(`Idris 2: ${text} ${resultLabel(evaluation)} (not written: ${doc.isClosed ? 'the file closed' : 'the file changed meanwhile'})`);
 
-  /** Writes `answers` beneath their lines, one undo step, while the document is at `version`. */
+  /** Writes `answers` beneath their lines, one undo step, while the document is at `version`, which their lines were read at. */
   const write = async (doc: vscode.TextDocument, version: number, answers: readonly { line: DocEvalLine; evaluation: Evaluation }[]): Promise<void> => {
+    if (doc.isClosed || doc.version !== version) {
+      answers.forEach(({ line, evaluation }) => notWritten(doc, line.text, evaluation));
+      return;
+    }
     const replacements = answers.map(({ line, evaluation }) => answerReplacement(doc, line, answerText(evaluation)));
     const applied = await applyReplacements(api, doc, version, replacements);
     if (applied.kind === 'changed' || applied.kind === 'closed') {
@@ -234,15 +248,22 @@ export function registerRepl(api: ReplApi, deps: ReplDeps): ReplRegistration {
   const runLine = async (arg: unknown): Promise<void> => {
     const { uri, line } = (arg ?? {}) as { uri?: unknown; line?: unknown };
     const doc = api.workspace.textDocuments.find((d) => d.uri.toString() === uri);
-    const found = doc === undefined ? undefined : docEvalLines(doc).find((candidate) => candidate.line === line);
-    if (doc === undefined || found === undefined) {
-      say('Idris 2: that -- >>> line is no longer there.');
+    const asked = doc === undefined ? undefined : docEvalLines(doc).find((candidate) => candidate.line === line);
+    const gone = (): void => say('Idris 2: that -- >>> line is no longer there.');
+    if (doc === undefined || asked === undefined) {
+      gone();
       return;
     }
     if (!(await savedFirst(doc, 'Run'))) {
       return;
     }
+    // The save can move the line (a formatter): the version and the line are read together.
     const { version } = doc;
+    const found = nearestLine(docEvalLines(doc), asked);
+    if (found === undefined) {
+      gone();
+      return;
+    }
     const evaluation = answerOf(await deps.evaluation.run(doc, found.text, { queryCommands: true }));
     if (evaluation?.kind === 'value') {
       await write(doc, version, [{ line: found, evaluation }]);
@@ -257,22 +278,29 @@ export function registerRepl(api: ReplApi, deps: ReplDeps): ReplRegistration {
       return;
     }
     const { document: doc } = editor;
-    const lines = docEvalLines(doc);
-    if (lines.length === 0) {
+    const asked = docEvalLines(doc);
+    if (asked.length === 0) {
       say('Idris 2: this file has no -- >>> lines.');
       return;
     }
-    const run = `Run ${lines.length}`;
+    const run = `Run ${asked.length}`;
     const choice = await api.window.showWarningMessage(
       plainText(
-        `Idris 2: run the ${lines.length} -- >>> ${lines.length === 1 ? 'line' : 'lines'} of this file? Each is evaluated, and the compile-time code it reaches runs: read them first in a project you did not write.`,
+        `Idris 2: run the ${asked.length} -- >>> ${asked.length === 1 ? 'line' : 'lines'} of this file? Each is evaluated, and the compile-time code it reaches runs: read them first in a project you did not write.`,
       ),
       run,
     );
     if (choice !== run || !(await savedFirst(doc, 'Run All'))) {
       return;
     }
+    // The question stays open while the user works, and the save can move lines (a formatter): the
+    // version and the lines are read together, and what runs is what the user agreed to.
     const { version } = doc;
+    const lines = docEvalLines(doc);
+    if (lines.map((line) => line.text).join('\n') !== asked.map((line) => line.text).join('\n')) {
+      say('Idris 2: the -- >>> lines changed while you were asked, so nothing was run. Run All again.');
+      return;
+    }
     const answers: { line: DocEvalLine; evaluation: Evaluation }[] = [];
     const failures: string[] = [];
     for (const line of lines) {

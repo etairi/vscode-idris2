@@ -16,13 +16,16 @@
 // The suite turns VS Code's inlay hints off: one asked between an edit and its check would make the
 // check session load the document beside the shadow session (the passive rule).
 import * as assert from 'assert';
+import { execFileSync } from 'child_process';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import type { TestApi } from '../../src/extension';
 import type { Classification } from '../../src/project/types';
+import { runEditing } from '../integration/support';
 import { copyWorkspace, ideProcesses } from './ideDriver';
-import { extensionApi, quiesce, waitFor } from './helpers';
+import { extensionApi, probedIdris2, quiesce, waitFor } from './helpers';
 
 /** Answers the consent question for `dir` with Allow (this window) whenever it is asked, until `stop()`. */
 function allowWhenAsked(api: TestApi, dir: string): { stop(): void } {
@@ -191,6 +194,21 @@ suite('E2E: check while typing (ROADMAP M6) on a fresh copy of simple-ipkg', fun
     assert.strictEqual(ideProcesses().length, 1);
   });
 
+  test('a command on unsaved text after the compiler stopped checks that text first, and saves nothing (review 1, M20)', async () => {
+    const version = doc.version;
+    const onDisk = fs.readFileSync(bFile, 'utf8');
+    await release(root);
+    assert.strictEqual(shadowSessions().length, 0, 'as after an idle stop');
+    assert.strictEqual(api.unsavedChecks.shownVersion(doc.uri), version, 'what it showed stays');
+    editor.selection = new vscode.Selection(6, 18, 6, 18);
+    const outcome = await runEditing(api, 'idris2.proofSearch');
+    assert.ok(outcome.kind === 'applied' || outcome.kind === 'message', JSON.stringify(outcome));
+    assert.ok(doc.isDirty, 'not saved');
+    assert.strictEqual(fs.readFileSync(bFile, 'utf8'), onDisk);
+    assert.strictEqual(shadowSessions().length, 1, 'the command started the check');
+    await setLine(6, 'greeting = shout ?arg');
+  });
+
   test('ten checks of unsaved text leave every file of the check session\'s build directory as it was', async () => {
     const before = mtimes(isolated);
     assert.ok(before.size > 0);
@@ -259,12 +277,60 @@ suite('E2E: check while typing (ROADMAP M6) on a fresh copy of simple-ipkg', fun
     }
   });
 
+  test('a package in the project\'s depends/ folder is found from the shadow directory (review 1, M2)', async function () {
+    this.timeout(180000);
+    await release(root);
+    const local = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'vi2-depends-'));
+    const allowLocal = allowWhenAsked(api, local);
+    try {
+      // The package, built here and put where `idris2 --install` would, under its TTC version.
+      const source = path.join(local, '.dep');
+      fs.mkdirSync(path.join(source, 'src'), { recursive: true });
+      fs.writeFileSync(path.join(source, 'dep.ipkg'), 'package dep\nversion = 0.1.0\nsourcedir = "src"\nmodules = Dep\n');
+      fs.writeFileSync(path.join(source, 'src', 'Dep.idr'), 'module Dep\n\npublic export\nanswer : Nat\nanswer = 42\n');
+      execFileSync(probedIdris2(api), ['--build', 'dep.ipkg'], { cwd: source, stdio: 'ignore' });
+      const [ttc] = fs.readdirSync(path.join(source, 'build', 'ttc'));
+      fs.cpSync(path.join(source, 'build', 'ttc', ttc), path.join(local, 'depends', 'dep-0.1.0', ttc), { recursive: true });
+      fs.rmSync(source, { recursive: true, force: true });
+      fs.mkdirSync(path.join(local, 'src'));
+      fs.writeFileSync(path.join(local, 'p.ipkg'), 'package p\ndepends = dep\nsourcedir = "src"\nmodules = Main\n');
+      const file = path.join(local, 'src', 'Main.idr');
+      fs.writeFileSync(file, 'module Main\n\nimport Dep\n\nvalue : Nat\nvalue = answer\n');
+      const main = await vscode.workspace.openTextDocument(file);
+      const mainEditor = await vscode.window.showTextDocument(main);
+      const mainRoot = await api.projects.classify(file);
+      assert.strictEqual(mainRoot.kind, 'project');
+      const check = api.sessions.sessionFor(mainRoot, 'check');
+      await vscode.commands.executeCommand('idris2.checkFile');
+      await waitFor('the check session to load Main.idr', () => (check.state === 'ready' && check.loadedFile !== undefined ? true : undefined), 120000);
+      await release(mainRoot);
+      assert.ok(await mainEditor.edit((e) => e.replace(main.lineAt(5).range, 'value = "text"')));
+      const version = main.version;
+      await waitFor(`the check of version ${version}`, () => (api.unsavedChecks.shownVersion(main.uri) === version ? true : undefined), 120000);
+      assert.match((api.unsavedChecks.shownFor(main.uri) ?? [])[0]?.message ?? '', /FromString Nat/);
+      await vscode.commands.executeCommand('workbench.action.files.revert');
+      await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+      await release(mainRoot);
+      assert.ok(fs.existsSync(path.join(local, 'depends', 'dep-0.1.0', ttc, 'Dep.ttc')));
+      await vscode.window.showTextDocument(doc);
+      editor = vscode.window.activeTextEditor ?? editor;
+    } finally {
+      allowLocal.stop();
+      await release(await api.projects.classify(path.join(local, 'src', 'Main.idr')));
+      fs.rmSync(local, { recursive: true, force: true });
+    }
+  });
+
   test('VS Code saving after a short delay (files.autoSave afterDelay, 1000 ms): typing checks no unsaved text; the save\'s check reports, source idris2', async () => {
-    editor = await vscode.window.showTextDocument(doc);
     const files = vscode.workspace.getConfiguration('files');
     const autoSave = files.inspect<string>('autoSave')?.globalValue;
     await files.update('autoSave', 'afterDelay', vscode.ConfigurationTarget.Global);
     try {
+      editor = await vscode.window.showTextDocument(doc);
+      // The last test came back to this document, whose check its session had lost: under this
+      // setting the delay that started ends with no check (review 1, M20).
+      await waitFor('the delay to end', () => (api.unsavedChecks.pending(doc.uri) ? undefined : true));
+      await release(root);
       assert.strictEqual(ideProcesses().length, 0);
       await setLine(6, 'greeting = shout 9');
       // Decided at the edit. Had a check been scheduled, the revert ends it before it starts a

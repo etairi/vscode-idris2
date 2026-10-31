@@ -343,6 +343,8 @@ export const IDE_MODE_LIMIT_KEYS: readonly string[] = ['ideMode.maxSessions', 'i
  * to the running `check` and `shadow` sessions and restarts none (`backend/ide/pool.ts`); what was
  * printed under the old value goes when the visible documents are checked again (`extension.ts`).
  */
+export const LSP_DISPLAY_KEYS: readonly string[] = ['lsp.showImplicits', 'lsp.showMachineNames', 'lsp.fullNamespace'];
+
 export const IDE_MODE_DISPLAY_KEYS: readonly string[] = ['ideMode.showImplicits', 'ideMode.showMachineNames', 'ideMode.fullNamespace'];
 
 /** `idris2.diagnostics.*` (ARCHITECTURE §8). */

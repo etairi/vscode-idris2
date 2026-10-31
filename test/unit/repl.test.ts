@@ -61,6 +61,12 @@ suite('features/repl: the command line and what is typed (launch.ts)', () => {
     assert.deepStrictEqual(replLine(' \n\t '), { kind: 'empty' });
   });
 
+  test('a line past what a terminal\'s line discipline holds is not typed: it would never arrive, and the REPL would be stuck (review 1, M16)', () => {
+    assert.strictEqual(replLine('x'.repeat(1000)).kind, 'line');
+    assert.deepStrictEqual(replLine('x'.repeat(1001)), { kind: 'long' });
+    assert.deepStrictEqual(replLine('€'.repeat(400)), { kind: 'long' }, 'counted in bytes');
+  });
+
   test('a control character is not typed: it would act on the terminal, not be text', () => {
     for (const text of ['a\u0003', '\u0004', 'a\u001b[A', 'x\u007f', 'x\u0080', 'x\u009b']) {
       assert.deepStrictEqual(replLine(text), { kind: 'control' }, JSON.stringify(text));
@@ -91,17 +97,41 @@ suite('features/repl: the -- >>> lines (docEval.ts)', () => {
   test('the answer beneath the line; a further line of it is marked; it stays a comment whatever it says', () => {
     const [line] = docEvalLines(new FakeTextDoc({ fileName: '/w/A.idr', text: '  -- >>> f\n' }));
     assert.deepStrictEqual(answerLines(line, '2'), ['  -- f = 2']);
-    assert.deepStrictEqual(answerLines(line, 'a\n  b\r\nc\u2028main = rm\n'), ['  -- f = a', '  --     b', '  --   c', '  --   main = rm']);
+    assert.deepStrictEqual(answerLines(line, 'a\n  b\r\nc\u2028main = rm\n'), ['  -- f = a', '  -- >   b', '  -- > c', '  -- > main = rm']);
     assert.deepStrictEqual(answerLines(line, 'a\u202eb\u0007'), ['  -- f = a\\u{202E}b\\u{7}']);
   });
 
   test('written beneath; run again, over the answer before it, its further lines too, and nothing else', () => {
-    const text = 'x : Nat\nx = 1\n-- >>> x\n-- x = 1\n--   more\n-- other\n';
+    const text = 'x : Nat\nx = 1\n-- >>> x\n-- x = 1\n-- > more\n-- >\n-- other\n';
     const d = new FakeTextDoc({ fileName: '/w/A.idr', text });
     const [line] = docEvalLines(d);
-    assert.deepStrictEqual(answerReplacement(d, line, '2'), { range: { start: { line: 3, character: 0 }, end: { line: 4, character: 9 } }, text: '-- x = 2' });
+    assert.deepStrictEqual(answerReplacement(d, line, '2'), { range: { start: { line: 3, character: 0 }, end: { line: 5, character: 4 } }, text: '-- x = 2' });
     const fresh = new FakeTextDoc({ fileName: '/w/A.idr', text: 'x = 1\n-- >>> x\n-- y = 1\n' });
     assert.deepStrictEqual(answerReplacement(fresh, docEvalLines(fresh)[0], '2'), { range: { start: { line: 1, character: 8 }, end: { line: 1, character: 8 } }, text: '\n-- x = 2' });
+  });
+
+  test('comments below an answer are kept, indented ones too (review 1, H6)', () => {
+    const d = new FakeTextDoc({ fileName: '/w/A.idr', text: 'x = 1\n-- >>> x\n-- x = 1\n--   note: do not remove this\n--   see the proof\nf : Nat\n' });
+    assert.deepStrictEqual(answerReplacement(d, docEvalLines(d)[0], '2'), { range: { start: { line: 2, character: 0 }, end: { line: 2, character: 8 } }, text: '-- x = 2' });
+  });
+
+  test('a line of an answer is never read back as a -- >>> line, whatever it says (review 1, M14)', () => {
+    const [line] = docEvalLines(new FakeTextDoc({ fileName: '/w/A.idr', text: '-- >>> f\n' }));
+    const lines = answerLines(line, 'a\n>>> x\n  >>> y');
+    const written = new FakeTextDoc({ fileName: '/w/A.idr', text: `-- >>> f\n${lines.join('\n')}\n` });
+    assert.deepStrictEqual(docEvalLines(written).map((l) => l.text), ['f']);
+  });
+
+  test('a blank line of an answer has no white space a save could trim; so a re-run finds all of it, and a blank answer too (review 1, M15)', () => {
+    const [line] = docEvalLines(new FakeTextDoc({ fileName: '/w/A.idr', text: '-- >>> f\n' }));
+    const lines = answerLines(line, 'a\n\nb');
+    assert.deepStrictEqual(lines, ['-- f = a', '-- >', '-- > b']);
+    assert.ok(lines.every((l) => l === l.trimEnd()));
+    const d = new FakeTextDoc({ fileName: '/w/A.idr', text: `-- >>> f\n${lines.join('\n')}\nnext\n` });
+    assert.deepStrictEqual(answerReplacement(d, docEvalLines(d)[0], 'z').range, { start: { line: 1, character: 0 }, end: { line: 3, character: 6 } });
+    assert.deepStrictEqual(answerLines(line, ''), ['-- f =']);
+    const blank = new FakeTextDoc({ fileName: '/w/A.idr', text: '-- >>> f\n-- f =\n' });
+    assert.deepStrictEqual(answerReplacement(blank, docEvalLines(blank)[0], 'z').range, { start: { line: 1, character: 0 }, end: { line: 1, character: 6 } });
   });
 
   test('on the last line of a file, without a line break', () => {
@@ -166,7 +196,7 @@ const settle = async (): Promise<void> => {
   }
 };
 
-function setup(options: { root?: Classification; trusted?: boolean; file?: string; text?: string; files?: readonly string[]; path?: string; gate?: { permit?: GateVerdict; recheck?: GateVerdict | undefined }; startProblem?: Error } = {}) {
+function setup(options: { root?: Classification; trusted?: boolean; file?: string; text?: string; files?: readonly string[]; path?: string; gate?: { permit?: GateVerdict; recheck?: GateVerdict | undefined }; startProblem?: Error; findPackage?: (dir: string) => string | undefined; ideMode?: { loosePackages?: string[]; extraArgs?: string[] } } = {}) {
   const api = new FakeEditingApi();
   const window = api.window as unknown as Record<string, unknown>;
   const closed = new Emitter<FakeTerminal>();
@@ -218,6 +248,7 @@ function setup(options: { root?: Classification; trusted?: boolean; file?: strin
   const grant = new Emitter<void>();
   const stats = new Set(options.files ?? []);
   let startProblem = options.startProblem;
+  const starts = { count: 0 };
   const deps: ReplDeps = {
     projects: {
       classify: (file: string) => Promise.resolve(file.startsWith('/other/') ? ({ kind: 'loose', dir: '/other' } as unknown as Classification) : root),
@@ -226,7 +257,7 @@ function setup(options: { root?: Classification; trusted?: boolean; file?: strin
     toolchain: {
       current: { settings: { env: { FROM_SETTINGS: '1' } }, idris2: { status: 'probed', location: { path: '/opt/idris2' } } } as never,
     },
-    config: { ideMode: () => ({ loosePackages: ['contrib'], extraArgs: [] }) as never, repl: () => settings, saveBeforeAction: () => savePolicy.value },
+    config: { ideMode: () => ({ loosePackages: ['contrib'], extraArgs: [], ...options.ideMode }) as never, repl: () => settings, saveBeforeAction: () => savePolicy.value },
     trust: { isTrusted: options.trusted ?? true, onDidGrant: grant.event },
     gate: {
       permit: (dir: string, why?: unknown) => {
@@ -241,7 +272,11 @@ function setup(options: { root?: Classification; trusted?: boolean; file?: strin
       current: () => undefined,
       onDidChange: new Emitter<void>().event,
     },
-    startProblem: () => Promise.resolve(startProblem as never),
+    startProblem: () => {
+      starts.count++;
+      return Promise.resolve(startProblem as never);
+    },
+    findPackage: (dir: string) => Promise.resolve(options.findPackage === undefined ? `${dir}/pkg.ipkg` : options.findPackage(dir)),
     fileSystem: { stat: (file: string) => Promise.resolve(stats.has(file) ? { kind: 'file', executable: true } : undefined) },
     processEnv: { PATH: options.path ?? 'relative:/usr/bin:/opt/bin' },
     platform: 'darwin',
@@ -290,6 +325,7 @@ function setup(options: { root?: Classification; trusted?: boolean; file?: strin
     shownChannels,
     picks,
     registration,
+    starts,
     setChoice: (next: string | undefined) => {
       choice = next;
     },
@@ -353,6 +389,48 @@ suite('features/repl: the terminal', () => {
       assert.strictEqual(t.terminals.length, 0, file);
       assert.match(t.warnings[0].text, /is not started on this file/, file);
     }
+  });
+
+  test('the compiler\'s own walk must find the root\'s package: a package file gone or another one starts nothing (review 1, H7)', async () => {
+    for (const found of [undefined, '/real/w/pkg/other.ipkg', '/real/w/parent.ipkg']) {
+      const t = setup({ findPackage: () => found });
+      await t.api.run(OPEN_REPL_COMMAND);
+      assert.strictEqual(t.terminals.length, 0, String(found));
+      assert.match(t.warnings[0].text, /The REPL is not started: searching from \/real\/w\/pkg/, String(found));
+    }
+    const own = setup({ findPackage: (dir) => `${dir}/pkg.ipkg` });
+    await own.api.run(OPEN_REPL_COMMAND);
+    assert.strictEqual(own.terminals.length, 1);
+    const loose = setup({ root: LOOSE, file: '/w/loose/Main.idr', findPackage: () => assert.fail('no walk: `idris2 <file>` uses no package') });
+    await loose.api.run(OPEN_REPL_COMMAND);
+    assert.strictEqual(loose.terminals.length, 1);
+  });
+
+  test('VS Code expands ${…} in a terminal\'s executable, arguments and directory, so what holds it is not started (review 1, H8)', async () => {
+    const cases = [
+      setup({ ideMode: { extraArgs: ['--ide-mode${env:UNSET}-socket'] } }),
+      setup({ file: '/w/pkg/${workspaceFolder}.idr' }),
+      setup({ root: { ...LOOSE, dir: '/w/d${env:X}' } as unknown as Classification, file: '/w/d${env:X}/Main.idr' }),
+      setup({ root: LOOSE, file: '/w/loose/Main.idr', ideMode: { loosePackages: ['${pathSeparator}'] } }),
+    ];
+    for (const t of cases) {
+      await t.api.run(OPEN_REPL_COMMAND);
+      assert.strictEqual(t.terminals.length, 0);
+      assert.match(t.warnings[0].text, /VS Code would expand/);
+    }
+  });
+
+  test('what keeps the compiler from starting is asked again after the consent question, which can take long (review 1, M13)', async () => {
+    const t = setup();
+    const permit = t.deps.gate.permit.bind(t.deps.gate);
+    t.deps.gate.permit = (dir, why) => {
+      t.setProblem(unsupported('The Idris 2 compiler went away'));
+      return permit(dir, why);
+    };
+    await t.api.run(OPEN_REPL_COMMAND);
+    assert.strictEqual(t.terminals.length, 0);
+    assert.strictEqual(t.starts.count, 2);
+    assert.match(t.warnings[0].text, /went away/);
   });
 
   test('one terminal per root: a second command shows it, a closed or ended one is replaced, another root has its own', async () => {
@@ -560,6 +638,74 @@ suite('features/repl: the -- >>> lenses', () => {
     assert.match(t.warnings[0].text, /compile-time code it reaches runs/);
     assert.deepStrictEqual(t.warnings[0].items, ['Run 2']);
     assert.deepStrictEqual(t.evaluations, []);
+  });
+
+  /** `lines` put at the top of the document, as an edit does. */
+  const shift = (t: ReturnType<typeof setup>, ...lines: string[]): void => {
+    t.doc.lines.unshift(...lines);
+    t.doc.version++;
+  };
+
+  test('lines added while Run all\'s question is open: the answers go beneath their lines as they are now (review 1, H2)', async () => {
+    const t = setup({ text });
+    t.setChoice('Run 2');
+    const ask = (t.api.window as unknown as { showWarningMessage: (text: string, ...items: unknown[]) => Promise<string | undefined> }).showWarningMessage;
+    (t.api.window as unknown as Record<string, unknown>).showWarningMessage = (message: string, ...items: unknown[]) => {
+      shift(t, '-- one', '-- two');
+      return ask(message, ...items);
+    };
+    await t.api.run(RUN_ALL_DOC_EVAL_COMMAND);
+    assert.deepStrictEqual(t.doc.lines.slice(5), ['-- >>> x', '-- x = value of x', '-- >>> :t x', '-- :t x = value of :t x', '']);
+  });
+
+  test('the lines themselves changed while Run all asked: what was agreed to is not what is there, so nothing runs (review 1, H2)', async () => {
+    const t = setup({ text });
+    t.setChoice('Run 2');
+    const ask = (t.api.window as unknown as { showWarningMessage: (text: string, ...items: unknown[]) => Promise<string | undefined> }).showWarningMessage;
+    (t.api.window as unknown as Record<string, unknown>).showWarningMessage = (message: string, ...items: unknown[]) => {
+      t.doc.lines[3] = '-- >>> :t y';
+      t.doc.version++;
+      return ask(message, ...items);
+    };
+    await t.api.run(RUN_ALL_DOC_EVAL_COMMAND);
+    assert.deepStrictEqual(t.evaluations, []);
+    assert.match(t.messages()[0], /changed while you were asked/);
+  });
+
+  test('a save that moves the line (a formatter): Run answers beneath the line as it is now; one that removes it says so (review 1, H2)', async () => {
+    const t = setup({ text });
+    t.doc.isDirty = true;
+    t.doc.onSave = () => shift(t, '-- formatted');
+    await t.api.run(RUN_DOC_EVAL_COMMAND, { uri: t.doc.uri.toString(), line: 3 });
+    assert.deepStrictEqual(t.doc.lines.slice(4, 6), ['-- >>> x', '-- x = value of x']);
+    const gone = setup({ text });
+    gone.doc.isDirty = true;
+    gone.doc.onSave = () => {
+      gone.doc.lines[3] = '-- formatted away';
+      gone.doc.version++;
+    };
+    await gone.api.run(RUN_DOC_EVAL_COMMAND, { uri: gone.doc.uri.toString(), line: 3 });
+    assert.deepStrictEqual(gone.evaluations, []);
+    assert.match(gone.messages()[0], /no longer there/);
+  });
+
+  test('a file shortened during the run: the answers are shown, and nothing fails (review 1, H2)', async () => {
+    const t = setup({ text });
+    t.setChoice('Run 2');
+    t.answers.push(() => {
+      t.doc.lines = ['x = 1'];
+      t.doc.version++;
+      // As VS Code's, which the fake's is not.
+      t.doc.lineAt = (line: number) => {
+        assert.ok(line < t.doc.lines.length, 'Illegal value for `line`');
+        return { text: t.doc.lines[line] };
+      };
+      return answer(value('1'));
+    });
+    await t.api.run(RUN_ALL_DOC_EVAL_COMMAND);
+    assert.strictEqual(t.api.workspace.edits.length, 0);
+    assert.ok(t.messages().some((m) => /not written: the file changed meanwhile/.test(m)), t.messages().join('|'));
+    assert.deepStrictEqual(t.api.window.messages.filter((m) => m.severity === 'error'), []);
   });
 
   test('Run all, accepted: one at a time, in order, and all answers in one edit', async () => {

@@ -11,6 +11,7 @@ import type { IDisposable } from '../../src/core/disposable';
 import { IdrisException } from '../../src/core/errors';
 import { Emitter } from '../../src/core/event';
 import type { GateVerdict, PermitReason, SessionGate } from '../../src/core/trust';
+import type { BuildFiles } from '../../src/backend/ide/buildFiles';
 import { checkBuildDir, createTunedSessionPool, EVAL_IDLE_TIMEOUT_MS, evalBuildDir, extraArgsProblem, launchDifferences, sessionLaunch } from '../../src/backend/ide/pool';
 import { enableSyntax, setDisplayOption } from '../../src/backend/ide/protocol';
 import { DEFAULT_SESSION_TIMING } from '../../src/backend/ide/session';
@@ -116,7 +117,7 @@ class FakeGate implements SessionGate {
 /** The extension's storage for shadow directories in these tests (`SessionPoolDeps.shadowBase`). */
 const SHADOW_BASE = '/g/shadow';
 
-function setup(options: { platform?: NodeJS.Platform; trusted?: boolean; toolchain?: FakeToolchain; shadowBase?: string | null; processEnv?: NodeJS.ProcessEnv } = {}) {
+function setup(options: { platform?: NodeJS.Platform; trusted?: boolean; toolchain?: FakeToolchain; buildFiles?: BuildFiles; shadowBase?: string | null; processEnv?: NodeJS.ProcessEnv } = {}) {
   const toolchain = options.toolchain ?? new FakeToolchain(snapshot());
   const config = new FakeConfig();
   const gate = new FakeGate();
@@ -137,6 +138,7 @@ function setup(options: { platform?: NodeJS.Platform; trusted?: boolean; toolcha
       log,
       platform: options.platform ?? 'darwin',
       processEnv: options.processEnv ?? {},
+      buildFiles: options.buildFiles ?? { list: () => Promise.resolve([]), sourceTime: () => Promise.resolve(undefined), builtTime: () => Promise.resolve(undefined), setBack: () => Promise.resolve() },
       ...(options.shadowBase === null ? {} : { shadowBase: options.shadowBase ?? SHADOW_BASE }),
     },
     { timing: DEFAULT_SESSION_TIMING, clock, createTransport: transports.create },
@@ -247,6 +249,38 @@ suite('backend/ide/pool', () => {
       assert.deepStrictEqual(off.args, ['--ide-mode', '--no-color']);
       const broken = sessionLaunch({ ...base, root: BROKEN_IPKG, settings: DEFAULTS });
       assert.deepStrictEqual(broken.args.slice(2), ['--build-dir', '/w/simple-ipkg/build/.vscode-idris2'], 'an unreadable .ipkg counts as one without builddir');
+    });
+
+    test('outdateSaved: the build files of each role, set back when newer than the file saved (review 1, N1)', async () => {
+      const set: string[] = [];
+      const times = new Map<string, bigint>([['/w/simple-ipkg/src/Foo/A.idr', 10n]]);
+      const h = setup({
+        buildFiles: {
+          list: (dir: string) => Promise.resolve(dir.endsWith('/ttc') ? ['9'] : []),
+          sourceTime: (file: string) => Promise.resolve(times.get(file)),
+          builtTime: () => Promise.resolve(20n),
+          setBack: (file: string) => {
+            set.push(file);
+            return Promise.resolve();
+          },
+        },
+      });
+      await h.pool.outdateSaved(projectRoot(), 'check', ['/w/simple-ipkg/src/Foo/A.idr']);
+      await h.pool.outdateSaved(projectRoot(), 'eval', ['/w/simple-ipkg/src/Foo/A.idr']);
+      assert.deepStrictEqual(set, ['/w/simple-ipkg/build/.vscode-idris2/ttc/9/Foo/A.ttc', '/w/simple-ipkg/build/.vscode-idris2-eval/ttc/9/Foo/A.ttc']);
+    });
+
+    test('outdateSaved: a failure is logged and the load goes on (review 1, N1)', async () => {
+      const h = setup({
+        buildFiles: {
+          list: () => Promise.reject(new Error('EACCES')),
+          sourceTime: () => Promise.resolve(1n),
+          builtTime: () => Promise.resolve(1n),
+          setBack: () => Promise.resolve(),
+        },
+      });
+      await h.pool.outdateSaved(projectRoot(), 'check', ['/w/simple-ipkg/src/Foo/A.idr']);
+      assert.ok(h.log.lines.some((l) => /could not be checked.*EACCES/.test(l)), h.log.lines.join('\n'));
     });
 
     test('effectiveCheckBuildDir: isolated, builddir relative or absolute, isolation off; POSIX and Windows', () => {
@@ -1153,6 +1187,42 @@ suite('backend/ide/pool', () => {
       h.config.set({ requestTimeoutMs: 1_000 });
       await flush();
       assert.strictEqual(t.sent.length, sent);
+    });
+
+    test('plainPrinting: around an edit the options that are on go off and back on; with none on, nothing is sent (review 1, H1)', async () => {
+      const h = setup();
+      h.config.settings = { ...DEFAULTS, display: BOTH };
+      const session = h.pool.sessionFor(LOOSE, 'check');
+      await answered(h, session);
+      const t = h.transports.last();
+      const before = t.sent.length;
+      const printing = h.pool.plainPrinting(session);
+      printing.off();
+      await flush();
+      t.message(ret(t.lastSent().id));
+      await flush();
+      t.message(ret(t.lastSent().id));
+      await flush();
+      printing.on();
+      await flush();
+      t.message(ret(t.lastSent().id));
+      await flush();
+      t.message(ret(t.lastSent().id));
+      await flush();
+      assert.deepStrictEqual(commands(t).slice(before), [
+        setDisplayOption('showImplicits', false),
+        setDisplayOption('fullNamespace', false),
+        setDisplayOption('showImplicits', true),
+        setDisplayOption('fullNamespace', true),
+      ]);
+      const none = setup();
+      const plain = none.pool.sessionFor(LOOSE, 'check');
+      await answered(none, plain);
+      const sent = none.transports.last().sent.length;
+      none.pool.plainPrinting(plain).off();
+      none.pool.plainPrinting(plain).on();
+      await flush();
+      assert.strictEqual(none.transports.last().sent.length, sent);
     });
 
     test('a compiler\'s error or a lost request is logged; the session goes on', async () => {

@@ -320,6 +320,17 @@ suite('features/intelligence/hover', () => {
     assert.deepStrictEqual(t.backend.calls, ['typeAt r 12:13']);
   });
 
+  test('docs of a check of unsaved text are not kept for the saved file: an undo back to it asks again (review 1, M9)', async () => {
+    const t = hoverSetup();
+    t.backend.typeAnswer = answering({ area: recordedType('shapes-lookups', '(:type-of "area" 13 0)') });
+    t.backend.docsAnswer = () => Promise.resolve(recordedReply('shapes-lookups', '(:docs-for "area")'));
+    t.doc.isDirty = true;
+    await hoverAt(t.deps, asDoc(t.doc), at(12, 1), 'passive');
+    t.doc.isDirty = false;
+    await hoverAt(t.deps, asDoc(t.doc), at(12, 1), 'passive');
+    assert.strictEqual(t.backend.calls.filter((call) => call.startsWith('docsFor')).length, 2);
+  });
+
   test("a global: its type and the overview of the docs block of the declaration the type names", async () => {
     const t = hoverSetup();
     t.backend.typeAnswer = answering({ area: recordedType('shapes-lookups', '(:type-of "area" 13 0)') });

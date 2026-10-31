@@ -310,6 +310,11 @@ export class HoleStore implements HoleModel, IDisposable {
     if (this.disposed || doc === undefined || !backend.caps.holes) {
       return;
     }
+    // A load of the saved file while a check of the unsaved text answers for the document: `holes`
+    // would give that check's, whose imported holes have no place, and this load says nothing of the text shown.
+    if (loaded.unsaved === undefined && doc.isDirty && backend.showsUnsavedCheck(doc)) {
+      return;
+    }
     const sequence = ++this.sequence;
     const root = rootKey(loaded.root);
     this.latest.set(loaded.file, { sequence, root });

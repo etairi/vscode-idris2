@@ -19,6 +19,9 @@ entry pointing here.
 | [`M7.md`](M7.md) | Goal panel (webview) | 2026-10-30 | `026889e` | 41046205065 (ubuntu, macOS) |
 | [`M8.md`](M8.md) | REPL terminal and doc-eval | 2026-10-30 | `0761f51` | 41096904577 (ubuntu, macOS; second attempt) |
 
+[`review-1.md`](review-1.md) is the first review of the whole progress (2026-10-30, at `ced9c6f`): its
+findings, how each was known, and the fix of each high and medium one.
+
 ## How these files were made
 
 On 2026-09-28 the following text was moved here **verbatim** (only headings and a one-line

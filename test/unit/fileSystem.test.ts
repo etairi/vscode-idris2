@@ -7,7 +7,7 @@ import { execFileSync } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { MAX_SOURCE_FILE_BYTES, readSourceFile } from '../../src/toolchain/fileSystem';
+import { linkFolder, MAX_SOURCE_FILE_BYTES, readSourceFile } from '../../src/toolchain/fileSystem';
 
 suite('toolchain/fileSystem: readSourceFile', () => {
   let dir: string;
@@ -45,5 +45,56 @@ suite('toolchain/fileSystem: readSourceFile', () => {
     assert.strictEqual((await readSourceFile(exact)).length, MAX_SOURCE_FILE_BYTES);
     await assert.rejects(readSourceFile(dir), /is not a regular file \(a directory\)$/);
     await assert.rejects(readSourceFile(path.join(dir, 'Missing.idr')), /cannot be read \(ENOENT\)$/);
+  });
+});
+
+suite('toolchain/fileSystem: linkFolder', () => {
+  let dir: string;
+  setup(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vi2-link-'));
+  });
+  teardown(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  test('a link to a folder that exists, kept while it stays right, moved when the folder does, gone with the folder', async () => {
+    const first = path.join(dir, 'first');
+    const second = path.join(dir, 'second');
+    const link = path.join(dir, 'link');
+    fs.mkdirSync(first);
+    fs.mkdirSync(second);
+    fs.writeFileSync(path.join(first, 'kept.ttc'), 'x');
+    await linkFolder(first, link);
+    assert.strictEqual(fs.readlinkSync(link), first);
+    const made = fs.lstatSync(link).ctimeMs;
+    await linkFolder(first, link);
+    assert.strictEqual(fs.lstatSync(link).ctimeMs, made, 'not made again');
+    await linkFolder(second, link);
+    assert.strictEqual(fs.readlinkSync(link), second);
+    fs.rmdirSync(second);
+    await linkFolder(second, link);
+    assert.strictEqual(fs.existsSync(link), false);
+    assert.throws(() => fs.lstatSync(link));
+    assert.ok(fs.existsSync(path.join(first, 'kept.ttc')));
+  });
+
+  test('no folder, no link: nothing is made; a file is no folder', async () => {
+    const link = path.join(dir, 'link');
+    await linkFolder(path.join(dir, 'gone'), link);
+    assert.throws(() => fs.lstatSync(link));
+    fs.writeFileSync(path.join(dir, 'file'), 'x');
+    await linkFolder(path.join(dir, 'file'), link);
+    assert.throws(() => fs.lstatSync(link));
+  });
+
+  test('removing the folder that holds a link leaves the folder it names', async () => {
+    const target = path.join(dir, 'depends');
+    const shadow = path.join(dir, 'shadow');
+    fs.mkdirSync(target);
+    fs.mkdirSync(shadow);
+    fs.writeFileSync(path.join(target, 'kept.ttc'), 'x');
+    await linkFolder(target, path.join(shadow, 'depends'));
+    await fs.promises.rm(shadow, { recursive: true, force: true });
+    assert.ok(fs.existsSync(path.join(target, 'kept.ttc')));
   });
 });

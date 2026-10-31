@@ -15,7 +15,7 @@ import {
   type IdeModeDeps,
   type LoadedDocument,
 } from '../../src/backend/ide/backend';
-import { ideCodec, interpret } from '../../src/backend/ide/protocol';
+import { ideCodec, interpret, setDisplayOption } from '../../src/backend/ide/protocol';
 import { serializeSexp, sym } from '../../src/backend/ide/sexp';
 import type {
   IdeCommand,
@@ -24,6 +24,7 @@ import type {
   LoadedFile,
   Reply,
   RequestOptions,
+  PlainPrinting,
   SessionPool,
   SessionPoolChange,
   SessionRole,
@@ -114,6 +115,8 @@ class FakeSession implements IdeSession {
   ) {}
   /** How often `request` was called (a first request starts a process, after the consent question). */
   asked = 0;
+  /** The commands in the order of the calls, as the real session queues them, whatever their checks do. */
+  readonly called: IdeCommand[] = [];
   /** The requests called and not yet settled. */
   private running = 0;
   /** As the real session's (nothing in flight or waiting), but for its state, which a test moves. */
@@ -122,6 +125,7 @@ class FakeSession implements IdeSession {
   }
   async request(command: IdeCommand, options: RequestOptions): Promise<Reply> {
     this.asked++;
+    this.called.push(command);
     this.running++;
     try {
       const { beforeSend, onReply, ...sent } = options;
@@ -162,6 +166,12 @@ class FakePool implements SessionPool {
   effectiveCheckBuildDir(root: Classification): string {
     return `${root.dir}/build/.vscode-idris2`;
   }
+  /** What each `outdateSaved` was given: the role and the files. */
+  readonly outdated: string[] = [];
+  outdateSaved(_root: Classification, role: SessionRole, files: readonly string[]): Promise<void> {
+    this.outdated.push(`${role} ${files.join(' ')}`);
+    return Promise.resolve();
+  }
   stop(root?: Classification): void {
     this.calls.push(`stop ${root?.dir ?? 'all'}`);
   }
@@ -199,6 +209,16 @@ class FakePool implements SessionPool {
   }
   setActiveRoot(root: Classification | 'pending' | undefined): void {
     this.calls.push(`setActiveRoot ${root === 'pending' ? root : (root?.dir ?? 'none')}`);
+  }
+  /** What `plainPrinting` sends around an edit, when a test sets it (none: no printing option is on). */
+  printing: { readonly off: IdeCommand; readonly on: IdeCommand } | undefined = undefined;
+  plainPrinting(session: IdeSession): PlainPrinting {
+    const send = (command: IdeCommand | undefined): void => {
+      if (command !== undefined) {
+        session.request(command, { kind: 'lookup' }).catch(() => undefined);
+      }
+    };
+    return { off: () => send(this.printing?.off), on: () => send(this.printing?.on) };
   }
   /** What `startProblem` reports (the pool's checks before the consent question). */
   problem: IdrisException | undefined = undefined;
@@ -294,6 +314,10 @@ class FakeShadowFiles {
     this.files.set(p, text);
     return Promise.resolve();
   }
+  linkFolder(target: string, link: string): Promise<void> {
+    this.operations.push(`link ${link} to ${target}`);
+    return Promise.resolve();
+  }
   remove(p: string): Promise<void> {
     this.operations.push(`remove ${p}`);
     for (const file of [...this.files.keys()]) {
@@ -372,6 +396,75 @@ suite('backend/ide/backend (IdeMode, IdeBackend)', () => {
       ],
     );
     assert.strictEqual(backend.caps, IDE_MODE_CAPABILITIES);
+  });
+
+  suite('a save during a load (review 1, N1)', () => {
+    const LOOSE_ROOT: Classification = { kind: 'loose', dir: '/w/broken' };
+    const FILE = '/w/broken/Bad.idr';
+    const loaded = (t: ReturnType<typeof setup>, role: SessionRole = 'check'): FakeSession => {
+      const session = t.pool.sessionFor(LOOSE_ROOT, role);
+      session.next = () => Promise.resolve(recordedExchanges('load-bad', '/private/w/broken')[0].reply);
+      return session;
+    };
+
+    test('the next load looks at what was saved since, once, and no load looks at what was not', async () => {
+      const t = setup();
+      loaded(t);
+      await t.backend.load(doc(FILE));
+      assert.deepStrictEqual(t.pool.outdated, [], 'nothing was saved');
+      t.ide.fileSaved(FILE);
+      await t.backend.load(doc(FILE));
+      await t.backend.load(doc(FILE));
+      assert.deepStrictEqual(t.pool.outdated, [`check ${FILE}`]);
+    });
+
+    test('a load looks at every file saved, as a module it imports may be one of them', async () => {
+      const t = setup();
+      loaded(t);
+      t.ide.fileSaved('/w/broken/Imported.idr');
+      t.ide.fileSaved(FILE);
+      t.ide.fileSaved(FILE);
+      await t.backend.load(doc(FILE));
+      assert.deepStrictEqual(t.pool.outdated, [`check /w/broken/Imported.idr ${FILE}`]);
+    });
+
+    test('it comes before the walk, which only microtasks may separate from the write, and goes with the load when that is sent', async () => {
+      const steps: string[] = [];
+      const t = setup({
+        findPackage: () => {
+          steps.push('walk');
+          return Promise.resolve(undefined);
+        },
+      });
+      const session = loaded(t);
+      const outdateSaved = t.pool.outdateSaved.bind(t.pool);
+      t.pool.outdateSaved = (root, role, files) => {
+        steps.push('outdate');
+        return outdateSaved(root, role, files);
+      };
+      const next = session.next;
+      session.next = (command) => {
+        steps.push('sent');
+        return next(command);
+      };
+      t.ide.fileSaved(FILE);
+      steps.length = 0;
+      await t.backend.load(doc(FILE));
+      assert.strictEqual(steps.at(-1), 'sent');
+      assert.strictEqual(steps.at(-2), 'walk');
+      assert.ok(steps.indexOf('outdate') >= 0 && steps.indexOf('outdate') < steps.lastIndexOf('walk'), steps.join(' '));
+    });
+
+    test('files saved before a session started again are still looked at', async () => {
+      const t = setup();
+      loaded(t);
+      await t.backend.load(doc(FILE));
+      t.ide.fileSaved(FILE);
+      t.pool.list.length = 0;
+      loaded(t);
+      await t.backend.load(doc(FILE));
+      assert.deepStrictEqual(t.pool.outdated, [`check ${FILE}`]);
+    });
   });
 
   test('load sends the real path of the session directory joined with the file\'s relative path, as a load of that path and version', async () => {
@@ -972,8 +1065,8 @@ function replaying(scenario: string, root: string, extra: Record<string, Reply> 
   };
 }
 
-const commands = (session: { requests: { command: IdeCommand }[] }): string[] =>
-  session.requests.map((r) => (r.command.kind === 'raw' ? r.command.text : serializeSexp(r.command)));
+const shown = (command: IdeCommand): string => (command.kind === 'raw' ? command.text : serializeSexp(command));
+const commands = (session: { requests: { command: IdeCommand }[] }): string[] => session.requests.map((r) => shown(r.command));
 
 const pos = (line: number, character: number) => new Position(line, character) as vscode.Position;
 
@@ -1895,6 +1988,19 @@ suite('backend/ide/backend M3 (queries, token index, evaluation)', () => {
   });
 
   suite('evaluate: expressions only, in the eval session', () => {
+    test('each session looks at the files saved for itself, as each has its build files (review 1, N1)', async () => {
+      const t = setup({ readFile: fixtureFile });
+      const root: Classification = { kind: 'loose', dir: '/w/broken' };
+      const check = t.pool.sessionFor(root, 'check');
+      check.next = () => Promise.resolve(recordedExchanges('load-bad', '/private/w/broken')[0].reply);
+      const evalSession = t.pool.sessionFor(root, 'eval');
+      evalSession.next = replaying('eval-values', '/private/w/broken');
+      t.ide.fileSaved(CLEAN);
+      await t.backend.load(cleanDoc());
+      await t.backend.evaluate(cleanDoc(), '1 + 1');
+      assert.deepStrictEqual(t.pool.outdated, [`check ${CLEAN}`, `eval ${CLEAN}`]);
+    });
+
     test('a REPL command is refused before anything is classified, started or sent (ROADMAP §9)', async () => {
       const t = setup({ readFile: fixtureFile, projects: { classify: () => assert.fail('classified'), sessionCwd: (r) => r.dir } });
       for (const text of [':exec putStrLn "hi"', '  :set eval execute', '{- c -}\n:sh rm -rf x', '​:q']) {
@@ -2208,6 +2314,7 @@ suite('backend/ide/backend M3: evaluation with the real session pool', () => {
         trust: { isTrusted: true, onDidGrant: new Emitter<void>().event },
         gate,
         codec: jsonCodec,
+        buildFiles: { list: () => Promise.resolve([]), sourceTime: () => Promise.resolve(undefined), builtTime: () => Promise.resolve(undefined), setBack: () => Promise.resolve() },
         trace: new RecordingTrace(),
         log: recordingLog(),
         platform: 'darwin',
@@ -2471,6 +2578,41 @@ suite('backend/ide/backend M4 (holes, edits)', () => {
     assert.strictEqual(t.reads.filter((p) => p === '/private/w/broken/Clean.idr' || p === '/w/broken/Clean.idr').length, 3);
   });
 
+  test('edit: with printing options on, they go off right before the request and back right after it, in one block of the queue (review 1, H1)', async () => {
+    const t = await loadedFile('clean-editing', '/w/broken', 'Clean.idr');
+    t.pool.printing = { off: setDisplayOption('fullNamespace', false), on: setDisplayOption('fullNamespace', true) };
+    const replies = t.session.next;
+    const reply: Reply = { id: 0n, payload: ok(), messages: [] };
+    t.session.next = (command) => (shown(command).includes('shownamespace') ? Promise.resolve(reply) : replies(command));
+    const before = t.session.called.length;
+    assert.strictEqual((await t.backend.edit(caseSplitOf(t.d))).type, 'edit');
+    assert.deepStrictEqual(t.session.called.slice(before).map(shown), ['(:interpret ":unset shownamespace")', '(:case-split 8 1 "xs")', '(:interpret ":set shownamespace")']);
+    // A request refused at the last moment still gets them back.
+    t.session.next = replies;
+    t.session.beforeCheck = (command) => {
+      if (shown(command).startsWith('(:case-split')) {
+        t.disk.changed = true;
+      }
+    };
+    const refused = t.session.called.length;
+    await assert.rejects(t.backend.edit(caseSplitOf(t.d)));
+    assert.deepStrictEqual(t.session.called.slice(refused).map(shown), ['(:interpret ":unset shownamespace")', '(:case-split 8 1 "xs")', '(:interpret ":set shownamespace")']);
+  });
+
+  test('editNext: the -Next of a search goes between them too', async () => {
+    const t = await loadedFile(CLEAN, '/w/broken', 'Clean.idr');
+    await t.backend.edit({ kind: 'exprSearch', doc: t.d, version: 7, pos: pos(7, 12), name: 'vlen_rhs', hints: [] });
+    t.pool.printing = { off: setDisplayOption('showImplicits', false), on: setDisplayOption('showImplicits', true) };
+    const replies = t.session.next;
+    const reply: Reply = { id: 0n, payload: ok(), messages: [] };
+    t.session.next = (command) => (shown(command).includes('showimplicits') ? Promise.resolve(reply) : replies(command));
+    const before = t.session.called.length;
+    const previous = new Range(new Position(7, 10), new Position(7, 11));
+    const after = doc('/w/broken/Clean.idr', { text: t.text.replace('?vlen_rhs', '0'), version: 8 });
+    await t.backend.edit({ kind: 'exprSearchNext', doc: after, version: 8, previous: previous as never });
+    assert.deepStrictEqual(t.session.called.slice(before).map(shown), ['(:interpret ":unset showimplicits")', ':proof-search-next', '(:interpret ":set showimplicits")']);
+  });
+
   test('the hole commands in a bird-track file: the load\'s holes put ?vlen_rhs and ?half_rhs (below the line the compiler counts twice) at the cursor, so they are sent (lit2-editing)', async () => {
     const t = await loadedFile('lit2-editing', '/w/broken', 'Lit2.lidr');
     // ?vlen_rhs on file line 9, ?half_rhs on file line 18, below the `> ` of line 16 (F11 addendum).
@@ -2668,6 +2810,7 @@ suite('backend/ide/backend M4 (holes, edits)', () => {
         trust: { isTrusted: true, onDidGrant: new Emitter<void>().event },
         gate: { permit: () => Promise.resolve(allowed), current: () => allowed, recheck: () => Promise.resolve(allowed), onDidChange: new Emitter<void>().event },
         codec: jsonCodec,
+        buildFiles: { list: () => Promise.resolve([]), sourceTime: () => Promise.resolve(undefined), builtTime: () => Promise.resolve(undefined), setBack: () => Promise.resolve() },
         trace: new RecordingTrace(),
         log: recordingLog(),
         platform: 'darwin',
@@ -2779,6 +2922,7 @@ suite('backend/ide/backend M6 (checks of unsaved text)', () => {
       `remove ${dir}/src`,
       `remove ${dir}/build`,
       `write ${dir}/shadow.ipkg`,
+      `link ${dir}/depends to ${B_ROOT.dir}/depends`,
       `mkdir ${dir}/src/Foo`,
       `write ${dir}/src/Foo/B.idr`,
     ]);
@@ -2872,6 +3016,24 @@ suite('backend/ide/backend M6 (checks of unsaved text)', () => {
     assert.deepStrictEqual([result.ok, result.diagnostics, result.problem], [false, [], 'the compiler refused the package file written to check it: Unrecognised property "pkgs".']);
   });
 
+  test('a check of unsaved text that failed answers nothing about a local: the saved load does, as about a stale file (review 1, M1)', async () => {
+    const root: Classification = { kind: 'loose', dir: '/w/broken' };
+    const t = unsaved();
+    const text = fixtureText('broken/Clean.idr');
+    const check = t.pool.sessionFor(root, 'check');
+    check.next = replaying('clean-lookups', '/private/w/broken');
+    await t.backend.load(doc('/w/broken/Clean.idr', { text }));
+    const shadow = t.pool.sessionFor(root, 'shadow');
+    const undefinedName: Reply = { id: 1n, payload: { kind: 'error', message: 'Undefined name xs.', highlighting: [] }, messages: [] };
+    shadow.next = (command) => (shown(command).startsWith('(:load-file') ? Promise.resolve(failed(warning('src/Clean.idr', 9, 0, 3, 'Mismatch between: Nat and String.'))) : Promise.resolve(undefinedName));
+    const edited = doc('/w/broken/Clean.idr', { text: `${text}\nbad : Nat\nbad = "x"\n`, isDirty: true, version: 9 });
+    assert.strictEqual((await t.backend.checkUnsaved(edited)).ok, false);
+    const answer = await t.backend.typeAt(edited, pos(7, 5), 'xs', 'bound');
+    assert.match(answer?.text ?? '', /xs : /);
+    assert.strictEqual(answer?.unsaved, undefined, 'from the saved load: not about the text shown');
+    assert.ok(commands(shadow).some((c) => c.startsWith('(:type-of')), 'the text shown is asked first');
+  });
+
   test('queries of a dirty document go to the shadow session while its last check read exactly the shown text (TypeInfo.unsaved), else to the check session', async () => {
     const root: Classification = { kind: 'loose', dir: '/w/broken' };
     const t = unsaved();
@@ -2934,6 +3096,37 @@ suite('backend/ide/backend M6 (checks of unsaved text)', () => {
       t.backend.edit({ kind: 'caseSplit', doc: d, version: 7, pos: pos(7, 0), name: 'xs' }),
       (e: unknown) => e instanceof IdrisException && e.error.kind === 'NotLoaded',
     );
+  });
+
+  test('-Next goes to the session of the newest search of its kind, not to one that still has an older search (review 1, H4)', async () => {
+    const root: Classification = { kind: 'loose', dir: '/w/broken' };
+    const t = unsaved();
+    const shadow = t.pool.sessionFor(root, 'shadow');
+    const check = t.pool.sessionFor(root, 'check');
+    const answering = (base: string) => {
+      const recorded = [...recordedExchanges('clean-editing', base), ...recordedExchanges('clean-lookups', base)];
+      return (command: IdeCommand): Promise<Reply> => {
+        const text = shown(command);
+        const found = recorded.find((x) => x.request.replace(/ \d+\)\n$/, '').slice(1) === text);
+        return found === undefined ? Promise.reject(new Error(`not recorded: ${text}`)) : Promise.resolve(found.reply);
+      };
+    };
+    shadow.next = answering(`/private${shadowOf('/w/broken')}/src`);
+    check.next = answering('/private/w/broken');
+    check.launch = { executable: '/bin/idris2', args: [], cwd: '/w/broken', realCwd: realpathOf('/w/broken'), env: {}, transport: 'stdio' };
+    const text = fixtureText('broken/Clean.idr');
+    // A Proof Search in a check of unsaved text…
+    const dirty = doc('/w/broken/Clean.idr', { text, isDirty: true });
+    await t.backend.checkUnsaved(dirty);
+    await t.backend.edit({ kind: 'exprSearch', doc: dirty, version: 7, pos: pos(7, 12), name: 'vlen_rhs', hints: [] });
+    // …then, the file saved, another in the check session, which is the search the cycle follows.
+    const saved = doc('/w/broken/Clean.idr', { text, version: 8 });
+    await t.backend.load(saved);
+    await t.backend.edit({ kind: 'exprSearch', doc: saved, version: 8, pos: pos(7, 12), name: 'vlen_rhs', hints: [] });
+    const after = doc('/w/broken/Clean.idr', { text: text.replace('?vlen_rhs', '0'), version: 9, isDirty: true });
+    await t.backend.edit({ kind: 'exprSearchNext', doc: after, version: 9, previous: { start: { line: 7, character: 10 }, end: { line: 7, character: 11 } } });
+    assert.deepStrictEqual(commands(check).filter((c) => /proof-search/.test(c)), ['(:proof-search 8 "vlen_rhs" ())', ':proof-search-next']);
+    assert.deepStrictEqual(commands(shadow).filter((c) => /proof-search/.test(c)), ['(:proof-search 8 "vlen_rhs" ())'], 'not the older search');
   });
 
   test('a search started in the shadow session continues there (-Next) while it is that session\'s; the check session is asked nothing', async () => {

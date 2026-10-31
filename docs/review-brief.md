@@ -1,8 +1,10 @@
 # Review brief
 
 For the review of the whole progress that the user runs as a separate workflow once M8 is finished
-(ROADMAP §9, decided 2026-10-30). **Last updated at the end of M8**, so it is ready. Start here, then read
-`CLAUDE.md`, which holds the rules the code must keep.
+(ROADMAP §9, decided 2026-10-30). **Last updated after the fixes of review 1.** Start here, then read
+`CLAUDE.md`, which holds the rules the code must keep. Review 1 ran at `ced9c6f`; its findings and fixes
+are in `as-built/review-1.md`. A next round starts with those fixes, which no reviewer has read, then
+the low findings the review reported and nobody triaged.
 
 ## What is reviewed
 
@@ -28,6 +30,8 @@ Spend the effort where the last column is thin.
 | Rename to Idris 2 Language Tools (`ab1e1ba`) | 2026-10-30 | **author only**; no fresh Marketplace listing yet |
 | M7 goal panel | 2026-10-30 | **author only** (`as-built/M7.md`, *Review*) |
 | M8 REPL, Query, `-- >>>` lenses | 2026-10-30 | **author only** (`as-built/M8.md`, *Review*) |
+| All of the above | 2026-10-30 | review 1: 14 lanes, 5 angles, verifiers (`as-built/review-1.md`) |
+| The fixes of review 1, with N1 and all of M20 | 2026-10-30 | **author only** |
 
 A failed, stalled or rate-limited reviewer never counts as a clean round. Check that each reviewer
 really finished before calling a round clean.
@@ -74,16 +78,16 @@ These protect the user's machine and accounts. A reviewer that breaks one has fa
 
 ## Gates
 
-Run one at a time, in this order. The expected figures are from the end of M8.
+Run one at a time, in this order. The expected figures are from after the fixes of review 1.
 
 ```sh
 npm run check-types && npm run lint
-npm run test:unit                 # 3,077 passing, 1 pending
+npm run test:unit                 # 3,159 passing, 1 pending
 npm run test:grammar              # 195 passing
 npm test                          # eleven suites, 180 tests
-IDRIS2_E2E=1 npm run test:e2e     # 101 passing
+IDRIS2_E2E=1 npm run test:e2e     # 105 passing
 PACK_BIN_DIR=$HOME/.local/share/pack/bin IDRIS2_LSP=$HOME/.local/share/pack/bin/idris2-lsp \
-  npm run test:e2e:lsp            # 18 passing
+  npm run test:e2e:lsp            # 24 passing
 npm run check:fixtures            # 120 checks, 0 failed
 npm run docs:graph:check
 npm run package

@@ -76,6 +76,7 @@ export function registerEditing(api: EditingApi, deps: EditingDeps, options: Edi
   return {
     outcomes: commands.outcomes,
     cycleOf: (uri) => cycles.cycleOf(uri),
+    pickChoice: commands.pickChoice,
     statusText: () => cycles.statusText(),
     onDidChangeCycle: cycles.onDidChange,
     run: (command, args, options) => commands.run(command, args, options),

@@ -166,7 +166,8 @@ export async function hoverAt(deps: HoverDeps, doc: vscode.TextDocument, pos: Ed
       ? { kind: 'answer', value: undefined }
       : await deps.answers.get(
           doc.fileName,
-          docsKey(name, 'overview'),
+          // Of a check of unsaved text, when one answers, so not an answer about the saved file (review 1, M9).
+          `${docsKey(name, 'overview')}${doc.isDirty ? ' unsaved' : ''}`,
           () => deps.queries.run(doc, mode, (b) => b.docsFor(doc, name, 'overview')),
           fresh,
         );

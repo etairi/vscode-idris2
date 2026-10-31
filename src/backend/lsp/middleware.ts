@@ -22,7 +22,7 @@
  * made, per document in order), `didChange` and `didClose` only for an open one, `didSave` only for
  * an open one that is still admitted; when `admits` may change (`LspOwnership.onDidChange`) the
  * client opens and closes documents to match (`reconcile`), clearing the diagnostics of each one it
- * closes. Every provider hook answers `undefined` or `[]` without asking for a document that is not
+ * closes, as `didClose` does (the server publishes nothing for a closed file). Every provider hook answers `undefined` or `[]` without asking for a document that is not
  * open and admitted (`serves`). Below the hooks, the client's general `sendNotification` and
  * `sendRequest` hooks are a last check that nothing names another document: a `textDocument/*`
  * notification passes only for a document the sync opened (or is opening), and a request that names
@@ -98,6 +98,7 @@ import { plainText } from '../../core/notificationText';
 import { codePointsBefore, fromIdeReply, toIdeTypeOfRequest, type EditorPosition, type EditorRange, type PositionDocument } from '../../core/positions';
 import { codeBlock, editorLabel, quickPickText, visible } from '../../core/untrustedText';
 import { compilerLiterateStyleOf, hasLineMarkers } from '../../project/literate';
+import { sameText } from '../../toolchain/fileSystem';
 import type { LspOwnership } from './types';
 
 // -------------------------------------------------------------------------------------------
@@ -266,6 +267,8 @@ export interface SyncChannel {
   change(doc: vscode.TextDocument): Promise<void>;
   /** `textDocument/didSave` of `doc`, with its text (the server reads the file from disk). */
   save(doc: vscode.TextDocument): Promise<void>;
+  /** Resolves once the server has finished all it was sent, so that no load runs; rejects when it has gone. */
+  idle(doc: vscode.TextDocument): Promise<void>;
   close(doc: vscode.TextDocument): Promise<void>;
   /** Drops what the client shows of the server's diagnostics for `uri`. */
   clearDiagnostics(uri: vscode.Uri): void;
@@ -303,6 +306,16 @@ const DOCUMENT_NOTIFICATIONS: Readonly<Record<string, 'opening' | 'open' | 'clos
  * sends `didSave` with its text, so that the server answers again for the file on disk, which is
  * what the editor shows. Not while VS Code is saving it (`willSave` until the save's `didSave`), so
  * that a save is one `didSave`, not two.
+ *
+ * A document reloaded from disk is clean again too, with no second event: its change arrives clean.
+ * So does the first keystroke after a save, whose dirty state comes in the next event, so only a
+ * text equal to the file's counts (`reloaded`), as `features/diagnostics/checks.ts` tells the two apart.
+ *
+ * **A save during a load** (review 1, N1; `backend/ide/buildFiles.ts`). A load that overlapped a save
+ * leaves a TTC newer than the file, from what it read before, and the server's load at the `didSave`
+ * would build nothing. So `didSave` goes to the server only after it has finished what it was sent
+ * (`SyncChannel.idle`) and such a TTC was set back (`outdate`): the load after a save builds the text
+ * saved. A `didSave` this sync makes up itself (*Clean again*) has no write to overlap.
  */
 export class DocumentSync {
   private channel: SyncChannel | undefined;
@@ -324,6 +337,10 @@ export class DocumentSync {
   constructor(
     private readonly ownership: LspOwnership,
     private readonly log: Log,
+    /** The text of a file on disk (`MiddlewareDeps.readText`). */
+    private readonly readText: (fileName: string) => Promise<string | undefined>,
+    /** Sets back the build files of a file newer than it (`LspClientDeps.outdateBuild`). */
+    private readonly outdate: (fileName: string) => Promise<void>,
   ) {}
 
   attach(channel: SyncChannel): void {
@@ -390,7 +407,7 @@ export class DocumentSync {
   }
 
   /** Opens `doc` with `send` if it is admitted; `send` is the library's own `didOpen` or `SyncChannel.open`. */
-  private async openWith(doc: vscode.TextDocument, send: () => Promise<void>): Promise<void> {
+  private async openWith(channel: SyncChannel, doc: vscode.TextDocument, send: () => Promise<void>): Promise<void> {
     const key = doc.uri.toString();
     if (this.open.has(key) || !(await this.ownership.admits(doc.uri))) {
       return;
@@ -399,7 +416,16 @@ export class DocumentSync {
     try {
       await send();
       this.open.set(key, doc.uri);
-      this.unsaved.delete(key);
+      if (doc.isDirty) {
+        // The server counts a document as dirty at a change, never at didOpen, and it loads the file
+        // from disk: told nothing, it would answer for that text at the editor's positions (review 1, H3).
+        if (!this.changed.has(key)) {
+          await channel.change(doc);
+        }
+        this.unsaved.add(key);
+      } else {
+        this.unsaved.delete(key);
+      }
     } finally {
       this.opening.delete(key);
     }
@@ -408,7 +434,7 @@ export class DocumentSync {
   /** The library's `didOpen` (class comment, *The library's held-back opens*: not awaited while the document's own step runs). */
   didOpen(doc: vscode.TextDocument, next: (doc: vscode.TextDocument) => Promise<void>): Promise<void> {
     const reentrant = this.running.has(doc.uri.toString());
-    const queued = this.enqueue(doc.uri, () => this.openWith(doc, () => next(doc)));
+    const queued = this.enqueue(doc.uri, (channel) => this.openWith(channel, doc, () => next(doc)));
     return reentrant ? Promise.resolve() : queued;
   }
 
@@ -420,8 +446,24 @@ export class DocumentSync {
       if (this.changed.delete(key) && this.open.has(key)) {
         await channel.change(doc);
         this.unsaved.add(key);
+        await this.reloaded(channel, doc);
       }
     });
+  }
+
+  /** `didSave` when the change just sent left `doc` clean and equal to its file (class comment, *Clean again*). */
+  private async reloaded(channel: SyncChannel, doc: vscode.TextDocument): Promise<void> {
+    const key = doc.uri.toString();
+    const version = doc.version;
+    const clean = (): boolean => !doc.isDirty && !doc.isClosed && doc.version === version && !this.saving.has(key) && this.open.has(key);
+    if (!clean()) {
+      return;
+    }
+    const disk = await this.readText(doc.uri.fsPath);
+    if (clean() && disk !== undefined && sameText(disk, doc.getText()) && (await this.ownership.admits(doc.uri))) {
+      await channel.save(doc);
+      this.unsaved.delete(key);
+    }
   }
 
   /** VS Code is about to save `doc` (`onWillSaveTextDocument`): its save sends `didSave` (class comment, *Clean again*). */
@@ -432,12 +474,23 @@ export class DocumentSync {
   didSave(doc: vscode.TextDocument, next: (doc: vscode.TextDocument) => Promise<void>): Promise<void> {
     const key = doc.uri.toString();
     this.saving.delete(key);
-    return this.enqueue(doc.uri, async () => {
+    return this.enqueue(doc.uri, async (channel) => {
       if (this.open.has(key) && (await this.ownership.admits(doc.uri))) {
+        await this.outdated(channel, doc);
         await next(doc);
         this.unsaved.delete(key);
       }
     });
+  }
+
+  /** Sets back what a load wrote during `doc`'s save, once none runs (class comment, *A save during a load*); the save is told anyway. */
+  private async outdated(channel: SyncChannel, doc: vscode.TextDocument): Promise<void> {
+    try {
+      await channel.idle(doc);
+      await this.outdate(doc.uri.fsPath);
+    } catch (error) {
+      this.log.warn(`Language server: the build files of ${doc.uri.toString()} were not checked after its save: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   /**
@@ -465,9 +518,10 @@ export class DocumentSync {
   didClose(doc: vscode.TextDocument, next: (doc: vscode.TextDocument) => Promise<void>): Promise<void> {
     const key = doc.uri.toString();
     this.saving.delete(key);
-    return this.enqueue(doc.uri, async () => {
+    return this.enqueue(doc.uri, async (channel) => {
       if (this.open.has(key)) {
         await this.closeWith(key, () => next(doc));
+        channel.clearDiagnostics(doc.uri);
       }
     });
   }
@@ -482,7 +536,7 @@ export class DocumentSync {
         this.enqueue(doc.uri, async (channel) => {
           const key = doc.uri.toString();
           if (!this.open.has(key)) {
-            await this.openWith(doc, () => channel.open(doc));
+            await this.openWith(channel, doc, () => channel.open(doc));
           } else if (!(await this.ownership.admits(doc.uri))) {
             await this.closeWith(key, () => channel.close(doc));
             channel.clearDiagnostics(doc.uri);

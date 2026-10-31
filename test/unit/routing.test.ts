@@ -431,7 +431,7 @@ suite('backend/registry: routing (M5)', () => {
   suite('LspAdmission: which documents may reach the server', () => {
     const FILE = { scheme: 'file', fsPath: '/w/simple-ipkg/src/Foo/A.idr' } as unknown as import('vscode').Uri;
 
-    function admission(options: { route?: Route; verdict?: GateVerdict | undefined; root?: Classification } = {}) {
+    function admission(options: { route?: Route; verdict?: GateVerdict | undefined; root?: Classification; realpath?: (dir: string) => string | undefined } = {}) {
       const trust = { isTrusted: true, granted: new Emitter<void>() };
       const routes = new Emitter<void>();
       const gateChanged = new Emitter<void>();
@@ -465,6 +465,8 @@ suite('backend/registry: routing (M5)', () => {
           onDidChange: gateChanged.event,
         },
         registry: { routeFor: () => state.route, onDidChangeRoutes: routes.event },
+        platform: 'darwin',
+        realpath: options.realpath ?? ((dir) => dir),
       });
       return { a, trust, state, routes, gateChanged, projectsChanged };
     }
@@ -473,6 +475,22 @@ suite('backend/registry: routing (M5)', () => {
       const { a, state } = admission();
       assert.strictEqual(await a.admits(FILE), true);
       assert.deepStrictEqual(state.rechecked, [PROJECT.dir], 'the gate judged the root\'s folder');
+    });
+
+    test('a path the compiler reads differently is refused before the gate, as on the IDE-mode route (review 1, M12)', async () => {
+      for (const fsPath of ['/w/co:lon/src/A.idr', '/w/what?/src/A.idr', '/w/back\\slash/src/A.idr', '/w/ /src/A.idr']) {
+        const { a, state } = admission();
+        assert.strictEqual(await a.admits({ scheme: 'file', fsPath } as unknown as import('vscode').Uri), false, fsPath);
+        assert.deepStrictEqual(state.rechecked, [], fsPath);
+      }
+    });
+
+    test('the path judged is the one the server is sent, the real path of the folder (review 1, M12)', async () => {
+      const { a } = admission({ realpath: () => '/real:folder' });
+      assert.strictEqual(await a.admits(FILE), false, 'a link to a folder the compiler misreads');
+      const link = { scheme: 'file', fsPath: '/w/li:nk/A.idr' } as unknown as import('vscode').Uri;
+      const { a: b } = admission({ realpath: () => '/w/simple-ipkg/src' });
+      assert.strictEqual(await b.admits(link), true, 'a link to a folder it reads');
     });
 
     test('Restricted Mode, another scheme, a file name the compiler does not read as Idris, a loose file, another route: refused before the gate', async () => {

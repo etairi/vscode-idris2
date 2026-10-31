@@ -19,7 +19,8 @@ Guidance for Claude Code when working in this repository (a VS Code extension fo
   acceptance item, which the user kept for now); M7 is implemented (2026-10-30, commit `026889e`,
   `docs/as-built/M7.md`, likewise); M8 is implemented (2026-10-30, commit `0761f51`, `docs/as-built/M8.md`, likewise).
   The whole-progress review the user runs after M8 starts from
-  `docs/review-brief.md`, kept up to date until then.
+  `docs/review-brief.md`, kept up to date; its first round, findings and fixes, is
+  `docs/as-built/review-1.md`.
 - `docs/as-built/` — what was built: one file per finished milestone (`M0.md` … `M8.md`) with
   its deviations from ROADMAP §5 and ARCHITECTURE, measurements, experiments,
   review rounds and gate runs; `README.md` there explains the files and how to read their
@@ -626,7 +627,11 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
   Backend leaves it alone, it writes the project's own build directory, and a window reload does not
   bring it back (`isTransient`).
 - **What is typed into a REPL is one line** (`launch.ts` `replLine`): line breaks become spaces, and
-  text with a control character is not typed. That the `:exec` the user selects runs is the point of it.
+  text with a control character, or past the 1,000 bytes a terminal holds, is not typed. That the
+  `:exec` the user selects runs is the point of it.
+- **A REPL starts only on what was judged** (review 1): the compiler's walk must find the root's own
+  `.ipkg` (a stale root would move it to a package the gate never judged), and nothing it is given may
+  hold `${`, which VS Code expands in a terminal's executable, arguments and directory after every check.
 - **A project's REPL is `idris2 --find-ipkg <file>`, from the `.ipkg`'s directory**: `--repl <ipkg>`
   leaves `:r` with nothing to reload [live]. D4's "never `--find-ipkg`" is about sessions, which get
   absolute paths from any directory (F13); it works here because the path is relative to that directory.
@@ -636,12 +641,49 @@ npm run package       # vsce package (vscode:prepublish: check-types, lint, prod
   else without the user's decision: `:exec`, `:sh` and `:set eval execute` are why this rule exists.
 - **Run all asks first** and says how many lines it runs: those comments may be unread in a clone. A
   lens writes only comments: every line of an answer starts with the line's prefix and `--`, control and
-  format characters written out (`docEval.ts`). A lens saves first, under
-  `idris2.checking.saveBeforeAction`: the compiler answers for the file on disk.
+  format characters written out, its further lines `-- > ` so that a re-run keeps the comments below it
+  (`docEval.ts`). A lens saves first, under `idris2.checking.saveBeforeAction`: the compiler answers for
+  the file on disk. So the lines and the version are read together, **after** the question and the save,
+  and Run all runs only what was agreed to (review 1, H2).
+- **Printing options never reach an edit** (review 1, H1): the compiler and idris2-lsp print an edit's
+  answer under them, as text that does not parse or means something else. `IdeMode.sendEdit` queues
+  `SessionPool.plainPrinting` around the request in one turn; `LspBackend.edit` runs in
+  `LspClientHandle.plainPrinting`, which also makes the server reload the document, since a change of the
+  options leaves its cache of code actions. Text a compiler prints that goes into a file takes that path.
 - Tests: a terminal's screen cannot be read. The fake compiler's REPL logs what it reads; the e2e suite
   has `:exec main` write a file. Integration tests of a lens revert between runs: a run saves the file,
   and the fixture is the workspace. Count compilers by the Chez process (`e2e/repl.test.ts` `compilers`),
   since a shell's command line can name `idris2_app/idris2.so` too.
+
+## Rules established by review 1
+
+The rules of the fixes to M1–M6 (those to M7 and M8 are in their sections above). Each finding is in
+`docs/as-built/review-1.md`.
+
+- **A stop ends what waits on the server** (M3): when a server does not answer `shutdown` the library
+  keeps its connection, and what is pending on it for ever. `LspClient.stopInstance` ends the requests
+  in flight (`Instance.inFlight`), or a command would hold its document. A question in the goal panel
+  that no panel shows holds it too (M5): `GoalPanelHost.choose` leaves it to the QuickPick.
+- **A clean document is clean only when it equals its file** (M4): VS Code sends a reload's change as
+  clean, and also a first keystroke's, whose dirty state follows. `DocumentSync.reloaded` tells them
+  apart as `checks.ts` does (`toolchain/fileSystem.ts` `sameText`), and only a reload is a `didSave`.
+- **What the server is sent is what `LspAdmission` judges** (M12): the real path of the folder and the
+  file's name, by `compilerReadsPathAsGiven`, the rule of IDE mode's loads.
+- **A shadow directory stands in for the root's working directory**: what the compiler finds relative
+  to that directory must be there too. So far that is `depends`, a link (M2): `fs.rm` does not follow
+  it, and `IDRIS2_PACKAGE_PATH` is no way, since pack's wrapper sets it itself.
+- **`Tracked.shown` says what was shown, not what the session holds** (M20): a session has one load, so
+  back on a document ask `showsUnsavedCheck`, and a load that rebuilt another file of the root clears
+  `shown` (M19). A saved load does not refresh the holes of a document an unsaved check answers for
+  (M18): `holes` would give that check's, and imported holes have no place there.
+- **A command needs the compiler anyway** (M20): nothing automatic may start a compiler that an idle stop
+  ended, but a command on unsaved text may, through `UnsavedChecks.checkNow`, before it saves anything.
+- **The load after a save builds the text saved** (N1): the compiler compares modification times only, so
+  a load that overlaps a save leaves a TTC it will never rebuild. `buildFiles.ts` sets such a TTC back,
+  once nothing runs: in `IdeBackend.queueLoad`'s `beforeSend`, before the walk, as only microtasks may
+  separate the walk from the write; in `DocumentSync.didSave`, after `SyncChannel.idle`. The server handles
+  one message at a time, so any answer means idle. Build files are the only thing the extension changes
+  for this, their contents never, and links are left alone.
 
 ## Platforms
 

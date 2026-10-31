@@ -37,6 +37,8 @@ export interface ReplDeps {
   readonly gate: SessionGate;
   /** `SessionPool.startProblem`: what keeps the compiler from starting, before the consent question. */
   startProblem(): Promise<IdrisException | undefined>;
+  /** The package file the compiler's walk finds from a directory (`project/ipkg.ts` `findIpkg`). */
+  findPackage(dir: string): Promise<string | undefined>;
   /** Looks for `rlwrap` (`launch.ts`). */
   readonly fileSystem: Pick<FileSystemProbe, 'stat'>;
   readonly processEnv: Readonly<Record<string, string | undefined>>;

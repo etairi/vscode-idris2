@@ -11,6 +11,7 @@ import { cancelled, IdrisException, unsupported } from '../../src/core/errors';
 import { Emitter } from '../../src/core/event';
 import type { Timers } from '../../src/features/diagnostics/checks';
 import { savedSoon, UNSAVED_COLLECTION_NAME, UnsavedChecks, type UnsavedChecksApi, type UnsavedChecksDeps } from '../../src/features/shadow/unsavedChecks';
+import type { LoadedFileEvent } from '../../src/features/intelligence/types';
 import type { Classification } from '../../src/project/types';
 import { recordingLog } from './support/fakeTransport';
 
@@ -94,6 +95,11 @@ class ScriptedBackend {
   caps = { checksUnsaved: true };
   readonly checks: { doc: FakeDocument; options: UnsavedCheckOptions | undefined; resolve(r: UnsavedCheckResult): void; reject(e: unknown): void }[] = [];
   readonly changed: FakeDocument[] = [];
+  /** `IdrisBackend.showsUnsavedCheck`: its session still holds the check that was shown. */
+  shows = true;
+  showsUnsavedCheck(): boolean {
+    return this.shows;
+  }
   checkUnsaved(doc: FakeDocument, options?: UnsavedCheckOptions): Promise<UnsavedCheckResult> {
     return new Promise((resolve, reject) => this.checks.push({ doc, options, resolve, reject }));
   }
@@ -167,9 +173,11 @@ function setup(options: { trusted?: boolean; settings?: (scope: FakeUri | undefi
   const clears: number[] = [];
   const log = recordingLog();
   const timers = new ManualTimers();
+  const loads = new Emitter<LoadedFileEvent>();
   const deps: UnsavedChecksDeps = {
     registry: { backendFor: () => backend as never, stateFor: () => ({ kind: state.kind }) as never },
     projects: { classify: () => Promise.resolve(ROOT) },
+    loads: { onDidLoad: loads.event },
     config: {
       checkOnType: (scope?: unknown) => settings(scope as FakeUri | undefined),
       checking: () => saving.checking,
@@ -254,6 +262,8 @@ function setup(options: { trusted?: boolean; settings?: (scope: FakeUri | undefi
       activeChanged.fire(window.activeTextEditor);
     },
     configChanged: (key: string) => configChanged.fire({ affects: (k) => k === key || key.startsWith(`${k}.`) }),
+    /** A load of the check session (`LoadNotifications`). */
+    load: (event: LoadedFileEvent) => loads.fire(event),
     grant: () => {
       trust.isTrusted = true;
       granted.fire();
@@ -265,6 +275,223 @@ const answer = (version: number, diagnostics: unknown[] = [{ message: 'e', sourc
   ({ ok: diagnostics.length === 0, version, diagnostics, missing: [], ...extra }) as unknown as UnsavedCheckResult;
 
 suite('features/shadow (check while typing)', () => {
+  suite('checkNow, for a command (review 1, M20)', () => {
+    const dirtyAndChecked = async () => {
+      const a = new FakeDocument('/w/A.idr');
+      const t = setup({ active: a });
+      t.activate(a);
+      t.timers.fireAll();
+      await settle();
+      t.backend.checks[0].resolve(answer(a.version));
+      await settle();
+      return { a, t };
+    };
+
+    test('it checks at once, active or not, and ends with the check', async () => {
+      const { a, t } = await dirtyAndChecked();
+      const b = new FakeDocument('/w/B.idr');
+      t.backend.shows = false;
+      let done = false;
+      const checked = t.unsaved.checkNow(a as unknown as vscode.TextDocument).then(() => (done = true));
+      t.activate(b);
+      t.timers.fireAll();
+      await settle();
+      assert.strictEqual(done, false);
+      assert.deepStrictEqual(t.backend.checks.map((c) => c.doc), [a, a, b], 'no delay, and though another document became active');
+      t.backend.checks[1].resolve(answer(a.version));
+      await checked;
+      assert.strictEqual(t.unsaved.shownVersion(a.uri as unknown as vscode.Uri), a.version);
+    });
+
+    test('a delay that waits ends, and the check it would have started runs now', async () => {
+      const a = new FakeDocument('/w/A.idr');
+      const t = setup({ active: a });
+      t.activate(a);
+      assert.strictEqual(t.timers.pending.size, 1);
+      const checked = t.unsaved.checkNow(a as unknown as vscode.TextDocument);
+      assert.strictEqual(t.timers.pending.size, 0);
+      await settle();
+      assert.deepStrictEqual(t.backend.checks.map((c) => c.doc), [a]);
+      t.backend.checks[0].resolve(answer(a.version));
+      await checked;
+    });
+
+    test('a check that runs is waited for, not started again', async () => {
+      const a = new FakeDocument('/w/A.idr');
+      const t = setup({ active: a });
+      t.activate(a);
+      t.timers.fireAll();
+      await settle();
+      const source = t.backend.checks[0].options?.token;
+      const checked = t.unsaved.checkNow(a as unknown as vscode.TextDocument);
+      await settle();
+      assert.strictEqual(t.backend.checks.length, 1);
+      assert.strictEqual(source?.isCancellationRequested, false);
+      t.backend.checks[0].resolve(answer(a.version));
+      await checked;
+    });
+
+    test('modules not built yet are built, and the text checked again, before it ends', async () => {
+      const a = new FakeDocument('/w/A.idr');
+      const t = setup({ active: a });
+      const checked = t.unsaved.checkNow(a as unknown as vscode.TextDocument);
+      await settle();
+      t.backend.checks[0].resolve(answer(a.version, [], { missing: [uri('/w/Base.idr') as unknown as vscode.Uri] }));
+      await settle();
+      await settle();
+      assert.strictEqual(t.backend.checks.length, 2);
+      t.backend.checks[1].resolve(answer(a.version, []));
+      await checked;
+      assert.deepStrictEqual(t.checked, ['/w/Base.idr']);
+    });
+
+    test('nothing runs when nothing could: no unsaved changes, the setting off, a save soon, Stop Backend, a cycle that holds the document, another backend', async () => {
+      const clean = new FakeDocument('/w/A.idr');
+      clean.isDirty = false;
+      const t = setup({ active: clean });
+      await t.unsaved.checkNow(clean as unknown as vscode.TextDocument);
+      assert.strictEqual(t.backend.checks.length, 0);
+
+      const a = new FakeDocument('/w/A.idr');
+      const off = setup({ active: a, settings: () => ({ enabled: false, delayMs: 500 }) });
+      await off.unsaved.checkNow(a as unknown as vscode.TextDocument);
+      assert.strictEqual(off.backend.checks.length, 0);
+
+      const soon = setup({ active: a });
+      soon.saving.files = { mode: 'afterDelay', delayMs: 500, whenNoErrors: false, workspaceFilesOnly: false };
+      await soon.unsaved.checkNow(a as unknown as vscode.TextDocument);
+      assert.strictEqual(soon.backend.checks.length, 0);
+
+      const stopped = setup({ active: a });
+      stopped.state.kind = 'stopped';
+      await stopped.unsaved.checkNow(a as unknown as vscode.TextDocument);
+      assert.strictEqual(stopped.backend.checks.length, 0);
+
+      const held = setup({ active: a });
+      const waiting = held.timers.pending.size;
+      held.held.add(a.uri.toString());
+      await held.unsaved.checkNow(a as unknown as vscode.TextDocument);
+      assert.strictEqual(held.backend.checks.length, 0);
+      assert.strictEqual(held.timers.pending.size, waiting, 'and it does not go round');
+
+      const other = setup({ active: a });
+      other.backend.caps = { checksUnsaved: false };
+      await other.unsaved.checkNow(a as unknown as vscode.TextDocument);
+      assert.strictEqual(other.backend.checks.length, 0);
+    });
+
+    test('a check that replaces the one waited for, as a module was rebuilt, is waited for too', async () => {
+      const a = new FakeDocument('/w/A.idr');
+      const t = setup({ active: a });
+      let done = false;
+      const checked = t.unsaved.checkNow(a as unknown as vscode.TextDocument).then(() => (done = true));
+      await settle();
+      t.load({ root: ROOT, file: '/w/Base.idr', rebuilt: true });
+      await settle();
+      t.timers.fireAll();
+      await settle();
+      assert.strictEqual(t.backend.checks.length, 2);
+      assert.strictEqual(done, false);
+      t.backend.checks[1].resolve(answer(a.version));
+      await checked;
+      assert.strictEqual(t.unsaved.shownVersion(a.uri as unknown as vscode.Uri), a.version);
+    });
+
+    test('a newer text ends the wait: what was asked for is not what the document shows', async () => {
+      const a = new FakeDocument('/w/A.idr');
+      const t = setup({ active: a });
+      const checked = t.unsaved.checkNow(a as unknown as vscode.TextDocument);
+      await settle();
+      t.type(a);
+      await checked;
+      assert.strictEqual(t.backend.checks.length, 1);
+    });
+
+    test('a refusal ends it without an error: the command goes on to save', async () => {
+      const a = new FakeDocument('/w/A.idr');
+      const t = setup({ active: a });
+      const checked = t.unsaved.checkNow(a as unknown as vscode.TextDocument);
+      await settle();
+      t.backend.checks[0].reject(unsupported('not this one'));
+      await checked;
+      assert.strictEqual(t.unsaved.shownVersion(a.uri as unknown as vscode.Uri), undefined);
+    });
+  });
+
+  test('back on a document whose check its session holds no more: checked again, though that version was shown (review 1, M20)', async () => {
+    const a = new FakeDocument('/w/A.idr');
+    const b = new FakeDocument('/w/B.idr');
+    const t = setup({ active: a });
+    t.activate(a);
+    t.timers.fireAll();
+    await settle();
+    t.backend.checks[0].resolve(answer(a.version));
+    await settle();
+    t.activate(b);
+    t.timers.fireAll();
+    await settle();
+    t.backend.checks[1].resolve(answer(b.version));
+    await settle();
+    t.activate(a);
+    await settle();
+    assert.strictEqual(t.timers.pending.size, 0, 'its session holds it: nothing to do');
+    t.backend.shows = false;
+    t.activate(a);
+    await settle();
+    assert.strictEqual(t.timers.pending.size, 1);
+    t.timers.fireAll();
+    await settle();
+    assert.deepStrictEqual(t.backend.checks.map((c) => c.doc), [a, b, a]);
+  });
+
+  test('another file rebuilt: the active document is checked again, the others once they become active (review 1, M19)', async () => {
+    const a = new FakeDocument('/w/A.idr');
+    const b = new FakeDocument('/w/B.idr');
+    const t = setup({ active: a });
+    t.activate(b);
+    t.timers.fireAll();
+    await settle();
+    t.backend.checks[0].resolve(answer(b.version));
+    await settle();
+    t.activate(a);
+    t.timers.fireAll();
+    await settle();
+    t.backend.checks[1].resolve(answer(a.version));
+    await settle();
+    t.load({ root: ROOT, file: '/w/Base.idr', rebuilt: true });
+    await settle();
+    assert.strictEqual(t.timers.pending.size, 1);
+    assert.strictEqual(t.unsaved.shownVersion(a.uri as unknown as vscode.Uri), undefined);
+    assert.ok(t.collection.get(a.uri) !== undefined, 'what it showed stays until the new answer');
+    t.timers.fireAll();
+    await settle();
+    assert.deepStrictEqual(t.backend.checks.map((c) => c.doc), [b, a, a]);
+    t.backend.checks[2].resolve(answer(a.version));
+    await settle();
+    t.activate(b);
+    await settle();
+    t.timers.fireAll();
+    await settle();
+    assert.deepStrictEqual(t.backend.checks.map((c) => c.doc), [b, a, a, b]);
+  });
+
+  test('no check for a load that rebuilt nothing, of the document itself, of a check of unsaved text, or of another root (review 1, M19)', async () => {
+    const a = new FakeDocument('/w/A.idr');
+    const t = setup({ active: a });
+    t.activate(a);
+    t.timers.fireAll();
+    await settle();
+    t.backend.checks[0].resolve(answer(a.version));
+    await settle();
+    t.load({ root: ROOT, file: '/w/Base.idr', rebuilt: false });
+    t.load({ root: ROOT, file: '/w/A.idr', rebuilt: true });
+    t.load({ root: ROOT, file: '/w/Base.idr', rebuilt: true, unsaved: { text: '' } });
+    t.load({ root: { kind: 'loose', dir: '/elsewhere' }, file: '/elsewhere/Base.idr', rebuilt: true });
+    await settle();
+    assert.strictEqual(t.timers.pending.size, 0);
+    assert.strictEqual(t.unsaved.shownVersion(a.uri as unknown as vscode.Uri), a.version);
+  });
+
   test('its collection is idris2 (unsaved); an edit of the active Idris document is checked after the delay, a newer edit restarts it', async () => {
     const a = new FakeDocument('/w/A.idr');
     a.isDirty = false;
@@ -348,6 +575,38 @@ suite('features/shadow (check while typing)', () => {
     t.timers.fireAll();
     await settle();
     assert.deepStrictEqual(t.backend.checks.map((c) => c.doc), [a]);
+  });
+
+  test('onDidEnd: a shown check of unsaved text ends, by a save, an undo or a close, so what it answered is out of date (review 1, M7)', async () => {
+    for (const end of ['save', 'undo', 'close'] as const) {
+      const a = new FakeDocument('/w/A.idr');
+      const t = setup({ active: a });
+      const ended: string[] = [];
+      t.unsaved.onDidEnd((doc) => ended.push(doc.fileName));
+      t.type(a);
+      t.timers.fireAll();
+      await settle();
+      t.backend.checks[0].resolve(answer(a.version));
+      await settle();
+      assert.deepStrictEqual(ended, [], end);
+      if (end === 'save') {
+        t.save(a);
+      } else if (end === 'undo') {
+        t.undoToSaved(a);
+      } else {
+        t.close(a);
+      }
+      await settle();
+      assert.deepStrictEqual(ended, ['/w/A.idr'], end);
+    }
+    const unshown = new FakeDocument('/w/B.idr');
+    const t = setup({ active: unshown });
+    const ended: string[] = [];
+    t.unsaved.onDidEnd((doc) => ended.push(doc.fileName));
+    t.type(unshown);
+    t.undoToSaved(unshown);
+    await settle();
+    assert.deepStrictEqual(ended, [], 'nothing was shown');
   });
 
   test('a save, an undo back to the saved text, a close: the entry goes and the saved diagnostics are shown again', async () => {

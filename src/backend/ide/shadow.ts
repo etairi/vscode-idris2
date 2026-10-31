@@ -28,6 +28,12 @@
  * extension's storage is applied. It has no `builddir`, and `sourcedir = "src"`, which a load applies
  * over a `--source-dir` of the command line (`idris2.ideMode.extraArgs`).
  *
+ * **Local dependencies.** The compiler also resolves `depends` in `depends/` of its working directory
+ * (`pkgLocalDirectory`, `src/Core/Directory.idr` 31–36 [src]), so a shadow directory links `depends` to
+ * the root's: from a directory without one the load failed with `Failed to resolve the dependencies for
+ * shadow`, and with the link it loaded [live, 0.8.0, 2026-10-30, a package in `depends/foo-0.1.0`]. Not
+ * `IDRIS2_PACKAGE_PATH`, which loaded too, because pack's wrapper sets that variable itself.
+ *
  * **The options left out** (`LEFT_OUT`): those that name the compiler's directories or the files it
  * writes — `--build-dir`, `--source-dir`, `--output-dir` and the `--dump…` files: in the shadow
  * session they would move the copy's build or source directory, or write where the user's own
@@ -46,6 +52,8 @@ export const SHADOW_PACKAGE_FILE = 'shadow.ipkg';
 export const SHADOW_SOURCE_DIR = 'src';
 /** The build directory of a shadow directory (the `shadow` session's `--build-dir`). */
 export const SHADOW_BUILD_DIR = 'build';
+/** A project's folder of local dependencies, and its link in a shadow directory (module comment, *Local dependencies*). */
+export const LOCAL_DEPENDS_DIR = 'depends';
 
 /** How an option of the compiler's parser takes the word after it. */
 type OptionWord = 'required' | 'optional';
@@ -263,6 +271,16 @@ export function shadowPackage(root: Classification, extraArgs: readonly string[]
     lines.push(`opts = ${stringLiteral(options.kept.join(' '))}`);
   }
   return { text: `${header}${lines.join('\n')}\n`, sourceDir: options.sourceDir ?? model.sourcedir ?? fromExtraArgs ?? '.' };
+}
+
+/**
+ * The source directory of `root`, as `shadowPackage` reads it, also for a package that has no check of
+ * unsaved text: a `--source-dir` in its `opts`, its `sourcedir`, then one in `extraArgs`, else `.`.
+ */
+export function packageSourceDir(root: Classification, extraArgs: readonly string[]): string {
+  const model = root.kind === 'project' && root.model.status === 'ok' ? root.model.model : undefined;
+  const options = shadowPackageOptions(model?.opts);
+  return ('problem' in options ? undefined : options.sourceDir) ?? model?.sourcedir ?? lastSourceDir(extraArgs) ?? '.';
 }
 
 /** The directory of the last `--source-dir` of a command line's words (`undefined`: none, or one without its directory). */

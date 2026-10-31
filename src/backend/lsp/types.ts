@@ -267,6 +267,12 @@ export interface LspClientHandle extends IDisposable {
    * `ipkg-deleted`]. The routing shows the one-time notification.
    */
   readonly onDidReportMissingIpkg: Event<{ readonly uri?: vscode.Uri }>;
+  /**
+   * Runs `run`, an edit of the saved document `about`, with the server's printing options off: it prints
+   * an edit's answer under them too (review 1, H1 [live]), so with any of them on they go off, the server
+   * reloads the document, which empties its cache of what it printed under them, and they come back after.
+   */
+  plainPrinting<T>(about: vscode.Uri, run: () => Promise<T>): Promise<T>;
   /** A request (`textDocument/codeAction`, …) about `about`; starts the client first when it has not started. */
   request<R>(about: vscode.Uri, method: string, params: object, token?: vscode.CancellationToken): Promise<R>;
   /** `workspace/executeCommand` of `command` with `args`, about `about` (the document whose context answers). */

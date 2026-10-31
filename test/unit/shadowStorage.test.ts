@@ -67,6 +67,7 @@ suite('features/shadow (the storage of the copies)', () => {
       config: { checkOnType: () => ({ enabled: true, delayMs: 500 }), onDidChange: none } as unknown as UnsavedChecksDeps['config'],
       trust: { isTrusted: true, onDidGrant: new Emitter<void>().event },
       checks: { showSaved: () => undefined, check: () => Promise.resolve(undefined), saveChecksHeld: () => false } as unknown as UnsavedChecksDeps['checks'],
+      loads: { onDidLoad: () => ({ dispose: () => undefined }) },
       stopShadows: () => undefined,
       storageDir: '/g/shadow',
       shadowBase: '/g/shadow/7',

@@ -269,6 +269,16 @@ const REQUESTS: Readonly<Record<string, readonly Request[]>> = {
   ],
   'holes-ipkg-other': [load1('src/Holes/Other.idr'), meta(), where('todo'), introR(6, 'todo')],
   'holes-ipkg-util': [load1('src/Holes/Util.idr'), meta(), where('todo'), where('util_rhs'), where('secret_rhs')],
+  'display-edits': [
+    load1('Clean.idr'),
+    text(setDisplayOption('fullNamespace', true)), text(setDisplayOption('showImplicits', true)),
+    text(caseSplit({ line: 8, column: 6 }, 'xs')), text(proofSearch(8, 'vlen_rhs')),
+    text(setDisplayOption('fullNamespace', false)), text(setDisplayOption('showImplicits', false)),
+    text(caseSplit({ line: 8, column: 6 }, 'xs')), text(proofSearch(8, 'vlen_rhs')),
+    text(setDisplayOption('fullNamespace', true)), text(setDisplayOption('showImplicits', true)),
+    text(setDisplayOption('fullNamespace', false)), text(setDisplayOption('showImplicits', false)),
+    ...nextSearch(2),
+  ],
   'eval-query': [
     load1('DocEval.idr'),
     evaluate('double 2'),
@@ -553,8 +563,8 @@ function prng(seed: number): () => number {
 // -------------------------------------------------------------------------------------------
 
 suite('backend/ide protocol against the 0.8.0 transcripts', () => {
-  test('the recordings are the 69 scenarios of format 1 from idris2 0.8.0, and each has a request table', () => {
-    assert.strictEqual(SCENARIOS.length, 69);
+  test('the recordings are the 70 scenarios of format 1 from idris2 0.8.0, and each has a request table', () => {
+    assert.strictEqual(SCENARIOS.length, 70);
     for (const [scenario, t] of TRANSCRIPTS) {
       assert.strictEqual(t.meta.format, 1, scenario);
       assert.strictEqual(t.meta.idris2.version, '0.8.0', scenario);

@@ -48,12 +48,10 @@
  *   a document sets the document's state. (*Second review*: an older result used to be dropped
  *   whole, but the newer load finds the TTC it wrote fresh and determines nothing, F7, so what
  *   the older one found — a fixed error, new warnings — was never shown.) A result of a check
- *   whose document was closed meanwhile is dropped. **Limitation** [src]: the compiler rebuilds a
- *   module only when its source is at least as new as its TTC (`isTTCOutdated` compares
- *   modification times, `src/Idris/ProcessIdr.idr` 252–263, `ModTree.idr` 160–163 on v0.8.0;
- *   `-Xcheck-hashes` is disabled), so a file saved while the compiler was building it keeps the
- *   TTC of the text it read: the load after the save builds nothing, and what is shown is the
- *   earlier text's result until the file is changed and saved again.
+ *   whose document was closed meanwhile is dropped. The load after a save always builds the text
+ *   saved, also when a save came during the build before it (`backend/ide/buildFiles.ts`). A file
+ *   another program changes during a build has no such save: it keeps the TTC of the text read, and
+ *   what is shown is that text's result until the file is changed and saved again.
  * - **Changes on disk.** When the file of an open, saved document changes outside the editor (a
  *   checkout, a formatter run in a terminal), VS Code reloads the document and reports a change of
  *   its text without a save, and the document stays clean. A document a check was started for
@@ -246,6 +244,7 @@ import type { SessionGate, WorkspaceTrust } from '../../core/trust';
 import { isIpkgFileName } from '../../project/ipkg';
 import { isIdrisDocument } from '../../project/literate';
 import type { Classification, ProjectIndex } from '../../project/types';
+import { asShown, sameText } from '../../toolchain/fileSystem';
 
 export const DIAGNOSTIC_COLLECTION_NAME = 'idris2';
 
@@ -534,23 +533,11 @@ interface ClosedReport {
   readonly diagnostics: readonly vscode.Diagnostic[];
 }
 
-/**
- * A file's text as its document shows it: VS Code drops a UTF-8 BOM, and a document has one
- * line-end sequence (`TextDocument.eol`), so line ends are written as `\n`.
- */
-function asShown(text: string): string {
-  return (text.startsWith('\uFEFF') ? text.slice(1) : text).replace(/\r\n?/g, '\n');
-}
-
 /** SHA-256 of a document's text, or of a file's text read to compare with one (`asShown`). */
 function textHash(text: string): string {
   return createHash('sha256').update(asShown(text)).digest('hex');
 }
 
-/** Whether the file text `disk` is the document text `text` (`asShown`). */
-function sameText(disk: string, text: string): boolean {
-  return asShown(disk) === asShown(text);
-}
 
 /**
  * The most a check that starts with unsaved changes reads of the file, to learn which text the

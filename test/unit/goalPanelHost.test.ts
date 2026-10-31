@@ -190,6 +190,7 @@ function setup(options: { trusted?: boolean; backendKind?: 'ideMode' | 'lsp'; fo
     },
   } as unknown as GoalPanelApi;
   const runs: { command: EditingCommandId; args: EditingCommandArgs | undefined; options: EditingRunOptions | undefined }[] = [];
+  const picks: (readonly EditChoice[])[] = [];
   const reveals: { ref: HoleRef; viewColumn: unknown }[] = [];
   const relists: string[] = [];
   const timers = new FakeTimers();
@@ -237,6 +238,10 @@ function setup(options: { trusted?: boolean; backendKind?: 'ideMode' | 'lsp'; fo
       },
       cycleOf: () => (cycle ? ({} as never) : undefined),
       onDidChangeCycle: cycleChanged.event,
+      pickChoice: (_reason, choices) => {
+        picks.push(choices);
+        return Promise.resolve(choices[0]);
+      },
     },
     checks: { statusOf: () => (stale ? { kind: 'checked', errors: 0, warnings: 0, stale: true, known: true } : { kind: 'notChecked' }), onDidChange: statusChanged.event },
     projects: { classify: options.classify ?? (() => Promise.resolve(ROOT)) },
@@ -267,6 +272,7 @@ function setup(options: { trusted?: boolean; backendKind?: 'ideMode' | 'lsp'; fo
     clipboard,
     notices,
     runs,
+    picks,
     reveals,
     relists,
     timers,
@@ -626,6 +632,35 @@ suite('features/goalPanel: the panel (host.ts)', () => {
     const left = choose('intro', [zero]);
     panel.dispose();
     assert.strictEqual(await left, undefined, 'closing the panel answers none');
+  });
+
+  test('a question with no panel to show it goes to the QuickPick, or no editing command could run on the file (review 1, M5)', async () => {
+    const t = setup();
+    const panel = await t.open();
+    await t.host.receive({ type: 'action', action: 'intro' });
+    const choose = t.runs[0].options?.choose;
+    assert.ok(choose !== undefined);
+    const zero: EditChoice = { label: '0', replacements: [] };
+    const succ: EditChoice = { label: 'S ?f_rhs_0', replacements: [] };
+    panel.visible = false;
+    assert.strictEqual(await choose('intro', [zero, succ]), zero, 'behind another tab');
+    panel.dispose();
+    assert.strictEqual(await choose('intro', [succ, zero]), succ, 'closed');
+    assert.deepStrictEqual(t.picks, [[zero, succ], [succ, zero]]);
+  });
+
+  test('a panel hidden while it asks ends the question (review 1, M5)', async () => {
+    const t = setup();
+    const panel = await t.open();
+    await t.host.receive({ type: 'action', action: 'intro' });
+    const choose = t.runs[0].options?.choose;
+    assert.ok(choose !== undefined);
+    const asked = choose('intro', [{ label: '0', replacements: [] }]);
+    await t.update();
+    panel.visible = false;
+    panel.viewState.fire();
+    assert.strictEqual(await asked, undefined);
+    assert.deepStrictEqual(t.picks, []);
   });
 
   test('Copy writes the goal as Markdown; without a goal nothing', async () => {

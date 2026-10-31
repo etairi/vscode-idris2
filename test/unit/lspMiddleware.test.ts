@@ -281,6 +281,16 @@ class FakeChannel implements SyncChannel {
   async close(doc: vscode.TextDocument): Promise<void> {
     this.sent.push(`close ${doc.uri.toString()}`);
   }
+  /** The documents `idle` was asked for. */
+  readonly idles: string[] = [];
+  /** Rejects when set (a server that has ended). */
+  idleError: Error | undefined;
+  async idle(doc: vscode.TextDocument): Promise<void> {
+    this.idles.push(doc.uri.toString());
+    if (this.idleError !== undefined) {
+      throw this.idleError;
+    }
+  }
   clearDiagnostics(uri: vscode.Uri): void {
     this.cleared.push(uri.toString());
   }
@@ -304,10 +314,11 @@ async function setup(
     readText?: (f: string) => Promise<string | undefined>;
     docs?: FakeDocument[];
     published?: (uri: vscode.Uri, failed: boolean) => void;
+    outdate?: (fileName: string) => Promise<void>;
   } = {},
 ): Promise<Setup> {
   const ownership = new FakeOwnership();
-  const sync = new DocumentSync(ownership, quietLog);
+  const sync = new DocumentSync(ownership, quietLog, options.readText ?? (async () => undefined), options.outdate ?? (async () => undefined));
   const channel = new FakeChannel();
   sync.attach(channel);
   const middleware = createMiddleware({
@@ -429,7 +440,7 @@ suite('backend/lsp/middleware: paths', () => {
     const paths = new ServerPaths(real, uris, 'darwin');
     const ownership = new FakeOwnership();
     ownership.admitted.add(doc.uri.toString());
-    const sync = new DocumentSync(ownership, quietLog);
+    const sync = new DocumentSync(ownership, quietLog, async () => undefined, async () => undefined);
     sync.attach(new FakeChannel());
     await sync.didOpen(asDoc(doc), async () => undefined);
     const middleware = createMiddleware({ api: fakeApi([doc]), sync, readText: async () => undefined, log: quietLog, documentKey: (u) => paths.documentKey(u) });
@@ -569,6 +580,73 @@ suite('backend/lsp/middleware: ownership', () => {
     assert.strictEqual(sync.isOpen(asUri(doc)), false);
   });
 
+  test('a save reaches the server once it has finished what it was sent, and its build files are set back first, so that the load after the save builds (review 1, N1)', async () => {
+    const doc = new FakeDocument('/p/src/A.idr', 'module A\n');
+    const steps: string[] = [];
+    const { sync, channel, next } = await setup(doc, { outdate: async (fileName) => void steps.push(`outdate ${fileName}`) });
+    const uri = doc.uri.toString();
+    channel.sent.length = 0;
+    channel.idle = async () => void steps.push('idle');
+    await sync.didSave(asDoc(doc), async (d) => {
+      steps.push('didSave');
+      await next('didSave')(d);
+    });
+    assert.deepStrictEqual(steps, ['idle', 'outdate /p/src/A.idr', 'didSave']);
+    assert.deepStrictEqual(channel.sent, [`didSave ${uri}`]);
+  });
+
+  test('a document not open, or not admitted any more, costs a save nothing (review 1, N1)', async () => {
+    const doc = new FakeDocument('/p/src/A.idr', 'module A\n');
+    const outdated: string[] = [];
+    const { sync, channel, ownership, next } = await setup(doc, { outdate: async (fileName) => void outdated.push(fileName) });
+    ownership.admitted.clear();
+    channel.sent.length = 0;
+    await sync.didSave(asDoc(doc), next('didSave'));
+    assert.deepStrictEqual([channel.sent, outdated], [[], []]);
+  });
+
+  test('a failure on the way to the save is logged, and the server is told of the save all the same (review 1, N1)', async () => {
+    const doc = new FakeDocument('/p/src/A.idr', 'module A\n');
+    const outdated: string[] = [];
+    const { sync, channel, next } = await setup(doc, { outdate: async (fileName) => void outdated.push(fileName) });
+    const uri = doc.uri.toString();
+    channel.sent.length = 0;
+    channel.idleError = new Error('idris2-lsp has ended.');
+    await sync.didSave(asDoc(doc), next('didSave'));
+    assert.deepStrictEqual(channel.idles, [uri]);
+    assert.deepStrictEqual(channel.sent, [`didSave ${uri}`]);
+    assert.deepStrictEqual(outdated, [], 'a server that may still run: its load could write afterwards');
+  });
+
+  test('a change after the save waits for the save, so that the order the server sees stays (review 1, N1)', async () => {
+    const doc = new FakeDocument('/p/src/A.idr', 'module A\n');
+    let release = (): void => undefined;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    const { sync, channel, next } = await setup(doc);
+    const uri = doc.uri.toString();
+    channel.sent.length = 0;
+    channel.idle = () => held;
+    const saved = sync.didSave(asDoc(doc), next('didSave'));
+    doc.edit('module A\n-- x\n');
+    const changed = sync.didChange(asDoc(doc));
+    await settle();
+    assert.deepStrictEqual(channel.sent, []);
+    release();
+    await Promise.all([saved, changed]);
+    assert.deepStrictEqual(channel.sent, [`didSave ${uri}`, `change ${uri} v2 "module A\\n-- x\\n"`]);
+  });
+
+  test('didClose drops what the document showed: the server sends nothing for a closed file (review 1, M17)', async () => {
+    const doc = new FakeDocument('/p/src/A.idr', 'module A\n');
+    const { sync, channel, next } = await setup(doc);
+    await sync.didClose(asDoc(doc), next('didClose'));
+    assert.deepStrictEqual(channel.cleared, [doc.uri.toString()]);
+    // A document the server never had shows nothing of it.
+    const other = new FakeDocument('/p/src/B.idr', 'module B\n');
+    await sync.didClose(asDoc(other), next('didClose'));
+    assert.deepStrictEqual(channel.cleared, [doc.uri.toString()]);
+  });
+
   test("the library's held-back didOpen, sent from inside the send of the same document's open, is queued, not waited for (no deadlock)", async () => {
     // vscode-languageclient sends the didOpen it held back for a document not visible at its start
     // before any notification, also before reconcile's own didOpen of that document (DocumentSync,
@@ -576,7 +654,7 @@ suite('backend/lsp/middleware: ownership', () => {
     const doc = new FakeDocument('/p/src/A.idr', 'module A\n');
     const ownership = new FakeOwnership();
     ownership.admitted.add(doc.uri.toString());
-    const sync = new DocumentSync(ownership, quietLog);
+    const sync = new DocumentSync(ownership, quietLog, async () => undefined, async () => undefined);
     const channel = new FakeChannel();
     const libraryOpen = async (d: vscode.TextDocument): Promise<void> => void channel.sent.push(`didOpen ${d.uri.toString()}`);
     channel.open = async (d: vscode.TextDocument): Promise<void> => {
@@ -592,6 +670,21 @@ suite('backend/lsp/middleware: ownership', () => {
     await sync.settled(asUri(doc));
     assert.deepStrictEqual(channel.sent, [`open ${doc.uri.toString()}`], 'opened once, by reconcile');
     assert.strictEqual(sync.isOpen(asUri(doc)), true);
+  });
+
+  test('a document with unsaved changes when it is opened: a change right after didOpen, so that the server counts it as dirty; clean again, didSave (review 1, H3)', async () => {
+    const doc = new FakeDocument('/p/src/A.idr', 'module A\n');
+    doc.edit('module A\n-- typed\n');
+    assert.strictEqual(doc.isDirty, true);
+    const { sync, channel } = await setup(doc);
+    const uri = doc.uri.toString();
+    await sync.settled(asUri(doc));
+    assert.deepStrictEqual(channel.sent, [`didOpen ${uri}`, `change ${uri} v2 "module A\\n-- typed\\n"`]);
+    doc.edit('module A\n', true);
+    sync.stateChanged(asDoc(doc));
+    await settle();
+    await sync.settled(asUri(doc));
+    assert.deepStrictEqual(channel.sent.slice(2), [`save ${uri}`]);
   });
 
   test('clean again without a save (an undo back to the saved text): didSave, once; not while VS Code saves it, nor for a document never changed', async () => {
@@ -633,6 +726,71 @@ suite('backend/lsp/middleware: ownership', () => {
     await settle();
     await sync.settled(asUri(doc));
     assert.deepStrictEqual(channel.sent.slice(4), [`change ${uri} v4 "module A\\n-- y\\n"`, `didSave ${uri}`]);
+  });
+
+  test('a clean document reloaded from disk: didSave after the change, so that the server does not count it as dirty (review 1, M4)', async () => {
+    const doc = new FakeDocument('/p/src/A.idr', 'module A\n');
+    const disk = { text: 'module A\r\n-- on disk\r\n' as string | undefined };
+    const { sync, channel } = await setup(doc, { readText: async () => disk.text });
+    const uri = doc.uri.toString();
+    doc.edit('module A\n-- on disk\n', true);
+    await sync.didChange(asDoc(doc));
+    assert.deepStrictEqual(channel.sent.slice(1), [`change ${uri} v2 "module A\\n-- on disk\\n"`, `save ${uri}`]);
+    // Saved already: the event of its dirty state sends nothing more.
+    sync.stateChanged(asDoc(doc));
+    await settle();
+    await sync.settled(asUri(doc));
+    assert.strictEqual(channel.sent.filter((m) => m.startsWith('save')).length, 1);
+  });
+
+  test('a keystroke in a clean document is no reload: its event still says clean, the text on disk differs, or the file cannot be read (review 1, M4)', async () => {
+    const doc = new FakeDocument('/p/src/A.idr', 'module A\n');
+    const disk = { text: 'module A\n' as string | undefined };
+    const reads: string[] = [];
+    let duringRead = (): void => undefined;
+    const { sync, channel } = await setup(doc, {
+      readText: async (f) => {
+        reads.push(f);
+        duringRead();
+        return disk.text;
+      },
+    });
+    const uri = doc.uri.toString();
+    doc.edit('module A\n-- x\n', true);
+    await sync.didChange(asDoc(doc));
+    disk.text = undefined;
+    doc.edit('module A\n-- y\n', true);
+    await sync.didChange(asDoc(doc));
+    assert.deepStrictEqual(channel.sent.slice(1), [`change ${uri} v2 "module A\\n-- x\\n"`, `change ${uri} v3 "module A\\n-- y\\n"`]);
+    assert.strictEqual(reads.length, 2);
+    // The text matches, but the next event came while the file was read.
+    disk.text = 'module A\n-- z\n';
+    duringRead = () => doc.edit('module A\n-- z\n-- more\n');
+    doc.edit('module A\n-- z\n', true);
+    await sync.didChange(asDoc(doc));
+    assert.strictEqual(channel.sent.filter((m) => m.startsWith('save')).length, 0);
+    // A document with unsaved changes reads nothing.
+    duringRead = () => undefined;
+    doc.edit('module A\n-- w\n');
+    await sync.didChange(asDoc(doc));
+    assert.strictEqual(reads.length, 3);
+  });
+
+  test('while VS Code saves a document a change reads no file: its save sends didSave (review 1, M4)', async () => {
+    const doc = new FakeDocument('/p/src/A.idr', 'module A\n');
+    let reads = 0;
+    const { sync, channel, next } = await setup(doc, {
+      readText: async () => {
+        reads++;
+        return 'module A\n-- x\n';
+      },
+    });
+    sync.willSave(asDoc(doc));
+    doc.edit('module A\n-- x\n', true);
+    await sync.didChange(asDoc(doc));
+    await sync.didSave(asDoc(doc), next('didSave'));
+    assert.strictEqual(reads, 0);
+    assert.strictEqual(channel.sent.filter((m) => /^(save|didSave)/.test(m)).length, 1);
   });
 
   test('reconcile opens what became admitted and closes what is not admitted any more, clearing its diagnostics', async () => {

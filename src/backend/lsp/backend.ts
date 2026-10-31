@@ -43,6 +43,7 @@
  * document without unsaved changes whose lines are the file's on disk, which the server read
  * (`savedText`), and the server's `null` rejects with `DirtyDocument`.
  */
+import * as path from 'path';
 import type * as vscode from 'vscode';
 import type { Config } from '../../core/config';
 import type { IDisposable } from '../../core/disposable';
@@ -73,7 +74,7 @@ export const LSP_CAPABILITIES: Readonly<Capabilities> = Object.freeze({
 type LspBackendApi = Pick<typeof vscode, 'Uri' | 'Range' | 'Location'>;
 
 interface LspBackendDeps {
-  readonly client: Pick<LspClientHandle, 'request' | 'executeCommand' | 'onDidChangeState' | 'serverUri' | 'documentUri'>;
+  readonly client: Pick<LspClientHandle, 'request' | 'executeCommand' | 'onDidChangeState' | 'serverUri' | 'documentUri' | 'plainPrinting'>;
   /** `maxCodeActionResults`: whether a search's results may have been cut (`next`). */
   readonly config: Pick<Config, 'lsp'>;
   readonly api: LspBackendApi;
@@ -119,11 +120,16 @@ export class LspBackend implements IdrisBackend {
   readonly kind: BackendKind = 'lsp';
   readonly caps: Readonly<Capabilities> = LSP_CAPABILITIES;
   private readonly searches = new Map<'exprSearch' | 'generateDef', Search>();
+  /** Per document, the version a refresh of its holes made the server load last (`holes`). */
+  private readonly refreshed = new Map<string, number>();
   private readonly subscription: IDisposable;
 
   constructor(private readonly deps: LspBackendDeps) {
     // A server that stopped or started again has another context: no search continues across it.
-    this.subscription = deps.client.onDidChangeState(() => this.searches.clear());
+    this.subscription = deps.client.onDidChangeState(() => {
+      this.searches.clear();
+      this.refreshed.clear();
+    });
   }
 
   load(): Promise<LoadResult> {
@@ -195,10 +201,12 @@ export class LspBackend implements IdrisBackend {
       this.searches.delete(search);
     }
     const limit = this.deps.config.lsp().maxCodeActionResults;
-    if (plan.request.method !== 'codeAction') {
-      await this.ensureLoaded(req.doc, req.token);
-    }
-    const reply = await this.send(req.doc, plan.request, req.token);
+    const reply = await this.deps.client.plainPrinting(req.doc.uri, async () => {
+      if (plan.request.method !== 'codeAction') {
+        await this.ensureLoaded(req.doc, req.token);
+      }
+      return this.send(req.doc, plan.request, req.token);
+    });
     const answer = plan.decode(reply, (uri) => this.isDocument(uri, req.doc));
     if (search !== undefined && answer.result.type === 'edit') {
       const rest = [...(answer.more ?? [])];
@@ -324,13 +332,28 @@ export class LspBackend implements IdrisBackend {
     if (doc.uri.scheme !== 'file') {
       throw unsupported('idris2-lsp lists the holes of a file saved on disk only.');
     }
-    const first = await this.listHoles(doc, options?.token);
-    return first.located ? first.holes : (await this.listHoles(doc, options?.token)).holes;
+    // A refresh follows a load the server published. `documentSymbol` loads the document when another
+    // was loaded since, which publishes, which refreshes: two open documents would reload each other for
+    // ever (review 1, H5). So a refresh loads a document once per version; the server's answer then is
+    // for what it loaded last, and one that locates nothing in a document with holes keeps what it had.
+    const key = doc.uri.toString();
+    const mayLoad = options?.kept !== true || doc.isDirty || this.refreshed.get(key) !== doc.version;
+    if (mayLoad) {
+      this.refreshed.set(key, doc.version);
+    }
+    const first = await this.listHoles(doc, mayLoad, options?.token);
+    if (first.located) {
+      return first.holes;
+    }
+    if (!mayLoad) {
+      throw new IdrisException({ kind: 'NotLoaded', file: doc.fileName, message: `idris2-lsp loaded another file last, so the holes of ${path.basename(doc.fileName)} stay as they were.` });
+    }
+    return (await this.listHoles(doc, true, options?.token)).holes;
   }
 
-  /** One listing; `located`: the answer locates a hole in `doc`, or `doc`'s symbols show none. */
-  private async listHoles(doc: vscode.TextDocument, token: vscode.CancellationToken | undefined): Promise<{ readonly holes: Hole[]; readonly located: boolean }> {
-    const symbols = await this.ensureLoaded(doc, token);
+  /** One listing; `located`: the answer locates a hole in `doc`, or `doc` shows none (its symbols when `load`, else its text). */
+  private async listHoles(doc: vscode.TextDocument, load: boolean, token: vscode.CancellationToken | undefined): Promise<{ readonly holes: Hole[]; readonly located: boolean }> {
+    const symbols = load ? await this.ensureLoaded(doc, token) : undefined;
     const metavars = decodeMetavars(await this.deps.client.executeCommand(doc.uri, 'metavars', [], token));
     const { api } = this.deps;
     const own = doc.uri.toString();
@@ -354,8 +377,10 @@ export class LspBackend implements IdrisBackend {
       const range = fromIdeReplySpan(file.document, span);
       return new api.Location(api.Uri.file(file.path), new api.Range(range.start.line, range.start.character, range.end.line, range.end.character));
     };
-    const holes = holesOf(metavars, holeTokenNames(ownText ?? doc.getText()), locate);
-    const located = holeSymbolCount(symbols, (uri) => this.isDocument(uri, doc)) === 0 || holes.some((h) => h.location?.uri.toString() === own);
+    const inText = holeTokenNames(ownText ?? doc.getText());
+    const holes = holesOf(metavars, inText, locate);
+    const shown = load ? holeSymbolCount(symbols, (uri) => this.isDocument(uri, doc)) : inText.size;
+    const located = shown === 0 || holes.some((h) => h.location?.uri.toString() === own);
     return { holes, located };
   }
 

@@ -82,6 +82,7 @@ function fakePool(options: { env?: Record<string, string>; settings?: Partial<Id
       onDidChange: new Emitter<void>().event,
     },
     codec: ideCodec,
+    buildFiles: { list: () => Promise.resolve([]), sourceTime: () => Promise.resolve(undefined), builtTime: () => Promise.resolve(undefined), setBack: () => Promise.resolve() },
     trace: new RecordingTrace(),
     log,
     platform: process.platform,

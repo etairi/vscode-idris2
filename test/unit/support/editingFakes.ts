@@ -419,13 +419,15 @@ export class FakeEditBackend {
   readonly requests: EditRequest[] = [];
   /** Answers the `n`-th request (0-based). Default: rejects. */
   answer: (req: EditRequest, n: number) => Promise<EditResult> = () => Promise.reject(new Error('no answer scripted'));
+  /** `caps.checksUnsaved`. */
+  checksUnsaved = false;
   /** (M6) `showsUnsavedCheck`'s answer: the compiler checked the unsaved text the document shows. */
   unsavedShown = false;
 
   asBackend(): IdrisBackend {
     return {
       kind: this.kind,
-      caps: this.caps as Capabilities,
+      caps: { ...this.caps, checksUnsaved: this.checksUnsaved } as Capabilities,
       edit: (req: EditRequest) => {
         this.requests.push(req);
         return this.answer(req, this.requests.length - 1);
@@ -476,6 +478,8 @@ export function fakeQueries(backend: () => IdrisBackend, load: () => void = () =
 export function editingDeps(backend: FakeEditBackend, options: { trusted?: boolean } = {}) {
   const loads = new Emitter<LoadedFileEvent>();
   const queries = fakeQueries(() => backend.asBackend());
+  /** The documents a command asked to be checked (`UnsavedChecks.checkNow`), and what that does. */
+  const unsaved = { asked: [] as vscode.TextDocument[], run: (): Promise<void> => Promise.resolve() };
   const settings = { saveBeforeAction: 'always' as SaveBeforeAction, status: undefined as CheckStatus | undefined, trusted: options.trusted ?? true };
   const logged: string[] = [];
   /** The save-check holds the cycles took, in order, and whether each was released. */
@@ -495,6 +499,12 @@ export function editingDeps(backend: FakeEditBackend, options: { trusted?: boole
       },
     },
     config: { saveBeforeAction: () => settings.saveBeforeAction },
+    unsaved: {
+      checkNow: (doc) => {
+        unsaved.asked.push(doc);
+        return unsaved.run();
+      },
+    },
     trust: {
       get isTrusted() {
         return settings.trusted;
@@ -503,5 +513,5 @@ export function editingDeps(backend: FakeEditBackend, options: { trusted?: boole
     },
     log: { ...quietLog, warn: (m: string) => logged.push(`warn ${m}`), error: (m: string) => logged.push(`error ${m}`) },
   };
-  return { deps, loads, queries, settings, logged, holds };
+  return { deps, loads, queries, settings, logged, holds, unsaved };
 }

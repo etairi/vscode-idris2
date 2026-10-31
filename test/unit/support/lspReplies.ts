@@ -84,7 +84,7 @@ export function recordedResult(scenario: string, method: string, matches: (param
  * fails the test, except `textDocument/documentSymbol`, which the backend sends before the commands
  * that name no document and which is answered by `symbols` when given.
  */
-export class ReplayClient implements Pick<LspClientHandle, 'request' | 'executeCommand' | 'onDidChangeState' | 'serverUri' | 'documentUri'> {
+export class ReplayClient implements Pick<LspClientHandle, 'plainPrinting' | 'request' | 'executeCommand' | 'onDidChangeState' | 'serverUri' | 'documentUri'> {
   readonly sent: { readonly method: string; readonly params: unknown }[] = [];
   private readonly used = new Set<LspExchange>();
   private readonly states = new Emitter<void>();
@@ -97,6 +97,10 @@ export class ReplayClient implements Pick<LspClientHandle, 'request' | 'executeC
     private readonly exchanges: readonly LspExchange[],
     private readonly symbols?: unknown,
   ) {}
+
+  plainPrinting<T>(_about: vscode.Uri, run: () => Promise<T>): Promise<T> {
+    return run();
+  }
 
   request<R>(_about: vscode.Uri, method: string, params: object): Promise<R> {
     this.sent.push({ method, params });
@@ -197,7 +201,7 @@ export function followed(r: TextReplacement): EditorRange {
  * A language client whose answers a test writes (`answer(method, params)`; `executeCommand` is
  * `workspace/executeCommand` with `{ command, arguments }`), recording what was sent.
  */
-export class ScriptedClient implements Pick<LspClientHandle, 'request' | 'executeCommand' | 'onDidChangeState' | 'serverUri' | 'documentUri'> {
+export class ScriptedClient implements Pick<LspClientHandle, 'plainPrinting' | 'request' | 'executeCommand' | 'onDidChangeState' | 'serverUri' | 'documentUri'> {
   readonly sent: { readonly method: string; readonly params: unknown }[] = [];
   private readonly states = new Emitter<void>();
   readonly onDidChangeState = this.states.event;
@@ -205,6 +209,13 @@ export class ScriptedClient implements Pick<LspClientHandle, 'request' | 'execut
   readonly documentUri = (value: string): vscode.Uri => FakeUri.parse(value) as unknown as vscode.Uri;
 
   constructor(private readonly answer: (method: string, params: unknown) => unknown) {}
+
+  /** The edits that ran through `plainPrinting`, and each request's place in it. */
+  plainRuns = 0;
+  plainPrinting<T>(_about: vscode.Uri, run: () => Promise<T>): Promise<T> {
+    this.plainRuns++;
+    return run();
+  }
 
   request<R>(_about: vscode.Uri, method: string, params: object): Promise<R> {
     this.sent.push({ method, params });

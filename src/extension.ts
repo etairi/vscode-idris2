@@ -32,12 +32,14 @@ import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { IdeMode } from './backend/ide/backend';
-import { createSessionPool } from './backend/ide/pool';
+import { nodeBuildFiles, outdateBuild } from './backend/ide/buildFiles';
+import { checkBuildDir, createSessionPool } from './backend/ide/pool';
 import { ideCodec } from './backend/ide/protocol';
 import { systemClock } from './backend/ide/session';
+import { packageSourceDir } from './backend/ide/shadow';
 import type { SessionPool } from './backend/ide/types';
 import { LspBackend } from './backend/lsp/backend';
-import { LspClient, nodeLanguageClients } from './backend/lsp/client';
+import { LspClient, nodeLanguageClients, realFolder } from './backend/lsp/client';
 import { registerLanguageServerCommands } from './backend/lsp/commands';
 import { BackendChoices, BackendRegistry, BackendRouting, LspAdmission, LspProvider } from './backend/registry';
 import { Config, IDE_MODE_DISPLAY_KEYS, usableHomeDirectory, type BackendMode } from './core/config';
@@ -52,7 +54,7 @@ import { registerBackendFeatures } from './features/backend/register';
 import type { RoutingNotice } from './features/backend/types';
 import { registerConsent } from './features/consent/register';
 import { DocumentChecks } from './features/diagnostics/checks';
-import { registerBackendCommands, type BackendControl, type BackendNotice } from './features/diagnostics/commands';
+import { ideModeControl, registerBackendCommands, type BackendNotice } from './features/diagnostics/commands';
 import { ProtocolTraceChannel, registerTraceCommands } from './features/diagnostics/trace';
 import { registerEditing } from './features/editing/register';
 import { registerEvaluation, type EvaluationOutcome, type DrawnEvaluation } from './features/eval/register';
@@ -76,11 +78,11 @@ import type { UnsavedChecks } from './features/shadow/unsavedChecks';
 import { registerSelectionRanges } from './features/syntax/selectionRanges';
 import { createProjectIndex } from './project/index';
 import { findIpkg } from './project/ipkg';
-import { trackIsIdrisDocumentContext } from './project/literate';
+import { isIdrisDocument, trackIsIdrisDocumentContext } from './project/literate';
 import type { Classification, ProjectIndex, ProjectWorkspace } from './project/types';
 import { registerInstallCommands } from './toolchain/install';
 import { registerToolchainNotifications, type Notice } from './toolchain/notifications';
-import { nodeFileSystem, readRegularTextFile, readSourceFile } from './toolchain/fileSystem';
+import { linkFolder, nodeFileSystem, readRegularTextFile, readSourceFile } from './toolchain/fileSystem';
 import { createToolchainService } from './toolchain/service';
 import { registerSetupInformation } from './toolchain/setupInfo';
 import { registerToolchainStatus, type StatusMenuEntry } from './toolchain/status';
@@ -260,6 +262,7 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
       trust,
       gate: consent.gate,
       codec: ideCodec,
+      buildFiles: nodeBuildFiles,
       trace,
       log,
       platform: process.platform,
@@ -288,6 +291,7 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
           await fs.promises.mkdir(p, { recursive: true });
         },
         writeFile: (p, text) => fs.promises.writeFile(p, text, 'utf8'),
+        linkFolder,
         remove: (p) => fs.promises.rm(p, { recursive: true, force: true }),
       },
       isOpen: (fileName) => vscode.workspace.textDocuments.some((d) => d.uri.scheme === 'file' && d.fileName === fileName),
@@ -295,6 +299,7 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
     }),
   );
   store.add(registry.setProvider(ideMode));
+  store.add(vscode.workspace.onDidSaveTextDocument((doc) => doc.uri.scheme === 'file' && isIdrisDocument(doc) && ideMode.fileSaved(doc.fileName)));
   const checks = store.add(
     new DocumentChecks(vscode, {
       readFile: async (p, maxBytes) => {
@@ -316,6 +321,7 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
     registerUnsavedChecks(vscode, {
       registry,
       projects,
+      loads: ideMode,
       config,
       trust,
       checks,
@@ -332,23 +338,12 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
       timers: { set: (callback, ms) => setTimeout(callback, ms), clear: (handle) => clearTimeout(handle as NodeJS.Timeout) },
     }),
   );
-  // M5: Restart Backend of one root starts its `check` session (`SessionPool.restart`); not for a
-  // root IDE mode does not serve, whose project has one compiler, idris2-lsp's (ROADMAP §9 Q7).
-  const ideControl: BackendControl = {
-    activeRoots: () => ideMode.activeRoots(),
-    stop: (root) => ideMode.stop(root),
-    restart: (root) => {
-      if (root !== undefined && registry.routeFor(root).kind !== 'ideMode') {
-        log.info('Restart Backend: IDE mode does not serve this project; nothing restarted');
-        void vscode.window.showInformationMessage(
-          plainText('Idris 2: IDE mode does not serve this project, so Restart Backend starts nothing here. Idris 2: Switch Backend… chooses the backend; Restart Language Server restarts idris2-lsp.'),
-        );
-        return;
-      }
-      ideMode.restart(root);
-    },
-    onDidFail: ideMode.onDidFail,
-  };
+  // M5: Restart Backend of one root starts its `check` session (`SessionPool.restart`).
+  const ideControl = ideModeControl(ideMode, {
+    serves: (root) => registry.routeFor(root).kind === 'ideMode',
+    say: (text) => void vscode.window.showInformationMessage(plainText(text)),
+    log,
+  });
   const backendCommands = store.add(
     registerBackendCommands(vscode, { checks, control: ideControl, projects, toolchain, trust, log }),
   );
@@ -362,7 +357,7 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
     new BackendRouting({ modeFor, onDidChangeMode: (listener) => config.onDidChange('backend', () => listener()), choices, toolchain }),
   );
   store.add(registry.setRouting(routing));
-  const admission = store.add(new LspAdmission({ trust, projects, gate: consent.gate, registry }));
+  const admission = store.add(new LspAdmission({ trust, projects, gate: consent.gate, registry, platform: process.platform, realpath: realFolder }));
   const lspClient = store.add(
     new LspClient({
       api: vscode,
@@ -378,6 +373,16 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
         (text) => text,
         () => undefined,
       ),
+      outdateBuild: async (file) => {
+        const root = await projects.classify(file);
+        const cwd = projects.sessionCwd(root);
+        // The server has no `--build-dir` of the extension's: the package's, else `build`.
+        const buildDir = checkBuildDir(root, cwd, { isolateBuildDir: false, extraArgs: [] }, process.platform).dir;
+        const place = { buildDir, cwd, sourceDir: packageSourceDir(root, []) };
+        for (const ttc of await outdateBuild(nodeBuildFiles, place, file, process.platform)) {
+          log.info(`${file} was saved during a build: ${ttc} is built again.`);
+        }
+      },
       log,
       platform: process.platform,
       processEnv: process.env,
@@ -446,7 +451,7 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
   const editing = store.add(
     registerEditing(
       vscode,
-      { queries: intelligenceDeps.queries, loads: ideMode, registry, projects, checks, config, trust, log },
+      { queries: intelligenceDeps.queries, loads: ideMode, registry, projects, checks, config, unsaved: unsaved.checks, trust, log },
       { keepOutcomes: context.extensionMode === vscode.ExtensionMode.Test },
     ),
   );
@@ -463,6 +468,16 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
         void vscode.commands.executeCommand('setContext', key, value);
       },
       log,
+    }),
+  );
+  // The holes a check of unsaved text answered go with it (review 1, M7): the saved load's are listed
+  // again, without a load.
+  store.add(
+    unsaved.checks.onDidEnd((doc) => {
+      void projects.classify(doc.fileName).then(
+        (root) => holes.model.relist(root, doc.fileName),
+        () => undefined,
+      );
     }),
   );
   // M7: the goal panel. Registering starts nothing: no panel until its command runs or a reload
@@ -501,6 +516,7 @@ export function activate(context: vscode.ExtensionContext): TestApi | undefined 
       trust,
       gate: consent.gate,
       startProblem: () => pool.startProblem(),
+      findPackage: async (dir) => (await findIpkg(dir))?.ipkgPath,
       fileSystem: nodeFileSystem,
       processEnv: process.env,
       platform: process.platform,

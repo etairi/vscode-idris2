@@ -13,8 +13,13 @@
  *   last change, with no newer change, it is checked (`IdrisBackend.checkUnsaved`); a newer change
  *   cancels the check that waits (the backend drops it before it is sent) and tells the backend
  *   (`unsavedTextChanged`: a check that has answered for more than 2 s is ended by restarting its
- *   session). A document that becomes active with text its last check did not read is checked
- *   after the delay too. While M4's cycling holds the document's save checks (`saveChecksHeld`), it
+ *   session). A document that becomes active with text its last check did not read, or whose
+ *   check its session no longer holds (another document's replaced it, an idle stop ended it), is
+ *   checked after the delay too, and so is the active document after a load rebuilt another file
+ *   of its root, whose module the text may import (the other documents when they become active).
+ *   After an idle stop of the active document nothing checks it by itself, which would start the
+ *   compiler the stop ended, until it changes or becomes active again; a command, which needs the
+ *   compiler anyway, checks it first (`checkNow`). While M4's cycling holds the document's save checks (`saveChecksHeld`), it
  *   is not checked — a check would end the compiler's search — and the delay starts again.
  * - **What is shown.** A check's answer replaces the document's entry in `idris2 (unsaved)`, and
  *   the saved file's diagnostics of the document are hidden meanwhile (`DocumentChecks.showSaved`,
@@ -42,15 +47,17 @@
  *   The rules are read at each edit and when the delay ends; an entry shown before goes at the save.
  */
 import type * as vscode from 'vscode';
-import type { BackendRegistry } from '../../backend/registry';
+import { rootKey, type BackendRegistry } from '../../backend/registry';
 import type { UnsavedCheckResult } from '../../backend/types';
 import { DEFAULT_AUTO_SAVE_DELAY_MS, type AutoSaveSettings, type CheckingSettings, type Config } from '../../core/config';
 import { DisposableStore, type IDisposable } from '../../core/disposable';
 import { errorText, IdrisException, isCancelled } from '../../core/errors';
+import { Emitter, type Event } from '../../core/event';
 import type { Log } from '../../core/log';
 import type { WorkspaceTrust } from '../../core/trust';
 import type { ProjectIndex } from '../../project/types';
 import { isCheckable, type DocumentChecks, type Timers } from '../diagnostics/checks';
+import type { LoadedFileEvent, LoadNotifications } from '../intelligence/types';
 
 /** The parts of the `vscode` namespace this module uses. */
 export type UnsavedChecksApi = Pick<typeof vscode, 'CancellationTokenSource' | 'DiagnosticSeverity'> & {
@@ -92,6 +99,8 @@ export interface UnsavedChecksDeps {
   /** `backendFor(root)`, and `stateFor(root)`: nothing is checked after Stop Backend, a give-up or a refusal of the folder. */
   readonly registry: Pick<BackendRegistry, 'backendFor' | 'stateFor'>;
   readonly projects: Pick<ProjectIndex, 'classify'>;
+  /** The loads of the saved files: a module the text imports may have changed. */
+  readonly loads: LoadNotifications;
   /** `checkOnType`, and `checking` and `autoSave` for `savedSoon`. */
   readonly config: Pick<Config, 'checkOnType' | 'checking' | 'autoSave' | 'onDidChange'>;
   readonly trust: WorkspaceTrust;
@@ -114,6 +123,8 @@ interface Tracked {
   timer: unknown;
   /** The check that runs, with its cancellation. */
   running: { readonly source: vscode.CancellationTokenSource } | undefined;
+  /** `run` while it goes on, the build of modules not built yet included. */
+  check: Promise<void> | undefined;
   /** The version whose check's answer is shown, if one is. */
   shown: number | undefined;
   /** The files of modules not built yet that were checked for it while it has unsaved changes (`missing`). */
@@ -138,10 +149,15 @@ export class UnsavedChecks implements IDisposable {
     this.store.add(api.workspace.onDidSaveTextDocument((doc) => this.reset(doc)));
     this.store.add(api.workspace.onDidCloseTextDocument((doc) => this.closed(doc)));
     this.store.add(api.window.onDidChangeActiveTextEditor((editor) => editor !== undefined && this.activated(editor.document)));
+    this.store.add(deps.loads.onDidLoad((loaded) => void this.loaded(loaded).catch(() => undefined)));
     this.store.add(deps.trust.onDidGrant(() => this.activeChanged()));
     this.store.add(deps.config.onDidChange('checkOnType', (change) => change.affects('checkOnType.enabled') && this.settingChanged()));
     this.activeChanged();
   }
+
+  private readonly ended = new Emitter<vscode.TextDocument>();
+  /** Fires when a shown check of a document's unsaved text ends: what it answered no longer holds. */
+  readonly onDidEnd: Event<vscode.TextDocument> = this.ended.event;
 
   /** The document's entry in `idris2 (unsaved)` (for the tests and the test API). */
   shownFor(uri: vscode.Uri): readonly vscode.Diagnostic[] | undefined {
@@ -179,7 +195,7 @@ export class UnsavedChecks implements IDisposable {
     const key = doc.uri.toString();
     let t = this.tracked.get(key);
     if (t === undefined || t.doc !== doc) {
-      t = { doc, timer: undefined, running: undefined, shown: undefined, built: new Set(), logged: new Set() };
+      t = { doc, timer: undefined, running: undefined, check: undefined, shown: undefined, built: new Set(), logged: new Set() };
       this.tracked.set(key, t);
     }
     return t;
@@ -215,10 +231,38 @@ export class UnsavedChecks implements IDisposable {
   }
 
   private activated(doc: vscode.TextDocument): void {
-    if (doc.isDirty && this.due(doc)) {
-      const t = this.track(doc);
-      if (t.shown !== doc.version && t.running === undefined) {
-        this.schedule(t);
+    if (!doc.isDirty || !this.due(doc)) {
+      return;
+    }
+    const t = this.track(doc);
+    if (t.running !== undefined) {
+      return;
+    }
+    if (t.shown !== doc.version) {
+      this.schedule(t);
+      return;
+    }
+    void this.deps.projects.classify(doc.fileName).then(
+      (root) => {
+        if (t.shown === doc.version && t.running === undefined && this.isActive(doc) && !this.deps.registry.backendFor(root).showsUnsavedCheck(doc)) {
+          this.schedule(t);
+        }
+      },
+      () => undefined,
+    );
+  }
+
+  /** A load of a saved file (module comment, *What is checked*). */
+  private async loaded({ root, file, rebuilt, unsaved }: LoadedFileEvent): Promise<void> {
+    if (!rebuilt || unsaved !== undefined) {
+      return;
+    }
+    for (const t of [...this.tracked.values()]) {
+      if (t.doc.fileName !== file && rootKey(await this.deps.projects.classify(t.doc.fileName)) === rootKey(root)) {
+        t.shown = undefined;
+        if (t.doc.isDirty && this.isActive(t.doc) && this.due(t.doc)) {
+          this.schedule(t);
+        }
       }
     }
   }
@@ -236,14 +280,70 @@ export class UnsavedChecks implements IDisposable {
     }
     t.timer = this.deps.timers.set(() => {
       t.timer = undefined;
-      void this.run(t);
+      void this.start(t);
     }, delayMs);
   }
 
-  /** The check of `t`'s document, if it still may be checked now (module comment). */
-  private async run(t: Tracked): Promise<void> {
+  /** `run`, noted in `t.check`. */
+  private start(t: Tracked, forCommand = false): Promise<void> {
+    const check: Promise<void> = this.run(t, forCommand).finally(() => {
+      if (t.check === check) {
+        t.check = undefined;
+      }
+    });
+    t.check = check;
+    return check;
+  }
+
+  /**
+   * For a command on `doc`, which needs the compiler anyway: checks its unsaved text now, active or
+   * not, and resolves when that has ended, the modules it needs built included, or a newer text
+   * replaced it (review 1, M20: the session may have lost its check to another document or an idle
+   * stop, and then the command would save the file). Does nothing where nothing would be checked
+   * while typing, so that the command decides as without check while typing.
+   */
+  async checkNow(doc: vscode.TextDocument): Promise<void> {
+    const version = doc.version;
+    const key = doc.uri.toString();
+    const may = (): boolean => !this.disposed && !doc.isClosed && doc.isDirty && doc.version === version && this.due(doc) && !this.deps.checks.saveChecksHeld(key);
+    if (!may()) {
+      return;
+    }
+    const t = this.track(doc);
+    while (may()) {
+      if (t.timer !== undefined) {
+        this.deps.timers.clear(t.timer);
+        t.timer = undefined;
+      }
+      await this.untilEnded(t, t.check ?? this.start(t, true));
+      if (t.timer === undefined && t.check === undefined) {
+        return;
+      }
+    }
+  }
+
+  /** `check`, or less if a newer text cancels the check that runs: its answer is not wanted any more. */
+  private untilEnded(t: Tracked, check: Promise<void>): Promise<void> {
+    const token = t.running?.source.token;
+    if (token === undefined) {
+      return check;
+    }
+    return new Promise((resolve) => {
+      const cancelled = token.onCancellationRequested(() => {
+        cancelled.dispose();
+        resolve();
+      });
+      void check.finally(() => {
+        cancelled.dispose();
+        resolve();
+      });
+    });
+  }
+
+  /** The check of `t`'s document, if it still may be checked now (module comment); `forCommand`: `checkNow`'s, active or not. */
+  private async run(t: Tracked, forCommand = false): Promise<void> {
     const doc = t.doc;
-    if (this.disposed || doc.isClosed || !doc.isDirty || !this.isActive(doc) || !this.due(doc) || this.tracked.get(doc.uri.toString()) !== t) {
+    if (this.disposed || doc.isClosed || !doc.isDirty || !(forCommand || this.isActive(doc)) || !this.due(doc) || this.tracked.get(doc.uri.toString()) !== t) {
       return;
     }
     if (this.deps.checks.saveChecksHeld(doc.uri.toString())) {
@@ -336,6 +436,9 @@ export class UnsavedChecks implements IDisposable {
   private hide(t: Tracked): void {
     this.collection.delete(t.doc.uri);
     this.deps.checks.showSaved(t.doc.uri, true);
+    if (t.shown !== undefined) {
+      this.ended.fire(t.doc);
+    }
     t.shown = undefined;
   }
 

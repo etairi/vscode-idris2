@@ -7,7 +7,7 @@ import type * as vscode from 'vscode';
 import type { ConfigurationGroup, SettingsChange } from '../../src/core/config';
 import { Emitter } from '../../src/core/event';
 import type { CheckRefusal } from '../../src/features/diagnostics/checks';
-import { registerBackendCommands, type BackendControl, type CommandsApi } from '../../src/features/diagnostics/commands';
+import { ideModeControl, registerBackendCommands, type BackendControl, type CommandsApi } from '../../src/features/diagnostics/commands';
 import { ProtocolTraceChannel, registerTraceCommands, traceLine, type TraceApi } from '../../src/features/diagnostics/trace';
 import type { Classification } from '../../src/project/types';
 import type { ToolchainSnapshot } from '../../src/toolchain/types';
@@ -95,6 +95,44 @@ class FakeControl implements BackendControl {
     this.calls.push(`restart ${root?.dir ?? 'all'}`);
   }
 }
+
+suite('ideModeControl: Stop and Restart Backend of a root IDE mode does not serve (review 1, M10)', () => {
+  const lsp = { kind: 'project', dir: '/w/lsp' } as Classification;
+  const ide = { kind: 'project', dir: '/w/ide' } as Classification;
+
+  function setup() {
+    const inner = new FakeControl();
+    const said: string[] = [];
+    const logged: string[] = [];
+    const control = ideModeControl(inner, {
+      serves: (root) => root === ide,
+      say: (text) => said.push(text),
+      log: { ...quietLog, info: (text: string) => logged.push(text) },
+    });
+    return { inner, control, said, logged };
+  }
+
+  test('a root of idris2-lsp: each says so, and nothing restarts', () => {
+    const t = setup();
+    t.control.stop(lsp);
+    t.control.restart(lsp);
+    assert.deepStrictEqual(t.inner.calls, ['stop /w/lsp']);
+    assert.strictEqual(t.said.length, 2);
+    assert.match(t.said[0], /Stop Backend stops nothing here.*Stop Language Server/);
+    assert.match(t.said[1], /Restart Backend starts nothing here.*Restart Language Server/);
+    assert.strictEqual(t.logged.length, 2);
+  });
+
+  test('a root of IDE mode and every root: as IDE mode does, without a word', () => {
+    const t = setup();
+    t.control.stop(ide);
+    t.control.restart(ide);
+    t.control.stop();
+    t.control.restart();
+    assert.deepStrictEqual(t.inner.calls, ['stop /w/ide', 'restart /w/ide', 'stop all', 'restart all']);
+    assert.deepStrictEqual(t.said, []);
+  });
+});
 
 function setupCommands(trusted = true) {
   const fake = fakeApi();

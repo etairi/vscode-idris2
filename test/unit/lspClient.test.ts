@@ -464,6 +464,8 @@ class World {
   readonly processes: FakeProcess[] = [];
   initializeError: Error | undefined;
   answer: (method: string, param: unknown) => Promise<unknown> = async () => null;
+  /** The files whose build files were looked at (`LspClientDeps.outdateBuild`). */
+  readonly outdated: string[] = [];
   readonly messages: { level: string; text: string; items: string[] }[] = [];
   reply: string | undefined;
   readonly channel = new FakeChannel();
@@ -553,6 +555,7 @@ class World {
       },
       folders: () => ['/w'],
       readText: async () => undefined,
+      outdateBuild: async (fileName) => void world.outdated.push(fileName),
       log: quietLog,
       platform: 'darwin',
       processEnv: { PATH: '/usr/bin' },
@@ -713,6 +716,66 @@ suite('backend/lsp/client: lifecycle', () => {
       await settled();
       assert.strictEqual(kind(client), 'running', `end ${i + 1}`);
     }
+    client.dispose();
+  });
+
+  test('a save asks the server something harmless and waits for the answer, as it answers in order: then no load runs (review 1, N1)', async () => {
+    const { world, client, doc } = await running();
+    const uri = uriOf(doc);
+    let answer = (): void => undefined;
+    world.answer = (method) => (method === 'textDocument/documentLink' ? new Promise<null>((resolve) => (answer = () => resolve(null))) : Promise.resolve(null));
+    world.opened.fire(doc as unknown as vscode.TextDocument);
+    world.ownershipChanged.fire();
+    await settled();
+    const outdated = world.outdated.length;
+    const fake = world.clients[0];
+    const hook = fake.spec.middleware.didSave;
+    assert.ok(hook !== undefined);
+    const saved = hook(doc as unknown as vscode.TextDocument, async () => undefined);
+    await settled();
+    assert.deepStrictEqual(fake.requests.filter((r) => r.method === 'textDocument/documentLink').map((r) => r.param), [{ textDocument: { uri: uri.toString() } }]);
+    assert.strictEqual(world.outdated.length, outdated, 'not before the answer');
+    answer();
+    await saved;
+    assert.deepStrictEqual(world.outdated.slice(outdated), [doc.fileName]);
+    client.dispose();
+  });
+
+  test('Stop on a server that does not answer: the request in flight ends, or a command on its document would wait for ever (review 1, M3)', async () => {
+    const { world, client, doc } = await running();
+    world.answer = () => new Promise(() => undefined);
+    const outcome = client.request(uriOf(doc), 'textDocument/hover', {}).then(
+      () => 'answered',
+      (e: unknown) => kindOf(e),
+    );
+    await settled();
+    // The library's stop after its timeout: the connection stays, and what is pending on it too.
+    world.clients[0].stop = () => Promise.reject(new Error('Stopping the server timed out'));
+    const stopped = client.stop();
+    await settled();
+    assert.strictEqual(await outcome, 'BackendCrashed');
+    await world.clock.advance(60_000);
+    await stopped;
+    client.dispose();
+  });
+
+  test('Restart whose folder cannot run the compiler any more: it starts for an open file it may serve, else it says it did not restart (review 1, M11)', async () => {
+    const { world, client } = await running();
+    world.gate = (dir) => (dir === '/w' ? { allowed: false, reason: 'unresolved' } : { allowed: true, basis: 'workspaceFolder', realDir: `/real${dir}` });
+    world.admitted.clear();
+    world.admit(world.doc(`${OUTSIDE_DIR}/B.idr`));
+    await client.restart();
+    await settled();
+    assert.strictEqual(kind(client), 'running');
+    assert.strictEqual(world.processes[1].request.cwd, `/real${OUTSIDE_DIR}`);
+    assert.strictEqual(world.messages.length, 0);
+    world.gate = () => ({ allowed: false, reason: 'unresolved' });
+    world.admitted.clear();
+    await client.restart();
+    await settled();
+    assert.strictEqual(kind(client), 'notStarted');
+    assert.strictEqual(world.processes.length, 2);
+    assert.match(world.messages.at(-1)?.text ?? '', /language server was not restarted/);
     client.dispose();
   });
 
@@ -942,6 +1005,46 @@ suite('backend/lsp/client: settings and output', () => {
     world.changeSetting('lsp.trace.server');
     await settled();
     assert.strictEqual(world.clients[0].notifications.length, sent);
+    client.dispose();
+  });
+
+  test('plainPrinting (review 1, H1): with an option on, an edit runs with all three off, after a reload that empties the server\'s cache; they come back after it', async () => {
+    const { world, client, doc } = await running();
+    world.settings = { ...SETTINGS, fullNamespace: true };
+    const plain = { ...lspServerOptions(world.settings), showImplicits: false, showMachineNames: false, fullNamespace: false };
+    const seen: { method: string; params?: unknown }[][] = [];
+    const before = world.clients[0].notifications.length;
+    const answer = await client.plainPrinting(uriOf(doc), () => {
+      seen.push(world.clients[0].notifications.slice(before));
+      return Promise.resolve('answered');
+    });
+    assert.strictEqual(answer, 'answered');
+    assert.deepStrictEqual(seen[0], [
+      { method: 'workspace/didChangeConfiguration', params: { settings: plain } },
+      { method: 'textDocument/didSave', params: { textDocument: { uri: client.serverUri(uriOf(doc)) } } },
+    ]);
+    assert.deepStrictEqual(world.clients[0].notifications.at(-1), { method: 'workspace/didChangeConfiguration', params: { settings: lspServerOptions(world.settings) } });
+    client.dispose();
+  });
+
+  test('plainPrinting: with none on nothing is sent; edits that overlap send them once, and a change meanwhile waits for the last', async () => {
+    const { world, client, doc } = await running();
+    const sent = world.clients[0].notifications.length;
+    await client.plainPrinting(uriOf(doc), () => Promise.resolve());
+    assert.strictEqual(world.clients[0].notifications.length, sent);
+    world.settings = { ...SETTINGS, showImplicits: true };
+    let finish = (): void => undefined;
+    const first = client.plainPrinting(uriOf(doc), () => new Promise<void>((resolve) => (finish = resolve)));
+    await settled();
+    const during = world.clients[0].notifications.length;
+    await client.plainPrinting(uriOf(doc), () => Promise.resolve());
+    world.settings = { ...SETTINGS, showImplicits: true, fullNamespace: true };
+    world.changeSetting('lsp.fullNamespace');
+    await settled();
+    assert.strictEqual(world.clients[0].notifications.length, during, 'plain until the last edit ends');
+    finish();
+    await first;
+    assert.deepStrictEqual(world.clients[0].notifications.slice(during), [{ method: 'workspace/didChangeConfiguration', params: { settings: lspServerOptions(world.settings) } }]);
     client.dispose();
   });
 

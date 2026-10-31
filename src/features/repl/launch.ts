@@ -17,7 +17,10 @@
  *
  * **One line.** What is typed into the terminal is one line, whatever is selected: line breaks become
  * spaces, so that text cannot run a second command, and text with a control character is not typed
- * at all (Ctrl+C, Ctrl+D and the like act on the terminal, not on the text; M1's rule for terminals).
+ * at all (Ctrl+C, Ctrl+D and the like act on the terminal, not on the text; M1's rule for terminals). Nor
+ * is a line past `MAX_LINE_BYTES`: the terminal's line discipline holds about 1,024 bytes on macOS, and
+ * past that the line never arrives and the REPL is stuck until Ctrl+U (1,000 bytes evaluated, 1,100 did
+ * not, on idris2 0.8.0 without rlwrap [live, review 1]).
  */
 import * as path from 'path';
 import type { IdeModeSettings } from '../../core/config';
@@ -56,12 +59,17 @@ export function replTerminalName(root: Classification): string {
 
 const LINE_BREAK = /\r\n|[\r\n\v\f\u2028\u2029\u0085]/;
 
+/** The longest line typed, in bytes: the module comment's limit, less what `:t ` and `:doc ` add. */
+const MAX_LINE_BYTES = 1_000;
+
 export type ReplLine =
   | { readonly kind: 'line'; readonly text: string }
   /** Nothing but white space. */
   | { readonly kind: 'empty' }
   /** It has a control character. */
-  | { readonly kind: 'control' };
+  | { readonly kind: 'control' }
+  /** It is longer than a terminal takes. */
+  | { readonly kind: 'long' };
 
 /** `text` as the one line that is typed into a REPL (module comment). */
 export function replLine(text: string): ReplLine {
@@ -74,5 +82,8 @@ export function replLine(text: string): ReplLine {
   if (line === '') {
     return { kind: 'empty' };
   }
-  return /\p{Cc}/u.test(line) ? { kind: 'control' } : { kind: 'line', text: line };
+  if (/\p{Cc}/u.test(line)) {
+    return { kind: 'control' };
+  }
+  return Buffer.byteLength(line, 'utf8') > MAX_LINE_BYTES ? { kind: 'long' } : { kind: 'line', text: line };
 }

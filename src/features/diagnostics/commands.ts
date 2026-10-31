@@ -47,6 +47,41 @@ export interface BackendControl {
   readonly onDidFail: Event<{ readonly root: Classification; readonly gaveUp: boolean; readonly detail: string; readonly repeated: boolean }>;
 }
 
+/** What `ideModeControl` needs besides IDE mode's control. */
+export interface IdeModeControlDeps {
+  /** Whether IDE mode serves `root` (the registry's route). */
+  serves(root: Classification): boolean;
+  say(text: string): void;
+  readonly log: Log;
+}
+
+/**
+ * `control` for the commands: of a root IDE mode does not serve, whose project has one compiler,
+ * idris2-lsp's (ROADMAP §9 Q7), Restart starts nothing and Stop stops only what IDE mode still runs
+ * there, and both say so.
+ */
+export function ideModeControl(control: BackendControl, deps: IdeModeControlDeps): BackendControl {
+  return {
+    activeRoots: () => control.activeRoots(),
+    stop: (root) => {
+      control.stop(root);
+      if (root !== undefined && !deps.serves(root)) {
+        deps.log.info('Stop Backend: IDE mode does not serve this project; idris2-lsp keeps running');
+        deps.say('Idris 2: IDE mode does not serve this project, so Stop Backend stops nothing here. Idris 2: Switch Backend… chooses the backend; Stop Language Server stops idris2-lsp.');
+      }
+    },
+    restart: (root) => {
+      if (root !== undefined && !deps.serves(root)) {
+        deps.log.info('Restart Backend: IDE mode does not serve this project; nothing restarted');
+        deps.say('Idris 2: IDE mode does not serve this project, so Restart Backend starts nothing here. Idris 2: Switch Backend… chooses the backend; Restart Language Server restarts idris2-lsp.');
+        return;
+      }
+      control.restart(root);
+    },
+    onDidFail: control.onDidFail,
+  };
+}
+
 export type CommandsApi = Pick<typeof vscode, 'window' | 'commands'>;
 
 export interface BackendCommandsDeps {

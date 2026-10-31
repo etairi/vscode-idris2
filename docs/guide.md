@@ -52,7 +52,8 @@ and the result, e.g. `Idris 2 0.8.0 · IDE mode · 1 error`, with the details be
 | `stopped` | the compiler is stopped; the next check starts it again |
 
 **Stop Backend** stops the compiler of this project or of all projects — for example before
-`pack build`; the next check starts it again. **Restart Backend** restarts it.
+`pack build`; the next check starts it again. **Restart Backend** restarts it. On a project
+idris2-lsp serves they say so: **Stop Language Server** and **Restart Language Server** act there.
 
 **Build directory.** With `idris2.ideMode.isolateBuildDir` (on by default) the editor's build
 files go to `build/.vscode-idris2`, apart from your own builds. That is not possible when the
@@ -66,14 +67,17 @@ of the saved file, with the source `idris2 (unsaved)`; saving, undoing back to t
 reverting or closing the file brings the saved file's back. On by default
 (`idris2.checkOnType.enabled`).
 
-- The text is copied, with a package file of the project's dependencies and options, into the
-  extension's own storage, and a second compiler process checks the copy there. Your files are never
-  written. The modules the file imports are read as the last check of the saved files built them; a
-  module of the project that the file imports and no check has built yet is checked as saved, and
-  the text checked again.
+- The text is copied, with a package file of the project's dependencies and options and a link to
+  its `depends/` folder, if it has one, into the extension's own storage, and a second compiler
+  process checks the copy there. Your files are never written. The modules the file imports are read
+  as the last check of the saved files built them; a module of the project that the file imports and
+  no check has built yet is checked as saved, and the text checked again. When a check of a saved
+  file rebuilds it, the active file is checked again, and other files with unsaved changes when they
+  become active.
 - Hovers, holes (the Holes view), and the interactive editing commands work on the unsaved text once
-  its check has answered: they no longer save the file first. Go to Definition, completion and the
-  namespace browser still answer from the saved file.
+  its check has answered: they no longer save the file first. A command run before that waits for the
+  check, and saves the file only when the text cannot be checked. Go to Definition, completion and
+  the namespace browser still answer from the saved file.
 - After **Stop Backend**, typing starts no compiler; the next save or **Check File** does.
 - A file that is saved automatically within a second of an edit is not checked while typing, since
   the check after the save would compile the same text again: VS Code's auto-save after a short delay
@@ -166,8 +170,9 @@ scope. A file of a package gets the package's dependencies and options, another 
   needed, and leaves the cursor in the editor. **Type of Selection in REPL** and **Docs of Selection
   in REPL** type `:t` and `:doc` of the selection, or of the name at the cursor.
 - **What is typed is one line:** line breaks become spaces, so a selection cannot run a second
-  command, and text with a control character is not typed. The REPL itself takes one line at a time,
-  so a `do` block over several lines does not work as it does in a file.
+  command, and text with a control character is not typed, nor a line of more than 1,000 bytes, which
+  a terminal does not hold. The REPL itself takes one line at a time, so a `do` block over several
+  lines does not work as it does in a file.
 - `idris2.repl.reloadOnSave` types `:r` when an Idris file of the project is saved, which rebuilds
   what changed, imported modules included. If a program is running there, it reads the `:r` instead.
 - **History and arrow keys.** The compiler's REPL has neither: an arrow key arrives as text. When
@@ -192,7 +197,8 @@ A comment line `-- >>> expr` gets a **Run** lens, which writes the answer beneat
 -- double 2 = 4
 ```
 
-Running it again replaces that answer. **Run all** (on the first such line, or in the Command Palette)
+A further line of an answer starts `-- > `. Running a line again replaces its answer, and comments you
+wrote below it stay. **Run all** (on the first such line, or in the Command Palette)
 runs all of them in one undo step, after asking, since it runs the lines of a file you may not have
 read. Lines whose answer is an error are counted and shown, not written. Unsaved changes are saved first,
 as `idris2.checking.saveBeforeAction` says, since the compiler answers for the file as saved. There are
@@ -391,9 +397,11 @@ comes back after a window reload. While it is hidden behind another tab, nothing
   variables as in the Holes view, and the type it needs. **Copy** puts it on the clipboard as
   Markdown. On a type declaration without clauses, it offers **Generate Definition** instead.
 - **Buttons.** **Proof Search**, **Next** (while there are further results), **Intro** (when the
-  compiler offers several answers they are listed in the panel), **Make Lemma**, and **Refine** with
-  an input for the expression. They run the commands of the same name on the hole shown, under the
-  same rules, also when the focus is in the panel. A command the backend lacks is off.
+  compiler offers several answers they are listed in the panel; hiding the panel cancels the
+  question, and a QuickPick asks when the panel was closed or hidden before the answers came),
+  **Make Lemma**, and **Refine** with an input for the expression. They run the commands of the same
+  name on the hole shown, under the same rules, also when the focus is in the panel. A command the
+  backend lacks is off.
 - **Each variable.** **Case Split** when its clause is one the compiler can split; **Jump** selects
   it where the left-hand side around the hole binds it. An implicit that the left-hand side does not
   name has neither.
@@ -402,7 +410,8 @@ comes back after a window reload. While it is hidden behind another tab, nothing
 - **Printing.** *Implicits*, *Machine names* and *Namespaces* change the settings of the backend
   serving the file (`idris2.ideMode.*` or `idris2.lsp.*`), where your setting is. In IDE mode the
   open files are then checked again, whatever `idris2.checking.trigger` says, since nothing else
-  would print their holes anew. Evaluations print as before.
+  would print their holes anew. Evaluations print as before. Text an editing command writes is
+  never printed under these options.
 - **Pin** keeps the hole shown while the cursor moves, until **Unpin** or until the hole goes.
   **Follow cursor** off keeps the panel on its place until you turn it on again.
 - A banner says when the file has changed since it was checked, with a **Save** button; under check
@@ -487,7 +496,9 @@ unavailable there, and the command says so.
 - **One server per window**, started with the first file it serves, in the workspace folder (or
   the folder you allowed, see [Folders outside the workspace](#folders-outside-the-workspace)). It
   restarts itself after a crash at most three times in five minutes. **Stop Language Server** keeps
-  it stopped until **Restart Language Server**; **Show Language Server Output** shows its log.
+  it stopped until **Restart Language Server**; **Show Language Server Output** shows its log. A
+  restart in a folder that has gone starts it for an open file it may serve, and says so when there
+  is none.
 - **What it answers**: hover (the type), completion, signature help, Go to Definition, the Outline,
   highlights of a name, semantic highlighting, its problems, and its quick fixes. The editing
   commands, the light bulb's editing actions, Add Missing Cases and the Holes view work as in IDE
@@ -801,13 +812,16 @@ It is written to an output channel, which VS Code also keeps as a file in its lo
   date from an earlier session shows none until it is rebuilt, and its status reads `up to date`
   instead of `✓`. A file closed and opened again in the same window gets back the warnings it
   showed, if its text did not change.
-- **Saving during a build.** The compiler rebuilds a file only when it was saved after its build
-  output was written. A file saved again while it was still being built keeps the result of the
-  text read first; edit and save it once more.
+- **Changes during a build.** The compiler rebuilds a file only when it is at least as new as its
+  build output. A save in the editor during a build is taken care of: the extension sets that build
+  output's time back, and the file is built again. Not so a file another program changes during a
+  build, nor a save during a build by another window or the REPL: the file keeps the result of the
+  text read first, or of no text if it was read at the moment it was written, which leaves it without
+  hovers, holes or errors. Edit and save it once more.
 - **Unusual paths.** On macOS and Linux a file is not checked when its path contains `\`, `:` or
   `?`, or a folder name of only white space: the compiler reads such a path differently (`\` as
   a folder separator), so it would look for its package elsewhere and could check another file.
-  The status says so.
+  The status says so. idris2-lsp does not serve such a file either.
 - **`%logging` output.** With the `stdio` transport, a file whose `%logging` output quotes text
   that looks like a reply of the compiler's protocol (six hex digits, then `(:return ` or another
   reply's start, e.g. in a string) cannot be checked: the check fails with a protocol error. The
@@ -835,8 +849,9 @@ It is written to an output channel, which VS Code also keeps as a file in its lo
   - The Holes view groups a file's holes under `Main` when its `module` line starts with a comment
     or has a non-breaking space before the name.
 - **The REPL** shows the compiler's own text, which the extension does not read: `:let` definitions
-  there are unknown to Query and the lenses, which use the evaluation process. In a folder with
-  several `.ipkg` files, the compiler chooses which one a REPL uses.
+  there are unknown to Query and the lenses, which use the evaluation process. It does not start
+  when the compiler would use another `.ipkg` than the extension found, or when a path or argument
+  holds `${`, which VS Code would expand in a terminal.
 - **The goal panel** has Case Split and Jump only for variables a left-hand side around the hole
   binds as a clause of its own: not for the alternative of a `case` written on the clause's line
   (`f n = case n of m => ?h`). The commands that act on a line, Make With and Make Case, are not in

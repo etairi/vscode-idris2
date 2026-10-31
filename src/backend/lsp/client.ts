@@ -165,7 +165,7 @@ const SHOW_OUTPUT_ACTION = 'Show Language Server Output';
 
 const RESTART_HINT = 'Idris 2: Restart Language Server starts it again.';
 export const STOPPED_REASON = `The language server is stopped (Idris 2: Stop Language Server). ${RESTART_HINT}`;
-export const NOT_SERVED_REASON = 'This file is not served by idris2-lsp: its project is checked by IDE mode, has no .ipkg file, or its folder is not allowed.';
+export const NOT_SERVED_REASON = 'This file is not served by idris2-lsp: its project is checked by IDE mode, has no .ipkg file, its folder is not allowed, or the compiler would misread its path.';
 
 /** The refusal of the server's `workspace/applyEdit` (module comment). */
 export const APPLY_EDIT_REFUSED = 'vscode-idris2 applies only the edits it asks for, under its own checks.';
@@ -647,6 +647,8 @@ export interface LspClientDeps {
   readonly folders: () => readonly string[];
   /** The text of a file on disk (`middleware.ts` `MiddlewareDeps.readText`). */
   readonly readText: (fileName: string) => Promise<string | undefined>;
+  /** Sets back the build files of a saved file that a load wrote after its save (`backend/ide/buildFiles.ts`). */
+  readonly outdateBuild: (fileName: string) => Promise<void>;
   readonly log: Log;
   readonly platform: NodeJS.Platform;
   /** The Extension Host's environment, under `idris2.toolchain.env`. */
@@ -661,7 +663,7 @@ export interface LspClientDeps {
 }
 
 /** `fs.realpathSync.native`, `undefined` when the folder cannot be resolved. */
-function realFolder(dir: string): string | undefined {
+export function realFolder(dir: string): string | undefined {
   try {
     return fs.realpathSync.native(dir);
   } catch {
@@ -694,6 +696,14 @@ interface Instance {
   asked: string | undefined;
   /** A server option changed while it was starting: sent once it runs. */
   optionsChanged: boolean;
+  /** Ends each request in flight, for a stop (`stopInstance`). */
+  readonly inFlight: Set<() => void>;
+}
+
+/** What a request is sent through: a running client, and where it says it waits for an answer. */
+interface Served {
+  readonly client: LspLanguageClient;
+  readonly inFlight: Set<() => void>;
 }
 
 /** A refusal before the spawn (Restricted Mode, the gate): nothing failed, the client stays `notStarted`. */
@@ -737,11 +747,13 @@ export class LspClient implements LspClientHandle {
   private backoffTimer: unknown;
   private startCheck: Promise<void> | undefined;
   private disposed = false;
+  /** The edits running with the server's printing options off (`plainPrinting`). */
+  private plainEdits = 0;
   /** The warnings shown, when `keepNotices`. */
   readonly notices: string[] = [];
 
   constructor(private readonly deps: LspClientDeps) {
-    this.sync = new DocumentSync(deps.ownership, deps.log);
+    this.sync = new DocumentSync(deps.ownership, deps.log, deps.readText, deps.outdateBuild);
     this.paths = new ServerPaths(deps.realpath ?? realFolder, deps.api.Uri, deps.platform);
     this.middleware = createMiddleware({
       api: deps.api,
@@ -904,6 +916,7 @@ export class LspClient implements LspClientHandle {
       stopping: false,
       asked: undefined,
       optionsChanged: false,
+      inFlight: new Set(),
     };
     this.instance = instance;
     const client = await this.deps.languageClients({
@@ -929,6 +942,7 @@ export class LspClient implements LspClientHandle {
       change: (doc) => client.sendNotification('textDocument/didChange', client.code2ProtocolConverter.asChangeTextDocumentParams(doc)),
       // With the text, as the library sends a save: the server asks for it (`save.includeText`, F20 [live]).
       save: (doc) => client.sendNotification('textDocument/didSave', client.code2ProtocolConverter.asSaveTextDocumentParams(doc, true)),
+      idle: (doc) => this.idle({ client, inFlight: instance.inFlight }, doc),
       close: (doc) => client.sendNotification('textDocument/didClose', client.code2ProtocolConverter.asCloseTextDocumentParams(doc)),
       clearDiagnostics: (uri) => client.diagnostics?.delete(uri),
     });
@@ -1085,6 +1099,8 @@ export class LspClient implements LspClientHandle {
   private async stopInstance(instance: Instance): Promise<void> {
     instance.stopping = true;
     this.release(instance);
+    // A server that does not answer `shutdown` keeps its connection, and the library what is pending on it.
+    instance.inFlight.forEach((end) => end());
     // No process yet: a start still in progress finds itself released and spawns nothing (`spawn`).
     if (instance.exit !== undefined || instance.proc === undefined) {
       return;
@@ -1116,7 +1132,7 @@ export class LspClient implements LspClientHandle {
   /** A server option changed: sent to a running server (module comment, *Settings*). */
   private optionsChanged(): void {
     const instance = this.instance;
-    if (instance === undefined) {
+    if (instance === undefined || this.plainEdits > 0) {
       return;
     }
     if (this.current.kind !== 'running' || instance.client === undefined) {
@@ -1183,21 +1199,30 @@ export class LspClient implements LspClientHandle {
 
   async restart(): Promise<void> {
     await this.stop();
+    const cwd = this.lastCwd;
+    // A folder that has gone, or is not allowed any more, would end in `spawn`'s refusal.
+    const allowed = cwd !== undefined && this.deps.trust.isTrusted && (await this.deps.gate.recheck(cwd))?.allowed === true;
     if (this.disposed) {
       return;
     }
     this.setState({ kind: 'notStarted' });
-    if (this.lastCwd !== undefined && this.deps.trust.isTrusted) {
-      await this.start(this.lastCwd);
-    } else {
-      this.startIfNeeded();
+    if (allowed) {
+      await this.start(cwd);
+      return;
+    }
+    this.startIfNeeded();
+    await this.startCheck;
+    if (this.current.kind === 'notStarted' && !this.disposed) {
+      const text = 'Idris 2: the language server was not restarted: no open file of a project it serves may run the compiler now.';
+      this.deps.log.info(text);
+      void this.deps.api.window.showInformationMessage(plainText(text));
     }
   }
 
   // --- requests ----------------------------------------------------------------------------------
 
   /** Waits until the client runs, starting it for `about` when it has not started; rejects when it cannot. */
-  private async running(about: vscode.Uri, token: vscode.CancellationToken | undefined): Promise<LspLanguageClient> {
+  private async running(about: vscode.Uri, token: vscode.CancellationToken | undefined): Promise<Served> {
     for (;;) {
       if (token?.isCancellationRequested) {
         throw cancelled();
@@ -1206,7 +1231,7 @@ export class LspClient implements LspClientHandle {
       switch (state.kind) {
         case 'running':
           if (this.instance?.client !== undefined) {
-            return this.instance.client;
+            return { client: this.instance.client, inFlight: this.instance.inFlight };
           }
           break;
         case 'stopped':
@@ -1236,6 +1261,29 @@ export class LspClient implements LspClientHandle {
     }
   }
 
+  /** `LspClientHandle.plainPrinting`. */
+  async plainPrinting<T>(about: vscode.Uri, run: () => Promise<T>): Promise<T> {
+    const { showImplicits, showMachineNames, fullNamespace } = this.deps.config.lsp();
+    if ((!showImplicits && !showMachineNames && !fullNamespace) || !this.deps.trust.isTrusted || this.disposed || !(await this.deps.ownership.admits(about))) {
+      return run();
+    }
+    this.plainEdits++;
+    try {
+      if (this.plainEdits === 1) {
+        const { client } = await this.running(about, undefined);
+        const settings = { ...lspServerOptions(this.deps.config.lsp()), showImplicits: false, showMachineNames: false, fullNamespace: false };
+        await client.sendNotification('workspace/didChangeConfiguration', { settings });
+        // A load empties the server's cache of code actions, which holds what it printed under the
+        // options; a change of them does not (Server/ProcessMessage.idr 155–170 and 255 [src]).
+        await client.sendNotification('textDocument/didSave', { textDocument: { uri: this.paths.toServer(about) } });
+      }
+      return await run();
+    } finally {
+      this.plainEdits--;
+      this.optionsChanged();
+    }
+  }
+
   async request<R>(about: vscode.Uri, method: string, params: object, token?: vscode.CancellationToken): Promise<R> {
     if (token?.isCancellationRequested) {
       throw cancelled();
@@ -1246,11 +1294,10 @@ export class LspClient implements LspClientHandle {
     if (this.disposed || !(await this.deps.ownership.admits(about))) {
       throw unsupported(NOT_SERVED_REASON);
     }
-    const client = await this.running(about, token);
-    return this.send<R>(client, about, method, params, token);
+    return this.send<R>(await this.running(about, token), about, method, params, token);
   }
 
-  private async send<R>(client: LspLanguageClient, about: vscode.Uri, method: string, params: object, token: vscode.CancellationToken | undefined): Promise<R> {
+  private async send<R>({ client, inFlight }: Served, about: vscode.Uri, method: string, params: object, token: vscode.CancellationToken | undefined): Promise<R> {
     const answer = client.sendRequest<R>(method, params, token);
     const cancel =
       token === undefined
@@ -1265,10 +1312,33 @@ export class LspClient implements LspClientHandle {
               () => subscription.dispose(),
             );
           });
+    let end = (): void => undefined;
+    const stopped = new Promise<never>((_, reject) => {
+      end = () => reject(new IdrisException({ kind: 'BackendCrashed', message: `The language server was stopped before answering ${method}.` }));
+    });
+    inFlight.add(end);
     try {
-      return await (cancel === undefined ? answer : Promise.race([answer, cancel]));
+      return await Promise.race(cancel === undefined ? [answer, stopped] : [answer, cancel, stopped]);
     } catch (error) {
       throw this.requestError(error, about, method);
+    } finally {
+      inFlight.delete(end);
+    }
+  }
+
+  /**
+   * Waits until the server has finished all it was sent: it handles one message at a time, in order
+   * (`Server/Main.idr` [src]), so any answer says so. `documentLink` loads nothing: the server answers
+   * `null` at once (`Server/ProcessMessage.idr` 493–497 [src]), with one warning line in its log per
+   * save. A stop ends the wait (`stopInstance`).
+   */
+  private async idle(served: Served, doc: vscode.TextDocument): Promise<void> {
+    try {
+      await this.send(served, doc.uri, 'textDocument/documentLink', { textDocument: { uri: this.paths.toServer(doc.uri) } }, undefined);
+    } catch (error) {
+      if (error instanceof IdrisException && error.error.kind === 'BackendCrashed') {
+        throw error;
+      }
     }
   }
 

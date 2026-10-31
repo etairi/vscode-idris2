@@ -216,6 +216,11 @@ export class AnswerCache implements IDisposable {
     this.files.delete(file);
   }
 
+  /** Forgets every answer: the printing options they were printed under changed. */
+  clear(): void {
+    this.files = new Map();
+  }
+
   dispose(): void {
     this.subscription.dispose();
     this.files = new Map();

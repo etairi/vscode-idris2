@@ -243,6 +243,8 @@ export interface EditingDeps {
    */
   readonly checks: CheckStatusSource & SaveCheckHolds;
   readonly config: Pick<Config, 'saveBeforeAction'>;
+  /** Checks a document's unsaved text now (`UnsavedChecks.checkNow`). */
+  readonly unsaved: { checkNow(doc: vscode.TextDocument): Promise<void> };
   readonly trust: WorkspaceTrust;
   readonly log: Log;
 }
@@ -259,4 +261,6 @@ export interface EditingRegistration extends IDisposable {
   readonly onDidChangeCycle: Event<void>;
   /** Runs `command` as the command does (`commands.ts`, never rejects), with `options`. */
   run(command: EditingCommandId, args: EditingCommandArgs | undefined, options?: EditingRunOptions): Promise<void>;
+  /** The commands' own question, a QuickPick. */
+  readonly pickChoice: ChoiceAsker;
 }

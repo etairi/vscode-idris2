@@ -88,10 +88,24 @@ export class ReplTerminals implements IDisposable {
       throw unsupported(refusalText(verdict, cwd));
     }
     const rlwrap = await this.rlwrap();
-    // The question and the search can take a while: the directory is judged again, as it is now.
+    // The question and the search can take a while: all of it is judged again, as it is now.
+    const later = await deps.startProblem();
+    if (later !== undefined) {
+      throw later;
+    }
     const now = await deps.gate.recheck(cwd);
     if (now === undefined || !now.allowed) {
       throw unsupported(refusedText(now, cwd));
+    }
+    const judged = now.realDir ?? cwd;
+    if (root.kind === 'project') {
+      // `--find-ipkg` moves to the package its walk finds, which must be the root's: the gate judged
+      // that directory. As a load's `otherPackage`, and a stale root is how they differ.
+      const found = await deps.findPackage(judged);
+      const own = path.join(judged, path.basename(root.ipkgPath));
+      if (found === undefined || path.relative(found, own) !== '') {
+        throw unsupported(`The REPL is not started: searching from ${judged}, the compiler ${found === undefined ? 'finds no package file' : `would find the package file ${found}`}, not ${root.ipkgPath}.`);
+      }
     }
     const snapshot = deps.toolchain.current;
     if (snapshot?.idris2.status !== 'probed') {
@@ -103,10 +117,15 @@ export class ReplTerminals implements IDisposable {
       relativeFile,
       idris2: snapshot.idris2.location.path,
       ...(rlwrap === undefined ? {} : { rlwrap }),
-      cwd: deps.platform === 'win32' ? cwd : (now.realDir ?? cwd),
+      cwd: deps.platform === 'win32' ? cwd : judged,
       settings: ideMode,
       env: snapshot.settings.env,
     });
+    // VS Code expands these in a terminal's executable, arguments and directory (1.144.0 [live, review
+    // 1]), after everything above: what would change is not what was judged. `extraArgsProblem` too.
+    if ([launch.executable, ...launch.args, launch.cwd].some((part) => part.includes('${'))) {
+      throw unsupported('The REPL is not started: a path or argument holds "${", which VS Code would expand in a terminal.');
+    }
     this.launches.push(launch);
     const terminal = this.api.window.createTerminal({
       name: replTerminalName(root),

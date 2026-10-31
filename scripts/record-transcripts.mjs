@@ -1193,6 +1193,34 @@ const SCENARIOS = [
       intro(32, 'g'), //          foo x = ?g (S x)
     ],
   },
+  // Review 1, H1: what edits answer under the printing options, and that a search survives `:set` and
+  // `:unset` between its steps, since edits run with the options off (`IdeMode.sendEdit`).
+  {
+    name: 'display-edits',
+    description: 'Clean.idr: Case Split and Proof Search under shownamespace and showimplicits, the same without them, and :proof-search-next after :set and :unset',
+    facts: ['F27'],
+    workspace: 'broken',
+    cwd: '.',
+    transport: 'stdio',
+    fixtures: ['Clean.idr'],
+    requests: [
+      load('Clean.idr'),
+      '(:interpret ":set shownamespace")',
+      '(:interpret ":set showimplicits")',
+      caseSplit(8, 6, 'xs'),
+      proofSearch(8, 'vlen_rhs'),
+      '(:interpret ":unset shownamespace")',
+      '(:interpret ":unset showimplicits")',
+      caseSplit(8, 6, 'xs'),
+      proofSearch(8, 'vlen_rhs'),
+      '(:interpret ":set shownamespace")',
+      '(:interpret ":set showimplicits")',
+      '(:interpret ":unset shownamespace")',
+      '(:interpret ":unset showimplicits")',
+      ':proof-search-next',
+      ':proof-search-next',
+    ],
+  },
   // M8: what the Query box and the `-- >>>` lenses send on the eval session (ROADMAP §9, 2026-10-30):
   // expressions, and the allow-listed `:t` and `:doc`. What a second line after a command does.
   {

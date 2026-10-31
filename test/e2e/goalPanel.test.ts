@@ -159,6 +159,24 @@ suite('E2E: the goal panel (ROADMAP M7)', function () {
     await vscode.workspace.getConfiguration('idris2').update('ideMode.fullNamespace', undefined, vscode.ConfigurationTarget.Global);
   });
 
+  test('edits are not printed under the printing options: Case Split with Namespaces and Implicits ticked writes plain clauses (review 1, H1)', async () => {
+    await vscode.window.showTextDocument(doc, vscode.ViewColumn.One);
+    cursorIn('?vlen_rhs');
+    await waitFor('the goal', () => api.goalPanel.state()?.goal);
+    await api.goalPanel.receive({ type: 'toggle', option: 'fullNamespace' });
+    await api.goalPanel.receive({ type: 'toggle', option: 'showImplicits' });
+    await waitFor('the namespaces', () => (api.goalPanel.state()?.goal?.type === 'Prelude.Nat' ? true : undefined), 60000);
+    await api.goalPanel.receive({ type: 'premise', action: 'caseSplit', name: 'xs' });
+    assert.match(doc.getText(), /^vlen \[\] = \?vlen_rhs_0$/m);
+    assert.match(doc.getText(), /^vlen \(x :: xs\) = \?vlen_rhs_1$/m);
+    await vscode.commands.executeCommand('undo');
+    await waitFor('the panel to read the options as ticked', () => (api.goalPanel.state()?.options.fullNamespace === true ? true : undefined));
+    for (const option of ['fullNamespace', 'showImplicits']) {
+      await vscode.workspace.getConfiguration('idris2').update(`ideMode.${option}`, undefined, vscode.ConfigurationTarget.Global);
+    }
+    await restoreFile();
+  });
+
   test('with the focus in the panel, a click on Proof Search replaces the hole, and Next goes on from it', async () => {
     await vscode.window.showTextDocument(doc, vscode.ViewColumn.One);
     cursorIn('?vlen_rhs');

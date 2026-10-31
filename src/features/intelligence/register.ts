@@ -42,6 +42,7 @@
  */
 import type * as vscode from 'vscode';
 import type { RichText } from '../../backend/types';
+import { IDE_MODE_DISPLAY_KEYS, LSP_DISPLAY_KEYS } from '../../core/config';
 import { DisposableStore, type IDisposable } from '../../core/disposable';
 import { plainText } from '../../core/notificationText';
 import type { EditorRange } from '../../core/positions';
@@ -129,6 +130,9 @@ export function registerIntelligence(api: IntelligenceApi, deps: IntelligenceDep
       }
     }),
   );
+  // Answers are printed under the printing options, and a load that builds nothing keeps them (review 1, M8).
+  store.add(deps.config.onDidChange('ideMode', (change) => IDE_MODE_DISPLAY_KEYS.some((key) => change.affects(key)) && answers.clear()));
+  store.add(deps.config.onDidChange('lsp', (change) => LSP_DISPLAY_KEYS.some((key) => change.affects(key)) && answers.clear()));
   const hoverDeps: HoverDeps = {
     queries: deps.queries,
     answers,

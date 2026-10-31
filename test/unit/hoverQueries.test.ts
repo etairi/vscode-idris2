@@ -210,6 +210,14 @@ suite('features/intelligence/queries', () => {
       return { cache, loads, answer, asked: () => asked, root };
     }
 
+    test('clear: a change of the printing options drops every answer, which the compiler printed under the old ones (review 1, M8)', async () => {
+      const t = cacheSetup();
+      await t.cache.get('/w/A.idr', 'k', t.answer('1'));
+      t.cache.clear();
+      assert.deepStrictEqual(await t.cache.get('/w/A.idr', 'k', t.answer('2')), { kind: 'answer', value: '2' });
+      assert.strictEqual(t.asked(), 2);
+    });
+
     test('an answer is kept per file and key; a load that built nothing keeps every answer, the loaded file\'s included', async () => {
       const t = cacheSetup();
       t.loads.fire({ root: t.root, file: '/w/A.idr', rebuilt: true });

@@ -141,6 +141,43 @@ export async function readSourceFile(path: string): Promise<string> {
   return read.text;
 }
 
+/**
+ * A file's text as its document shows it: VS Code drops a UTF-8 BOM, and a document has one
+ * line-end sequence (`TextDocument.eol`), so line ends are written as `\n`.
+ */
+export function asShown(text: string): string {
+  return (text.startsWith('\uFEFF') ? text.slice(1) : text).replace(/\r\n?/g, '\n');
+}
+
+/** Whether the file text `disk` is the document text `text` (`asShown`). */
+export function sameText(disk: string, text: string): boolean {
+  return asShown(disk) === asShown(text);
+}
+
+/**
+ * Makes `link` name the folder `target`, or removes such a link when `target` is no folder. A
+ * junction on Windows, which needs no privilege (the type is ignored elsewhere). A recursive
+ * removal of what holds `link` leaves `target` alone (`fs.rm` does not follow links, test/unit/fileSystem.test.ts).
+ */
+export async function linkFolder(target: string, link: string): Promise<void> {
+  const [present, folder] = await Promise.all([
+    fs.promises.readlink(link).catch(() => undefined),
+    fs.promises.stat(target).then(
+      (stats) => stats.isDirectory(),
+      () => false,
+    ),
+  ]);
+  if (folder && present === target) {
+    return;
+  }
+  if (present !== undefined) {
+    await fs.promises.rm(link, { recursive: true, force: true });
+  }
+  if (folder) {
+    await fs.promises.symlink(target, link, 'junction');
+  }
+}
+
 /** The real file system, for `process.platform`. */
 export const nodeFileSystem: FileSystemProbe = {
   async stat(path) {

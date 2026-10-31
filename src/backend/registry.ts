@@ -54,6 +54,7 @@ import { DisposableStore, type IDisposable } from '../core/disposable';
 import { unsupported } from '../core/errors';
 import { Emitter, type Event } from '../core/event';
 import type { SessionGate, WorkspaceTrust } from '../core/trust';
+import { compilerReadsPathAsGiven } from '../project/ipkg';
 import { isIdrisDocument, isIdrisSourceFileName } from '../project/literate';
 import type { Classification, ProjectIndex } from '../project/types';
 import type { ToolchainService, ToolchainSnapshot } from '../toolchain/types';
@@ -580,12 +581,16 @@ export interface LspAdmissionDeps {
   readonly projects: Pick<ProjectIndex, 'classify' | 'sessionCwd' | 'onDidChange'>;
   readonly gate: Pick<SessionGate, 'recheck' | 'onDidChange'>;
   readonly registry: Pick<BackendRegistry, 'routeFor' | 'onDidChangeRoutes'>;
+  readonly platform: NodeJS.Platform;
+  /** The real path of a folder, `undefined` when it cannot be resolved (`lsp/client.ts` `realFolder`). */
+  readonly realpath: (dir: string) => string | undefined;
 }
 
 /**
  * `LspOwnership` (`backend/lsp/types.ts`; module comment, *Which documents reach the server*): a
- * `file:` URI with an Idris file name (`isIdrisFileName`). The route is read again after each wait,
- * so that an answer reflects the routing when it is given.
+ * `file:` URI with an Idris file name (`isIdrisFileName`), whose path as the server is sent it the
+ * compiler reads as given, as IDE mode refuses another (`ServerPaths`, `compilerReadsPathAsGiven`).
+ * The route is read again after each wait, so that an answer reflects the routing when it is given.
  */
 export class LspAdmission implements LspOwnership, IDisposable {
   private readonly store = new DisposableStore();
@@ -601,8 +606,12 @@ export class LspAdmission implements LspOwnership, IDisposable {
   }
 
   async admits(uri: vscode.Uri): Promise<boolean> {
-    const { trust, projects, gate, registry } = this.deps;
+    const { trust, projects, gate, registry, platform, realpath } = this.deps;
     if (!trust.isTrusted || uri.scheme !== 'file' || !isIdrisFileName(path.basename(uri.fsPath))) {
+      return false;
+    }
+    const dir = platform === 'win32' ? undefined : realpath(path.dirname(uri.fsPath));
+    if (!compilerReadsPathAsGiven(dir === undefined ? uri.fsPath : path.join(dir, path.basename(uri.fsPath)), platform)) {
       return false;
     }
     const root = await projects.classify(uri.fsPath);

@@ -14,7 +14,9 @@
  *    error on the cursor's lines, else the type declaration at the cursor (so that a `partial`
  *    function, which has no coverage error, can be completed too). **Refine Hole…** then asks for
  *    the expression in an input box, unless the argument brings it (`EditingCommandArgs.hint`).
- * 2. Save before (`saveBeforeAction.ts`); when the text changed since the target was read (a
+ * 2. A file with unsaved text that check while typing would check, and no such check its session
+ *    holds, is checked first (`UnsavedChecks.checkNow`). Then, unless the compiler holds that text,
+ *    save before (`saveBeforeAction.ts`); when the text changed since the target was read (a
  *    formatter that runs on save, an edit while the input box was open), the target's line must
  *    still have its text (but for white space at its end, which `files.trimTrailingWhitespace`
  *    removes), and the target read again at its position must be the same name.
@@ -300,9 +302,14 @@ export class EditingCommands {
       }
     }
     const root = await this.deps.projects.classify(doc.fileName);
+    const backend = this.deps.registry.backendFor(root);
+    // A session may have lost the check to another document or an idle stop (review 1, M20).
+    if (doc.isDirty && backend.caps.checksUnsaved && !backend.showsUnsavedCheck(doc)) {
+      await this.windowProgress(name, () => this.deps.unsaved.checkNow(doc));
+    }
     // M6: the compiler has checked the text the document shows, unsaved changes included, and edits
     // that text: nothing is saved (`IdrisBackend.showsUnsavedCheck`).
-    const saved = this.deps.registry.backendFor(root).showsUnsavedCheck(doc)
+    const saved = backend.showsUnsavedCheck(doc)
       ? ({ kind: 'ready' } as const)
       : await saveBeforeAction(this.api, doc, this.deps.config.saveBeforeAction(doc.uri), name);
     if (saved.kind !== 'ready') {
@@ -512,22 +519,22 @@ export class EditingCommands {
       this.say(command, `Idris 2: ${commandName(command)}: the compiler offered nothing to choose from.`);
       return;
     }
-    let chosen: EditChoice | undefined = reason === 'intro' && choices.length === 1 ? choices[0] : undefined;
-    if (chosen === undefined && asker !== undefined) {
-      chosen = await asker(reason, choices);
-    } else if (chosen === undefined) {
-      const items = choices.map((choice) => ({ label: quickPickText(editorLabel(choice.label, MAX_SHOWN)), choice }));
-      const picked = await this.api.window.showQuickPick(items, {
-        placeHolder: reason === 'intro' ? 'Idris 2: what to put into the hole' : 'Idris 2: the name is ambiguous; choose the one to refine the hole with',
-      });
-      chosen = picked?.choice;
-    }
+    const chosen = reason === 'intro' && choices.length === 1 ? choices[0] : await (asker ?? this.pickChoice)(reason, choices);
     if (chosen === undefined) {
       this.record({ command, kind: 'cancelled' });
       return;
     }
     await this.applyEdit(command, doc, version, chosen.replacements);
   }
+
+  /** `EditingRegistration.pickChoice`. */
+  readonly pickChoice: ChoiceAsker = async (reason, choices) => {
+    const items = choices.map((choice) => ({ label: quickPickText(editorLabel(choice.label, MAX_SHOWN)), choice }));
+    const picked = await this.api.window.showQuickPick(items, {
+      placeHolder: reason === 'intro' ? 'Idris 2: what to put into the hole' : 'Idris 2: the name is ambiguous; choose the one to refine the hole with',
+    });
+    return picked?.choice;
+  };
 
   // --- the two commands that continue a cycle ------------------------------------------------
 

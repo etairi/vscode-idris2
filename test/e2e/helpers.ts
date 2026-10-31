@@ -102,6 +102,16 @@ export function runReal(executable: string, args: readonly string[], cwd?: strin
   return result.stdout;
 }
 
+/**
+ * A short module that takes the compiler about 2 s to build, its time in one proof (`fib 25` by
+ * reduction, measured on 0.8.0), so that a save lands inside the load of the one before. Short, as
+ * idris2-lsp takes seconds over the semantic tokens of a long file, and starts no load meanwhile. Its
+ * second line from the end is the one to change: `value = 1`.
+ */
+export function slowModule(name: string): string {
+  return `module ${name}\n\nfib : Nat -> Nat\nfib 0 = 0\nfib 1 = 1\nfib (S (S n)) = fib (S n) + fib n\n\nslow : fib 25 = 75025\nslow = Refl\n\nvalue : Nat\nvalue = 1\n`;
+}
+
 /** The probed `idris2` of the current toolchain snapshot (absolute path). */
 export function probedIdris2(api: TestApi): string {
   const idris2 = api.toolchain.current?.idris2;

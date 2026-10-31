@@ -89,6 +89,14 @@ suite('backend/lsp/backend: LspBackend', () => {
     assert.deepStrictEqual([...new Set(named)], [`file:///real${doc.fileName}`]);
   });
 
+  test('an edit asks the server through plainPrinting (review 1, H1): its printing options do not reach the file', async () => {
+    const client = new ScriptedClient(() => []);
+    const backend = backendOver(client, 'actions-clean');
+    const doc = lspDocument('actions-clean', 'src/Clean.idr');
+    await assert.rejects(backend.edit({ kind: 'caseSplit', doc: asDoc(doc), version: doc.version, pos: { line: 7, character: 5 } as vscode.Position, name: 'xs' }));
+    assert.strictEqual(client.plainRuns, 1);
+  });
+
   test('the holes\' locations the server gives under its URIs are the document\'s', async () => {
     const doc = lspDocument('actions-clean', 'src/Clean.idr');
     const server = `file:///real${doc.fileName}`;

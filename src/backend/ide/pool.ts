@@ -104,7 +104,8 @@
  *   sessions print as the settings say: each new process is told the options that are on (its first
  *   requests; the compiler starts with all three off), and a change is sent to the processes that run
  *   (`sendDisplayOptions`), restarting none. The `eval` session is never told: nothing but
- *   evaluations goes to it (M3).
+ *   evaluations goes to it (M3). They are for reading: an edit runs with them off
+ *   (`SessionPool.plainPrinting`).
  * - **At most `idris2.ideMode.maxSessions`** (ROADMAP §9 Q21; `0`, the default, is no limit and
  *   changes nothing above). A `check` session counts while it has a process or is getting one
  *   (`starting`, `ready`, `busy`, `restarting`); an `eval` or `shadow` session — a process of the same size (it
@@ -148,13 +149,15 @@ import { packageOptionWords } from '../../project/ipkg';
 import type { Classification } from '../../project/types';
 import type { ToolchainSnapshot } from '../../toolchain/types';
 import { rootKey } from '../registry';
+import { outdateBuild } from './buildFiles';
 import { createSession, DEFAULT_SESSION_TIMING, systemClock, type Clock, type ManagedSession, type SessionTiming, type SpawnPlan } from './session';
 import { enableSyntax, setDisplayOption } from './protocol';
-import { SHADOW_BUILD_DIR, shadowDirectoryOf, shadowPackage } from './shadow';
+import { packageSourceDir, SHADOW_BUILD_DIR, shadowDirectoryOf, shadowPackage } from './shadow';
 import { createTransport } from './transport';
 import type {
   IdeCommand,
   IdeSession,
+  PlainPrinting,
   SessionLaunch,
   SessionPool,
   SessionPoolChange,
@@ -456,6 +459,24 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
     return checkBuildDir(root, running ?? deps.projects.sessionCwd(root), deps.config.ideMode(), deps.platform).dir;
   }
 
+  /** `SessionPool.outdateSaved`. */
+  async function outdateSaved(root: Classification, role: SessionRole, files: readonly string[]): Promise<void> {
+    const settings = deps.config.ideMode();
+    const cwd = deps.projects.sessionCwd(root);
+    const started = sessions.get(keyOf(root, role))?.launch?.realCwd ?? cwd;
+    const buildDir = (role === 'eval' ? evalBuildDir(root, started, settings, deps.platform) : undefined) ?? effectiveCheckBuildDir(root);
+    const place = { buildDir, cwd, sourceDir: packageSourceDir(root, settings.extraArgs) };
+    for (const file of files) {
+      try {
+        for (const ttc of await outdateBuild(deps.buildFiles, place, file, deps.platform)) {
+          deps.log.info(`${file} was saved during a build: ${ttc} is built again.`);
+        }
+      } catch (error) {
+        deps.log.warn(`The build files of ${file} could not be checked after its save: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+  }
+
   /** The directory the consent gate judges for `session`: its root's for a `shadow` session (`SessionRole`), else its own. */
   function gatedDirectory(session: IdeSession): string {
     return session.role === 'shadow' ? deps.projects.sessionCwd(session.root) : session.cwd;
@@ -637,6 +658,19 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
   /** The printing options the running processes were last told (module comment, *Printing options*). */
   let display = deps.config.ideMode().display;
 
+  /** Sets `option` in the process of `session`; a failure is logged, and changes nothing else. */
+  function tellPrinting(session: IdeSession, option: keyof DisplayOptions, on: boolean): void {
+    const failed = (why: string): void => deps.log.warn(`Idris 2 (${session.cwd}): the printing option ${option} was not set: ${why}`);
+    session.request(setDisplayOption(option, on), { kind: 'lookup' }).then(
+      ({ payload }) => {
+        if (payload.kind === 'error') {
+          failed(payload.message);
+        }
+      },
+      (error: unknown) => failed(error instanceof Error ? error.message : String(error)),
+    );
+  }
+
   /** Tells the `check` and `shadow` sessions that have a process what changed in the printing options. */
   function sendDisplayOptions(): void {
     const next = deps.config.ideMode().display;
@@ -644,19 +678,19 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
     display = next;
     for (const session of sessions.values()) {
       if ((session.role === 'check' || session.role === 'shadow') && (session.state === 'ready' || session.state === 'busy')) {
-        for (const option of changed) {
-          const failed = (why: string): void => deps.log.warn(`Idris 2 (${session.cwd}): the printing option ${option} was not set: ${why}`);
-          session.request(setDisplayOption(option, next[option]), { kind: 'lookup' }).then(
-            ({ payload }) => {
-              if (payload.kind === 'error') {
-                failed(payload.message);
-              }
-            },
-            (error: unknown) => failed(error instanceof Error ? error.message : String(error)),
-          );
-        }
+        changed.forEach((option) => tellPrinting(session, option, next[option]));
       }
     }
+  }
+
+  /** `SessionPool.plainPrinting`. */
+  function plainPrinting(session: IdeSession): PlainPrinting {
+    const options = deps.config.ideMode().display;
+    const on = (Object.keys(options) as (keyof DisplayOptions)[]).filter((option) => options[option]);
+    return {
+      off: () => on.forEach((option) => tellPrinting(session, option, false)),
+      on: () => on.forEach((option) => tellPrinting(session, option, true)),
+    };
   }
 
   /** The first requests of a process of `role` (`session.ts`, *First requests*). */
@@ -790,6 +824,7 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
     },
 
     effectiveCheckBuildDir,
+    outdateSaved,
 
     shadowDirectory,
 
@@ -883,6 +918,7 @@ export function createTunedSessionPool(deps: SessionPoolDeps, tuning: SessionPoo
     },
 
     startProblem,
+    plainPrinting,
 
     onDidChange: changed.event,
 

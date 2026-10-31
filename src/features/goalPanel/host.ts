@@ -16,7 +16,7 @@ import type { EditorRange } from '../../core/positions';
 import { editorLabel } from '../../core/untrustedText';
 import { isIdrisDocument } from '../../project/literate';
 import type { FromWebview, GoalAction, MessageSeverity, PanelState, PanelToggle, ToWebview } from '../../webview/protocol';
-import type { EditingCommandId } from '../editing/types';
+import type { ChoiceAsker, EditingCommandId } from '../editing/types';
 import { panelHtml } from './html';
 import { buildPanel, goalMarkdown, type PanelDiagnostic, type PanelDocument, type PanelInput, type PanelTargets, type PinnedHole } from './state';
 import type { GoalPanelDeps, GoalPanelView } from './types';
@@ -197,7 +197,14 @@ export class GoalPanelHost implements GoalPanelView, IDisposable {
     const store = new DisposableStore();
     this.subscriptions = store;
     store.add(panel.webview.onDidReceiveMessage((message: unknown) => void this.receive(message)));
-    store.add(panel.onDidChangeViewState(() => this.schedule(0)));
+    store.add(
+      panel.onDidChangeViewState(() => {
+        if (!panel.visible && this.choosing !== undefined) {
+          this.setChoosing(undefined);
+        }
+        this.schedule(0);
+      }),
+    );
     store.add(panel.onDidDispose(() => this.closed()));
     this.subscribe(store);
   }
@@ -395,11 +402,20 @@ export class GoalPanelHost implements GoalPanelView, IDisposable {
     this.schedule(0);
   }
 
-  private readonly choose = (reason: 'intro' | 'ambiguous', choices: readonly EditChoice[]): Promise<EditChoice | undefined> =>
-    new Promise((resolve) => {
+  /**
+   * The command's question, shown in the panel. One no panel could show would never be answered, and
+   * the command would hold its document, so a panel closed or hidden since its button was pressed
+   * leaves it to the QuickPick; hiding the panel ends a question it shows (`attach`).
+   */
+  private readonly choose: ChoiceAsker = (reason, choices) => {
+    if (this.panel?.visible !== true) {
+      return this.deps.editing.pickChoice(reason, choices);
+    }
+    return new Promise((resolve) => {
       const prompt = reason === 'intro' ? 'What to put into the hole:' : 'The name is ambiguous; which one to refine the hole with:';
       this.setChoosing({ prompt, choices, resolve });
     });
+  };
 
   private answerChoice(index: number | undefined): void {
     const choosing = this.choosing;

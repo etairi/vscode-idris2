@@ -15,6 +15,7 @@
 import { FUNCTION_PRAGMAS, MODIFIER_KEYWORDS, namesAsPattern, RESERVED_INFIX_SYMBOLS } from '../../core/idrisSyntax';
 import type { EditorPosition, EditorRange } from '../../core/positions';
 import { offsetOf, positionOf, syntaxModelOf, type TextDoc } from '../intelligence/occurrence';
+import { UNSAVED_COLLECTION_NAME } from '../shadow/unsavedChecks';
 import type { Token } from '../syntax/lexer';
 import type { SyntaxModel } from '../syntax/selectionRangeModel';
 
@@ -533,10 +534,11 @@ export function declarationAt(doc: TextDoc, pos: EditorPosition): DeclarationTar
 /**
  * Whether `diagnostic` is the compiler's coverage error that lists missing cases (`… is not
  * covering.` with a `Missing cases:` block, which the diagnostics keep, ARCHITECTURE §8 [live,
- * transcript `part-editing`]) in the `idris2` collection.
+ * transcript `part-editing`]) in the `idris2` collection, or in `idris2 (unsaved)`, which hides it
+ * while a check of unsaved text is shown (review 1, M6).
  */
 export function isMissingCasesDiagnostic(diagnostic: DiagnosticLike): boolean {
-  return diagnostic.source === 'idris2' && /^Missing cases:/mu.test(diagnostic.message);
+  return (diagnostic.source === 'idris2' || diagnostic.source === UNSAVED_COLLECTION_NAME) && /^Missing cases:/mu.test(diagnostic.message);
 }
 
 /**

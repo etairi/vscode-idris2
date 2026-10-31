@@ -86,6 +86,40 @@ suite('backend/lsp/holes: metavars → Hole[] (F26, E16 over LSP)', () => {
     assert.deepStrictEqual(holes.map((h) => h.qualifiedName), ['Ambig.g_rhs']);
   });
 
+  test('a refresh makes the server load a document at most once per version: two open documents do not reload each other for ever (review 1, H5)', async () => {
+    const symbols = symbolsOf('dirty');
+    const own = recordedResult('commands-clean', 'workspace/executeCommand', (p) => (p as { command: string }).command === 'metavars');
+    const client = new ScriptedClient((method) => (method === 'textDocument/documentSymbol' ? symbols : own));
+    const doc = lspDocument('commands-clean', 'src/Clean.idr');
+    const backend = backendOver(client, 'commands-clean');
+    const loads = (): number => client.sent.filter((m) => m.method === 'textDocument/documentSymbol').length;
+    await backend.holes(asDoc(doc), { kept: true });
+    assert.strictEqual(loads(), 1, 'the first refresh of this text');
+    const holes = await backend.holes(asDoc(doc), { kept: true });
+    assert.strictEqual(loads(), 1, 'not again: its load would publish, and refresh, for ever');
+    assert.deepStrictEqual(holes.map((h) => h.qualifiedName), ['Clean.vlen_rhs']);
+    await backend.holes(asDoc(doc));
+    assert.strictEqual(loads(), 2, 'List Holes asks for this document, and loads it');
+    doc.version++;
+    await backend.holes(asDoc(doc), { kept: true });
+    assert.strictEqual(loads(), 3, 'another text');
+    client.fireState();
+    await backend.holes(asDoc(doc), { kept: true });
+    assert.strictEqual(loads(), 4, 'a server started again has loaded nothing');
+  });
+
+  test('a refresh that may not load, whose answer is another file\'s: the document has holes and it locates none, so it keeps what it had (review 1, H5)', async () => {
+    const symbols = symbolsOf('dirty');
+    const own = recordedResult('commands-clean', 'workspace/executeCommand', (p) => (p as { command: string }).command === 'metavars');
+    const other = [{ name: 'Holes.Other.todo', location: { uri: `file://${LSP_ROOT}/src/Other.idr`, range: { start: { line: 5, character: 11 }, end: { line: 5, character: 16 } } }, type: 'Nat', premises: [] }];
+    const answers: unknown[] = [own, other];
+    const client = new ScriptedClient((method) => (method === 'textDocument/documentSymbol' ? symbols : answers.shift()));
+    const doc = lspDocument('commands-clean', 'src/Clean.idr');
+    const backend = backendOver(client, 'commands-clean');
+    await backend.holes(asDoc(doc), { kept: true });
+    await assert.rejects(backend.holes(asDoc(doc), { kept: true }), (e: unknown) => e instanceof IdrisException && e.error.kind === 'NotLoaded');
+  });
+
   test('asked once more when the document\'s symbols show holes and the answer locates none in it (another file\'s context), and the second answer is taken', async () => {
     const symbols = symbolsOf('dirty');
     const own = recordedResult('commands-clean', 'workspace/executeCommand', (p) => (p as { command: string }).command === 'metavars');
